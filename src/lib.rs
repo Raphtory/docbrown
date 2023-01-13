@@ -99,10 +99,18 @@ mod tadjset;
 mod tcell;
 mod tset;
 mod tvec;
+use pyo3::prelude::*;
 
 use graph::TemporalGraph;
 use std::ops::Range;
 use tadjset::AdjEdge;
+
+
+#[pymodule]
+fn pyraphtory(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
+    m.add_class::<TemporalGraph>()?;
+    Ok(())
+}
 
 /// Specify the direction of the neighbours
 #[derive(Clone, Copy)]

@@ -14,7 +14,10 @@ use crate::{
 };
 use crate::{EdgeView, Prop};
 
+use pyo3::prelude::*;
+
 #[derive(Default, Debug)]
+#[pyclass]
 pub struct TemporalGraph {
     // maps the global id to the local index id
     logical_to_physical: HashMap<u64, usize>,
@@ -45,6 +48,29 @@ impl Adj {
         }
     }
 }
+
+//Functions for the Temporal graph in python
+#[pymethods]
+impl TemporalGraph {
+    #[new]
+    fn py_new() -> Self {
+        TemporalGraph::default()
+    }
+    pub fn add_vertex(&mut self, v: u64, t: u64) {
+        self.add_vertex_props(v, t, vec![]);
+    }
+
+    pub fn add_edge(&mut self, src: u64, dst: u64, t: u64) {
+        self.add_edge_props(src, dst, t, &vec![]);
+    }
+
+    pub fn outbound_degree(&self, src: u64) -> usize {
+        let src_pid = self.logical_to_physical[&src];
+        self._degree(src_pid, Direction::OUT)
+    }
+  
+}
+
 
 impl TemporalGraph {
     fn neighbours_iter(
@@ -122,6 +148,7 @@ impl TemporalGraph {
             _ => 0,
         }
     }
+
 }
 
 impl TemporalGraph {
@@ -129,9 +156,9 @@ impl TemporalGraph {
         self.logical_to_physical.len()
     }
 
-    pub fn add_vertex(&mut self, v: u64, t: u64) -> &mut Self {
-        self.add_vertex_props(v, t, vec![])
-    }
+    // pub fn add_vertex(&mut self, v: u64, t: u64) -> &mut Self {
+    //     self.add_vertex_props(v, t, vec![])
+    // }
 
     pub fn add_vertex_props(&mut self, v: u64, t: u64, props: Vec<Prop>) -> &mut Self {
         match self.logical_to_physical.get(&v) {
@@ -196,9 +223,9 @@ impl TemporalGraph {
         Box::new(iter)
     }
 
-    pub fn add_edge(&mut self, src: u64, dst: u64, t: u64) -> &mut Self {
-        self.add_edge_props(src, dst, t, &vec![])
-    }
+    // pub fn add_edge(&mut self, src: u64, dst: u64, t: u64) -> &mut Self {
+    //     self.add_edge_props(src, dst, t, &vec![])
+    // }
 
     pub fn add_edge_remote_out(
         &mut self,
@@ -267,7 +294,8 @@ impl TemporalGraph {
         props: &Vec<(String, Prop)>,
     ) -> &mut Self {
         // mark the times of the vertices at t
-        self.add_vertex(src, t).add_vertex(dst, t);
+        self.add_vertex(src, t);
+        self.add_vertex(dst, t);
 
         let src_pid = self.logical_to_physical[&src];
         let dst_pid = self.logical_to_physical[&dst];
@@ -363,11 +391,6 @@ impl TemporalGraph {
                     e_meta,
                 }),
         )
-    }
-
-    pub fn outbound_degree(&self, src: u64) -> usize {
-        let src_pid = self.logical_to_physical[&src];
-        self._degree(src_pid, Direction::OUT)
     }
 
     pub fn inbound_degree(&self, dst: u64) -> usize {
