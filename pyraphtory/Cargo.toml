@@ -1,0 +1,19 @@
+[package]
+name = "pyraphtory"
+version = "0.1.0"
+edition = "2021"
+
+[workspace]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+name = "pyraphtory"
+crate-type = ["cdylib"]
+
+[dependencies.pyo3]
+version = "0.18"
+features = ["auto-initialize"]
+
+[dependencies]
+# pyo3 = { version = "0.17.3", features = ["extension-module"] }
+docbrown-db = { path = "../docbrown/db" }
