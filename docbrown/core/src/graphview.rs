@@ -1,7 +1,7 @@
 use std::ops::Range;
 use itertools::Itertools;
 use crate::graph::TemporalGraph;
-use crate::VertexView;
+use crate::graph::VertexView;
 use polars_lazy::prelude::*;
 use polars::prelude::*;
 
@@ -44,7 +44,7 @@ impl<'a> GraphView<'a> {
     }
 
     pub fn ids(&self) -> Series {
-        self.iter_vertices().map(|v| v.g_id).collect()
+        self.iter_vertices().map(|v| v.global_id()).collect()
     }
 
     fn local_ids(&self) -> Box<dyn Iterator<Item = usize> + '_> {
@@ -69,7 +69,7 @@ mod graph_view_tests {
 
         let window = 0..1;
         let view = GraphView::new(&g, &window);
-        let vertices = view.iter_vertices().map(|v| v.g_id).collect_vec();
+        let vertices = view.iter_vertices().map(|v| v.global_id()).collect_vec();
         assert_eq!(vertices, vec![1,2])
     }
 }

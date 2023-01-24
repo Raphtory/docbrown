@@ -13,7 +13,7 @@ mod algo_tests {
 
         g.add_edge(1, 2, 0);
         for v in g.iter_vertices() {
-            println!("{}", v.g_id)
+            println!("{}", v.global_id())
         }
 
     }

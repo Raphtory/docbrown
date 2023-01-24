@@ -554,7 +554,7 @@ impl TemporalGraph {
 
 pub(crate) struct VertexView<'a, G> {
     g_id: u64,
-    pid: usize,
+    pub(crate) pid: usize,
     g: &'a G,
     w: Option<Range<i64>>,
 }
