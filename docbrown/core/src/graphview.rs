@@ -5,16 +5,15 @@ use crate::graph::VertexView;
 use polars_lazy::prelude::*;
 use polars::prelude::*;
 
-type State = LazyFrame;
+type State = DataFrame;
 
 struct Vertices<'a> {
-    graph_view: &'a GraphView<'a>,
-    state: &'a State
+    graph_view: &'a GraphView<'a>
 }
 
 impl<'a> Vertices<'a> {
-    fn new(graph_view: &'a GraphView, state: &'a State) -> Vertices<'a> {
-        Vertices { graph_view, state}
+    fn new(graph_view: &'a GraphView) -> Vertices<'a> {
+        Vertices { graph_view}
     }
 }
 
@@ -38,9 +37,16 @@ impl<'a> GraphView<'a> {
         self.graph.iter_vs_window(self.window.clone())
     }
 
-    pub fn with_state(&self, name: &str, value: Expr) -> GraphView<'a> {
-        let new_state = self.state.clone().with_column(value.alias(name));
+    pub fn with_state<S>(&self, name: &str, value: S) -> GraphView<'a>
+    where S: IntoSeries
+    {
+        let s = Series::new(name, value);
+        let new_state = self.state.hstack([s].as_ref()).unwrap();
         GraphView {graph: self.graph, window: self.window, state: new_state}
+    }
+
+    pub fn get_state(&self, name: &str) -> &Series {
+        self.state.column(name).unwrap()
     }
 
     pub fn ids(&self) -> Series {
