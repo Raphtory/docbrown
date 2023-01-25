@@ -12,6 +12,8 @@ mod props;
 mod tadjset;
 mod tcell;
 pub mod tpartition;
+mod algo;
+mod graphview;
 
 /// Specify the direction of the neighbours
 #[derive(Clone, Copy, PartialEq)]
