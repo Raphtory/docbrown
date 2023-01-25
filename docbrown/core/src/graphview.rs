@@ -1,22 +1,125 @@
+use std::array::IntoIter;
+use std::iter::Map;
 use std::ops::Range;
-use itertools::Itertools;
-use polars::export::regex::internal::Input;
-use crate::graph::{EdgeView, TemporalGraph};
+use std::path::Iter;
+use crate::graph::{TemporalGraph};
 use crate::graph::VertexView;
-use polars_lazy::prelude::*;
 use polars::prelude::*;
 use crate::Direction;
 use crate::tadjset::AdjEdge;
 
 type State = DataFrame;
 
-struct Vertices<'a> {
+pub struct Vertices<'a> {
     graph_view: &'a GraphView<'a>
 }
 
 impl<'a> Vertices<'a> {
     fn new(graph_view: &'a GraphView) -> Vertices<'a> {
         Vertices { graph_view}
+    }
+
+    pub fn iter(&'a self) -> VertexIterator<'a> {
+        self.graph_view.iter_vertices()
+    }
+}
+
+
+impl<'a> IntoIterator for Vertices<'a> {
+    type Item = LocalVertexView<'a>;
+    type IntoIter = VertexIterator<'a>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.graph_view.iter_vertices()
+    }
+}
+
+
+impl<'a> IntoIterator for &'a Vertices<'a> {
+    type Item = LocalVertexView<'a>;
+    type IntoIter = VertexIterator<'a>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
+    }
+}
+
+pub struct VertexIterator<'a> {
+    graph_view: &'a GraphView<'a>,
+    inner: Box<dyn Iterator<Item=VertexView<'a, TemporalGraph>> +'a>
+}
+
+
+impl<'a> Iterator for VertexIterator<'a> {
+    type Item = LocalVertexView<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.inner.next().map(
+            |v| LocalVertexView::new(self.graph_view, &v)
+        )
+    }
+}
+
+
+
+
+pub trait VertexViewMethods<'a>: IntoIterator<Item = LocalVertexView<'a>> + Sized
+{
+    type WithNeighboursIterator;
+
+    fn out_neighbours(self) ->  Self::WithNeighboursIterator;
+}
+
+
+
+impl<'a, T, S> VertexViewMethods<'a> for T
+where
+    T: IntoIterator<Item = LocalVertexView<'a>, IntoIter = S>  + Sized,
+    S: Iterator<Item = LocalVertexView<'a>>
+{
+    type WithNeighboursIterator = Map<S, fn(LocalVertexView) -> OwnedNeighboursIterator>;
+    fn out_neighbours(self) -> Self::WithNeighboursIterator {
+        let inner = self.into_iter();
+            inner.map(|v| v.into_out_neighbours())
+    }
+}
+
+pub trait NeighboursIteratorInterface {}
+
+pub struct NeighboursIterator<'a> {
+    vertex: &'a LocalVertexView<'a>,
+    inner: Box<dyn Iterator<Item=(usize, AdjEdge)> + 'a>
+}
+
+pub struct OwnedNeighboursIterator<'a> {
+    vertex: LocalVertexView<'a>,
+    inner: Box<dyn Iterator<Item=(usize, AdjEdge)> + 'a>
+}
+
+impl<'a> Iterator for NeighboursIterator<'a> {
+    type Item = LocalVertexView<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.inner.next().map(
+            |(neighbour, AdjEdge(id)) | {
+                assert!(id >= 0, "tried to construct remote neighbour but we are assuming everything is local");
+                self.vertex.new_neighbour(neighbour)
+            }
+        )
+    }
+}
+
+
+impl<'a> Iterator for OwnedNeighboursIterator<'a> {
+    type Item = LocalVertexView<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.inner.next().map(
+            |(neighbour, AdjEdge(id)) | {
+                assert!(id >= 0, "tried to construct remote neighbour but we are assuming everything is local");
+                self.vertex.new_neighbour(neighbour)
+            }
+        )
     }
 }
 
@@ -39,7 +142,7 @@ impl<'a> LocalVertexView<'a> {
     fn new(graph_view: &'a GraphView, vertex: &VertexView<TemporalGraph>)-> LocalVertexView<'a> {
         LocalVertexView {graph_view, g_id: vertex.global_id(), pid: vertex.pid}
     }
-    fn new_neighbour(&'a self, pid: usize) -> LocalVertexView<'a> {
+    fn new_neighbour(&self, pid: usize) -> LocalVertexView<'a> {
         LocalVertexView {
             graph_view: self.graph_view,
             g_id: self.graph_view.graph.index[pid].logical().clone(),
@@ -55,20 +158,18 @@ impl<'a> LocalVertexView<'a> {
         self.graph_view.get_state(name).get(self.pid).unwrap()
     }
 
-    pub fn out_neighbours(&'a self) -> impl Iterator<Item=LocalVertexView<'a>> {
-        self.graph_view.graph.neighbours_iter_window(self.pid, Direction::OUT, self.graph_view.window )
-            .map(|(dst, AdjEdge(id)) | {
-                assert!(id >= 0, "tried to construct remote neighbour but we are assuming everything is local");
-                self.new_neighbour(dst)
-            })
+    pub fn out_neighbours(&'a self) -> NeighboursIterator<'a> {
+        let inner = self.graph_view.graph.neighbours_iter_window(self.pid, Direction::OUT, self.graph_view.window );
+        NeighboursIterator {inner, vertex: self}
+    }
+    fn into_out_neighbours(self) -> OwnedNeighboursIterator<'a> {
+        let inner = self.graph_view.graph.neighbours_iter_window(self.pid, Direction::OUT, self.graph_view.window );
+        OwnedNeighboursIterator {inner, vertex: self}
     }
 
-    pub fn in_neighbours(&'a self) -> impl Iterator<Item=LocalVertexView<'a>> {
-        self.graph_view.graph.neighbours_iter_window(self.pid, Direction::IN, self.graph_view.window)
-            .map(|(src, AdjEdge(id))| {
-                assert!(id >= 0, "tried to construct remote neighbour but we are assuming everything is local");
-                self.new_neighbour(src)
-            })
+    pub fn in_neighbours(&'a self) -> NeighboursIterator<'a> {
+        let inner = self.graph_view.graph.neighbours_iter_window(self.pid, Direction::IN, self.graph_view.window);
+        NeighboursIterator {inner, vertex: self}
     }
 }
 
@@ -79,12 +180,16 @@ impl<'a> GraphView<'a> {
     }
 
     pub fn n_nodes(&self) -> usize {
-        self.iter_vertices().map(|v| 1).sum()
+        self.iter_vertices().map(|_| 1).sum()
     }
 
-    pub fn iter_vertices(&'a self) -> impl Iterator<Item = LocalVertexView<'a>> {
-        let outer = self.graph.iter_vs_window(self.window.clone());
-        outer.map(|v| LocalVertexView::new(self, &v))
+    pub fn vertices(&'a self) -> Vertices<'a> {
+        Vertices::new(self)
+    }
+
+    fn iter_vertices(&'a self) -> VertexIterator<'a> {
+        let inner = self.graph.iter_vs_window(self.window.clone());
+        VertexIterator {graph_view: self, inner}
     }
 
     pub fn with_state<S>(&self, name: &str, value: S) -> GraphView<'a>
@@ -116,13 +221,19 @@ mod graph_view_tests {
     use super::*;
     use crate::graph::TemporalGraph;
 
-    #[test]
-    fn test_vertex_window() {
+    fn make_mini_graph() -> TemporalGraph {
         let mut g = TemporalGraph::default();
 
         g.add_vertex(1, 0);
         g.add_vertex(2, 0);
         g.add_vertex(3, 1);
+        g.add_edge(1, 2, 0);
+        g
+    }
+
+    #[test]
+    fn test_vertex_window() {
+        let g = make_mini_graph();
 
         let window = 0..1;
         let view = GraphView::new(&g, &window);
@@ -132,11 +243,7 @@ mod graph_view_tests {
 
     #[test]
     fn test_we_have_state() {
-        let mut g = TemporalGraph::default();
-
-        g.add_vertex(1, 0);
-        g.add_vertex(2, 0);
-        g.add_vertex(3, 1);
+        let g = make_mini_graph();
 
         let view = GraphView::new(&g, &(0..2));
         let view = view.with_state("ids", view.ids());
@@ -145,5 +252,21 @@ mod graph_view_tests {
             let id: u64 = state.extract().unwrap();
             assert_eq!(v.global_id(), id)
         }
+    }
+
+    #[test]
+    fn test_the_vertices() {
+        let g = make_mini_graph();
+        let view = GraphView::new(&g, &(0..2));
+
+        let neighbours = view.vertices().out_neighbours();
+        for nl in neighbours {
+            for v in nl {
+                println!("{}", v.global_id())
+            }
+        }
+        let m = view.vertices().into_iter().max_by_key(
+            |v| v.global_id());
+        println!("vertex with maximum id is {}", m.unwrap().global_id())
     }
 }

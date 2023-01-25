@@ -9,7 +9,7 @@ pub fn connected_components<'a>(g: &'a GraphView) -> GraphView<'a> {
     for it in 0..g.n_nodes() {
         println!("next iteration {}", it);
         let old_state = g.get_state("cc_label");
-        let new_state: Series = g.iter_vertices().map(|v| {
+        let new_state: Series = g.vertices().iter().map(|v| {
             let in_min = v.in_neighbours().map(|v| {
                 let value: u64 = v.get_state("cc_label").extract().unwrap();
                 value
@@ -54,7 +54,7 @@ mod algo_tests {
         for c in cc.u64().unwrap() {
             println!("{}", c.unwrap())
         }
-        for v in gv.iter_vertices() {
+        for v in gv.vertices() {
             match v.global_id() {
                 1 => assert_eq!(v.get_state("cc_label").extract(), Some(1)),
                 2 => assert_eq!(v.get_state("cc_label").extract(), Some(1)),
