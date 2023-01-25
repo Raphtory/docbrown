@@ -607,8 +607,8 @@ impl<'a> VertexView<'a, TemporalGraph> {
 }
 
 pub(crate) struct EdgeView<'a, G: Sized> {
-    src_id: usize,
-    dst_id: usize,
+    pub(crate) src_id: usize,
+    pub(crate) dst_id: usize,
     g: &'a G,
     t: Option<i64>,
     e_meta: AdjEdge,
