@@ -54,6 +54,14 @@ mod algo_tests {
         for c in cc.u64().unwrap() {
             println!("{}", c.unwrap())
         }
+        for v in gv.iter_vertices() {
+            match v.global_id() {
+                1 => assert_eq!(v.get_state("cc_label").extract(), Some(1)),
+                2 => assert_eq!(v.get_state("cc_label").extract(), Some(1)),
+                3 => assert_eq!(v.get_state("cc_label").extract(), Some(3)),
+                id => panic!("unknown node {id}"),
+            }
+        }
 
 
     }
