@@ -264,7 +264,7 @@ mod graph_view_tests {
         g.add_vertex(3, 1);
         g.add_edge(1, 2, 0);
         g.add_edge(2, 1, 0);
-        g.add_edge(2, 3, 0);
+        g.add_edge(2, 3, 1);
         g
     }
 
