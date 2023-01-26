@@ -1,7 +1,4 @@
-use std::array::IntoIter;
-use std::iter::Map;
-use std::ops::Range;
-use std::path::Iter;
+use std::ops::{Range};
 use crate::graph::{TemporalGraph};
 use crate::graph::VertexView;
 use polars::prelude::*;
@@ -9,6 +6,27 @@ use crate::Direction;
 use crate::tadjset::AdjEdge;
 
 type State = DataFrame;
+
+pub struct SingletonIterator<T: Copy>{value: T, exhausted: bool}
+
+impl<T: Copy> SingletonIterator<T> {
+    fn new(value: T) -> SingletonIterator<T> {
+        SingletonIterator{value, exhausted: false}
+    }
+}
+
+impl<T: Copy> Iterator for SingletonIterator<T> {
+    type Item = T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.exhausted {
+            None
+        } else {
+            self.exhausted = true;
+            Some(self.value)
+        }
+    }
+}
 
 pub struct Vertices<'a> {
     graph_view: &'a GraphView<'a>
@@ -61,26 +79,43 @@ impl<'a> Iterator for VertexIterator<'a> {
 }
 
 
+type IteratorWithLifetime<'a, I> = dyn Iterator<Item = I> + 'a;
 
-
-pub trait VertexViewMethods<'a>: IntoIterator<Item = LocalVertexView<'a>> + Sized
+pub trait VertexViewMethods<'a, I>
+where I: VertexViewMethods<'a, I>
 {
-    type WithNeighboursIterator;
+    type IDsType;
+    fn out_neighbours(self) ->  Box<IteratorWithLifetime<'a, I>>;
+    fn ids(self) -> Self::IDsType;
+}
 
-    fn out_neighbours(self) ->  Self::WithNeighboursIterator;
+impl<'a> VertexViewMethods<'a, LocalVertexView<'a>> for LocalVertexView<'a> {
+    type IDsType = u64;
+    fn out_neighbours(self) -> Box<IteratorWithLifetime<'a, LocalVertexView<'a>>>  {
+        Box::new(self.into_out_neighbours())
+    }
+
+    fn ids(self) -> Self::IDsType {
+        self.global_id()
+    }
 }
 
 
-
-impl<'a, T, S> VertexViewMethods<'a> for T
+impl<'a, T, R> VertexViewMethods<'a, Box<IteratorWithLifetime<'a, R>>> for T
 where
-    T: IntoIterator<Item = LocalVertexView<'a>, IntoIter = S>  + Sized,
-    S: Iterator<Item = LocalVertexView<'a>>
+    T: IntoIterator<Item = R> + 'a,
+    R: VertexViewMethods<'a, R> + 'a
 {
-    type WithNeighboursIterator = Map<S, fn(LocalVertexView) -> OwnedNeighboursIterator>;
-    fn out_neighbours(self) -> Self::WithNeighboursIterator {
+    type IDsType = Box<dyn Iterator<Item = R::IDsType> + 'a>;
+
+    fn out_neighbours(self) -> Box<IteratorWithLifetime<'a, Box<IteratorWithLifetime<'a, R>>>> {
         let inner = self.into_iter();
-            inner.map(|v| v.into_out_neighbours())
+            Box::new(inner.map(|v| v.out_neighbours()))
+    }
+
+    fn ids(self) -> Self::IDsType {
+        let inner = self.into_iter();
+        Box::new(inner.map(|v| v.ids()))
     }
 }
 
@@ -228,6 +263,8 @@ mod graph_view_tests {
         g.add_vertex(2, 0);
         g.add_vertex(3, 1);
         g.add_edge(1, 2, 0);
+        g.add_edge(2, 1, 0);
+        g.add_edge(2, 3, 0);
         g
     }
 
@@ -258,15 +295,12 @@ mod graph_view_tests {
     fn test_the_vertices() {
         let g = make_mini_graph();
         let view = GraphView::new(&g, &(0..2));
-
-        let neighbours = view.vertices().out_neighbours();
-        for nl in neighbours {
-            for v in nl {
-                println!("{}", v.global_id())
-            }
+        let vertex_out_out_neighbours = view.vertices().out_neighbours().out_neighbours().ids().flatten();
+        for (id, out_out_neighbours) in view.vertices().ids().zip( vertex_out_out_neighbours) {
+            let oo: Vec<u64> = out_out_neighbours.collect();
+            println!("vertex: {}, out_out_neighbours: {:?}", id, oo)
         }
-        let m = view.vertices().into_iter().max_by_key(
-            |v| v.global_id());
-        println!("vertex with maximum id is {}", m.unwrap().global_id())
+        let m = view.vertices().ids().max();
+        println!("vertex with maximum id is {}", m.unwrap())
     }
 }
