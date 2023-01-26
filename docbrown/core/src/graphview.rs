@@ -127,7 +127,7 @@ impl<'a> Iterator for OwnedNeighboursIterator<'a> {
 
 pub struct GraphView<'a> {
     graph: &'a TemporalGraph,
-    window: &'a Range<u64>,
+    window: &'a Range<i64>,
     state: State
 }
 
@@ -175,7 +175,7 @@ impl<'a> LocalVertexView<'a> {
 
 
 impl<'a> GraphView<'a> {
-    pub fn new(graph: &'a TemporalGraph, window: &'a Range<u64>) -> GraphView<'a> {
+    pub fn new(graph: &'a TemporalGraph, window: &'a Range<i64>) -> GraphView<'a> {
         GraphView {graph, window, state: State::default()}
     }
 
