@@ -1,0 +1,11 @@
+[package]
+name = "docbrown-storage"
+version.workspace = true
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+
+arrow2 = { version = "0.15", features = ["compute", "io_ipc"] }
+zerovec = { version = "0.9", features = ["derive", "serde"] }

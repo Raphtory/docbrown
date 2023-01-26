@@ -1,7 +1,8 @@
 [workspace]
 members = [
 	"docbrown/core",
-	"docbrown/db"
+	"docbrown/db",
+	"docbrown/storage"
 ]
 default-members = [	"docbrown/core", "docbrown/db"]
 
