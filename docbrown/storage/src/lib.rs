@@ -1,6 +1,28 @@
-mod vec {
-    use std::ops::RangeBounds;
+use std::ops::RangeBounds;
 
+trait Page {
+    fn page_id(&self) -> u64;
+    fn is_full(&self) -> bool;
+}
+
+#[derive(Debug, PartialEq)]
+enum PageError{
+    PageFull,
+}
+
+trait TemporalAdjacencySetPage<T:Sized>: Page {
+
+    fn append(&mut self, value: T, t: i64) -> Result<(), PageError>;
+
+    fn tuples_window<R: RangeBounds<i64>>(&self, w: R) -> Box<dyn Iterator<Item = (i64, &T)> + '_>;
+
+    fn tuples_by_timestamp(&self) -> Box<dyn Iterator<Item = (i64, &T)> + '_>;
+    fn tuples_sorted(&self) -> Box<dyn Iterator<Item = (i64, &T)> + '_>;
+    fn find_value(&self, value: &T) -> Option<&T>;
+}
+
+pub mod vec {
+    use std::ops::RangeBounds;
 
     #[derive(Debug, PartialEq)]
     pub struct TemporalAdjacencySetPage<T, const N: usize> {
@@ -78,22 +100,23 @@ mod vec {
 
         pub fn tuples_window<R: RangeBounds<i64>>(&self, w: R) -> impl Iterator<Item = (i64, &T)> {
             let (start, end) = match (w.start_bound(), w.end_bound()){
-                (std::ops::Bound::Included(start), std::ops::Bound::Included(end)) => (start, end),
-                (std::ops::Bound::Included(start), std::ops::Bound::Excluded(end)) => (start, end),
-                (std::ops::Bound::Included(start), std::ops::Bound::Unbounded) => (start, &i64::MAX),
-                (std::ops::Bound::Excluded(start), std::ops::Bound::Included(end)) => (start, end),
-                (std::ops::Bound::Excluded(start), std::ops::Bound::Excluded(end)) => (start, end),
-                (std::ops::Bound::Excluded(start), std::ops::Bound::Unbounded) => (start, &i64::MAX),
-                (std::ops::Bound::Unbounded, std::ops::Bound::Included(end)) => (&i64::MIN, end),
-                (std::ops::Bound::Unbounded, std::ops::Bound::Excluded(end)) => (&i64::MIN, end),
-                (std::ops::Bound::Unbounded, std::ops::Bound::Unbounded) => (&i64::MIN, &i64::MAX),
+                (std::ops::Bound::Included(start), std::ops::Bound::Included(end)) =>  (*start, *end + 1) ,
+                (std::ops::Bound::Included(start), std::ops::Bound::Excluded(end)) => (*start, *end),
+                (std::ops::Bound::Included(start), std::ops::Bound::Unbounded) => (*start, i64::MAX),
+
+                (std::ops::Bound::Excluded(start), std::ops::Bound::Included(end)) => (*start+1, *end + 1),
+                (std::ops::Bound::Excluded(start), std::ops::Bound::Excluded(end)) => (*start+1, *end),
+                (std::ops::Bound::Excluded(start), std::ops::Bound::Unbounded) => (*start, i64::MAX),
+                (std::ops::Bound::Unbounded, std::ops::Bound::Included(end)) => (i64::MIN, *end + 1),
+                (std::ops::Bound::Unbounded, std::ops::Bound::Excluded(end)) => (i64::MIN, *end),
+                (std::ops::Bound::Unbounded, std::ops::Bound::Unbounded) => (i64::MIN, i64::MAX),
             };
             
-            let start_idx = match self.find_timestamp_position(*start) {
+            let start_idx = match self.find_timestamp_position(start) {
                 Ok(i)  | Err(i) => i
             };
 
-            let range = match self.find_timestamp_position(*end) {
+            let range = match self.find_timestamp_position(end) {
                 Ok(i) | Err(i) => start_idx..i,
             };
 
@@ -174,6 +197,12 @@ mod tests {
             assert_eq!(actual, vec![(1, &12), (3, &3)]);
             // both values are outside the window
             let actual = page.tuples_window(13 .. 14).collect::<Vec<_>>();
+            assert_eq!(actual, vec![]);
+            // test inclusive bounds for first item
+            let actual = page.tuples_window(2..=3).collect::<Vec<_>>();
+            assert_eq!(actual, vec![(3, &3)]);
+            // test exclusive bounds for first item
+            let actual = page.tuples_window(2..3).collect::<Vec<_>>();
             assert_eq!(actual, vec![]);
     
     }
