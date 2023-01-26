@@ -7,30 +7,11 @@ use crate::tadjset::AdjEdge;
 
 type State = DataFrame;
 
-pub struct SingletonIterator<T: Copy>{value: T, exhausted: bool}
-
-impl<T: Copy> SingletonIterator<T> {
-    fn new(value: T) -> SingletonIterator<T> {
-        SingletonIterator{value, exhausted: false}
-    }
-}
-
-impl<T: Copy> Iterator for SingletonIterator<T> {
-    type Item = T;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.exhausted {
-            None
-        } else {
-            self.exhausted = true;
-            Some(self.value)
-        }
-    }
-}
 
 pub struct Vertices<'a> {
     graph_view: &'a GraphView<'a>
 }
+
 
 impl<'a> Vertices<'a> {
     fn new(graph_view: &'a GraphView) -> Vertices<'a> {
@@ -81,41 +62,95 @@ impl<'a> Iterator for VertexIterator<'a> {
 
 type IteratorWithLifetime<'a, I> = dyn Iterator<Item = I> + 'a;
 
-pub trait VertexViewMethods<'a, I>
-where I: VertexViewMethods<'a, I>
+pub trait VertexViewIteratorMethods<'a, I>
+where I: VertexViewIteratorMethods<'a, I>
 {
-    type IDsType;
+    type ItemType<T: 'a>;
     fn out_neighbours(self) ->  Box<IteratorWithLifetime<'a, I>>;
-    fn ids(self) -> Self::IDsType;
+    fn in_neighbours(self) -> Box<IteratorWithLifetime<'a, I>>;
+    fn neighbours(self) -> Box<IteratorWithLifetime<'a, I>>;
+    fn id(self) -> Self::ItemType<u64>;
+    fn out_degree(self) -> Self::ItemType<usize>;
+    fn in_degree(self) -> Self::ItemType<usize>;
+    fn degree(self) -> Self::ItemType<usize>;
 }
 
-impl<'a> VertexViewMethods<'a, LocalVertexView<'a>> for LocalVertexView<'a> {
-    type IDsType = u64;
+impl<'a> VertexViewIteratorMethods<'a, LocalVertexView<'a>> for LocalVertexView<'a> {
+    type ItemType<T: 'a> = T;
     fn out_neighbours(self) -> Box<IteratorWithLifetime<'a, LocalVertexView<'a>>>  {
         Box::new(self.into_out_neighbours())
     }
 
-    fn ids(self) -> Self::IDsType {
-        self.global_id()
+    fn in_neighbours(self) -> Box<IteratorWithLifetime<'a, LocalVertexView<'a>>> {
+        Box::new(self.into_in_neighbours())
+    }
+
+    fn neighbours(self) -> Box<IteratorWithLifetime<'a, LocalVertexView<'a>>> {
+        Box::new(self.into_neighbours())
+    }
+
+    fn id(self) -> Self::ItemType<u64> {
+        // need to take ownership for chaining iterators
+        LocalVertexView::id(&self)
+    }
+
+    fn out_degree(self) -> Self::ItemType<usize> {
+        // need to take ownership for chaining iterators
+        LocalVertexView::out_degree(&self)
+    }
+
+    fn in_degree(self) -> Self::ItemType<usize> {
+        // need to take ownership for chaining iterators
+        LocalVertexView::in_degree(&self)
+    }
+
+    fn degree(self) -> Self::ItemType<usize> {
+        // need to take ownership for chaining iterators
+        LocalVertexView::degree(&self)
     }
 }
 
 
-impl<'a, T, R> VertexViewMethods<'a, Box<IteratorWithLifetime<'a, R>>> for T
+impl<'a, T, R> VertexViewIteratorMethods<'a, Box<IteratorWithLifetime<'a, R>>> for T
 where
     T: IntoIterator<Item = R> + 'a,
-    R: VertexViewMethods<'a, R> + 'a
+    R: VertexViewIteratorMethods<'a, R> + 'a
 {
-    type IDsType = Box<dyn Iterator<Item = R::IDsType> + 'a>;
+    type ItemType<U: 'a> = Box<dyn Iterator<Item = R::ItemType<U>> + 'a>;
 
     fn out_neighbours(self) -> Box<IteratorWithLifetime<'a, Box<IteratorWithLifetime<'a, R>>>> {
         let inner = self.into_iter();
             Box::new(inner.map(|v| v.out_neighbours()))
     }
 
-    fn ids(self) -> Self::IDsType {
+    fn in_neighbours(self) -> Box<IteratorWithLifetime<'a, Box<IteratorWithLifetime<'a, R>>>> {
         let inner = self.into_iter();
-        Box::new(inner.map(|v| v.ids()))
+        Box::new(inner.map(|v| v.in_neighbours()))
+    }
+
+    fn neighbours(self) -> Box<IteratorWithLifetime<'a, Box<IteratorWithLifetime<'a, R>>>> {
+        let inner = self.into_iter();
+        Box::new(inner.map(|v| v.neighbours()))
+    }
+
+    fn id(self) -> Self::ItemType<u64> {
+        let inner = self.into_iter();
+        Box::new(inner.map(|v| v.id()))
+    }
+
+    fn out_degree(self) -> Self::ItemType<usize> {
+        let inner = self.into_iter();
+        Box::new(inner.map(|v| v.out_degree()))
+    }
+
+    fn in_degree(self) -> Self::ItemType<usize> {
+        let inner = self.into_iter();
+        Box::new(inner.map(|v| v.in_degree()))
+    }
+
+    fn degree(self) -> Self::ItemType<usize> {
+        let inner = self.into_iter();
+        Box::new(inner.map(|v| v.degree()))
     }
 }
 
@@ -174,8 +209,8 @@ pub struct LocalVertexView<'a> {
 }
 
 impl<'a> LocalVertexView<'a> {
-    fn new(graph_view: &'a GraphView, vertex: &VertexView<TemporalGraph>)-> LocalVertexView<'a> {
-        LocalVertexView {graph_view, g_id: vertex.global_id(), pid: vertex.pid}
+    fn new(graph_view: &'a GraphView, vertex: &VertexView<TemporalGraph>) -> LocalVertexView<'a> {
+        LocalVertexView { graph_view, g_id: vertex.global_id(), pid: vertex.pid }
     }
     fn new_neighbour(&self, pid: usize) -> LocalVertexView<'a> {
         LocalVertexView {
@@ -185,7 +220,7 @@ impl<'a> LocalVertexView<'a> {
         }
     }
 
-    pub fn global_id(&self) -> u64 {
+    pub fn id(&self) -> u64 {
         self.g_id
     }
 
@@ -194,17 +229,44 @@ impl<'a> LocalVertexView<'a> {
     }
 
     pub fn out_neighbours(&'a self) -> NeighboursIterator<'a> {
-        let inner = self.graph_view.graph.neighbours_iter_window(self.pid, Direction::OUT, self.graph_view.window );
-        NeighboursIterator {inner, vertex: self}
+        let inner = self.graph_view.graph.neighbours_iter_window(self.pid, Direction::OUT, self.graph_view.window);
+        NeighboursIterator { inner, vertex: self }
     }
     fn into_out_neighbours(self) -> OwnedNeighboursIterator<'a> {
-        let inner = self.graph_view.graph.neighbours_iter_window(self.pid, Direction::OUT, self.graph_view.window );
-        OwnedNeighboursIterator {inner, vertex: self}
+        let inner = self.graph_view.graph.neighbours_iter_window(self.pid, Direction::OUT, self.graph_view.window);
+        OwnedNeighboursIterator { inner, vertex: self }
     }
 
     pub fn in_neighbours(&'a self) -> NeighboursIterator<'a> {
         let inner = self.graph_view.graph.neighbours_iter_window(self.pid, Direction::IN, self.graph_view.window);
-        NeighboursIterator {inner, vertex: self}
+        NeighboursIterator { inner, vertex: self }
+    }
+
+    fn into_in_neighbours(self) -> OwnedNeighboursIterator<'a> {
+        let inner = self.graph_view.graph.neighbours_iter_window(self.pid, Direction::IN, self.graph_view.window);
+        OwnedNeighboursIterator { inner, vertex: self }
+    }
+
+    pub fn neighbours(&'a self) -> NeighboursIterator<'a> {
+        let inner = self.graph_view.graph.neighbours_iter_window(self.pid, Direction::BOTH, self.graph_view.window);
+        NeighboursIterator { inner, vertex: self }
+    }
+
+    fn into_neighbours(self) -> OwnedNeighboursIterator<'a> {
+        let inner = self.graph_view.graph.neighbours_iter_window(self.pid, Direction::BOTH, self.graph_view.window);
+        OwnedNeighboursIterator { inner, vertex: self }
+    }
+
+    fn out_degree(&self) -> usize {
+        self.graph_view.graph._degree_window(self.pid, Direction::OUT, self.graph_view.window)
+    }
+
+    fn in_degree(&self) -> usize {
+        self.graph_view.graph._degree_window(self.pid, Direction::IN, self.graph_view.window)
+    }
+
+    fn degree(&self) -> usize {
+        self.graph_view.graph._degree_window(self.pid, Direction::BOTH, self.graph_view.window)
     }
 }
 
@@ -241,7 +303,7 @@ impl<'a> GraphView<'a> {
     }
 
     pub fn ids(&self) -> Series {
-        self.iter_vertices().map(|v| v.global_id()).collect()
+        self.iter_vertices().map(|v| v.id()).collect()
     }
 
     fn local_ids(&self) -> Box<dyn Iterator<Item = usize> + '_> {
@@ -274,7 +336,7 @@ mod graph_view_tests {
 
         let window = 0..1;
         let view = GraphView::new(&g, &window);
-        let vertices = view.iter_vertices().map(|v| v.global_id()).collect_vec();
+        let vertices = view.iter_vertices().map(|v| v.id()).collect_vec();
         assert_eq!(vertices, vec![1,2])
     }
 
@@ -287,7 +349,7 @@ mod graph_view_tests {
         for v in view.iter_vertices() {
             let state = v.get_state("ids");
             let id: u64 = state.extract().unwrap();
-            assert_eq!(v.global_id(), id)
+            assert_eq!(v.id(), id)
         }
     }
 
@@ -295,12 +357,12 @@ mod graph_view_tests {
     fn test_the_vertices() {
         let g = make_mini_graph();
         let view = GraphView::new(&g, &(0..2));
-        let vertex_out_out_neighbours = view.vertices().out_neighbours().out_neighbours().ids().flatten();
-        for (id, out_out_neighbours) in view.vertices().ids().zip( vertex_out_out_neighbours) {
+        let vertex_out_out_neighbours = view.vertices().out_neighbours().out_neighbours().id().flatten();
+        for (id, out_out_neighbours) in view.vertices().id().zip( vertex_out_out_neighbours) {
             let oo: Vec<u64> = out_out_neighbours.collect();
             println!("vertex: {}, out_out_neighbours: {:?}", id, oo)
         }
-        let m = view.vertices().ids().max();
+        let m = view.vertices().id().max();
         println!("vertex with maximum id is {}", m.unwrap())
     }
 }

@@ -13,12 +13,12 @@ pub fn connected_components<'a>(g: &'a GraphView) -> GraphView<'a> {
             let in_min = v.in_neighbours().map(|v| {
                 let value: u64 = v.get_state("cc_label").extract().unwrap();
                 value
-            }).min().unwrap_or(v.global_id());
+            }).min().unwrap_or(v.id());
             let out_min = v.out_neighbours().map(|v| {
                 let value: u64 = v.get_state("cc_label").extract().unwrap();
                 value
-            }).min().unwrap_or(v.global_id());
-            min(min(in_min, out_min), v.global_id())
+            }).min().unwrap_or(v.id());
+            min(min(in_min, out_min), v.id())
         }).collect();
         let changed = old_state.u64().unwrap().not_equal(new_state.u64().unwrap()).any();
         if changed {
@@ -38,6 +38,7 @@ pub fn connected_components<'a>(g: &'a GraphView) -> GraphView<'a> {
 mod algo_tests {
     use super::*;
     use crate::graph::TemporalGraph;
+    use crate::graphview::{LocalVertexView, VertexViewIteratorMethods};
 
     #[test]
     fn cc_test() {
@@ -55,7 +56,7 @@ mod algo_tests {
             println!("{}", c.unwrap())
         }
         for v in gv.vertices() {
-            match v.global_id() {
+            match (&v).id() {
                 1 => assert_eq!(v.get_state("cc_label").extract(), Some(1)),
                 2 => assert_eq!(v.get_state("cc_label").extract(), Some(1)),
                 3 => assert_eq!(v.get_state("cc_label").extract(), Some(3)),
