@@ -73,6 +73,7 @@ where I: VertexViewIteratorMethods<'a, I>
     fn out_degree(self) -> Self::ItemType<usize>;
     fn in_degree(self) -> Self::ItemType<usize>;
     fn degree(self) -> Self::ItemType<usize>;
+    fn get_state(self, name: &str) -> Self::ItemType<AnyValue<'a>>;
 }
 
 impl<'a> VertexViewIteratorMethods<'a, LocalVertexView<'a>> for LocalVertexView<'a> {
@@ -107,6 +108,10 @@ impl<'a> VertexViewIteratorMethods<'a, LocalVertexView<'a>> for LocalVertexView<
     fn degree(self) -> Self::ItemType<usize> {
         // need to take ownership for chaining iterators
         LocalVertexView::degree(&self)
+    }
+
+    fn get_state(self, name: &str) -> Self::ItemType<AnyValue<'a>> {
+        LocalVertexView::get_state(&self, name)
     }
 }
 
@@ -151,6 +156,11 @@ where
     fn degree(self) -> Self::ItemType<usize> {
         let inner = self.into_iter();
         Box::new(inner.map(|v| v.degree()))
+    }
+
+    fn get_state(self, name: &str) -> Self::ItemType<AnyValue<'a>> {
+        let inner = self.into_iter();
+        Box::new(inner.map(|v| v.get_state(name)))
     }
 }
 
@@ -224,7 +234,7 @@ impl<'a> LocalVertexView<'a> {
         self.g_id
     }
 
-    pub fn get_state(&self, name: &str) -> AnyValue {
+    pub fn get_state(&self, name: &str) -> AnyValue<'a> {
         self.graph_view.get_state(name).get(self.pid).unwrap()
     }
 
