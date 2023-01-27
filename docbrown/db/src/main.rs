@@ -319,24 +319,15 @@ fn load_multiple_threads() {
 }
 
 #[derive(Deserialize, std::fmt::Debug)]
-pub struct Sent {
-    addr: String,
-    txn: String,
+pub struct Edge {
+    left: String, // left column
+    right: String, // right column
     amount_btc: u64,
     amount_usd: f64,
     #[serde(with = "custom_date_format")]
     time: DateTime<Utc>,
 }
 
-#[derive(Deserialize, std::fmt::Debug)]
-pub struct Received {
-    txn: String,
-    addr: String,
-    amount_btc: u64,
-    amount_usd: f64,
-    #[serde(with = "custom_date_format")]
-    time: DateTime<Utc>,
-}
 
 fn calculate_hash<T: Hash>(t: &T) -> u64 {
     let mut s = DefaultHasher::new();
@@ -373,13 +364,13 @@ fn main() {
 
             let _ = CsvLoader::new(input_folder)
                 .with_filter(Regex::new(r".+(sent|received)").unwrap())
-                .load_into_graph(&g, |sent: Sent, g: &GraphDB| {
-                    let src = calculate_hash(&sent.addr);
-                    let dst = calculate_hash(&sent.txn);
+                .load_into_graph(&g, |sent: Edge, g: &GraphDB| {
+                    let src = calculate_hash(&sent.left);
+                    let dst = calculate_hash(&sent.right);
                     let t = sent.time.timestamp();
 
                     if src == test_v || dst == test_v {
-                        println!("{} sent {} to {}", sent.addr, sent.amount_btc, sent.txn);
+                        println!("{} sent {} to {}", sent.left, sent.amount_btc, sent.right);
                     }
 
                     g.add_edge(
