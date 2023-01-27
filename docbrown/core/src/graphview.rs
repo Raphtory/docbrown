@@ -65,7 +65,7 @@ type IteratorWithLifetime<'a, I> = dyn Iterator<Item = I> + 'a;
 pub trait VertexViewIteratorMethods<'a, I>
 where I: VertexViewIteratorMethods<'a, I>
 {
-    type ItemType<T: 'a>;
+    type ItemType<T: 'a>: 'a;
     fn out_neighbours(self) ->  Box<IteratorWithLifetime<'a, I>>;
     fn in_neighbours(self) -> Box<IteratorWithLifetime<'a, I>>;
     fn neighbours(self) -> Box<IteratorWithLifetime<'a, I>>;
@@ -73,7 +73,7 @@ where I: VertexViewIteratorMethods<'a, I>
     fn out_degree(self) -> Self::ItemType<usize>;
     fn in_degree(self) -> Self::ItemType<usize>;
     fn degree(self) -> Self::ItemType<usize>;
-    fn get_state(self, name: &str) -> Self::ItemType<AnyValue<'a>>;
+    fn get_state(self, name: &'a str) -> Self::ItemType<AnyValue<'a>>;
 }
 
 impl<'a> VertexViewIteratorMethods<'a, LocalVertexView<'a>> for LocalVertexView<'a> {
@@ -110,7 +110,7 @@ impl<'a> VertexViewIteratorMethods<'a, LocalVertexView<'a>> for LocalVertexView<
         LocalVertexView::degree(&self)
     }
 
-    fn get_state(self, name: &str) -> Self::ItemType<AnyValue<'a>> {
+    fn get_state(self, name: &'a str) -> Self::ItemType<AnyValue<'a>> {
         LocalVertexView::get_state(&self, name)
     }
 }
@@ -158,9 +158,9 @@ where
         Box::new(inner.map(|v| v.degree()))
     }
 
-    fn get_state(self, name: &str) -> Self::ItemType<AnyValue<'a>> {
+    fn get_state(self, name: &'a str) -> Self::ItemType<AnyValue<'a>> {
         let inner = self.into_iter();
-        Box::new(inner.map(|v| v.get_state(name)))
+        Box::new(inner.map(move |v: R| v.get_state(name)))
     }
 }
 
@@ -356,8 +356,8 @@ mod graph_view_tests {
 
         let view = GraphView::new(&g, &(0..2));
         let view = view.with_state("ids", view.ids());
-        for v in view.iter_vertices() {
-            let state = v.get_state("ids");
+        for v in view.vertices().iter() {
+            let state = (&v).get_state("ids");
             let id: u64 = state.extract().unwrap();
             assert_eq!(v.id(), id)
         }
