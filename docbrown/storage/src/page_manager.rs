@@ -1,9 +1,8 @@
 use std::collections::HashSet;
+use std::marker::PhantomData;
 
-use crate::graph::Triplet;
-use crate::pages::vec;
 use crate::pages::Page;
-use crate::PAGE_SIZE;
+use crate::pages::PageRef;
 
 type PageId = usize;
 
@@ -19,7 +18,7 @@ pub enum PageManagerError {
 }
 
 pub trait PageManager {
-    type Page;
+    type PageItem: Page;
 
     fn new() -> Self;
 
@@ -28,7 +27,15 @@ pub trait PageManager {
         initial_page: Option<&Location>,
     ) -> Result<Location, PageManagerError>;
 
-    fn get_page_mut(&self, location: &Location) -> Option<&mut Self::Page>;
+    fn get_page_ref(&mut self, location: &Location) -> Option<PageRef<'_, Self::PageItem, Self>>
+    where
+        Self: Sized;
+
+    fn get_page_mut(&mut self, location: PageId) -> Option<&mut Self::PageItem>;
+
+    fn get_page(&self, page_id: PageId) -> Option<&Self::PageItem>;
+
+    fn release_page(&mut self, location: &PageId) -> Result<(), PageManagerError>;
 }
 
 #[derive(Debug, Default)]
@@ -37,11 +44,10 @@ pub struct VecPageManager<T: Page> {
     free_pages: HashSet<usize>,
 }
 
-impl<T: Page> VecPageManager<T> {
-}
+impl<T: Page> VecPageManager<T> {}
 
 impl<P: Page> PageManager for VecPageManager<P> {
-    type Page = P;
+    type PageItem = P;
 
     // when initial_page is None, find any free page
     // when initial_page is Some, return the page if it has free space,
@@ -50,21 +56,44 @@ impl<P: Page> PageManager for VecPageManager<P> {
         &self,
         initial_page: Option<&Location>,
     ) -> Result<Location, PageManagerError> {
-        match initial_page {
-            Some(location) => {
-                let page_id = location.page_id;
-            }
-            None => {
-
-            },
-        };
+        todo!()
     }
 
-    fn get_page_mut(&self, location: &Location) -> Option<&mut Self::Page> {
-        self.pages.get_mut(location.page_id)
+    // get the reference to the page at the given location
+    // add it to the free pages if it is not full
+    fn get_page_ref(&mut self, location: &Location) -> Option<PageRef<'_, P, Self>> {
+        match self.pages.get_mut(location.page_id) {
+            Some(_) => { 
+                self.free_pages.insert(location.page_id);
+                Some(PageRef::new(location.page_id, self))
+            },
+            None => None,
+        }
+    }
+
+    fn get_page_mut(&mut self, page_id: PageId) -> Option<&mut Self::PageItem> {
+        self.pages.get_mut(page_id)
     }
 
     fn new() -> Self {
-        Self { pages: Vec::new(), free_pages: HashSet::new() }
+        Self {
+            pages: Vec::new(),
+            free_pages: HashSet::new(),
+        }
+    }
+
+    fn release_page(&mut self, page_id: &PageId) -> Result<(), PageManagerError> {
+        if let Some(page) = self.get_page(*page_id) {
+            if !page.is_full()  {
+                self.free_pages.remove(page_id);
+            }
+            Ok(())
+        } else {
+            Err(PageManagerError::PageNotFound)
+        }
+    }
+
+    fn get_page(&self, page_id: PageId) -> Option<&Self::PageItem> {
+        self.pages.get(page_id)
     }
 }

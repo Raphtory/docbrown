@@ -3,13 +3,15 @@ mod pages;
 
 pub const PAGE_SIZE: usize = 4;
 
+type Time = i64;
+
 pub mod graph {
     use std::collections::{BTreeMap, BTreeSet, HashMap};
 
     use crate::{
         page_manager::{Location, PageManager, PageManagerError, VecPageManager},
         pages::vec,
-        PAGE_SIZE,
+        Time, PAGE_SIZE,
     };
 
     #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -29,15 +31,19 @@ pub mod graph {
     pub struct PagedGraph<
         V,
         E,
-        PM: PageManager<Page = vec::TemporalAdjacencySetPage<Triplet<V, E>, PAGE_SIZE>>,
+        PM: PageManager<PageItem = vec::TemporalAdjacencySetPage<Triplet<V, E>, PAGE_SIZE>>,
     > {
         // pages: Vec<vec::TemporalAdjacencySetPage<Triplet<V, E>, PAGE_SIZE>>,
         page_manager: PM,
         // this holds the mapping from the timestamp to the page location
-        temporal_index: BTreeMap<i64, BTreeSet<Location>>,
+        temporal_index: BTreeMap<Time, BTreeSet<Location>>,
 
         // this holds the mapping from the external vertex id to the page location
-        global_to_logical_map: HashMap<V, Location>,
+        global_to_logical_map: HashMap<V, usize>,
+
+        adj_list_page_pointers: Vec<Option<Location>>,
+        // temporal index for vertices
+        // temporal_index: BTreeMap<Time, BTreeSet<usize>>,
     }
 
     impl<V, E>
@@ -48,6 +54,7 @@ pub mod graph {
                 page_manager: VecPageManager::new(),
                 temporal_index: BTreeMap::new(),
                 global_to_logical_map: HashMap::new(),
+                adj_list_page_pointers: Vec::new(),
             }
         }
     }
@@ -56,15 +63,8 @@ pub mod graph {
     where
         V: Ord + std::hash::Hash + Clone,
         E: Ord,
-        PM: PageManager<Page = vec::TemporalAdjacencySetPage<Triplet<V, E>, PAGE_SIZE>>,
+        PM: PageManager<PageItem = vec::TemporalAdjacencySetPage<Triplet<V, E>, PAGE_SIZE>>,
     {
-        fn new() -> Self {
-            Self {
-                page_manager: PM::new(),
-                temporal_index: BTreeMap::new(),
-                global_to_logical_map: HashMap::new(),
-            }
-        }
         // we follow the chain of overflow pages until we find a page that is not full
         // if we reach the end of the chain, and the last page is perfectly full
         // we return Err(last_page_id) so we can create a new page and add it to the chain
@@ -81,9 +81,13 @@ pub mod graph {
             Err(0)
         }
 
+        // pub fn add_vertex(&mut self, t:Time, v: V) -> Result<(), GraphError> {
+
+        // }
+
         pub fn add_outbound_edge(
             &mut self,
-            t: i64,
+            t: Time,
             src: V,
             dst: V,
             e: E,
@@ -94,10 +98,10 @@ pub mod graph {
 
                 let page_idx = self
                     .page_manager
-                    .find_next_free_page(Some(page_idx))
+                    .find_next_free_page(self.adj_list_page_pointers[*page_idx].as_ref())
                     .map_err(GraphError::PMError)?;
 
-                if let Some(page) = self.page_manager.get_page_mut(&page_idx) {
+                if let Some(mut page) = self.page_manager.get_page_ref(&page_idx) {
                     page.append(Triplet::new(src, dst, e), t);
                     self.temporal_index.entry(t).or_default().insert(page_idx);
                     Ok(())
@@ -110,10 +114,13 @@ pub mod graph {
                     .find_next_free_page(None)
                     .map_err(GraphError::PMError)?;
 
-                if let Some(page) = self.page_manager.get_page_mut(&page_idx) {
+                if let Some(mut page) = self.page_manager.get_page_ref(&page_idx) {
                     page.append(Triplet::new(src.clone(), dst, e), t);
                     self.temporal_index.entry(t).or_default().insert(page_idx);
-                    self.global_to_logical_map.insert(src, page_idx);
+                    let location = Some(page_idx);
+                    let location_idx = self.adj_list_page_pointers.len();
+                    self.adj_list_page_pointers.push(location);
+                    self.global_to_logical_map.insert(src, location_idx);
                     Ok(())
                 } else {
                     Err(GraphError::PMError(PageManagerError::PageNotFound))
