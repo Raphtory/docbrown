@@ -50,7 +50,7 @@ pub trait PageManager {
 
     fn stats(&self) -> PageManagerStats;
 
-    fn page_iter(&self, page_idx: PageId) -> Box<dyn Iterator<Item = &Self::PageItem> + '_>;
+    fn page_iter(&self, page_idx: &Location) -> Box<dyn Iterator<Item = &Self::PageItem> + '_>;
 }
 
 #[derive(Debug, Default)]
@@ -174,7 +174,7 @@ impl<P: Page> PageManager for VecPageManager<P> {
         }
     }
 
-    fn page_iter(&self, page_idx: PageId) -> Box<dyn Iterator<Item = &Self::PageItem> + '_> {
+    fn page_iter(&self, page_idx: &Location) -> Box<dyn Iterator<Item = &Self::PageItem> + '_> {
         todo!()
     }
 }

@@ -18,11 +18,33 @@ pub mod graph {
     };
 
     #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-    pub struct Triplet<V, E>(V, Option<V>, Option<E>);
+    pub struct Triplet<V, E>{
+        pub source: V,
+        pub vertex: Option<V>, // this is the vertex that is being pointed to
+        pub edge: Option<E>,
+    }
+
+    pub enum Direction {
+        Inbound,
+        Outbound,
+        Both,
+    }
 
     impl<V, E> Triplet<V, E> {
-        fn new(v: V, source: V, e: E) -> Self {
-            Self(v, Some(source), Some(e))
+        pub fn new(source: V, vertex: V, e: E) -> Self {
+            Self {
+                source,
+                vertex: Some(vertex),
+                edge: Some(e),
+            }
+        }
+
+        pub fn prefix(source: V) -> Self {
+            Self {
+                source,
+                vertex: None,
+                edge: None,
+            }
         }
     }
 
@@ -68,7 +90,22 @@ pub mod graph {
             &self,
             w: Range<Time>,
             v: &V,
+            d: Direction,
         ) -> Box<dyn Iterator<Item = (V, E)> + '_> {
+            match d {
+                Direction::Outbound => {
+                    if let Some(page_idx) = self.adj_list_locations.get(v) {
+
+                        // self.page_manager.page_iter(page_idx).map(|page|{
+
+                        // })
+                        todo!("not implemented yet")
+
+                    }
+                }
+                _ => todo!("not implemented yet"),
+            }
+
             Box::new(std::iter::empty())
         }
 
@@ -126,6 +163,24 @@ mod paged_graph_tests {
         graph.add_outbound_edge(3, 1, 4, 2)?;
         graph.add_outbound_edge(4, 2, 5, 2)?;
         graph.add_outbound_edge(5, 3, 6, 2)?;
+
+        let stats = graph.page_stats();
+
+        assert_eq!(stats.num_pages, 2);
+        assert_eq!(stats.num_free_pages, 1);
+
+        println!("{:?}", graph);
+        Ok(())
+    }
+
+    #[test]
+    fn test_insert_into_paged_graph_with_overflow() -> Result<(), graph::GraphError> {
+        let mut graph = graph::PagedGraph::with_vec_page_manager();
+        graph.add_outbound_edge(1, 1, 2, 1)?;
+        graph.add_outbound_edge(2, 1, 3, 1)?;
+        graph.add_outbound_edge(3, 1, 4, 2)?;
+        graph.add_outbound_edge(4, 1, 5, 2)?;
+        graph.add_outbound_edge(5, 1, 6, 2)?;
 
         let stats = graph.page_stats();
 
