@@ -23,6 +23,11 @@ pub enum PageManagerError {
     PageNotFound,
 }
 
+pub struct PageManagerStats {
+    pub num_pages: usize,
+    pub num_free_pages: usize,
+}
+
 pub trait PageManager {
     type PageItem: Page;
 
@@ -42,6 +47,10 @@ pub trait PageManager {
     fn get_page(&self, page_id: PageId) -> Option<&Self::PageItem>;
 
     fn release_page(&mut self, location: &PageId) -> Result<(), PageManagerError>;
+
+    fn stats(&self) -> PageManagerStats;
+
+    fn page_iter(&self, page_idx: PageId) -> Box<dyn Iterator<Item = &Self::PageItem> + '_>;
 }
 
 #[derive(Debug, Default)]
@@ -145,7 +154,7 @@ impl<P: Page> PageManager for VecPageManager<P> {
 
     fn release_page(&mut self, page_id: &PageId) -> Result<(), PageManagerError> {
         if let Some(page) = self.get_page(*page_id) {
-            if !page.is_full() {
+            if page.is_full() {
                 self.free_pages.remove(page_id);
             }
             Ok(())
@@ -156,5 +165,16 @@ impl<P: Page> PageManager for VecPageManager<P> {
 
     fn get_page(&self, page_id: PageId) -> Option<&Self::PageItem> {
         self.pages.get(page_id)
+    }
+
+    fn stats(&self) -> PageManagerStats {
+        PageManagerStats {
+            num_pages: self.pages.len(),
+            num_free_pages: self.free_pages.len(),
+        }
+    }
+
+    fn page_iter(&self, page_idx: PageId) -> Box<dyn Iterator<Item = &Self::PageItem> + '_> {
+        todo!()
     }
 }

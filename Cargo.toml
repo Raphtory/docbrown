@@ -4,7 +4,7 @@ members = [
 	"docbrown/db",
 	"docbrown/storage"
 ]
-default-members = [	"docbrown/core", "docbrown/db"]
+default-members = [	"docbrown/core", "docbrown/db", "docbrown/storage"]
 
 
 [workspace.package]

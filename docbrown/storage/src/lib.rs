@@ -6,10 +6,13 @@ pub const PAGE_SIZE: usize = 4;
 type Time = i64;
 
 pub mod graph {
-    use std::collections::{BTreeMap, BTreeSet, HashMap};
+    use std::{
+        collections::{BTreeMap, BTreeSet, HashMap},
+        ops::Range,
+    };
 
     use crate::{
-        page_manager::{Location, PageManager, PageManagerError, VecPageManager},
+        page_manager::{Location, PageManager, PageManagerError, PageManagerStats, VecPageManager},
         pages::{vec, CachedPage},
         Time, PAGE_SIZE,
     };
@@ -32,17 +35,13 @@ pub mod graph {
 
     #[derive(Debug, Default)]
     pub struct PagedGraph<V, E, PM: PageManager<PageItem = VecPage<V, E>>> {
-        // pages: Vec<vec::TemporalAdjacencySetPage<Triplet<V, E>, PAGE_SIZE>>,
+        // manages the pages like a true manager that is all.. managing you know .. pages
         page_manager: PM,
         // this holds the mapping from the timestamp to the page location
         temporal_index: BTreeMap<Time, BTreeSet<Location>>,
-
-        // this holds the mapping from the external vertex id to the page location
-        global_to_logical_map: HashMap<V, usize>,
-
-        adj_list_page_pointers: Vec<Option<Location>>,
-        // temporal index for vertices
-        // temporal_index: BTreeMap<Time, BTreeSet<usize>>,
+        // this holds the mapping from the external vertex id to the page holding the adjacency list
+        // if a vertex doesn't have an adjacency list, it will be None
+        adj_list_locations: HashMap<V, Location>,
     }
 
     impl<V: Ord, E: Ord> PagedGraph<V, E, VecPageManager<VecPage<V, E>>> {
@@ -50,9 +49,12 @@ pub mod graph {
             Self {
                 page_manager: VecPageManager::new(),
                 temporal_index: BTreeMap::new(),
-                global_to_logical_map: HashMap::new(),
-                adj_list_page_pointers: Vec::new(),
+                adj_list_locations: HashMap::new(),
             }
+        }
+
+        pub(crate) fn page_stats(&self) -> PageManagerStats {
+            self.page_manager.stats()
         }
     }
 
@@ -62,6 +64,14 @@ pub mod graph {
         E: Ord,
         PM: PageManager<PageItem = VecPage<V, E>>,
     {
+        pub fn neighbours_window(
+            &self,
+            w: Range<Time>,
+            v: &V,
+        ) -> Box<dyn Iterator<Item = (V, E)> + '_> {
+            Box::new(std::iter::empty())
+        }
+
         pub fn add_outbound_edge(
             &mut self,
             t: Time,
@@ -69,13 +79,13 @@ pub mod graph {
             dst: V,
             e: E,
         ) -> Result<(), GraphError> {
-            if let Some(page_idx) = self.global_to_logical_map.get(&src) {
+            if let Some(page_idx) = self.adj_list_locations.get(&src) {
                 // the first page of the adjacency list for src exists, we need to call the page manager to get next free page
                 // it could be the same or an overflow page
 
                 let page_idx = self
                     .page_manager
-                    .find_next_free_page(self.adj_list_page_pointers[*page_idx].as_ref())
+                    .find_next_free_page(Some(page_idx))
                     .map_err(GraphError::PMError)?;
 
                 if let Some(mut page) = self.page_manager.get_page_ref(&page_idx) {
@@ -94,10 +104,7 @@ pub mod graph {
                 if let Some(mut page) = self.page_manager.get_page_ref(&page_idx) {
                     page.data.append(Triplet::new(src.clone(), dst, e), t);
                     self.temporal_index.entry(t).or_default().insert(page_idx);
-                    let location = Some(page_idx);
-                    let location_idx = self.adj_list_page_pointers.len();
-                    self.adj_list_page_pointers.push(location);
-                    self.global_to_logical_map.insert(src, location_idx);
+                    self.adj_list_locations.insert(src, page_idx);
                     Ok(())
                 } else {
                     Err(GraphError::PMError(PageManagerError::PageNotFound))
@@ -112,13 +119,18 @@ mod paged_graph_tests {
     use super::*;
 
     #[test]
-    fn test_insert_into_paged_graph() -> Result<(), graph::GraphError>{
+    fn test_insert_into_paged_graph() -> Result<(), graph::GraphError> {
         let mut graph = graph::PagedGraph::with_vec_page_manager();
         graph.add_outbound_edge(1, 1, 2, 1)?;
         graph.add_outbound_edge(2, 1, 3, 1)?;
         graph.add_outbound_edge(3, 1, 4, 2)?;
         graph.add_outbound_edge(4, 2, 5, 2)?;
         graph.add_outbound_edge(5, 3, 6, 2)?;
+
+        let stats = graph.page_stats();
+
+        assert_eq!(stats.num_pages, 2);
+        assert_eq!(stats.num_free_pages, 1);
 
         println!("{:?}", graph);
         Ok(())
