@@ -10,7 +10,7 @@ pub mod graph {
 
     use crate::{
         page_manager::{Location, PageManager, PageManagerError, VecPageManager},
-        pages::vec,
+        pages::{vec, CachedPage},
         Time, PAGE_SIZE,
     };
 
@@ -23,16 +23,15 @@ pub mod graph {
         }
     }
 
+    #[derive(Debug)]
     pub enum GraphError {
         PMError(PageManagerError),
     }
 
+    type VecPage<V, E> = CachedPage<vec::TemporalAdjacencySetPage<Triplet<V, E>, PAGE_SIZE>>;
+
     #[derive(Debug, Default)]
-    pub struct PagedGraph<
-        V,
-        E,
-        PM: PageManager<PageItem = vec::TemporalAdjacencySetPage<Triplet<V, E>, PAGE_SIZE>>,
-    > {
+    pub struct PagedGraph<V, E, PM: PageManager<PageItem = VecPage<V, E>>> {
         // pages: Vec<vec::TemporalAdjacencySetPage<Triplet<V, E>, PAGE_SIZE>>,
         page_manager: PM,
         // this holds the mapping from the timestamp to the page location
@@ -46,9 +45,7 @@ pub mod graph {
         // temporal_index: BTreeMap<Time, BTreeSet<usize>>,
     }
 
-    impl<V, E>
-        PagedGraph<V, E, VecPageManager<vec::TemporalAdjacencySetPage<Triplet<V, E>, PAGE_SIZE>>>
-    {
+    impl<V: Ord, E: Ord> PagedGraph<V, E, VecPageManager<VecPage<V, E>>> {
         pub fn with_vec_page_manager() -> Self {
             Self {
                 page_manager: VecPageManager::new(),
@@ -63,28 +60,8 @@ pub mod graph {
     where
         V: Ord + std::hash::Hash + Clone,
         E: Ord,
-        PM: PageManager<PageItem = vec::TemporalAdjacencySetPage<Triplet<V, E>, PAGE_SIZE>>,
+        PM: PageManager<PageItem = VecPage<V, E>>,
     {
-        // we follow the chain of overflow pages until we find a page that is not full
-        // if we reach the end of the chain, and the last page is perfectly full
-        // we return Err(last_page_id) so we can create a new page and add it to the chain
-        fn find_free_page(&self, page_id: usize) -> Result<usize, usize> {
-            // // FIXME: this is problematic as we'll be forced to lift every page in the chain, just to check if it's full
-            // let page = &self.pages[page_id];
-            // if !page.is_full() {
-            //     return Ok(page_id);
-            // } else if let Some(overflow_page_id) = page.overflow_page_id() {
-            //     return self.find_free_page(overflow_page_id);
-            // } else {
-            //     return Err(page_id);
-            // }
-            Err(0)
-        }
-
-        // pub fn add_vertex(&mut self, t:Time, v: V) -> Result<(), GraphError> {
-
-        // }
-
         pub fn add_outbound_edge(
             &mut self,
             t: Time,
@@ -102,7 +79,7 @@ pub mod graph {
                     .map_err(GraphError::PMError)?;
 
                 if let Some(mut page) = self.page_manager.get_page_ref(&page_idx) {
-                    page.append(Triplet::new(src, dst, e), t);
+                    page.data.append(Triplet::new(src, dst, e), t);
                     self.temporal_index.entry(t).or_default().insert(page_idx);
                     Ok(())
                 } else {
@@ -115,7 +92,7 @@ pub mod graph {
                     .map_err(GraphError::PMError)?;
 
                 if let Some(mut page) = self.page_manager.get_page_ref(&page_idx) {
-                    page.append(Triplet::new(src.clone(), dst, e), t);
+                    page.data.append(Triplet::new(src.clone(), dst, e), t);
                     self.temporal_index.entry(t).or_default().insert(page_idx);
                     let location = Some(page_idx);
                     let location_idx = self.adj_list_page_pointers.len();
@@ -135,14 +112,15 @@ mod paged_graph_tests {
     use super::*;
 
     #[test]
-    fn test_paged_graph() {
+    fn test_insert_into_paged_graph() -> Result<(), graph::GraphError>{
         let mut graph = graph::PagedGraph::with_vec_page_manager();
-        graph.add_outbound_edge(1, 1, 2, 1);
-        graph.add_outbound_edge(2, 1, 3, 1);
-        graph.add_outbound_edge(3, 1, 4, 2);
-        graph.add_outbound_edge(4, 2, 5, 2);
-        graph.add_outbound_edge(5, 3, 6, 2);
+        graph.add_outbound_edge(1, 1, 2, 1)?;
+        graph.add_outbound_edge(2, 1, 3, 1)?;
+        graph.add_outbound_edge(3, 1, 4, 2)?;
+        graph.add_outbound_edge(4, 2, 5, 2)?;
+        graph.add_outbound_edge(5, 3, 6, 2)?;
 
         println!("{:?}", graph);
+        Ok(())
     }
 }

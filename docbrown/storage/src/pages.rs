@@ -1,4 +1,4 @@
-use std::ops::{RangeBounds, Deref, DerefMut};
+use std::ops::{Deref, DerefMut, RangeBounds};
 
 use crate::page_manager::PageManager;
 
@@ -6,21 +6,68 @@ pub trait Page {
     fn page_id(&self) -> usize;
     fn is_full(&self) -> bool;
     fn overflow_page_id(&self) -> Option<usize>;
+    fn set_overflow_page_id(&mut self, page_id: usize);
+    fn next_free_offset(&self) -> usize;
+
+    fn new(page_id: usize) -> Self;
 }
 
-pub struct PageRef<'a, T: Page, PM> 
+trait PageData {
+    fn new() -> Self;
+    fn is_full(&self) -> bool;
+    fn next_free_offset(&self) -> usize;
+}
+
+#[derive(Debug)]
+pub struct CachedPage<T> {
+    page_id: usize,
+    overflow_page_id: Option<usize>,
+    pub(crate) data: T,
+}
+
+impl<T: PageData> Page for CachedPage<T> {
+    fn page_id(&self) -> usize {
+        self.page_id
+    }
+
+    fn overflow_page_id(&self) -> Option<usize> {
+        self.overflow_page_id
+    }
+
+    fn next_free_offset(&self) -> usize {
+        self.data.next_free_offset()
+    }
+
+    fn is_full(&self) -> bool {
+        self.data.is_full()
+    }
+
+    fn set_overflow_page_id(&mut self, page_id: usize) {
+        self.overflow_page_id = Some(page_id);
+    }
+
+    fn new(page_id: usize) -> Self {
+        Self {
+            page_id,
+            overflow_page_id: None,
+            data: T::new(),
+        }
+    }
+}
+
+pub struct PageRef<'a, T: Page, PM>
 where
-    PM: PageManager<PageItem = T>
+    PM: PageManager<PageItem = T>,
 {
     page_id: usize,
     pm: &'a mut PM,
     _a: std::marker::PhantomData<T>,
 }
 
-impl <'a, T, PM> PageRef<'a, T, PM> 
+impl<'a, T, PM> PageRef<'a, T, PM>
 where
     T: Page,
-    PM: PageManager<PageItem = T>
+    PM: PageManager<PageItem = T>,
 {
     pub fn new(page_id: usize, pm: &'a mut PM) -> Self {
         Self {
@@ -31,21 +78,20 @@ where
     }
 }
 
-impl <T, PM> Drop for PageRef<'_, T, PM> 
+impl<T, PM> Drop for PageRef<'_, T, PM>
 where
     T: Page,
-    PM: PageManager<PageItem = T>
+    PM: PageManager<PageItem = T>,
 {
     fn drop(&mut self) {
-        (&mut self.pm).release_page(&self.page_id);
+        (&mut self.pm).release_page(&self.page_id).expect(format!("Page {} not found", self.page_id).as_str());
     }
 }
 
-
-impl <T, PM> Deref for PageRef<'_, T, PM> 
+impl<T, PM> Deref for PageRef<'_, T, PM>
 where
     T: Page,
-    PM: PageManager<PageItem = T>
+    PM: PageManager<PageItem = T>,
 {
     type Target = T;
 
@@ -54,10 +100,10 @@ where
     }
 }
 
-impl <T, PM> DerefMut for PageRef<'_, T, PM> 
+impl<T, PM> DerefMut for PageRef<'_, T, PM>
 where
     T: Page,
-    PM: PageManager<PageItem = T>
+    PM: PageManager<PageItem = T>,
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.pm.get_page_mut(self.page_id).unwrap()
@@ -82,15 +128,10 @@ trait TemporalAdjacencySetPage<T: Sized>: Page {
 pub mod vec {
     use std::ops::RangeBounds;
 
-    use crate::PAGE_SIZE;
-
-    use super::Page;
+    use super::PageData;
 
     #[derive(Debug, PartialEq)]
     pub struct TemporalAdjacencySetPage<T, const N: usize> {
-        pub page_id: usize,
-        pub overflow_page_id: Option<usize>,
-        pub page_size: usize,
         pub sorted_values_index: Vec<usize>, // these ids are sorted by the values in the values vector
         pub values: Vec<T>,
         pub sorted_timestamps_index: Vec<usize>, // these ids are sorted by the values in the timestamps vector
@@ -103,20 +144,13 @@ pub mod vec {
     // [0, 4, 2, 3, 1]
 
     impl<T: std::cmp::Ord, const N: usize> TemporalAdjacencySetPage<T, N> {
-        pub fn new(page_id: usize) -> TemporalAdjacencySetPage<T, N> {
+        pub fn new() -> TemporalAdjacencySetPage<T, N> {
             TemporalAdjacencySetPage {
-                page_id,
-                overflow_page_id: None,
-                page_size: N,
                 sorted_values_index: Vec::with_capacity(N),
                 values: Vec::with_capacity(N),
                 sorted_timestamps_index: Vec::with_capacity(N),
                 timestamps: Vec::with_capacity(N),
             }
-        }
-
-        pub(crate) fn overflow_page_id(&self) -> Option<usize> {
-            self.overflow_page_id
         }
 
         fn insert_sorted<A: std::cmp::Ord>(
@@ -128,10 +162,6 @@ pub mod vec {
             match sorted_vec.binary_search_by(|probe| values[*probe].cmp(value)) {
                 Ok(i) | Err(i) => sorted_vec.insert(i, position_idx),
             }
-        }
-
-        pub fn set_overflow_page_id(&mut self, overflow_page_id: usize) {
-            self.overflow_page_id = Some(overflow_page_id);
         }
 
         pub fn append(&mut self, value: T, t: i64) {
@@ -158,7 +188,7 @@ pub mod vec {
         }
 
         pub fn is_full(&self) -> bool {
-            self.values.len() == self.page_size
+            self.values.len() == N
         }
 
         pub fn tuples_by_timestamp<'a>(&'a self) -> impl Iterator<Item = (i64, &'a T)> + 'a {
@@ -230,17 +260,17 @@ pub mod vec {
         }
     }
 
-    impl<T> Page for TemporalAdjacencySetPage<T, PAGE_SIZE> {
-        fn page_id(&self) -> usize {
-            self.page_id
+    impl<T: Ord, const N: usize> PageData for TemporalAdjacencySetPage<T, N> {
+        fn new() -> Self {
+            TemporalAdjacencySetPage::new()
         }
 
         fn is_full(&self) -> bool {
             self.is_full()
         }
 
-        fn overflow_page_id(&self) -> Option<usize> {
-            self.overflow_page_id()
+        fn next_free_offset(&self) -> usize {
+            self.values.len()
         }
     }
 }
@@ -251,14 +281,14 @@ mod vec_pages_tests {
 
     #[test]
     fn page_with_zero_items_has_empty_window_iterator() {
-        let page = vec::TemporalAdjacencySetPage::<u64, 3>::new(0);
+        let page = vec::TemporalAdjacencySetPage::<u64, 3>::new();
         let actual = page.tuples_window(3..12).collect::<Vec<_>>();
         assert_eq!(actual, vec![]);
     }
 
     #[test]
     fn page_with_one_item_test_window_iterator() {
-        let mut page = vec::TemporalAdjacencySetPage::<u64, 3>::new(0);
+        let mut page = vec::TemporalAdjacencySetPage::<u64, 3>::new();
         page.append(3, 3);
 
         // the value is included in the window
@@ -275,7 +305,7 @@ mod vec_pages_tests {
     // test window iterator on page with two items
     #[test]
     fn page_with_two_items_test_window_iterator() {
-        let mut page = vec::TemporalAdjacencySetPage::<u64, 3>::new(0);
+        let mut page = vec::TemporalAdjacencySetPage::<u64, 3>::new();
         page.append(3, 3);
         page.append(12, 1);
 
@@ -301,7 +331,7 @@ mod vec_pages_tests {
 
     #[test]
     fn insert_two_items_check_page_is_full() {
-        let mut page = vec::TemporalAdjacencySetPage::<u64, 2>::new(0);
+        let mut page = vec::TemporalAdjacencySetPage::<u64, 2>::new();
 
         page.append(2, 2);
 
@@ -311,12 +341,11 @@ mod vec_pages_tests {
 
         assert!(page.is_full());
 
-        println!("{:?}", page);
     }
 
     #[test]
     fn iterate_values_times_tuples_in_sorted_order_by_time() {
-        let mut page = vec::TemporalAdjacencySetPage::<u64, 3>::new(0);
+        let mut page = vec::TemporalAdjacencySetPage::<u64, 3>::new();
 
         page.append(9, 2);
         page.append(12, 1);
@@ -329,7 +358,7 @@ mod vec_pages_tests {
 
     #[test]
     fn iterate_values_times_tuples_in_sorted_order_by_values() {
-        let mut page = vec::TemporalAdjacencySetPage::<u64, 3>::new(0);
+        let mut page = vec::TemporalAdjacencySetPage::<u64, 3>::new();
 
         page.append(9, 2);
         page.append(12, 1);
@@ -342,7 +371,7 @@ mod vec_pages_tests {
 
     #[test]
     fn find_value() {
-        let mut page = vec::TemporalAdjacencySetPage::<u64, 3>::new(0);
+        let mut page = vec::TemporalAdjacencySetPage::<u64, 3>::new();
 
         page.append(9, 2);
         page.append(12, 1);

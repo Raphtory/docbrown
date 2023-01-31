@@ -1,5 +1,4 @@
 use std::collections::HashSet;
-use std::marker::PhantomData;
 
 use crate::pages::Page;
 use crate::pages::PageRef;
@@ -12,6 +11,13 @@ pub struct Location {
     offset: usize, // FIXME: this could probably be a lot smaller than 2^64
 }
 
+impl Location {
+    pub fn new(page_id: PageId, offset: usize) -> Self {
+        Self { page_id, offset }
+    }
+}
+
+#[derive(Debug)]
 pub enum PageManagerError {
     NoFreePages,
     PageNotFound,
@@ -23,7 +29,7 @@ pub trait PageManager {
     fn new() -> Self;
 
     fn find_next_free_page(
-        &self,
+        &mut self,
         initial_page: Option<&Location>,
     ) -> Result<Location, PageManagerError>;
 
@@ -44,29 +50,84 @@ pub struct VecPageManager<T: Page> {
     free_pages: HashSet<usize>,
 }
 
-impl<T: Page> VecPageManager<T> {}
+impl<T: Page> VecPageManager<T> {
+    fn get_location_or_new_page(
+        &mut self,
+        initial_page: &Location,
+    ) -> Result<Result<Location, T>, PageManagerError> {
+        let mut page_id = initial_page.page_id;
+
+        let new_page_id = self.pages.len(); // because borrow checker
+
+        let mut page = self
+            .get_page_mut(page_id)
+            .ok_or(PageManagerError::PageNotFound)?;
+
+        while page.is_full() {
+            if let Some(next_page_id) = page.overflow_page_id() {
+                page_id = next_page_id;
+                page = self
+                    .get_page_mut(page_id)
+                    .ok_or(PageManagerError::PageNotFound)?;
+            } else {
+                // create a new page and attach it to the last page as overflow
+                let new_page = T::new(new_page_id);
+                // self.pages.push(new_page);
+                page.set_overflow_page_id(new_page_id);
+                return Ok(Err(new_page));
+            }
+        }
+        Ok(Ok(Location::new(page_id, page.next_free_offset())))
+    }
+}
 
 impl<P: Page> PageManager for VecPageManager<P> {
     type PageItem = P;
 
-    // when initial_page is None, find any free page
-    // when initial_page is Some, return the page if it has free space,
+    // when initial_page is None, find any free page and return the location
+    // when initial_page is Some, return the page location if it has free space,
     // otherwise follow the chain of overflow pages until we find a page that is not full
+    // if we can't find a page that is not full, create a new page attach it to the last page as overflow
     fn find_next_free_page(
-        &self,
+        &mut self,
         initial_page: Option<&Location>,
     ) -> Result<Location, PageManagerError> {
-        todo!()
+        if let Some(initial_page) = initial_page {
+            let result = self.get_location_or_new_page(initial_page)?;
+            match result {
+                Ok(location) => Ok(location),
+                Err(new_page) => {
+                    let loc = Location::new(new_page.page_id(), 0);
+                    self.pages.push(new_page);
+                    Ok(loc)
+                }
+            }
+        } else {
+            // when initial_page is None first search free_pages for a page that is not full
+            for page_id in &self.free_pages {
+                if let Some(page) = self.get_page(*page_id) {
+                    if !page.is_full() {
+                        return Ok(Location::new(*page_id, page.next_free_offset()));
+                    }
+                }
+            }
+            // if we can't find a page that is not full, create a new page
+            let new_page_id = self.pages.len();
+            let new_page = P::new(new_page_id);
+            self.pages.push(new_page);
+            self.free_pages.insert(new_page_id);
+            Ok(Location::new(new_page_id, 0))
+        }
     }
 
     // get the reference to the page at the given location
     // add it to the free pages if it is not full
     fn get_page_ref(&mut self, location: &Location) -> Option<PageRef<'_, P, Self>> {
         match self.pages.get_mut(location.page_id) {
-            Some(_) => { 
+            Some(_) => {
                 self.free_pages.insert(location.page_id);
                 Some(PageRef::new(location.page_id, self))
-            },
+            }
             None => None,
         }
     }
@@ -84,7 +145,7 @@ impl<P: Page> PageManager for VecPageManager<P> {
 
     fn release_page(&mut self, page_id: &PageId) -> Result<(), PageManagerError> {
         if let Some(page) = self.get_page(*page_id) {
-            if !page.is_full()  {
+            if !page.is_full() {
                 self.free_pages.remove(page_id);
             }
             Ok(())
