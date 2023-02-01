@@ -493,7 +493,7 @@ mod vec_pages_tests {
         page.append(Triplet::new(2, 6, "friend".to_owned()), 2)?;
 
         let pairs = page
-            .tuples_window_for_source(1..22, &Triplet::prefix(19), |t| t.source == 19)
+            .tuples_window_for_source(1..22, &Triplet::prefix(&19), |t| t.source == 19)
             .map(|(time, triplet)| (time, triplet.clone()))
             .collect::<Vec<_>>();
 
@@ -511,7 +511,7 @@ mod vec_pages_tests {
         page.append(Triplet::new(2, 6, "friend".to_owned()), 2)?;
 
         let pairs = page
-            .tuples_window_for_source(-13..1, &Triplet::prefix(2), |t| t.source == 2)
+            .tuples_window_for_source(-13..1, &Triplet::prefix(&2), |t| t.source == 2)
             .map(|(time, triplet)| (time, triplet.clone()))
             .collect::<Vec<_>>();
 
@@ -534,7 +534,7 @@ mod vec_pages_tests {
         for source in 0..source_n {
             let source: u64 = source.into();
             let pairs = page
-                .tuples_window_for_source(0..1000, &Triplet::prefix(source), |t| t.source == source)
+                .tuples_window_for_source(0..1000, &Triplet::prefix(&source), |t| t.source == source)
                 .map(|(time, triplet)| (time, triplet.clone()))
                 .collect::<Vec<_>>();
 
@@ -573,7 +573,7 @@ mod vec_pages_tests {
 
         // second we get all the tuples for the [2..3] window fir the source 1 prefix
         let pairs = page
-            .tuples_window_for_source(2..=3, &Triplet::prefix(1), |t| t.source == 1)
+            .tuples_window_for_source(2..=3, &Triplet::prefix(&1), |t| t.source == 1)
             .map(|(time, triplet)| (time, triplet.clone()))
             .collect::<Vec<_>>();
 
@@ -587,7 +587,7 @@ mod vec_pages_tests {
 
         // third we get all the tuples for the [2..3] window fir the source 2 prefix
         let pairs = page
-            .tuples_window_for_source(2..=3, &Triplet::prefix(2), |t| t.source == 2)
+            .tuples_window_for_source(2..=3, &Triplet::prefix(&2), |t| t.source == 2)
             .map(|(time, triplet)| (time, triplet.clone()))
             .collect::<Vec<_>>();
 

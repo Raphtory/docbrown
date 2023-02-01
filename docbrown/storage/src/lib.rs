@@ -9,6 +9,7 @@ pub mod graph {
     use std::{
         collections::{BTreeMap, BTreeSet, HashMap},
         ops::Range,
+        rc::Rc,
     };
 
     use crate::{
@@ -18,7 +19,7 @@ pub mod graph {
     };
 
     #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-    pub struct Triplet<V, E>{
+    pub struct Triplet<V, E> {
         pub source: V,
         pub vertex: Option<V>, // this is the vertex that is being pointed to
         pub edge: Option<E>,
@@ -38,10 +39,12 @@ pub mod graph {
                 edge: Some(e),
             }
         }
+    }
 
-        pub fn prefix(source: V) -> Self {
+    impl<V: Clone, E> Triplet<V, E> {
+        pub fn prefix(v: &V) -> Self {
             Self {
-                source,
+                source: v.clone(),
                 vertex: None,
                 edge: None,
             }
@@ -92,22 +95,25 @@ pub mod graph {
             w: Range<Time>,
             v: &V,
             d: Direction,
-        ) -> Box<dyn Iterator<Item = (V, E)> + '_> {
+        ) -> Option<Box<dyn Iterator<Item = (&V, &E)> + '_>> {
             match d {
                 Direction::Outbound => {
-                    if let Some(page_idx) = self.adj_list_locations.get(v) {
-
-                        // self.page_manager.page_iter(page_idx).map(|page|{
-
-                        // })
-                        todo!("not implemented yet")
-
-                    }
+                    // this API is kinda awkward, but it's the best I could come up with for the POC
+                    // TODO: we could filter any page that doesn't find v
+                    let local_v = v.clone();
+                    let page_idx = self.adj_list_locations.get(v)?;
+                    let pages = self.page_manager.page_iter(page_idx)?;
+                    let iter = pages.flat_map(move |page| {
+                        let prefix = Triplet::prefix(&local_v);
+                        let v2 = local_v.clone();
+                        page.data
+                            .tuples_window_for_source(w.clone(), &prefix, move |t| t.source == v2)
+                            .map(|(_, t)| (t.vertex.as_ref().unwrap(), t.edge.as_ref().unwrap()))
+                    });
+                    Some(Box::new(iter))
                 }
                 _ => todo!("not implemented yet"),
             }
-
-            Box::new(std::iter::empty())
         }
 
         pub fn add_outbound_edge(
@@ -127,7 +133,9 @@ pub mod graph {
                     .map_err(GraphError::PMError)?;
 
                 if let Some(mut page) = self.page_manager.get_page_ref(&page_idx) {
-                    page.data.append(Triplet::new(src, dst, e), t);
+                    page.data
+                        .append(Triplet::new(src, dst, e), t)
+                        .map_err(GraphError::PageError)?;
                     self.temporal_index.entry(t).or_default().insert(page_idx);
                     Ok(())
                 } else {
@@ -140,7 +148,9 @@ pub mod graph {
                     .map_err(GraphError::PMError)?;
 
                 if let Some(mut page) = self.page_manager.get_page_ref(&page_idx) {
-                    page.data.append(Triplet::new(src.clone(), dst, e), t);
+                    page.data
+                        .append(Triplet::new(src.clone(), dst, e), t)
+                        .map_err(GraphError::PageError)?;
                     self.temporal_index.entry(t).or_default().insert(page_idx);
                     self.adj_list_locations.insert(src, page_idx);
                     Ok(())
@@ -160,17 +170,47 @@ mod paged_graph_tests {
     fn test_insert_into_paged_graph() -> Result<(), graph::GraphError> {
         let mut graph = graph::PagedGraph::with_vec_page_manager();
         graph.add_outbound_edge(1, 1, 2, 1)?;
-        graph.add_outbound_edge(2, 1, 3, 1)?;
-        graph.add_outbound_edge(3, 1, 4, 2)?;
         graph.add_outbound_edge(4, 2, 5, 2)?;
         graph.add_outbound_edge(5, 3, 6, 2)?;
+        graph.add_outbound_edge(2, 1, 3, 1)?;
+        graph.add_outbound_edge(3, 1, 4, 2)?;
 
         let stats = graph.page_stats();
 
         assert_eq!(stats.num_pages, 2);
         assert_eq!(stats.num_free_pages, 1);
 
-        println!("{:?}", graph);
+        // test outbound for src = 1
+        let actual = graph
+            .neighbours_window(1..6, &1, graph::Direction::Outbound)
+            .unwrap()
+            .map(|(v, e)| (*v, *e))
+            .collect::<Vec<_>>();
+
+        assert_eq!(actual, vec![(2, 1), (3, 1), (4, 2)]);
+        // test outbound for src = 2
+        let actual = graph
+            .neighbours_window(1..6, &2, graph::Direction::Outbound)
+            .unwrap()
+            .map(|(v, e)| (*v, *e))
+            .collect::<Vec<_>>();
+
+        assert_eq!(actual, vec![(5, 2)]);
+
+        //test outbound for src = 3
+        let actual = graph
+            .neighbours_window(1..6, &3, graph::Direction::Outbound)
+            .unwrap()
+            .map(|(v, e)| (*v, *e))
+            .collect::<Vec<_>>();
+
+        assert_eq!(actual, vec![(6, 2)]);
+
+        //test outbound for src = 4
+        let actual = graph.neighbours_window(1..6, &4, graph::Direction::Outbound);
+
+        assert!(actual.is_none());
+
         Ok(())
     }
 

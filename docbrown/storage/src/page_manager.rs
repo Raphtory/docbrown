@@ -50,7 +50,10 @@ pub trait PageManager {
 
     fn stats(&self) -> PageManagerStats;
 
-    fn page_iter(&self, page_idx: &Location) -> Box<dyn Iterator<Item = &Self::PageItem> + '_>;
+    fn page_iter(
+        &self,
+        page_idx: &Location,
+    ) -> Option<PageIter<'_, Self::PageItem, VecPageManager<Self::PageItem>>>;
 }
 
 #[derive(Debug, Default)]
@@ -174,7 +177,46 @@ impl<P: Page> PageManager for VecPageManager<P> {
         }
     }
 
-    fn page_iter(&self, page_idx: &Location) -> Box<dyn Iterator<Item = &Self::PageItem> + '_> {
-        todo!()
+    fn page_iter(
+        &self,
+        page_idx: &Location,
+    ) -> Option<PageIter<'_, Self::PageItem, VecPageManager<Self::PageItem>>> {
+        let _ = self.get_page(page_idx.page_id)?;
+        Some(PageIter::new(self, page_idx.page_id))
+    }
+}
+
+pub struct PageIter<'a, P: Page, PM: PageManager<PageItem = P>> {
+    page_manager: &'a PM,
+    page_id: Option<PageId>,
+}
+
+impl<'a, P, PM> PageIter<'a, P, PM>
+where
+    P: Page,
+    PM: PageManager<PageItem = P>,
+{
+    fn new(page_manager: &'a PM, page_id: PageId) -> Self {
+        Self {
+            page_manager,
+            page_id: Some(page_id),
+        }
+    }
+}
+
+impl<'a, P, PM> Iterator for PageIter<'a, P, PM>
+where
+    P: Page + 'a,
+    PM: PageManager<PageItem = P>,
+{
+    type Item = &'a P;
+
+    // given a starting page location follow the overflow chain and return the pages
+    // if the page location doesn't exist return None
+    fn next(&mut self) -> Option<Self::Item> {
+        let page_id = self.page_id?;
+        let page = self.page_manager.get_page(page_id)?;
+        self.page_id = page.overflow_page_id();
+        Some(page)
     }
 }
