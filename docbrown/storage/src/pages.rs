@@ -235,11 +235,11 @@ pub mod vec {
                 (std::ops::Bound::Unbounded, std::ops::Bound::Unbounded) => (i64::MIN, i64::MAX),
             };
 
-            let start_idx = match self.find_timestamp_position(start) {
+            let start_idx = match self.find_first_timestamp_position(start) {
                 Ok(i) | Err(i) => i,
             };
 
-            let range = match self.find_timestamp_position(end) {
+            let range = match self.find_last_timestamp_position(end) {
                 Ok(i) | Err(i) => start_idx..i,
             };
             range
@@ -247,7 +247,6 @@ pub mod vec {
 
         pub fn tuples_window<R: RangeBounds<i64>>(&self, w: R) -> impl Iterator<Item = (i64, &T)> {
             let range = self.range_bounds_to_range(w);
-            println!("range: {:?}", range);
             self.sorted_timestamps_index[range]
                 .iter()
                 .map(move |idx| (self.timestamps[*idx], &self.values[*idx]))
@@ -263,16 +262,61 @@ pub mod vec {
             }
         }
 
-        fn find_timestamp_position(&self, t: i64) -> Result<usize, usize> {
-            self.sorted_timestamps_index
-                .binary_search_by(|probe| self.timestamps[*probe].cmp(&t))
+        fn find_last_timestamp_position(&self, t: i64) -> Result<usize, usize> {
+            let res = self
+                .sorted_timestamps_index
+                .binary_search_by(|probe| self.timestamps[*probe].cmp(&t));
+
+            match res {
+                Ok(i) => {
+                    let mut k = i;
+                    for j in i..self.sorted_timestamps_index.len() {
+                        if self.timestamps[self.sorted_timestamps_index[j]] != t {
+                            break;
+                        }
+                        k = j;
+                    }
+                    Ok(k)
+                }
+                Err(i) => Err(i),
+            }
         }
 
-        pub fn tuples_window_for_source<R: RangeBounds<Time>>(
-            &self,
+        fn find_first_timestamp_position(&self, t: i64) -> Result<usize, usize> {
+            let res = self
+                .sorted_timestamps_index
+                .binary_search_by(|probe| self.timestamps[*probe].cmp(&t));
+
+            match res {
+                Ok(i) => {
+                    let mut k = i;
+
+                    for j in (0..i).rev() {
+                        if self.timestamps[self.sorted_timestamps_index[j]] != t {
+                            break;
+                        }
+                        k = j;
+                    }
+
+                    Ok(k)
+                }
+                Err(i) => Err(i),
+            }
+        }
+
+        // TODO: revise this function, the current representation of the page that uses Triplet
+        // is inneficient when looking up the adjacency list of a given vertex
+        // since a page can represent the adjacency list of multiple vertices
+        // might want to change the representation to include the source vertex separately
+        pub fn tuples_window_for_source<'a, R: RangeBounds<Time>, F>(
+            &'a self,
             w: R,
             source: &T,
-        ) -> Box<dyn Iterator<Item = (i64, &T)> + '_> {
+            prefix: F,
+        ) -> Box<dyn Iterator<Item = (i64, &T)> + '_>
+        where
+            F: Fn(&T) -> bool + 'a,
+        {
             match self
                 .sorted_values_index
                 .binary_search_by(|probe| self.values[*probe].cmp(source))
@@ -280,26 +324,36 @@ pub mod vec {
                 Ok(i) | Err(i) => {
                     let r = self.range_bounds_to_range(w);
 
-                    println!("initial range: {:?} i: {i}", r);
-                    // if i is before the start of the range then we only use the range
-                    // if i is contained in the range then it becomes the start of the range
-                    // if i is after the end of the range then we return an empty iterator
+                    let loc = self.sorted_values_index[i];
+                    let t_loc = self.timestamps[loc];
 
-                    let start = if i < r.start {
-                        r.start
-                    } else if i < r.end {
-                        i
-                    } else {
+                    // TODO: is this the right way to handle this?
+                    let loc_time_start_idx = self
+                        .find_first_timestamp_position(t_loc)
+                        .unwrap_or_else(|i| i);
+
+                    // println!("initial range: {:?} i: {i}, location in log {} time at loc {t_loc} time index for loc {loc_time_start_idx}", r, loc);
+
+                    // short circuit the entire function if the actual time is on the right side of the range
+                    if loc_time_start_idx > r.end {
                         return Box::new(std::iter::empty());
+                    }
+
+                    // find the actual time of the first occurrence of the value
+                    let start = if loc_time_start_idx > r.start && r.contains(&loc_time_start_idx) {
+                        loc_time_start_idx
+                    } else {
+                        r.start
                     };
 
                     let range = start..r.end;
 
-                    println!("reduced range: {:?} i: {i}", range);
+                    // println!("reduced range: {:?} i: {i}", range);
                     Box::new(
                         self.sorted_timestamps_index[range]
                             .iter()
-                            .map(move |idx| (self.timestamps[*idx], &self.values[*idx])),
+                            .map(move |idx| (self.timestamps[*idx], &self.values[*idx]))
+                            .filter(move |(_, v)| prefix(v)),
                     )
                 }
             }
@@ -416,6 +470,44 @@ mod vec_pages_tests {
         assert_eq!(pairs, vec![(3, &0), (2, &9), (1, &12)]);
     }
 
+
+    #[test]
+    fn a_vertex_with_no_entries_results_in_empty_adjacency_list(){
+
+        let mut page = vec::TemporalAdjacencySetPage::<Triplet<u64, String>, 3>::new();
+
+        page.append(Triplet::new(2, 9, "friend".to_owned()), 1);
+        page.append(Triplet::new(2, 7, "co-worker".to_owned()), 3);
+        page.append(Triplet::new(3, 6, "friend".to_owned()), 2);
+        page.append(Triplet::new(2, 6, "friend".to_owned()), 2);
+
+        let pairs = page
+            .tuples_window_for_source(1..22, &Triplet::prefix(19), |t| t.source == 1)
+            .map(|(time, triplet)| (time, triplet.clone()))
+            .collect::<Vec<_>>();
+
+        assert_eq!(pairs, vec![])
+    }
+
+
+    #[test]
+    fn non_overlapping_time_interval_results_in_empty_adjacency_list(){
+
+        let mut page = vec::TemporalAdjacencySetPage::<Triplet<u64, String>, 3>::new();
+
+        page.append(Triplet::new(2, 9, "friend".to_owned()), 1);
+        page.append(Triplet::new(2, 7, "co-worker".to_owned()), 3);
+        page.append(Triplet::new(3, 6, "friend".to_owned()), 2);
+        page.append(Triplet::new(2, 6, "friend".to_owned()), 2);
+
+        let pairs = page
+            .tuples_window_for_source(-13..1, &Triplet::prefix(2), |t| t.source == 2)
+            .map(|(time, triplet)| (time, triplet.clone()))
+            .collect::<Vec<_>>();
+
+        assert_eq!(pairs, vec![])
+    }
+
     #[test]
     fn iterate_values_by_window_and_source() {
         let mut page = vec::TemporalAdjacencySetPage::<Triplet<u64, String>, 3>::new();
@@ -425,7 +517,6 @@ mod vec_pages_tests {
         page.append(Triplet::new(2, 3, "friend".to_owned()), 2);
         page.append(Triplet::new(1, 3, "friend".to_owned()), 2);
 
-        println!("{:?}", page);
 
         // first we get all the tuples for the [2..3] window
         let pairs = page
@@ -433,8 +524,7 @@ mod vec_pages_tests {
             .map(|(time, triplet)| (time, triplet.clone()))
             .collect::<Vec<_>>();
 
-
-    assert_eq!(
+        assert_eq!(
             pairs,
             vec![
                 (2, Triplet::new(1, 3, "friend".to_string())),
@@ -445,7 +535,7 @@ mod vec_pages_tests {
 
         // second we get all the tuples for the [2..3] window fir the source 1 prefix
         let pairs = page
-            .tuples_window_for_source(2..=3, &Triplet::prefix(1))
+            .tuples_window_for_source(2..=3, &Triplet::prefix(1), |t| t.source == 1)
             .map(|(time, triplet)| (time, triplet.clone()))
             .collect::<Vec<_>>();
 
@@ -456,6 +546,14 @@ mod vec_pages_tests {
                 (3, Triplet::new(1, 7, "co-worker".to_string()))
             ]
         );
+
+        // third we get all the tuples for the [2..3] window fir the source 2 prefix
+        let pairs = page
+            .tuples_window_for_source(2..=3, &Triplet::prefix(2), |t| t.source == 2)
+            .map(|(time, triplet)| (time, triplet.clone()))
+            .collect::<Vec<_>>();
+
+        assert_eq!(pairs, vec![(2, Triplet::new(2, 3, "friend".to_string()))]);
     }
 
     #[test]

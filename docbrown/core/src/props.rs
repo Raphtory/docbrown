@@ -128,7 +128,9 @@ impl TProp {
             *self = TProp::from(t, p);
         } else {
             match self {
-                TProp::Empty => todo!(),
+                TProp::Empty => {
+                    *self = TProp::from(t, p);
+                },
                 TProp::Str(cell) => {
                     if let Prop::Str(a) = p {
                         cell.set(t, a.to_string());
