@@ -13,7 +13,7 @@ pub mod graph {
 
     use crate::{
         page_manager::{Location, PageManager, PageManagerError, PageManagerStats, VecPageManager},
-        pages::{vec, CachedPage},
+        pages::{vec, CachedPage, PageError},
         Time, PAGE_SIZE,
     };
 
@@ -50,6 +50,7 @@ pub mod graph {
 
     #[derive(Debug)]
     pub enum GraphError {
+        PageError(PageError),
         PMError(PageManagerError),
     }
 
