@@ -1,5 +1,6 @@
 mod page_manager;
 mod pages;
+mod arrow_storage;
 
 pub const PAGE_SIZE: usize = 4;
 

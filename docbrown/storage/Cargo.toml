@@ -7,5 +7,8 @@ edition = "2021"
 
 [dependencies]
 
-arrow2 = { version = "0.15", features = ["compute", "io_ipc"] }
-zerovec = { version = "0.9", features = ["derive", "serde"] }
+arrow2 = { path = "../../arrow2",features = ["compute", "io_ipc"] }
+tokio = { version = "1", features = ["full"] }
+
+[dev-dependencies]
+rand = "0.8.5"
