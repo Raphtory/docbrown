@@ -129,7 +129,7 @@ impl GraphDB {
     }
 
     pub fn edges_len(&self) -> usize {
-        self.shards.iter().map(|shard| shard.edges_len()).sum()
+        self.shards.iter().map(|shard| shard.out_edges_len()).sum()
     }
 
     pub fn contains(&self, v: u64) -> bool {
