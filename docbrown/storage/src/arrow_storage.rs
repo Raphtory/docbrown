@@ -149,7 +149,7 @@ mod arrow_storage_test {
         let mut writer = FileWriter::try_new(file, schema, None, options)?;
 
         for chunk in chunks {
-            writer.write(&chunk, None)?;
+            let chunk = writer.write(&chunk, None)?;
         }
 
         writer.finish()?;

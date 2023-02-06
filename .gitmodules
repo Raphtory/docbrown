@@ -1,3 +1,4 @@
 [submodule "arrow2"]
 	path = arrow2
 	url = ../arrow2
+	branch = "docbrown"

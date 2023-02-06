@@ -15,7 +15,7 @@ pub mod graph {
 
     use crate::{
         page_manager::{Location, PageManager, PageManagerError, PageManagerStats, VecPageManager},
-        pages::{vec, CachedPage, PageError},
+        pages::{CachedPage, PageError, self},
         Time, PAGE_SIZE,
     };
 
@@ -58,7 +58,7 @@ pub mod graph {
         PMError(PageManagerError),
     }
 
-    type VecPage<V, E> = CachedPage<vec::TemporalAdjacencySetPage<Triplet<V, E>, PAGE_SIZE>>;
+    type VecPage<V, E> = CachedPage<pages::vec_page::TemporalAdjacencySetPage<Triplet<V, E>, PAGE_SIZE>>;
 
     #[derive(Debug, Default)]
     pub struct PagedGraph<V, E, PM: PageManager<PageItem = VecPage<V, E>>> {

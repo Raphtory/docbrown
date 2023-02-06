@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 
+polars-core = "0.26"
 arrow2 = { path = "../../arrow2",features = ["compute", "io_ipc"] }
 tokio = { version = "1", features = ["full"] }
 
