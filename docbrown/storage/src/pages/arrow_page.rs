@@ -4,16 +4,145 @@
 // the sorted_timestamps_index is a vector of usize that is sorted by the timestamps vector
 // it is used to create a BooleanArray that is used to filter the adjacency_list and timestamps vectors
 
-use std::ops::Range;
+use std::ops::{Deref, Range};
 
 use arrow2::{
-    array::{ListArray, MutableListArray, MutablePrimitiveArray, PrimitiveArray, TryPush},
+    array::{
+        Array, BooleanArray, ListArray, MutableListArray, MutablePrimitiveArray, PrimitiveArray,
+        TryPush,
+    },
     types::NativeType,
 };
+use itertools::izip;
+
+use crate::Time;
 
 use super::vec_page::TemporalAdjacencySetPage;
 
-#[derive(Debug)]
+fn find_first_timestamp_position<A, B>(
+    sorted_timestamps_index: B,
+    timestamps: A,
+    t: i64,
+) -> Result<usize, usize>
+where
+    A: Deref<Target = [Time]>,
+    B: Deref<Target = [u16]>,
+{
+    let res = sorted_timestamps_index.binary_search_by(|probe| {
+        let i: usize = (*probe).into();
+        timestamps[i].cmp(&t)
+    });
+
+    match res {
+        Ok(i) => {
+            let mut k = i;
+
+            for j in (0..i).rev() {
+                let ti: usize = sorted_timestamps_index[j].into();
+                if timestamps[ti] != t {
+                    break;
+                }
+                k = j;
+            }
+
+            Ok(k)
+        }
+        Err(i) => Err(i),
+    }
+}
+
+fn find_last_timestamp_position<A, B>(
+    sorted_timestamps_index: B,
+    timestamps: A,
+    t: i64,
+) -> Result<usize, usize>
+where
+    A: Deref<Target = [Time]>,
+    B: Deref<Target = [u16]>,
+{
+    let res = sorted_timestamps_index.binary_search_by(|probe| {
+        let i: usize = (*probe).into();
+        timestamps[i].cmp(&t)
+    });
+
+    match res {
+        Ok(i) => {
+            let mut k = i;
+
+            for j in i..sorted_timestamps_index.len() {
+                let ti: usize = sorted_timestamps_index[j].into();
+                if timestamps[ti] != t {
+                    break;
+                }
+                k = j;
+            }
+
+            Ok(k)
+        }
+        Err(i) => Err(i),
+    }
+}
+
+pub(crate) fn temporal_index_range(
+    t_index_maybe: Option<Box<dyn Array>>,
+    t_maybe: Option<Box<dyn Array>>,
+    w: &Range<Time>,
+) -> Option<Range<usize>> {
+    let a = t_index_maybe?;
+
+    let t_index_arr = a
+        .as_any()
+        .downcast_ref::<PrimitiveArray<u16>>()?
+        .values()
+        .as_slice();
+
+    let b = t_maybe?;
+
+    let t = b
+        .as_any()
+        .downcast_ref::<PrimitiveArray<i64>>()?
+        .values()
+        .as_slice();
+
+    let start = find_first_timestamp_position(t_index_arr, t, w.start);
+
+    let end = find_last_timestamp_position(t_index_arr, t, w.end);
+
+    let start_idx = match start {
+        Ok(i) | Err(i) => usize::max(i, 0),
+    };
+
+    let end_idx = match end {
+        Ok(i) | Err(i) => usize::min(i, t_index_arr.len()),
+    };
+
+    Some(start_idx..end_idx)
+}
+
+fn rebuild_index<T: Ord + NativeType, A>(arr: A) -> PrimitiveArray<u16>
+where
+    A: Deref<Target = [T]>,
+{
+    if arr.len() > u16::MAX as usize {
+        panic!("too many elements in the array");
+    }
+
+    let mut index = arr
+        .iter()
+        .enumerate()
+        .map(|(i, t)| (t, i))
+        .collect::<Vec<_>>();
+
+    index.sort_by(|a, b| a.0.cmp(&b.0));
+
+    index
+        .iter()
+        .map(|(_, i)| Some(*i as u16))
+        .collect::<MutablePrimitiveArray<u16>>()
+        .into()
+}
+
+#[derive(Debug, PartialEq)]
 pub(crate) struct ImmutableArrowPage<V>
 where
     V: NativeType,
@@ -33,13 +162,76 @@ impl<V> ImmutableArrowPage<V>
 where
     V: NativeType + Ord + PartialEq + Copy,
 {
-    pub fn temporal_view(&self, w: Range<i64>) -> Self {
-        for arr in &self.timestamps {
-            println!("ARR {:?}", arr);
+    pub fn temporal_view(&self, w: Range<Time>) -> Self {
+        let mut timestamps = MutableListArray::<i32, MutablePrimitiveArray<Time>>::new();
+        let mut sorted_timestamps = MutableListArray::<i32, MutablePrimitiveArray<u16>>::new();
+        let mut adj_list_mut = MutableListArray::<i32, MutablePrimitiveArray<V>>::new();
+
+        izip!(
+            self.adj_list.iter(),
+            self.timestamps.iter(),
+            self.sorted_timestamps_index.iter()
+        )
+        .for_each(|(adj_list_opt, ts_opt, ts_index_opt)| {
+            if let Some(w) = temporal_index_range(ts_index_opt.clone(), ts_opt.clone(), &w) {
+                // using arrow2 compute binary function use the w range to select only the items that match the temporal index
+
+                let a = ts_index_opt.unwrap(); // this is because of the borrow checker
+                let ts_index = a.as_any().downcast_ref::<PrimitiveArray<u16>>().unwrap();
+
+                let b = ts_opt.unwrap(); // this is because of the borrow checker
+                let ts = b.as_any().downcast_ref::<PrimitiveArray<Time>>().unwrap();
+
+
+                let c = adj_list_opt.unwrap(); // this is because of the borrow checker
+                let adj_list = c.as_any().downcast_ref::<PrimitiveArray<V>>().unwrap();
+
+                let new_t_index = ts_index.slice(w.start, w.end);
+
+                let mut new_t_vec = MutablePrimitiveArray::<Time>::with_capacity(new_t_index.len());
+                for i in new_t_index.iter() {
+                    if let Some(i) = i {
+                        let j: usize = (*i).into();
+                        new_t_vec.push(Some(ts.values()[j]));
+                    }
+                }
+
+                let mut new_adj_vec: MutablePrimitiveArray<V> = MutablePrimitiveArray::<V>::with_capacity(new_t_index.len());
+                for i in new_t_index.iter() {
+                    if let Some(i) = i {
+                        let j: usize = (*i).into();
+                        new_adj_vec.push(Some(adj_list.values()[j]));
+                    }
+                }
+
+                let new_t: PrimitiveArray<Time> = new_t_vec.into();
+
+                let new_t_index = rebuild_index(new_t.values().as_slice());
+
+
+                let new_adj_vec: PrimitiveArray<V> = new_adj_vec.into();
+
+                adj_list_mut
+                    .try_push(Some(new_adj_vec))
+                    .expect("could not push");
+
+                timestamps.try_push(Some(new_t)).expect("could not push");
+
+                sorted_timestamps
+                    .try_push(Some(new_t_index))
+                    .expect("could not push");
+            }
+        });
+
+        Self {
+            vertex_id: self.vertex_id.clone(),
+            adj_list: adj_list_mut.into(),
+            timestamps: timestamps.into(),
+            sorted_timestamps_index: sorted_timestamps.into(),
         }
-        todo!()
     }
 }
+
 // generic From TemporaryAdjacencySetPage impl for ImmutableArrowPage
 impl<V, E, const N: usize> From<TemporalAdjacencySetPage<(V, V, E), N>> for ImmutableArrowPage<V>
 where
@@ -62,7 +254,6 @@ where
         // this for loop should return the tuples in order sorted by src
         // so we create the adjacency list and the timestamps list
         for (t, (src, dst, _)) in page.tuples_sorted() {
-            println!("SRC {:?} DST {:?} T: {t}", src, dst);
             match cur.as_ref() {
                 Some(v) if v == src => {
                     cur_adj_list.push(Some(*dst));
@@ -118,7 +309,9 @@ where
 
         adj_list.try_push(Some(cur_adj_list)).unwrap();
         timestamps.try_push(Some(cur_timestamps)).unwrap();
-        sorted_timestamps.try_push(Some(cur_sorted_timestamps)).unwrap();
+        sorted_timestamps
+            .try_push(Some(cur_sorted_timestamps))
+            .unwrap();
 
         Self {
             vertex_id: vertex_ids.into(),
@@ -152,6 +345,33 @@ mod arrow_page_tests {
     }
 
     #[test]
+    fn can_have_temporal_view_find_range_1() {
+        let t: PrimitiveArray<Time> = vec![7, 1, 5].into_iter().map(Some).collect();
+        let t_index: PrimitiveArray<u16> = vec![1, 2, 0].into_iter().map(Some).collect();
+
+        let actual = temporal_index_range(Some(t_index.boxed()), Some(t.boxed()), &(0..6));
+        assert_eq!(actual, Some(0..2))
+    }
+
+    #[test]
+    fn can_have_temporal_view_find_range_2() {
+        let init_vec = vec![1, 9, 2, 8, 3, 4, 5, 7, 6];
+        let mut sorted_t_vec = init_vec.iter().enumerate().collect::<Vec<_>>();
+        sorted_t_vec.sort_by(|(_, t1), (_, t2)| t1.cmp(t2));
+        let sorted_t_vec: Vec<u16> = sorted_t_vec
+            .iter()
+            .map(|(i, _)| (*i).try_into().unwrap())
+            .collect::<Vec<_>>();
+
+        let t: PrimitiveArray<Time> = init_vec.clone().into_iter().map(Some).collect();
+
+        let t_index: PrimitiveArray<u16> = sorted_t_vec.clone().into_iter().map(Some).collect();
+
+        let actual = temporal_index_range(Some(t_index.boxed()), Some(t.boxed()), &(7..10));
+        assert_eq!(actual, Some(6..9))
+    }
+
+    #[test]
     fn can_have_temporal_view() {
         let mut page = TemporalAdjacencySetPage::<(u64, u64, u64), 4>::new();
         page.append((1, 2, 5), 7).unwrap();
@@ -159,7 +379,16 @@ mod arrow_page_tests {
         page.append((1, 9, 7), 5).unwrap();
         page.append((1, 4, 8), 1).unwrap();
         let _arrow_page: ImmutableArrowPage<u64> = page.into();
-        println!("{:?}", _arrow_page);
-        _arrow_page.temporal_view(0..6);
+        // println!("{:?}", _arrow_page);
+        let actual = _arrow_page.temporal_view(0..6);
+
+        let mut page2 = TemporalAdjacencySetPage::<(u64, u64, u64), 4>::new();
+        page2.append((2, 3, 6), 2).unwrap();
+        page2.append((1, 9, 7), 5).unwrap();
+        page2.append((1, 4, 8), 1).unwrap();
+
+        let expected: ImmutableArrowPage<u64> = page2.into();
+
+        assert_eq!(actual, expected);
     }
 }

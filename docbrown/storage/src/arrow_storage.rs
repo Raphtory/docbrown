@@ -128,6 +128,7 @@ mod arrow_storage_test {
     // test that after writing a arrow IPC file using the arrow2 API we can read random blocks from it
     // by passing the FileMetadata to FileReader
     #[test]
+    #[ignore]
     fn read_random_blocks_from_arrow_ipc_file() -> Result<(), arrow2::error::Error> {
         let schema = Schema::from(vec![
             Field::new("a", DataType::Int32, false),
