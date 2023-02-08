@@ -9,6 +9,9 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         name: Checkout
+        with:
+          fetch-depth: 0
+          submodules: true
       - uses: actions-rs/toolchain@v1
         name: Setup Rust
         with:
