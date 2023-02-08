@@ -116,6 +116,17 @@ pub mod graph {
             }
         }
 
+
+        fn find_or_allocate_page_for_vertex(&mut self, v: &V) -> Result<Location, GraphError> {
+            if let Some(loc) = self.adj_list_locations.get(v) {
+                Ok(*loc)
+            } else {
+                let page_location = self.page_manager.find_next_free_page(None).map_err(GraphError::PMError)?;
+                self.adj_list_locations.insert(v.clone(), page_location);
+                Ok(page_location)
+            }
+        }
+
         pub fn add_outbound_edge(
             &mut self,
             t: Time,
@@ -123,7 +134,9 @@ pub mod graph {
             dst: V,
             e: E,
         ) -> Result<(), GraphError> {
+            let dst_page = 0u32;
             if let Some(page_idx) = self.adj_list_locations.get(&src) {
+
                 // the first page of the adjacency list for src exists, we need to call the page manager to get next free page
                 // it could be the same or an overflow page
 
@@ -134,7 +147,7 @@ pub mod graph {
 
                 if let Some(mut page) = self.page_manager.get_page_ref(&page_idx) {
                     page.data
-                        .append(Triplet::new(src, dst, e), t)
+                        .append_out(Triplet::new(src, dst, e), t, dst_page)
                         .map_err(GraphError::PageError)?;
                     self.temporal_index.entry(t).or_default().insert(page_idx);
                     Ok(())
@@ -149,7 +162,7 @@ pub mod graph {
 
                 if let Some(mut page) = self.page_manager.get_page_ref(&page_idx) {
                     page.data
-                        .append(Triplet::new(src.clone(), dst, e), t)
+                        .append_out(Triplet::new(src.clone(), dst, e), t, dst_page)
                         .map_err(GraphError::PageError)?;
                     self.temporal_index.entry(t).or_default().insert(page_idx);
                     self.adj_list_locations.insert(src, page_idx);

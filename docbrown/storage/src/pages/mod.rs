@@ -6,6 +6,8 @@ use std::ops::{Deref, DerefMut};
 
 use crate::page_manager::PageManager;
 
+pub type PageId = u32;
+
 pub trait Page {
     fn page_id(&self) -> usize;
     fn is_full(&self) -> bool;

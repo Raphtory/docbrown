@@ -1,16 +1,43 @@
-use std::ops::{Range, RangeBounds};
+use std::{ops::{Range, RangeBounds}, cmp::Ordering};
 
 use crate::Time;
 
-use super::{PageError, PageData};
+use super::{PageData, PageError, PageId};
+
+#[derive(Debug, PartialEq, Ord, Eq, Hash)]
+enum Direction<V> {
+    Out(V),
+    In(V),
+}
+
+impl <T:PartialOrd> PartialOrd for Direction<T> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        match (self, other) {
+            (Direction::Out(a), Direction::Out(b)) => a.partial_cmp(b),
+            (Direction::In(a), Direction::In(b)) => a.partial_cmp(b),
+            (Direction::Out(_), Direction::In(_)) => Some(Ordering::Less),
+            (Direction::In(_), Direction::Out(_)) => Some(Ordering::Greater),
+        }
+    }
+}
+
+impl<V> Direction<V> {
+    fn into_inner(&self) -> &V {
+        match self {
+            Direction::Out(v) => v,
+            Direction::In(v) => v,
+        }
+    }
+}
 
 #[derive(Debug, PartialEq)]
 pub struct TemporalAdjacencySetPage<T, const N: usize> {
     // FIXME: N is not used
-    pub sorted_values_index: Vec<usize>, // these ids are sorted by the values in the values vector
-    pub values: Vec<T>,
-    pub sorted_timestamps_index: Vec<usize>, // these ids are sorted by the values in the timestamps vector
-    pub timestamps: Vec<i64>,
+    sorted_values_index: Vec<usize>, // these ids are sorted by the values in the values vector
+    values: Vec<Direction<T>>,
+    pages: Vec<PageId>, // w can find ourselves in a state where the vertex doesn't have an adjacency list
+    sorted_timestamps_index: Vec<usize>, // these ids are sorted by the values in the timestamps vector
+    timestamps: Vec<Time>,
 }
 
 // [t1, t3, t3 t3, t1]
@@ -23,6 +50,7 @@ impl<T: std::cmp::Ord, const N: usize> TemporalAdjacencySetPage<T, N> {
         TemporalAdjacencySetPage {
             sorted_values_index: Vec::with_capacity(N),
             values: Vec::with_capacity(N),
+            pages: Vec::with_capacity(N),
             sorted_timestamps_index: Vec::with_capacity(N),
             timestamps: Vec::with_capacity(N),
         }
@@ -39,7 +67,15 @@ impl<T: std::cmp::Ord, const N: usize> TemporalAdjacencySetPage<T, N> {
         }
     }
 
-    pub fn append(&mut self, value: T, t: i64) -> Result<(), PageError> {
+    pub fn append_out(&mut self, value: T, t: Time, page: PageId) -> Result<(), PageError> {
+        self.append(Direction::Out(value), t, page)
+    }
+
+    pub fn append_in(&mut self, value: T, t: Time, page: PageId) -> Result<(), PageError> {
+        self.append(Direction::In(value), t, page)
+    }
+
+    fn append(&mut self, value: Direction<T>, t: Time, page: PageId) -> Result<(), PageError> {
         let position_idx = self.timestamps.len();
         // just add the tuples in the values and timestamps vectors
 
@@ -60,6 +96,7 @@ impl<T: std::cmp::Ord, const N: usize> TemporalAdjacencySetPage<T, N> {
 
         self.values.push(value);
         self.timestamps.push(t);
+        self.pages.push(page);
         Ok(())
     }
 
@@ -67,16 +104,24 @@ impl<T: std::cmp::Ord, const N: usize> TemporalAdjacencySetPage<T, N> {
         self.values.len() == N
     }
 
-    pub fn tuples_by_timestamp<'a>(&'a self) -> impl Iterator<Item = (i64, &'a T)> + 'a {
-        self.sorted_timestamps_index
-            .iter()
-            .map(move |idx| (self.timestamps[*idx], &self.values[*idx]))
+    pub fn tuples_by_timestamp<'a>(&'a self) -> impl Iterator<Item = (Time, PageId, &'a T)> + 'a {
+        self.sorted_timestamps_index.iter().map(move |idx| {
+            (
+                self.timestamps[*idx],
+                self.pages[*idx],
+                self.values[*idx].into_inner(),
+            )
+        })
     }
 
-    pub fn tuples_sorted<'a>(&'a self) -> impl Iterator<Item = (i64, &'a T)> + 'a {
-        self.sorted_values_index
-            .iter()
-            .map(move |idx| (self.timestamps[*idx], &self.values[*idx]))
+    pub fn tuples_sorted<'a>(&'a self) -> impl Iterator<Item = (Time, PageId, &'a T)> + 'a {
+        self.sorted_values_index.iter().map(move |idx| {
+            (
+                self.timestamps[*idx],
+                self.pages[*idx],
+                self.values[*idx].into_inner(),
+            )
+        })
     }
 
     fn range_bounds_to_range<R: RangeBounds<Time>>(&self, w: R) -> Range<usize> {
@@ -85,7 +130,7 @@ impl<T: std::cmp::Ord, const N: usize> TemporalAdjacencySetPage<T, N> {
                 (*start, *end + 1)
             }
             (std::ops::Bound::Included(start), std::ops::Bound::Excluded(end)) => (*start, *end),
-            (std::ops::Bound::Included(start), std::ops::Bound::Unbounded) => (*start, i64::MAX),
+            (std::ops::Bound::Included(start), std::ops::Bound::Unbounded) => (*start, Time::MAX),
 
             (std::ops::Bound::Excluded(start), std::ops::Bound::Included(end)) => {
                 (*start + 1, *end + 1)
@@ -93,10 +138,10 @@ impl<T: std::cmp::Ord, const N: usize> TemporalAdjacencySetPage<T, N> {
             (std::ops::Bound::Excluded(start), std::ops::Bound::Excluded(end)) => {
                 (*start + 1, *end)
             }
-            (std::ops::Bound::Excluded(start), std::ops::Bound::Unbounded) => (*start, i64::MAX),
-            (std::ops::Bound::Unbounded, std::ops::Bound::Included(end)) => (i64::MIN, *end + 1),
-            (std::ops::Bound::Unbounded, std::ops::Bound::Excluded(end)) => (i64::MIN, *end),
-            (std::ops::Bound::Unbounded, std::ops::Bound::Unbounded) => (i64::MIN, i64::MAX),
+            (std::ops::Bound::Excluded(start), std::ops::Bound::Unbounded) => (*start, Time::MAX),
+            (std::ops::Bound::Unbounded, std::ops::Bound::Included(end)) => (Time::MIN, *end + 1),
+            (std::ops::Bound::Unbounded, std::ops::Bound::Excluded(end)) => (Time::MIN, *end),
+            (std::ops::Bound::Unbounded, std::ops::Bound::Unbounded) => (Time::MIN, Time::MAX),
         };
 
         let start_idx = match self.find_first_timestamp_position(start) {
@@ -109,24 +154,24 @@ impl<T: std::cmp::Ord, const N: usize> TemporalAdjacencySetPage<T, N> {
         range
     }
 
-    pub fn tuples_window<R: RangeBounds<i64>>(&self, w: R) -> impl Iterator<Item = (i64, &T)> {
+    pub fn tuples_window<R: RangeBounds<Time>>(&self, w: R) -> impl Iterator<Item = (Time, &T)> {
         let range = self.range_bounds_to_range(w);
         self.sorted_timestamps_index[range]
             .iter()
-            .map(move |idx| (self.timestamps[*idx], &self.values[*idx]))
+            .map(move |idx| (self.timestamps[*idx], self.values[*idx].into_inner()))
     }
 
     pub fn find_value(&self, value: &T) -> Option<&T> {
         match self
             .sorted_values_index
-            .binary_search_by(|probe| self.values[*probe].cmp(value))
+            .binary_search_by(|probe| self.values[*probe].into_inner().cmp(value))
         {
-            Ok(i) => Some(&self.values[self.sorted_values_index[i]]),
+            Ok(i) => Some(&self.values[self.sorted_values_index[i]].into_inner()),
             Err(_) => None,
         }
     }
 
-    fn find_last_timestamp_position(&self, t: i64) -> Result<usize, usize> {
+    fn find_last_timestamp_position(&self, t: Time) -> Result<usize, usize> {
         let res = self
             .sorted_timestamps_index
             .binary_search_by(|probe| self.timestamps[*probe].cmp(&t));
@@ -146,7 +191,7 @@ impl<T: std::cmp::Ord, const N: usize> TemporalAdjacencySetPage<T, N> {
         }
     }
 
-    fn find_first_timestamp_position(&self, t: i64) -> Result<usize, usize> {
+    fn find_first_timestamp_position(&self, t: Time) -> Result<usize, usize> {
         let res = self
             .sorted_timestamps_index
             .binary_search_by(|probe| self.timestamps[*probe].cmp(&t));
@@ -177,13 +222,13 @@ impl<T: std::cmp::Ord, const N: usize> TemporalAdjacencySetPage<T, N> {
         w: R,
         source: &T,
         prefix: F,
-    ) -> Box<dyn Iterator<Item = (i64, &T)> + '_>
+    ) -> Box<dyn Iterator<Item = (Time, &T)> + '_>
     where
         F: Fn(&T) -> bool + 'a,
     {
         match self
             .sorted_values_index
-            .binary_search_by(|probe| self.values[*probe].cmp(source))
+            .binary_search_by(|probe| self.values[*probe].into_inner().cmp(source))
         {
             Ok(i) | Err(i) => {
                 // the Err is temporary, we could make the page aware of the source vertex
@@ -222,7 +267,7 @@ impl<T: std::cmp::Ord, const N: usize> TemporalAdjacencySetPage<T, N> {
                 Box::new(
                     self.sorted_timestamps_index[range]
                         .iter()
-                        .map(move |idx| (self.timestamps[*idx], &self.values[*idx]))
+                        .map(move |idx| (self.timestamps[*idx], self.values[*idx].into_inner()))
                         .filter(move |(_, v)| prefix(v)),
                 )
             }
@@ -260,7 +305,7 @@ mod vec_pages_tests {
     #[test]
     fn page_with_one_item_test_window_iterator() -> Result<(), PageError> {
         let mut page = TemporalAdjacencySetPage::<u64, 3>::new();
-        page.append(3, 3)?;
+        page.append_out(3, 3, 1)?;
 
         // the value is included in the window
         let actual = page.tuples_window(3..12).collect::<Vec<_>>();
@@ -278,8 +323,8 @@ mod vec_pages_tests {
     #[test]
     fn page_with_two_items_test_window_iterator() -> Result<(), PageError> {
         let mut page = TemporalAdjacencySetPage::<u64, 3>::new();
-        page.append(3, 3)?;
-        page.append(12, 1)?;
+        page.append_out(3, 3, 5)?;
+        page.append_out(12, 1, 7)?;
 
         // the first value is included in the window
         let actual = page.tuples_window(3..12).collect::<Vec<_>>();
@@ -306,11 +351,11 @@ mod vec_pages_tests {
     fn insert_two_items_check_page_is_full() -> Result<(), PageError> {
         let mut page = TemporalAdjacencySetPage::<u64, 2>::new();
 
-        page.append(2, 2)?;
+        page.append_out(2, 2, 3)?; // add edge *->2 at time 2 on where 2 is on page 3
 
         assert!(!page.is_full());
 
-        page.append(1, 1)?;
+        page.append_out(1, 1, 3)?;
 
         assert!(page.is_full());
         Ok(())
@@ -320,13 +365,16 @@ mod vec_pages_tests {
     fn iterate_values_times_tuples_in_sorted_order_by_time() -> Result<(), PageError> {
         let mut page = TemporalAdjacencySetPage::<u64, 3>::new();
 
-        page.append(9, 2)?;
-        page.append(12, 1)?;
-        page.append(0, 3)?;
+        page.append_out(9, 2, 4)?; // add edge * -> 9 at time 2 on page 4
+        page.append_out(12, 1, 5)?; // add edge * -> 12 at time 1 on page 5
+        page.append_out(0, 3, 8)?; // add edge * -> 0 at time 3 on page 8
 
         let pairs = page.tuples_by_timestamp().collect::<Vec<_>>();
 
-        assert_eq!(pairs, vec![(1, &12), (2, &9), (3, &0)]);
+        assert_eq!(
+            pairs,
+            vec![(1, 5, &12), (2, 4, &9), (3, 8, &0)]
+        );
         Ok(())
     }
 
@@ -334,13 +382,16 @@ mod vec_pages_tests {
     fn iterate_values_times_tuples_in_sorted_order_by_values() -> Result<(), PageError> {
         let mut page = TemporalAdjacencySetPage::<u64, 3>::new();
 
-        page.append(9, 2)?;
-        page.append(12, 1)?;
-        page.append(0, 3)?;
+        page.append_out(9, 2, 1)?;
+        page.append_out(12, 1, 2)?;
+        page.append_out(0, 3, 3)?;
 
         let pairs = page.tuples_sorted().collect::<Vec<_>>();
 
-        assert_eq!(pairs, vec![(3, &0), (2, &9), (1, &12)]);
+        assert_eq!(
+            pairs,
+            vec![(3, 3, &0), (2, 1, &9), (1, 2, &12)]
+        );
         Ok(())
     }
 
@@ -348,10 +399,10 @@ mod vec_pages_tests {
     fn a_vertex_with_no_entries_results_in_empty_adjacency_list() -> Result<(), PageError> {
         let mut page = TemporalAdjacencySetPage::<Triplet<u64, String>, 3>::new();
 
-        page.append(Triplet::new(2, 9, "friend".to_owned()), 1)?;
-        page.append(Triplet::new(2, 7, "co-worker".to_owned()), 3)?;
-        page.append(Triplet::new(3, 6, "friend".to_owned()), 2)?;
-        page.append(Triplet::new(2, 6, "friend".to_owned()), 2)?;
+        page.append_out(Triplet::new(2, 9, "friend".to_owned()), 1, 5)?; // add edge 2->9 at time 1, 9 is on page 5
+        page.append_out(Triplet::new(2, 7, "co-worker".to_owned()), 3, 8)?; // add edge 2->7 at time 3 7 is on page 8
+        page.append_out(Triplet::new(3, 6, "friend".to_owned()), 2, 2)?; // add edge 3->6 at time 2, 6 is on page 2
+        page.append_out(Triplet::new(2, 6, "friend".to_owned()), 2, 2)?; // add edge 2->6 at time 2, 6 is on page 2
 
         let pairs = page
             .tuples_window_for_source(1..22, &Triplet::prefix(&19), |t| t.source == 19)
@@ -366,10 +417,10 @@ mod vec_pages_tests {
     fn non_overlapping_time_interval_results_in_empty_adjacency_list() -> Result<(), PageError> {
         let mut page = TemporalAdjacencySetPage::<Triplet<u64, String>, 3>::new();
 
-        page.append(Triplet::new(2, 9, "friend".to_owned()), 1)?;
-        page.append(Triplet::new(2, 7, "co-worker".to_owned()), 3)?;
-        page.append(Triplet::new(3, 6, "friend".to_owned()), 2)?;
-        page.append(Triplet::new(2, 6, "friend".to_owned()), 2)?;
+        page.append_out(Triplet::new(2, 9, "friend".to_owned()), 1, 5)?;
+        page.append_out(Triplet::new(2, 7, "co-worker".to_owned()), 3, 8)?;
+        page.append_out(Triplet::new(3, 6, "friend".to_owned()), 2, 2)?;
+        page.append_out(Triplet::new(2, 6, "friend".to_owned()), 2, 2)?;
 
         let pairs = page
             .tuples_window_for_source(-13..1, &Triplet::prefix(&2), |t| t.source == 2)
@@ -386,10 +437,14 @@ mod vec_pages_tests {
         let source_n = 5;
 
         for i in 0..1000u32 {
-            let t: i64 = i.into();
+            let t: Time = i.into();
             let source: u64 = (i % source_n).into();
             let vertex: u64 = (i % 100).into();
-            page.append(Triplet::new(source, vertex, "friend".to_owned()), t)?;
+            page.append_out(
+                Triplet::new(source, vertex, "friend".to_owned()),
+                t,
+                3,
+            )?;
         }
 
         for source in 0..source_n {
@@ -414,10 +469,10 @@ mod vec_pages_tests {
     fn iterate_values_by_window_and_source() -> Result<(), PageError> {
         let mut page = TemporalAdjacencySetPage::<Triplet<u64, String>, 3>::new();
 
-        page.append(Triplet::new(1, 9, "friend".to_owned()), 1)?;
-        page.append(Triplet::new(1, 7, "co-worker".to_owned()), 3)?;
-        page.append(Triplet::new(2, 3, "friend".to_owned()), 2)?;
-        page.append(Triplet::new(1, 3, "friend".to_owned()), 2)?;
+        page.append_out(Triplet::new(1, 9, "friend".to_owned()), 1, 4)?;
+        page.append_out(Triplet::new(1, 7, "co-worker".to_owned()), 3, 5)?;
+        page.append_out(Triplet::new(2, 3, "friend".to_owned()), 2, 6)?;
+        page.append_out(Triplet::new(1, 3, "friend".to_owned()), 2, 6)?;
 
         // first we get all the tuples for the [2..3] window
         let pairs = page
@@ -462,9 +517,9 @@ mod vec_pages_tests {
     fn find_value() -> Result<(), PageError> {
         let mut page = TemporalAdjacencySetPage::<u64, 3>::new();
 
-        page.append(9, 2)?;
-        page.append(12, 1)?;
-        page.append(0, 3)?;
+        page.append_out(9, 2, 8)?;
+        page.append_out(12, 1, 7)?;
+        page.append_out(0, 3, 6)?;
 
         let value = page.find_value(&12);
 
@@ -474,5 +529,16 @@ mod vec_pages_tests {
 
         assert_eq!(value, None);
         Ok(())
+    }
+
+    #[test]
+    fn direction_order_first_out_then_in() {
+
+        let mut orders = vec![Direction::In(1), Direction::Out(2), Direction::In(3), Direction::Out(4), Direction::In(5), Direction::Out(6)];
+        orders.sort();
+
+        assert_eq!(orders, vec![Direction::Out(2), Direction::Out(4), Direction::Out(6), Direction::In(1), Direction::In(3), Direction::In(5)]);
+
+
     }
 }

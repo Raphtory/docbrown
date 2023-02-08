@@ -11,6 +11,7 @@ use arrow2::{
         Array, BooleanArray, ListArray, MutableListArray, MutablePrimitiveArray, PrimitiveArray,
         TryPush,
     },
+    chunk::Chunk,
     types::NativeType,
 };
 use itertools::izip;
@@ -152,6 +153,8 @@ where
     // need the label of the edge + the vertex on the other side
     // TODO: need the pointer to the edge properties page
     adj_list: ListArray<i32>,
+    // add the page where every one of the vertices in the adj_list is located
+    pages: ListArray<i32>,
     // these need to be the pointers to the pages where the other vertex is stored
     // adj_list_pointers: ListArray<i32>,
     timestamps: ListArray<i32>, // if we sort these do we need the sorted_timestamp_index?
@@ -162,17 +165,24 @@ impl<V> ImmutableArrowPage<V>
 where
     V: NativeType + Ord + PartialEq + Copy,
 {
+    pub fn as_chunk(&self) -> Chunk<Box<dyn Array>> {
+        Chunk::new(vec![self.vertex_id.to_boxed()])
+    }
+
     pub fn temporal_view(&self, w: Range<Time>) -> Self {
         let mut timestamps = MutableListArray::<i32, MutablePrimitiveArray<Time>>::new();
         let mut sorted_timestamps = MutableListArray::<i32, MutablePrimitiveArray<u16>>::new();
         let mut adj_list_mut = MutableListArray::<i32, MutablePrimitiveArray<V>>::new();
+        let mut pages_mut = MutableListArray::<i32, MutablePrimitiveArray<u32>>::new();
 
         izip!(
             self.adj_list.iter(),
             self.timestamps.iter(),
-            self.sorted_timestamps_index.iter()
+            self.sorted_timestamps_index.iter(),
+            self.pages.iter()
         )
-        .for_each(|(adj_list_opt, ts_opt, ts_index_opt)| {
+        .for_each(|(adj_list_opt, ts_opt, ts_index_opt, page_opt)| {
+
             if let Some(w) = temporal_index_range(ts_index_opt.clone(), ts_opt.clone(), &w) {
                 // using arrow2 compute binary function use the w range to select only the items that match the temporal index
 
@@ -182,9 +192,11 @@ where
                 let b = ts_opt.unwrap(); // this is because of the borrow checker
                 let ts = b.as_any().downcast_ref::<PrimitiveArray<Time>>().unwrap();
 
-
                 let c = adj_list_opt.unwrap(); // this is because of the borrow checker
                 let adj_list = c.as_any().downcast_ref::<PrimitiveArray<V>>().unwrap();
+
+                let d = page_opt.unwrap(); // this is because of the borrow checker
+                let page = d.as_any().downcast_ref::<PrimitiveArray<u32>>().unwrap();
 
                 let new_t_index = ts_index.slice(w.start, w.end);
 
@@ -196,11 +208,17 @@ where
                     }
                 }
 
-                let mut new_adj_vec: MutablePrimitiveArray<V> = MutablePrimitiveArray::<V>::with_capacity(new_t_index.len());
+                let mut new_adj_vec: MutablePrimitiveArray<V> =
+                    MutablePrimitiveArray::<V>::with_capacity(new_t_index.len());
+
+                let mut new_page_vec: MutablePrimitiveArray<u32> =
+                    MutablePrimitiveArray::<u32>::with_capacity(new_t_index.len());
+
                 for i in new_t_index.iter() {
                     if let Some(i) = i {
                         let j: usize = (*i).into();
                         new_adj_vec.push(Some(adj_list.values()[j]));
+                        new_page_vec.push(Some(page.values()[j]));
                     }
                 }
 
@@ -208,11 +226,15 @@ where
 
                 let new_t_index = rebuild_index(new_t.values().as_slice());
 
-
                 let new_adj_vec: PrimitiveArray<V> = new_adj_vec.into();
+                let new_page_vec: PrimitiveArray<u32> = new_page_vec.into();
 
                 adj_list_mut
                     .try_push(Some(new_adj_vec))
+                    .expect("could not push");
+
+                pages_mut
+                    .try_push(Some(new_page_vec))
                     .expect("could not push");
 
                 timestamps.try_push(Some(new_t)).expect("could not push");
@@ -228,6 +250,7 @@ where
             adj_list: adj_list_mut.into(),
             timestamps: timestamps.into(),
             sorted_timestamps_index: sorted_timestamps.into(),
+            pages: pages_mut.into(),
         }
     }
 }
@@ -240,23 +263,27 @@ where
 {
     fn from(page: TemporalAdjacencySetPage<(V, V, E), N>) -> Self {
         let mut vertex_ids = MutablePrimitiveArray::<V>::new();
+
         let mut timestamps = MutableListArray::<i32, MutablePrimitiveArray<i64>>::new();
         let mut sorted_timestamps = MutableListArray::<i32, MutablePrimitiveArray<u16>>::new();
 
         let mut cur: Option<V> = None;
 
         let mut adj_list = MutableListArray::<i32, MutablePrimitiveArray<V>>::new();
+        let mut pages = MutableListArray::<i32, MutablePrimitiveArray<u32>>::new();
 
         let mut cur_adj_list: Vec<Option<V>> = vec![];
+        let mut cur_pages: Vec<Option<u32>> = vec![];
         let mut cur_timestamps: Vec<Option<i64>> = vec![];
         let mut cur_sorted_timestamps: Vec<Option<u16>> = vec![];
 
         // this for loop should return the tuples in order sorted by src
         // so we create the adjacency list and the timestamps list
-        for (t, (src, dst, _)) in page.tuples_sorted() {
+        for (t, dst_page, (src, dst, _)) in page.tuples_sorted() {
             match cur.as_ref() {
                 Some(v) if v == src => {
                     cur_adj_list.push(Some(*dst));
+                    cur_pages.push(Some(dst_page));
                     cur_sorted_timestamps.push(Some(cur_timestamps.len().try_into().unwrap()));
                     cur_timestamps.push(Some(t));
                 }
@@ -267,6 +294,10 @@ where
                     let mut a = vec![];
                     std::mem::swap(&mut cur_adj_list, &mut a);
                     adj_list.try_push(Some(a)).unwrap();
+
+                    let mut a = vec![];
+                    std::mem::swap(&mut cur_pages, &mut a);
+                    pages.try_push(Some(a)).unwrap();
 
                     cur_sorted_timestamps.sort_by(|i_t1, i_t2| {
                         let i1: usize = i_t1.unwrap().try_into().unwrap();
@@ -285,6 +316,7 @@ where
                     sorted_timestamps.try_push(Some(a)).unwrap();
 
                     cur_adj_list.push(Some(*dst));
+                    cur_pages.push(Some(dst_page));
                     cur_sorted_timestamps.push(Some(cur_timestamps.len().try_into().unwrap()));
                     cur_timestamps.push(Some(t));
                 }
@@ -293,6 +325,7 @@ where
                     vertex_ids.try_push(Some(*src)).unwrap();
 
                     cur_adj_list.push(Some(*dst));
+                    cur_pages.push(Some(dst_page));
                     cur_sorted_timestamps.push(Some(cur_timestamps.len().try_into().unwrap()));
                     cur_timestamps.push(Some(t));
                 }
@@ -308,6 +341,7 @@ where
         });
 
         adj_list.try_push(Some(cur_adj_list)).unwrap();
+        pages.try_push(Some(cur_pages)).unwrap();
         timestamps.try_push(Some(cur_timestamps)).unwrap();
         sorted_timestamps
             .try_push(Some(cur_sorted_timestamps))
@@ -316,6 +350,7 @@ where
         Self {
             vertex_id: vertex_ids.into(),
             adj_list: adj_list.into(),
+            pages: pages.into(),
             timestamps: timestamps.into(),
             sorted_timestamps_index: sorted_timestamps.into(),
         }
@@ -336,10 +371,10 @@ mod arrow_page_tests {
     #[test]
     fn can_create_immutable_arrow_page_from_temporal_adjacency_set_page() {
         let mut page = TemporalAdjacencySetPage::<(u64, u64, u64), 4>::new();
-        page.append((1, 2, 5), 7).unwrap();
-        page.append((2, 3, 6), 2).unwrap();
-        page.append((1, 2, 7), 5).unwrap();
-        page.append((1, 4, 8), 1).unwrap();
+        page.append_out((1, 2, 5), 7, 3).unwrap();
+        page.append_out((2, 3, 6), 2, 4).unwrap();
+        page.append_out((1, 2, 7), 5, 3).unwrap();
+        page.append_out((1, 4, 8), 1, 4).unwrap();
         let _arrow_page: ImmutableArrowPage<u64> = page.into();
         println!("{:?}", _arrow_page);
     }
@@ -374,18 +409,18 @@ mod arrow_page_tests {
     #[test]
     fn can_have_temporal_view() {
         let mut page = TemporalAdjacencySetPage::<(u64, u64, u64), 4>::new();
-        page.append((1, 2, 5), 7).unwrap();
-        page.append((2, 3, 6), 2).unwrap();
-        page.append((1, 9, 7), 5).unwrap();
-        page.append((1, 4, 8), 1).unwrap();
+        page.append_out((1, 2, 5), 7, 3).unwrap();
+        page.append_out((2, 3, 6), 2, 4).unwrap();
+        page.append_out((1, 9, 7), 5, 3).unwrap();
+        page.append_out((1, 4, 8), 1, 4).unwrap();
         let _arrow_page: ImmutableArrowPage<u64> = page.into();
         // println!("{:?}", _arrow_page);
         let actual = _arrow_page.temporal_view(0..6);
 
         let mut page2 = TemporalAdjacencySetPage::<(u64, u64, u64), 4>::new();
-        page2.append((2, 3, 6), 2).unwrap();
-        page2.append((1, 9, 7), 5).unwrap();
-        page2.append((1, 4, 8), 1).unwrap();
+        page2.append_out((2, 3, 6), 2, 4).unwrap();
+        page2.append_out((1, 9, 7), 5, 3).unwrap();
+        page2.append_out((1, 4, 8), 1, 4).unwrap();
 
         let expected: ImmutableArrowPage<u64> = page2.into();
 
