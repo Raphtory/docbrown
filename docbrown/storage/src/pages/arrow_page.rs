@@ -7,16 +7,13 @@
 use std::ops::{Deref, Range};
 
 use arrow2::{
-    array::{
-        Array, BooleanArray, ListArray, MutableListArray, MutablePrimitiveArray, PrimitiveArray,
-        TryPush,
-    },
+    array::{Array, ListArray, MutableListArray, MutablePrimitiveArray, PrimitiveArray, TryPush},
     chunk::Chunk,
     types::NativeType,
 };
 use itertools::izip;
 
-use crate::Time;
+use crate::{graph::Direction, Time};
 
 use super::vec_page::TemporalAdjacencySetPage;
 
@@ -149,15 +146,28 @@ where
     V: NativeType,
 {
     vertex_id: PrimitiveArray<V>,
-    // need the location of the adjacency list of the vertex on the other side (page_id)
-    // need the label of the edge + the vertex on the other side
-    // TODO: need the pointer to the edge properties page
+    adj_list_out: ListArray<i32>,
+    adj_list_in: ListArray<i32>,
+
+    pages_out: ListArray<i32>,
+    pages_in: ListArray<i32>,
+
+    timestamps_out: ListArray<i32>,
+    timestamps_in: ListArray<i32>,
+
+    sorted_timestamps_index_out: ListArray<i32>,
+    sorted_timestamps_index_in: ListArray<i32>,
+}
+
+pub struct ImmutableArrowTemporalView<V>
+where
+    V: NativeType,
+{
+    w: Range<Time>,
+    vertex_id: PrimitiveArray<V>,
     adj_list: ListArray<i32>,
-    // add the page where every one of the vertices in the adj_list is located
     pages: ListArray<i32>,
-    // these need to be the pointers to the pages where the other vertex is stored
-    // adj_list_pointers: ListArray<i32>,
-    timestamps: ListArray<i32>, // if we sort these do we need the sorted_timestamp_index?
+    timestamps: ListArray<i32>,
     sorted_timestamps_index: ListArray<i32>,
 }
 
@@ -169,20 +179,43 @@ where
         Chunk::new(vec![self.vertex_id.to_boxed()])
     }
 
-    pub fn temporal_view(&self, w: Range<Time>) -> Self {
+    pub fn temporal_view(&self, w: Range<Time>, d: Direction) -> ImmutableArrowTemporalView<V> {
         let mut timestamps = MutableListArray::<i32, MutablePrimitiveArray<Time>>::new();
         let mut sorted_timestamps = MutableListArray::<i32, MutablePrimitiveArray<u16>>::new();
         let mut adj_list_mut = MutableListArray::<i32, MutablePrimitiveArray<V>>::new();
         let mut pages_mut = MutableListArray::<i32, MutablePrimitiveArray<u32>>::new();
 
+        let adj_list_iter = match d {
+            Direction::Outbound => &self.adj_list_out,
+            Direction::Inbound => &self.adj_list_in,
+            Direction::Both => todo!(),
+        };
+
+        let timestamps_iter = match d {
+            Direction::Outbound => &self.timestamps_out,
+            Direction::Inbound => &self.timestamps_in,
+            Direction::Both => todo!(),
+        };
+
+        let sorted_timestamps_index_iter = match d {
+            Direction::Outbound => &self.sorted_timestamps_index_out,
+            Direction::Inbound => &self.sorted_timestamps_index_in,
+            Direction::Both => todo!(),
+        };
+
+        let pages_iter = match d {
+            Direction::Outbound => &self.pages_out,
+            Direction::Inbound => &self.pages_in,
+            Direction::Both => todo!(),
+        };
+
         izip!(
-            self.adj_list.iter(),
-            self.timestamps.iter(),
-            self.sorted_timestamps_index.iter(),
-            self.pages.iter()
+            adj_list_iter.iter(),
+            timestamps_iter.iter(),
+            sorted_timestamps_index_iter.iter(),
+            pages_iter.iter()
         )
         .for_each(|(adj_list_opt, ts_opt, ts_index_opt, page_opt)| {
-
             if let Some(w) = temporal_index_range(ts_index_opt.clone(), ts_opt.clone(), &w) {
                 // using arrow2 compute binary function use the w range to select only the items that match the temporal index
 
@@ -245,7 +278,8 @@ where
             }
         });
 
-        Self {
+        ImmutableArrowTemporalView {
+            w,
             vertex_id: self.vertex_id.clone(),
             adj_list: adj_list_mut.into(),
             timestamps: timestamps.into(),
@@ -253,15 +287,17 @@ where
             pages: pages_mut.into(),
         }
     }
-}
 
-// generic From TemporaryAdjacencySetPage impl for ImmutableArrowPage
-impl<V, E, const N: usize> From<TemporalAdjacencySetPage<(V, V, E), N>> for ImmutableArrowPage<V>
-where
-    V: NativeType + Ord + PartialEq + Copy,
-    E: NativeType + Ord,
-{
-    fn from(page: TemporalAdjacencySetPage<(V, V, E), N>) -> Self {
+    fn extract_colums_adj_list<E: Ord, const N: usize>(
+        page: &TemporalAdjacencySetPage<(V, V, E), N>,
+        dir: Direction,
+    ) -> Option<(
+        PrimitiveArray<V>,
+        ListArray<i32>,
+        ListArray<i32>,
+        ListArray<i32>,
+        ListArray<i32>,
+    )> {
         let mut vertex_ids = MutablePrimitiveArray::<V>::new();
 
         let mut timestamps = MutableListArray::<i32, MutablePrimitiveArray<i64>>::new();
@@ -279,7 +315,13 @@ where
 
         // this for loop should return the tuples in order sorted by src
         // so we create the adjacency list and the timestamps list
-        for (t, dst_page, (src, dst, _)) in page.tuples_sorted() {
+        let iter = match dir {
+            Direction::Outbound => page.tuples_sorted_out(),
+            Direction::Inbound => page.tuples_sorted_in(),
+            _ => return None,
+        };
+
+        for (t, dst_page, (src, dst, _)) in iter {
             match cur.as_ref() {
                 Some(v) if v == src => {
                     cur_adj_list.push(Some(*dst));
@@ -347,12 +389,39 @@ where
             .try_push(Some(cur_sorted_timestamps))
             .unwrap();
 
+        Some((
+            vertex_ids.into(),
+            adj_list.into(),
+            pages.into(),
+            timestamps.into(),
+            sorted_timestamps.into(),
+        ))
+    }
+}
+
+impl<V, E, const N: usize> From<TemporalAdjacencySetPage<(V, V, E), N>> for ImmutableArrowPage<V>
+where
+    V: NativeType + Ord + PartialEq + Copy,
+    E: NativeType + Ord,
+{
+    fn from(page: TemporalAdjacencySetPage<(V, V, E), N>) -> Self {
+        let (vertex_id, adj_list_out, pages_out, timestamps_out, sorted_timestamps_out) =
+            Self::extract_colums_adj_list(&page, Direction::Outbound)
+                .expect("Error extracting columns from TemporalAdjacencySetPage");
+        let (_, adj_list_in, pages_in, timestamps_in, sorted_timestamps_in) =
+            Self::extract_colums_adj_list(&page, Direction::Inbound)
+                .expect("Error extracting columns from TemporalAdjacencySetPage");
+
         Self {
-            vertex_id: vertex_ids.into(),
-            adj_list: adj_list.into(),
-            pages: pages.into(),
-            timestamps: timestamps.into(),
-            sorted_timestamps_index: sorted_timestamps.into(),
+            vertex_id,
+            adj_list_out,
+            pages_out,
+            timestamps_out,
+            sorted_timestamps_index_out: sorted_timestamps_out,
+            adj_list_in,
+            pages_in,
+            timestamps_in,
+            sorted_timestamps_index_in: sorted_timestamps_in,
         }
     }
 }
@@ -414,8 +483,8 @@ mod arrow_page_tests {
         page.append_out((1, 9, 7), 5, 3).unwrap();
         page.append_out((1, 4, 8), 1, 4).unwrap();
         let _arrow_page: ImmutableArrowPage<u64> = page.into();
-        // println!("{:?}", _arrow_page);
-        let actual = _arrow_page.temporal_view(0..6);
+
+        let actual = _arrow_page.temporal_view(0..6, Direction::Outbound);
 
         let mut page2 = TemporalAdjacencySetPage::<(u64, u64, u64), 4>::new();
         page2.append_out((2, 3, 6), 2, 4).unwrap();
@@ -424,6 +493,9 @@ mod arrow_page_tests {
 
         let expected: ImmutableArrowPage<u64> = page2.into();
 
-        assert_eq!(actual, expected);
+        assert_eq!(actual.adj_list, expected.adj_list_out);
+        assert_eq!(actual.pages, expected.pages_out);
+        assert_eq!(actual.timestamps, expected.timestamps_out);
+        assert_eq!(actual.sorted_timestamps_index, expected.sorted_timestamps_index_out);
     }
 }

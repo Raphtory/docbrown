@@ -1,4 +1,7 @@
-use std::{ops::{Range, RangeBounds}, cmp::Ordering};
+use std::{
+    cmp::Ordering,
+    ops::{Range, RangeBounds},
+};
 
 use crate::Time;
 
@@ -10,7 +13,7 @@ enum Direction<V> {
     In(V),
 }
 
-impl <T:PartialOrd> PartialOrd for Direction<T> {
+impl<T: PartialOrd> PartialOrd for Direction<T> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         match (self, other) {
             (Direction::Out(a), Direction::Out(b)) => a.partial_cmp(b),
@@ -122,6 +125,34 @@ impl<T: std::cmp::Ord, const N: usize> TemporalAdjacencySetPage<T, N> {
                 self.values[*idx].into_inner(),
             )
         })
+    }
+
+    pub fn tuples_sorted_out<'a>(&'a self) -> Box<dyn Iterator<Item = (Time, PageId, &'a T)> + 'a> {
+        let iter = self.sorted_values_index
+            .iter()
+            .filter(|idx| matches!(self.values[**idx], Direction::Out(_)))
+            .map(move |idx| {
+                (
+                    self.timestamps[*idx],
+                    self.pages[*idx],
+                    self.values[*idx].into_inner(),
+                )
+            });
+        Box::new(iter)
+    }
+
+    pub fn tuples_sorted_in<'a>(&'a self) -> Box<dyn Iterator<Item = (Time, PageId, &'a T)> + 'a> {
+        let iter = self.sorted_values_index
+            .iter()
+            .filter(|idx| matches!(self.values[**idx], Direction::In(_)))
+            .map(move |idx| {
+                (
+                    self.timestamps[*idx],
+                    self.pages[*idx],
+                    self.values[*idx].into_inner(),
+                )
+            });
+        Box::new(iter)
     }
 
     fn range_bounds_to_range<R: RangeBounds<Time>>(&self, w: R) -> Range<usize> {
@@ -371,10 +402,7 @@ mod vec_pages_tests {
 
         let pairs = page.tuples_by_timestamp().collect::<Vec<_>>();
 
-        assert_eq!(
-            pairs,
-            vec![(1, 5, &12), (2, 4, &9), (3, 8, &0)]
-        );
+        assert_eq!(pairs, vec![(1, 5, &12), (2, 4, &9), (3, 8, &0)]);
         Ok(())
     }
 
@@ -388,10 +416,7 @@ mod vec_pages_tests {
 
         let pairs = page.tuples_sorted().collect::<Vec<_>>();
 
-        assert_eq!(
-            pairs,
-            vec![(3, 3, &0), (2, 1, &9), (1, 2, &12)]
-        );
+        assert_eq!(pairs, vec![(3, 3, &0), (2, 1, &9), (1, 2, &12)]);
         Ok(())
     }
 
@@ -440,11 +465,7 @@ mod vec_pages_tests {
             let t: Time = i.into();
             let source: u64 = (i % source_n).into();
             let vertex: u64 = (i % 100).into();
-            page.append_out(
-                Triplet::new(source, vertex, "friend".to_owned()),
-                t,
-                3,
-            )?;
+            page.append_out(Triplet::new(source, vertex, "friend".to_owned()), t, 3)?;
         }
 
         for source in 0..source_n {
@@ -462,6 +483,62 @@ mod vec_pages_tests {
                 assert!(time < 1000);
             }
         }
+        Ok(())
+    }
+
+    #[test]
+    fn append_out_and_in() -> Result<(), PageError> {
+        let mut page1 = TemporalAdjacencySetPage::<Triplet<u64, String>, 3>::new();
+        let mut page2 = TemporalAdjacencySetPage::<Triplet<u64, String>, 3>::new();
+
+        // append 3 outbound edges and reference page 2
+        page1.append_out(Triplet::new(2, 7, "co-worker".to_owned()), 3, 2)?;
+        page1.append_out(Triplet::new(3, 6, "friend".to_owned()), 2, 2)?;
+        page1.append_in(Triplet::new(9, 2, "friend".to_owned()), 4, 2)?;
+
+        page2.append_in(Triplet::new(7, 2, "co-worker".to_owned()), 3, 1)?;
+        page2.append_in(Triplet::new(6, 3, "friend".to_owned()), 2, 1)?;
+        page2.append_out(Triplet::new(9, 2, "friend".to_owned()), 4, 1)?;
+
+        let triplets = page1.tuples_sorted_out().collect::<Vec<_>>();
+
+        assert_eq!(
+            triplets,
+            vec![
+                (3, 2, &Triplet::new(2, 7, "co-worker".to_owned())),
+                (2, 2, &Triplet::new(3, 6, "friend".to_owned())),
+            ]
+        );
+
+
+        let triplets = page1.tuples_sorted_in().collect::<Vec<_>>();
+
+        assert_eq!(
+            triplets,
+            vec![
+                (4, 2, &Triplet::new(9, 2, "friend".to_owned())),
+            ]
+        );
+
+        let triplets = page2.tuples_sorted_out().collect::<Vec<_>>();
+
+        assert_eq!(
+            triplets,
+            vec![
+                (4, 1, &Triplet::new(9, 2, "friend".to_owned())),
+            ]
+        );
+
+        let triplets = page2.tuples_sorted_in().collect::<Vec<_>>();
+
+        assert_eq!(
+            triplets,
+            vec![
+                (2, 1, &Triplet::new(6, 3, "friend".to_owned())),
+                (3, 1, &Triplet::new(7, 2, "co-worker".to_owned())),
+            ]
+        );
+
         Ok(())
     }
 
@@ -533,12 +610,26 @@ mod vec_pages_tests {
 
     #[test]
     fn direction_order_first_out_then_in() {
-
-        let mut orders = vec![Direction::In(1), Direction::Out(2), Direction::In(3), Direction::Out(4), Direction::In(5), Direction::Out(6)];
+        let mut orders = vec![
+            Direction::In(1),
+            Direction::Out(2),
+            Direction::In(3),
+            Direction::Out(4),
+            Direction::In(5),
+            Direction::Out(6),
+        ];
         orders.sort();
 
-        assert_eq!(orders, vec![Direction::Out(2), Direction::Out(4), Direction::Out(6), Direction::In(1), Direction::In(3), Direction::In(5)]);
-
-
+        assert_eq!(
+            orders,
+            vec![
+                Direction::Out(2),
+                Direction::Out(4),
+                Direction::Out(6),
+                Direction::In(1),
+                Direction::In(3),
+                Direction::In(5)
+            ]
+        );
     }
 }
