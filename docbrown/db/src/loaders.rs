@@ -123,16 +123,26 @@ pub mod csv {
             Ok(())
         } 
 
+
         pub fn load_file_into_graph_with_record<F>(
             &self,
             g: &GraphDB,
             loader: &F) -> Result<(), CsvErr>
         where
             F: Fn(&csv::StringRecord, &GraphDB) -> (),
-
             {
-                todo!()
+                let f = File::open(&self.path).expect(&format!("Can't open file {:?}", self.path));
+                let mut csv_gz_reader = csv::Reader::from_reader(BufReader::new(GzDecoder::new(f)));
+        
+                let mut rec = csv::StringRecord::new();
+
+                while csv_gz_reader.read_record(&mut rec).unwrap() {
+                    loader(&rec, g);
+                }
+            
+                Ok(())
             }
+            
 
         fn csv_reader(&self, file_path: PathBuf) -> csv::Reader<Box<dyn io::Read>> {
             let is_gziped = file_path
