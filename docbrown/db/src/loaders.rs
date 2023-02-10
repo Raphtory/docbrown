@@ -20,14 +20,29 @@ pub mod csv {
     pub struct CsvLoader {
         path: PathBuf,
         regex_filter: Option<Regex>,
+        header: bool,
+        delimiter: u8
     }
+
 
     impl CsvLoader {
         pub fn new<P: Into<PathBuf>>(p: P) -> Self {
             Self {
                 path: p.into(),
                 regex_filter: None,
+                header: false,
+                delimiter: b','
             }
+        }
+
+        pub fn set_header(mut self, h: bool) -> Self {
+            self.header = h;
+            self
+        }
+
+        pub fn set_delimiter(mut self, d: u8) -> Self {
+            self.delimiter = d;
+            self
         }
 
         pub fn with_filter(mut self, r: Regex) -> Self {
@@ -132,7 +147,10 @@ pub mod csv {
             F: Fn(&csv::StringRecord, &GraphDB) -> (),
             {
                 let f = File::open(&self.path).expect(&format!("Can't open file {:?}", self.path));
-                let mut csv_gz_reader = csv::Reader::from_reader(BufReader::new(GzDecoder::new(f)));
+                let mut csv_gz_reader = csv::ReaderBuilder::new()
+                .has_headers(self.header)
+                .delimiter(self.delimiter)
+                .from_reader(Box::new(BufReader::new(GzDecoder::new(f))));
         
                 let mut rec = csv::StringRecord::new();
 
@@ -154,11 +172,11 @@ pub mod csv {
             let f = File::open(&file_path).expect(&format!("Can't open file {file_path:?}"));
             if is_gziped {
                 csv::ReaderBuilder::new()
-                    .has_headers(false)
+                    .has_headers(self.header)
                     .from_reader(Box::new(BufReader::new(GzDecoder::new(f))))
             } else {
                 csv::ReaderBuilder::new()
-                    .has_headers(false)
+                    .has_headers(self.header)
                     .from_reader(Box::new(f))
             }
         }
