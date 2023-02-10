@@ -1,9 +1,10 @@
 use crate::graph::TemporalGraph;
 use crate::graph::VertexView;
-use crate::state::StateVec;
+use crate::state::{State, StateVec};
 use crate::tadjset::AdjEdge;
 use crate::Direction;
 use polars::prelude::*;
+use polars_lazy::prelude::*;
 use std::fmt::Formatter;
 use std::ops::Range;
 use std::{error, fmt};
@@ -21,7 +22,7 @@ impl fmt::Display for GraphError {
 
 impl error::Error for GraphError {}
 
-type State = DataFrame;
+// type State = DataFrame;
 
 pub struct Vertices<'a> {
     graph_view: &'a GraphView<'a>,
@@ -76,7 +77,7 @@ pub trait VertexViewIteratorMethods<'a, I>
 where
     I: VertexViewIteratorMethods<'a, I>,
 {
-    type ItemType<T: 'a>: 'a;
+    type ItemType<T: 'a>;
     fn out_neighbours(self) -> Box<IteratorWithLifetime<'a, I>>;
     fn in_neighbours(self) -> Box<IteratorWithLifetime<'a, I>>;
     fn neighbours(self) -> Box<IteratorWithLifetime<'a, I>>;
@@ -84,7 +85,7 @@ where
     fn out_degree(self) -> Self::ItemType<usize>;
     fn in_degree(self) -> Self::ItemType<usize>;
     fn degree(self) -> Self::ItemType<usize>;
-    fn get_state(self, name: &'a str) -> Self::ItemType<AnyValue<'a>>;
+    fn with_state<A: Clone>(self, state: &'a StateVec<A>) -> Self::ItemType<A>;
 }
 
 impl<'a> VertexViewIteratorMethods<'a, LocalVertexView<'a>> for LocalVertexView<'a> {
@@ -121,8 +122,8 @@ impl<'a> VertexViewIteratorMethods<'a, LocalVertexView<'a>> for LocalVertexView<
         LocalVertexView::degree(&self)
     }
 
-    fn get_state(self, name: &'a str) -> Self::ItemType<AnyValue<'a>> {
-        LocalVertexView::get_state(&self, name)
+    fn with_state<A: Clone>(self, state: &'a StateVec<A>) -> Self::ItemType<A> {
+        state.get(&self).clone()
     }
 }
 
@@ -168,10 +169,10 @@ where
         Box::new(inner.map(|v| v.degree()))
     }
 
-    fn get_state(self, name: &'a str) -> Self::ItemType<AnyValue<'a>> {
+    fn with_state<A: Clone>(self, state: &'a StateVec<A>) -> Self::ItemType<A> {
         let inner = self.into_iter();
 
-        Box::new(inner.map(move |v: R| v.get_state(name)))
+        Box::new(inner.map(move |v: R| v.with_state(state)))
     }
 }
 
@@ -215,10 +216,11 @@ impl<'a> Iterator for OwnedNeighboursIterator<'a> {
     }
 }
 
+type Properties = DataFrame;
 pub struct GraphView<'a> {
     graph: &'a TemporalGraph,
     window: &'a Range<i64>,
-    state: State,
+    state: Properties,
 }
 
 pub struct LocalVertexView<'a> {
@@ -346,7 +348,7 @@ impl<'a> GraphView<'a> {
         GraphView {
             graph,
             window,
-            state: State::default(),
+            state: Properties::default(),
         }
     }
 
@@ -366,10 +368,7 @@ impl<'a> GraphView<'a> {
         }
     }
 
-    pub fn with_state<S>(&self, name: &str, value: S) -> GraphView<'a>
-    where
-        S: IntoSeries,
-    {
+    pub fn with_state(&self, name: &str, value: Series) -> GraphView<'a> {
         let s = Series::new(name, value);
 
         let new_state = self.state.clone().with_column(s).unwrap().to_owned();
@@ -478,12 +477,13 @@ mod graph_view_tests {
         let view = GraphView::new(&g, &(0..2));
 
         let view = view.with_state("ids", view.ids());
+        let state = view.new_state_from(view.vertices().id()).unwrap();
 
         let out_out_ids = view
             .vertices()
             .out_neighbours()
             .out_neighbours()
-            .get_state("ids")
+            .with_state(&state)
             .map(|it| it.map(|it| it.collect::<Vec<_>>()).collect::<Vec<_>>())
             .collect::<Vec<_>>();
 

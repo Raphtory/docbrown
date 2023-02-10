@@ -1,7 +1,8 @@
 use crate::graphview::LocalVertexView;
+use std::slice::Iter;
 
 pub struct StateVec<T> {
-    values: Vec<T>,
+    pub(crate) values: Vec<T>,
 }
 
 pub trait State<T> {
@@ -28,6 +29,10 @@ impl<T> StateVec<T> {
     pub(crate) fn len(&self) -> usize {
         self.values.len()
     }
+
+    pub fn iter(&self) -> Iter<'_, T> {
+        self.values.iter()
+    }
 }
 
 impl<T> FromIterator<T> for StateVec<T> {
@@ -44,9 +49,17 @@ impl<T> From<Vec<T>> for StateVec<T> {
     }
 }
 
+impl<T> From<StateVec<T>> for Vec<T> {
+    fn from(value: StateVec<T>) -> Self {
+        value.values
+    }
+}
+
 impl<T: Clone> Clone for StateVec<T> {
     fn clone(&self) -> Self {
-        Self{values: self.values.clone()}
+        Self {
+            values: self.values.clone(),
+        }
     }
 }
 
