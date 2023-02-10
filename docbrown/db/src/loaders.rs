@@ -121,7 +121,18 @@ pub mod csv {
             }
 
             Ok(())
-        }
+        } 
+
+        pub fn load_file_into_graph_with_record<F>(
+            &self,
+            g: &GraphDB,
+            loader: &F) -> Result<(), CsvErr>
+        where
+            F: Fn(&csv::StringRecord, &GraphDB) -> (),
+
+            {
+                todo!()
+            }
 
         fn csv_reader(&self, file_path: PathBuf) -> csv::Reader<Box<dyn io::Read>> {
             let is_gziped = file_path
