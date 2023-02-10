@@ -10,6 +10,8 @@ pub mod graph {
         ops::Range,
     };
 
+    use arrow2::{chunk::Chunk, array::Array};
+
     use crate::{
         page_manager::{Location, PageManager, PageManagerError, PageManagerStats, VecPageManager},
         pages::{self, CachedPage, Page, PageError},
@@ -123,6 +125,26 @@ pub mod graph {
                     .map(|(_, t)| (t.vertex.as_ref().unwrap(), t.edge.as_ref().unwrap()))
             });
             Some(Box::new(iter))
+        }
+
+        // function that takes a window and returns an iterator over all the adjacency lists in the graph
+        // the item of the iterator is a Chunk<dyn Array> where the first array is the source vertex
+        // there is also a colum with a page becuse a vertex can have it's own adjacency list
+        // spread over multiple pages
+        // do we force the all the adjacency lists of the vertex to be in the same chunk?
+        // vertex_id, page_id, adjacency_list_out, adjacency_list_in
+        // 1, 1, [1, 2, 3], [4, 5, 6]
+        // 1, 2, [7, 8, 9], [10, 11, 12]
+        // 3, 1, [13, 14, 15], [16, 17, 18]
+        // 1, 5, [19, 20, 21], [22, 23, 24]
+        //
+        // degree of all vertices over a window
+        // over all the pages in the temporal index for that window
+        // group by vertex id
+        // count the number of entries in the adjacency lists
+
+        pub fn adjacency_list_window_iter(&self, w: Range<Time>, excludes: Vec<u64>) -> Box<dyn Iterator<Item = Chunk<Box<dyn Array>>> + '_> {
+            todo!()
         }
 
         pub fn add_edge(&mut self, t: Time, src: V, dst: V, e: E) -> Result<(), GraphError> {
