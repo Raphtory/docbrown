@@ -115,6 +115,7 @@ impl<P: Page> PageManager for VecPageManager<P> {
                 Ok(location) => Ok(location),
                 Err(new_page) => {
                     let loc = Location::new(new_page.page_id(), 0);
+                    self.free_pages.insert(new_page.page_id());
                     self.pages.push(new_page);
                     Ok(loc)
                 }

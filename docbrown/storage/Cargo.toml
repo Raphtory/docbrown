@@ -9,7 +9,7 @@ edition = "2021"
 
 # polars-core = "0.26"
 arrow2 = { path = "../../arrow2",features = ["compute", "io_ipc"] }
-tokio = { version = "1", features = ["full"] }
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros","sync"] }
 itertools = "0.10"
 
 [dev-dependencies]
