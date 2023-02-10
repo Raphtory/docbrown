@@ -7,7 +7,7 @@ type PageId = usize;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Location {
-    page_id: PageId,
+    pub(crate) page_id: PageId,
     offset: usize, // FIXME: this could probably be a lot smaller than 2^64
 }
 
@@ -39,6 +39,11 @@ pub trait PageManager {
     ) -> Result<Location, PageManagerError>;
 
     fn get_page_ref(&mut self, location: &Location) -> Option<PageRef<'_, Self::PageItem, Self>>
+    where
+        Self: Sized;
+
+
+    fn get_pages_ref(&mut self, src_location: &Location, dst_location: &Location) -> (Option<PageRef<'_, Self::PageItem, Self>>, Option<PageRef<'_, Self::PageItem, Self>>)
     where
         Self: Sized;
 
@@ -183,6 +188,12 @@ impl<P: Page> PageManager for VecPageManager<P> {
     ) -> Option<PageIter<'_, Self::PageItem, VecPageManager<Self::PageItem>>> {
         let _ = self.get_page(page_idx.page_id)?;
         Some(PageIter::new(self, page_idx.page_id))
+    }
+
+    fn get_pages_ref(&mut self, src_location: &Location, dst_location: &Location) -> (Option<PageRef<'_, Self::PageItem, Self>>, Option<PageRef<'_, Self::PageItem, Self>>)
+    where
+        Self: Sized {
+        todo!()
     }
 }
 

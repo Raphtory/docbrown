@@ -3,7 +3,7 @@ use std::{
     ops::{Range, RangeBounds},
 };
 
-use crate::Time;
+use crate::{Time, graph};
 
 use super::{PageData, PageError, PageId};
 
@@ -251,6 +251,7 @@ impl<T: std::cmp::Ord, const N: usize> TemporalAdjacencySetPage<T, N> {
     pub fn tuples_window_for_source<'a, R: RangeBounds<Time>, F>(
         &'a self,
         w: R,
+        dir: graph::Direction,
         source: &T,
         prefix: F,
     ) -> Box<dyn Iterator<Item = (Time, &T)> + '_>
@@ -294,10 +295,16 @@ impl<T: std::cmp::Ord, const N: usize> TemporalAdjacencySetPage<T, N> {
 
                 let range = start..r.end;
 
-                // println!("reduced range: {:?} i: {i}", range);
                 Box::new(
                     self.sorted_timestamps_index[range]
                         .iter()
+                        .filter(move |idx|{
+                            match dir{
+                                graph::Direction::Inbound => matches!(self.values[**idx], Direction::In(_)),
+                                graph::Direction::Outbound => matches!(self.values[**idx], Direction::Out(_)),
+                                graph::Direction::Both => true,
+                            }
+                        })
                         .map(move |idx| (self.timestamps[*idx], self.values[*idx].into_inner()))
                         .filter(move |(_, v)| prefix(v)),
                 )
@@ -430,7 +437,7 @@ mod vec_pages_tests {
         page.append_out(Triplet::new(2, 6, "friend".to_owned()), 2, 2)?; // add edge 2->6 at time 2, 6 is on page 2
 
         let pairs = page
-            .tuples_window_for_source(1..22, &Triplet::prefix(&19), |t| t.source == 19)
+            .tuples_window_for_source(1..22, graph::Direction::Outbound, &Triplet::prefix(&19), |t| t.source == 19)
             .map(|(time, triplet)| (time, triplet.clone()))
             .collect::<Vec<_>>();
 
@@ -448,7 +455,7 @@ mod vec_pages_tests {
         page.append_out(Triplet::new(2, 6, "friend".to_owned()), 2, 2)?;
 
         let pairs = page
-            .tuples_window_for_source(-13..1, &Triplet::prefix(&2), |t| t.source == 2)
+            .tuples_window_for_source(-13..1, graph::Direction::Outbound,&Triplet::prefix(&2), |t| t.source == 2)
             .map(|(time, triplet)| (time, triplet.clone()))
             .collect::<Vec<_>>();
 
@@ -471,7 +478,7 @@ mod vec_pages_tests {
         for source in 0..source_n {
             let source: u64 = source.into();
             let pairs = page
-                .tuples_window_for_source(0..1000, &Triplet::prefix(&source), |t| {
+                .tuples_window_for_source(0..1000, graph::Direction::Outbound, &Triplet::prefix(&source), |t| {
                     t.source == source
                 })
                 .map(|(time, triplet)| (time, triplet.clone()))
@@ -568,7 +575,7 @@ mod vec_pages_tests {
 
         // second we get all the tuples for the [2..3] window fir the source 1 prefix
         let pairs = page
-            .tuples_window_for_source(2..=3, &Triplet::prefix(&1), |t| t.source == 1)
+            .tuples_window_for_source(2..=3, graph::Direction::Outbound, &Triplet::prefix(&1), |t| t.source == 1)
             .map(|(time, triplet)| (time, triplet.clone()))
             .collect::<Vec<_>>();
 
@@ -582,7 +589,7 @@ mod vec_pages_tests {
 
         // third we get all the tuples for the [2..3] window fir the source 2 prefix
         let pairs = page
-            .tuples_window_for_source(2..=3, &Triplet::prefix(&2), |t| t.source == 2)
+            .tuples_window_for_source(2..=3, graph::Direction::Outbound, &Triplet::prefix(&2), |t| t.source == 2)
             .map(|(time, triplet)| (time, triplet.clone()))
             .collect::<Vec<_>>();
 
