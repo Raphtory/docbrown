@@ -2,18 +2,19 @@
 #[macro_use(quickcheck)]
 extern crate quickcheck_macros;
 
+mod adj;
+mod algo;
 mod bitset;
 pub mod graph;
+mod graphview;
 pub mod lsm;
-mod sorted_vec_map;
-mod adj;
 mod misc;
 mod props;
+mod sorted_vec_map;
+mod state;
 mod tadjset;
 mod tcell;
 pub mod tpartition;
-mod algo;
-mod graphview;
 
 /// Specify the direction of the neighbours
 #[derive(Clone, Copy, PartialEq)]
@@ -33,4 +34,3 @@ pub enum Prop {
     F32(f32),
     F64(f64),
 }
-

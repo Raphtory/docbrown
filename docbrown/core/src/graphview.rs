@@ -1,28 +1,41 @@
-use std::ops::{Range};
-use crate::graph::{TemporalGraph};
+use crate::graph::TemporalGraph;
 use crate::graph::VertexView;
-use polars::prelude::*;
-use crate::Direction;
+use crate::state::StateVec;
 use crate::tadjset::AdjEdge;
+use crate::Direction;
+use polars::prelude::*;
+use std::fmt::Formatter;
+use std::ops::Range;
+use std::{error, fmt};
+
+#[derive(Debug, Clone)]
+pub enum GraphError {
+    StateSizeError,
+}
+
+impl fmt::Display for GraphError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "invalid graph operation: {:?}", self)
+    }
+}
+
+impl error::Error for GraphError {}
 
 type State = DataFrame;
 
-
 pub struct Vertices<'a> {
-    graph_view: &'a GraphView<'a>
+    graph_view: &'a GraphView<'a>,
 }
-
 
 impl<'a> Vertices<'a> {
     fn new(graph_view: &'a GraphView) -> Vertices<'a> {
-        Vertices { graph_view}
+        Vertices { graph_view }
     }
 
     pub fn iter(&'a self) -> VertexIterator<'a> {
         self.graph_view.iter_vertices()
     }
 }
-
 
 impl<'a> IntoIterator for Vertices<'a> {
     type Item = LocalVertexView<'a>;
@@ -32,7 +45,6 @@ impl<'a> IntoIterator for Vertices<'a> {
         self.graph_view.iter_vertices()
     }
 }
-
 
 impl<'a> IntoIterator for &'a Vertices<'a> {
     type Item = LocalVertexView<'a>;
@@ -45,28 +57,27 @@ impl<'a> IntoIterator for &'a Vertices<'a> {
 
 pub struct VertexIterator<'a> {
     graph_view: &'a GraphView<'a>,
-    inner: Box<dyn Iterator<Item=VertexView<'a, TemporalGraph>> +'a>
+    inner: Box<dyn Iterator<Item = VertexView<'a, TemporalGraph>> + 'a>,
 }
-
 
 impl<'a> Iterator for VertexIterator<'a> {
     type Item = LocalVertexView<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.inner.next().map(
-            |v| LocalVertexView::new(self.graph_view, &v)
-        )
+        self.inner
+            .next()
+            .map(|v| LocalVertexView::new(self.graph_view, &v))
     }
 }
-
 
 type IteratorWithLifetime<'a, I> = dyn Iterator<Item = I> + 'a;
 
 pub trait VertexViewIteratorMethods<'a, I>
-where I: VertexViewIteratorMethods<'a, I>
+where
+    I: VertexViewIteratorMethods<'a, I>,
 {
     type ItemType<T: 'a>: 'a;
-    fn out_neighbours(self) ->  Box<IteratorWithLifetime<'a, I>>;
+    fn out_neighbours(self) -> Box<IteratorWithLifetime<'a, I>>;
     fn in_neighbours(self) -> Box<IteratorWithLifetime<'a, I>>;
     fn neighbours(self) -> Box<IteratorWithLifetime<'a, I>>;
     fn id(self) -> Self::ItemType<u64>;
@@ -78,7 +89,7 @@ where I: VertexViewIteratorMethods<'a, I>
 
 impl<'a> VertexViewIteratorMethods<'a, LocalVertexView<'a>> for LocalVertexView<'a> {
     type ItemType<T: 'a> = T;
-    fn out_neighbours(self) -> Box<IteratorWithLifetime<'a, LocalVertexView<'a>>>  {
+    fn out_neighbours(self) -> Box<IteratorWithLifetime<'a, LocalVertexView<'a>>> {
         Box::new(self.into_out_neighbours())
     }
 
@@ -115,17 +126,16 @@ impl<'a> VertexViewIteratorMethods<'a, LocalVertexView<'a>> for LocalVertexView<
     }
 }
 
-
 impl<'a, T, R> VertexViewIteratorMethods<'a, Box<IteratorWithLifetime<'a, R>>> for T
 where
     T: IntoIterator<Item = R> + 'a,
-    R: VertexViewIteratorMethods<'a, R> + 'a
+    R: VertexViewIteratorMethods<'a, R> + 'a,
 {
     type ItemType<U: 'a> = Box<dyn Iterator<Item = R::ItemType<U>> + 'a>;
 
     fn out_neighbours(self) -> Box<IteratorWithLifetime<'a, Box<IteratorWithLifetime<'a, R>>>> {
         let inner = self.into_iter();
-            Box::new(inner.map(|v| v.out_neighbours()))
+        Box::new(inner.map(|v| v.out_neighbours()))
     }
 
     fn in_neighbours(self) -> Box<IteratorWithLifetime<'a, Box<IteratorWithLifetime<'a, R>>>> {
@@ -160,6 +170,7 @@ where
 
     fn get_state(self, name: &'a str) -> Self::ItemType<AnyValue<'a>> {
         let inner = self.into_iter();
+
         Box::new(inner.map(move |v: R| v.get_state(name)))
     }
 }
@@ -168,65 +179,67 @@ pub trait NeighboursIteratorInterface {}
 
 pub struct NeighboursIterator<'a> {
     vertex: &'a LocalVertexView<'a>,
-    inner: Box<dyn Iterator<Item=(usize, AdjEdge)> + 'a>
+    inner: Box<dyn Iterator<Item = (usize, AdjEdge)> + 'a>,
 }
 
 pub struct OwnedNeighboursIterator<'a> {
     vertex: LocalVertexView<'a>,
-    inner: Box<dyn Iterator<Item=(usize, AdjEdge)> + 'a>
+    inner: Box<dyn Iterator<Item = (usize, AdjEdge)> + 'a>,
 }
 
 impl<'a> Iterator for NeighboursIterator<'a> {
     type Item = LocalVertexView<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.inner.next().map(
-            |(neighbour, AdjEdge(id)) | {
-                assert!(id >= 0, "tried to construct remote neighbour but we are assuming everything is local");
-                self.vertex.new_neighbour(neighbour)
-            }
-        )
+        self.inner.next().map(|(neighbour, AdjEdge(id))| {
+            assert!(
+                id >= 0,
+                "tried to construct remote neighbour but we are assuming everything is local"
+            );
+            self.vertex.new_neighbour(neighbour)
+        })
     }
 }
-
 
 impl<'a> Iterator for OwnedNeighboursIterator<'a> {
     type Item = LocalVertexView<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.inner.next().map(
-            |(neighbour, AdjEdge(id)) | {
-                assert!(id >= 0, "tried to construct remote neighbour but we are assuming everything is local");
-                self.vertex.new_neighbour(neighbour)
-            }
-        )
+        self.inner.next().map(|(neighbour, AdjEdge(id))| {
+            assert!(
+                id >= 0,
+                "tried to construct remote neighbour but we are assuming everything is local"
+            );
+            self.vertex.new_neighbour(neighbour)
+        })
     }
 }
-
-
 
 pub struct GraphView<'a> {
     graph: &'a TemporalGraph,
     window: &'a Range<i64>,
-    state: State
+    state: State,
 }
-
 
 pub struct LocalVertexView<'a> {
     graph_view: &'a GraphView<'a>,
     g_id: u64,
-    pid: usize
+    pub(crate) pid: usize,
 }
 
 impl<'a> LocalVertexView<'a> {
     fn new(graph_view: &'a GraphView, vertex: &VertexView<TemporalGraph>) -> LocalVertexView<'a> {
-        LocalVertexView { graph_view, g_id: vertex.global_id(), pid: vertex.pid }
+        LocalVertexView {
+            graph_view,
+            g_id: vertex.global_id(),
+            pid: vertex.pid,
+        }
     }
     fn new_neighbour(&self, pid: usize) -> LocalVertexView<'a> {
         LocalVertexView {
             graph_view: self.graph_view,
             g_id: self.graph_view.graph.index[pid].logical().clone(),
-            pid
+            pid,
         }
     }
 
@@ -239,51 +252,102 @@ impl<'a> LocalVertexView<'a> {
     }
 
     pub fn out_neighbours(&'a self) -> NeighboursIterator<'a> {
-        let inner = self.graph_view.graph.neighbours_iter_window(self.pid, Direction::OUT, self.graph_view.window);
-        NeighboursIterator { inner, vertex: self }
+        let inner = self.graph_view.graph.neighbours_iter_window(
+            self.pid,
+            Direction::OUT,
+            self.graph_view.window,
+        );
+        NeighboursIterator {
+            inner,
+            vertex: self,
+        }
     }
     fn into_out_neighbours(self) -> OwnedNeighboursIterator<'a> {
-        let inner = self.graph_view.graph.neighbours_iter_window(self.pid, Direction::OUT, self.graph_view.window);
-        OwnedNeighboursIterator { inner, vertex: self }
+        let inner = self.graph_view.graph.neighbours_iter_window(
+            self.pid,
+            Direction::OUT,
+            self.graph_view.window,
+        );
+        OwnedNeighboursIterator {
+            inner,
+            vertex: self,
+        }
     }
 
     pub fn in_neighbours(&'a self) -> NeighboursIterator<'a> {
-        let inner = self.graph_view.graph.neighbours_iter_window(self.pid, Direction::IN, self.graph_view.window);
-        NeighboursIterator { inner, vertex: self }
+        let inner = self.graph_view.graph.neighbours_iter_window(
+            self.pid,
+            Direction::IN,
+            self.graph_view.window,
+        );
+        NeighboursIterator {
+            inner,
+            vertex: self,
+        }
     }
 
     fn into_in_neighbours(self) -> OwnedNeighboursIterator<'a> {
-        let inner = self.graph_view.graph.neighbours_iter_window(self.pid, Direction::IN, self.graph_view.window);
-        OwnedNeighboursIterator { inner, vertex: self }
+        let inner = self.graph_view.graph.neighbours_iter_window(
+            self.pid,
+            Direction::IN,
+            self.graph_view.window,
+        );
+        OwnedNeighboursIterator {
+            inner,
+            vertex: self,
+        }
     }
 
     pub fn neighbours(&'a self) -> NeighboursIterator<'a> {
-        let inner = self.graph_view.graph.neighbours_iter_window(self.pid, Direction::BOTH, self.graph_view.window);
-        NeighboursIterator { inner, vertex: self }
+        let inner = self.graph_view.graph.neighbours_iter_window(
+            self.pid,
+            Direction::BOTH,
+            self.graph_view.window,
+        );
+        NeighboursIterator {
+            inner,
+            vertex: self,
+        }
     }
 
     fn into_neighbours(self) -> OwnedNeighboursIterator<'a> {
-        let inner = self.graph_view.graph.neighbours_iter_window(self.pid, Direction::BOTH, self.graph_view.window);
-        OwnedNeighboursIterator { inner, vertex: self }
+        let inner = self.graph_view.graph.neighbours_iter_window(
+            self.pid,
+            Direction::BOTH,
+            self.graph_view.window,
+        );
+        OwnedNeighboursIterator {
+            inner,
+            vertex: self,
+        }
     }
 
     fn out_degree(&self) -> usize {
-        self.graph_view.graph._degree_window(self.pid, Direction::OUT, self.graph_view.window)
+        self.graph_view
+            .graph
+            ._degree_window(self.pid, Direction::OUT, self.graph_view.window)
     }
 
     fn in_degree(&self) -> usize {
-        self.graph_view.graph._degree_window(self.pid, Direction::IN, self.graph_view.window)
+        self.graph_view
+            .graph
+            ._degree_window(self.pid, Direction::IN, self.graph_view.window)
     }
 
     fn degree(&self) -> usize {
-        self.graph_view.graph._degree_window(self.pid, Direction::BOTH, self.graph_view.window)
+        self.graph_view
+            .graph
+            ._degree_window(self.pid, Direction::BOTH, self.graph_view.window)
     }
 }
 
-
 impl<'a> GraphView<'a> {
     pub fn new(graph: &'a TemporalGraph, window: &'a Range<i64>) -> GraphView<'a> {
-        GraphView {graph, window, state: State::default()}
+        GraphView {
+            graph,
+            window,
+            state: State::default(),
+        }
     }
 
     pub fn n_nodes(&self) -> usize {
@@ -296,16 +360,24 @@ impl<'a> GraphView<'a> {
 
     fn iter_vertices(&'a self) -> VertexIterator<'a> {
         let inner = self.graph.iter_vs_window(self.window.clone());
-        VertexIterator {graph_view: self, inner}
+        VertexIterator {
+            graph_view: self,
+            inner,
+        }
     }
 
     pub fn with_state<S>(&self, name: &str, value: S) -> GraphView<'a>
-    where S: IntoSeries
+    where
+        S: IntoSeries,
     {
         let s = Series::new(name, value);
 
         let new_state = self.state.clone().with_column(s).unwrap().to_owned();
-        GraphView {graph: self.graph, window: self.window, state: new_state}
+        GraphView {
+            graph: self.graph,
+            window: self.window,
+            state: new_state,
+        }
     }
 
     pub fn get_state(&self, name: &str) -> &Series {
@@ -319,14 +391,33 @@ impl<'a> GraphView<'a> {
     fn local_ids(&self) -> Box<dyn Iterator<Item = usize> + '_> {
         Box::new(self.iter_vertices().map(|v| v.pid))
     }
-}
 
+    pub fn new_empty_state<T: Clone>(&self) -> StateVec<Option<T>> {
+        StateVec::empty(self.n_nodes())
+    }
+
+    pub fn new_full_state<T: Clone>(&self, value: T) -> StateVec<T> {
+        StateVec::full(value, self.n_nodes())
+    }
+
+    pub fn new_state_from<T, I: IntoIterator<Item = T>>(
+        &self,
+        iter: I,
+    ) -> Result<StateVec<T>, GraphError> {
+        let state = StateVec::from_iter(iter);
+        if state.len() == self.n_nodes() {
+            Ok(state)
+        } else {
+            Err(GraphError::StateSizeError)
+        }
+    }
+}
 
 #[cfg(test)]
 mod graph_view_tests {
-    use itertools::Itertools;
     use super::*;
     use crate::graph::TemporalGraph;
+    use itertools::Itertools;
 
     fn make_mini_graph() -> TemporalGraph {
         let mut g = TemporalGraph::default();
@@ -347,7 +438,7 @@ mod graph_view_tests {
         let window = 0..1;
         let view = GraphView::new(&g, &window);
         let vertices = view.iter_vertices().map(|v| v.id()).collect_vec();
-        assert_eq!(vertices, vec![1,2])
+        assert_eq!(vertices, vec![1, 2])
     }
 
     #[test]
@@ -367,12 +458,35 @@ mod graph_view_tests {
     fn test_the_vertices() {
         let g = make_mini_graph();
         let view = GraphView::new(&g, &(0..2));
-        let vertex_out_out_neighbours = view.vertices().out_neighbours().out_neighbours().id().flatten();
-        for (id, out_out_neighbours) in view.vertices().id().zip( vertex_out_out_neighbours) {
+        let vertex_out_out_neighbours = view
+            .vertices()
+            .out_neighbours()
+            .out_neighbours()
+            .id()
+            .flatten();
+        for (id, out_out_neighbours) in view.vertices().id().zip(vertex_out_out_neighbours) {
             let oo: Vec<u64> = out_out_neighbours.collect();
             println!("vertex: {}, out_out_neighbours: {:?}", id, oo)
         }
         let m = view.vertices().id().max();
         println!("vertex with maximum id is {}", m.unwrap())
+    }
+
+    #[test]
+    fn test_the_state() {
+        let g = make_mini_graph();
+        let view = GraphView::new(&g, &(0..2));
+
+        let view = view.with_state("ids", view.ids());
+
+        let out_out_ids = view
+            .vertices()
+            .out_neighbours()
+            .out_neighbours()
+            .get_state("ids")
+            .map(|it| it.map(|it| it.collect::<Vec<_>>()).collect::<Vec<_>>())
+            .collect::<Vec<_>>();
+
+        println!("result: {:?}", out_out_ids)
     }
 }
