@@ -1,5 +1,7 @@
-use crate::graphview::{GraphError, GraphView, VertexViewIteratorMethods};
+use crate::error::GraphError;
+use crate::graphview::GraphView;
 use crate::state::StateVec;
+use crate::vertexview::VertexViewMethods;
 use itertools::{izip, Itertools};
 use polars::prelude::*;
 use std::cmp::min;
@@ -43,7 +45,8 @@ pub fn connected_components<'a>(g: &'a GraphView) -> Result<GraphView<'a>, Graph
 mod algo_tests {
     use super::*;
     use crate::graph::TemporalGraph;
-    use crate::graphview::{LocalVertexView, VertexViewIteratorMethods};
+    use crate::graphview::LocalVertexView;
+    use crate::vertexview::VertexViewMethods;
 
     #[test]
     fn cc_test() {

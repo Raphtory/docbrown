@@ -7,7 +7,9 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 use crate::adj::Adj;
+use crate::graphview::{EdgeIterator, GraphViewInternals, VertexIterator};
 use crate::props::Props;
+use crate::vertexview::VertexView;
 use crate::Prop;
 use crate::{bitset::BitSet, tadjset::AdjEdge, Direction};
 
@@ -508,54 +510,45 @@ impl TemporalGraph {
     }
 }
 
-pub(crate) struct VertexView<'a, G> {
-    g_id: u64,
-    pub(crate) pid: usize,
-    g: &'a G,
-    w: Option<Range<i64>>,
-}
-
-impl<'a> VertexView<'a, TemporalGraph> {
-    pub fn global_id(&self) -> u64 {
-        self.g_id
+impl GraphViewInternals for TemporalGraph {
+    fn local_n_vertices(&self) -> usize {
+        todo!()
     }
 
-    pub fn degree(&self, d: Direction) -> usize {
-        if let Some(w) = &self.w {
-            self.g.degree_window(self.g_id, w, d)
-        } else {
-            self.g.degree(self.g_id, d)
-        }
+    fn local_n_edges(&self) -> usize {
+        todo!()
     }
 
-    // FIXME: all the functions using global ID need to be changed to use the physical ID instead
-    pub fn edges(
-        &'a self,
-        d: Direction,
-    ) -> Box<dyn Iterator<Item = EdgeView<'a, TemporalGraph>> + 'a> {
-        if let Some(r) = &self.w {
-            self.g.neighbours_window(self.g_id, r, d)
-        } else {
-            self.g.neighbours(self.g_id, d)
-        }
+    fn local_n_vertices_window(&self) -> usize {
+        todo!()
     }
 
-    pub fn props(&self, name: &'a str) -> Option<Box<dyn Iterator<Item = (&'a i64, Prop)> + 'a>> {
-        let index = self.g.logical_to_physical.get(&self.g_id)?;
-        let meta = self.g.props.vertex_meta.get(*index)?;
-        let prop_id = self.g.props.prop_ids.get(name)?;
-        Some(meta.iter(*prop_id))
+    fn local_n_edges_window(&self) -> usize {
+        todo!()
     }
 
-    pub fn props_window(
-        &self,
-        name: &'a str,
-        r: Range<i64>,
-    ) -> Option<Box<dyn Iterator<Item = (&'a i64, Prop)> + 'a>> {
-        let index = self.g.logical_to_physical.get(&self.g_id)?;
-        let meta = self.g.props.vertex_meta.get(*index)?;
-        let prop_id = self.g.props.prop_ids.get(name)?;
-        Some(meta.iter_window(*prop_id, r))
+    fn vertex(&self, gid: u64) -> VertexView<Self> {
+        todo!()
+    }
+
+    fn iter_vertices(&self) -> VertexIterator<TemporalGraph> {
+        self.vertices_vv()
+    }
+
+    fn iter_vertices_window(&self, window: &Range<i64>) -> VertexIterator<TemporalGraph> {
+        self.vertices_window_vv(window.clone())
+    }
+
+    fn degree(&self, vertex: &VertexView<Self>, direction: Direction) -> usize {
+        todo!()
+    }
+
+    fn neighbours(&self, vertex: &VertexView<Self>, direction: Direction) -> VertexIterator<Self> {
+        todo!()
+    }
+
+    fn edges(&self, vertex: &VertexView<Self>, direction: Direction) -> EdgeIterator<Self> {
+        todo!()
     }
 }
 

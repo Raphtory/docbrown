@@ -1,12 +1,14 @@
 #[cfg(test)]
 #[macro_use(quickcheck)]
 extern crate quickcheck_macros;
+extern crate core;
 
 mod adj;
-mod algo;
+// mod algo;
 mod bitset;
+mod error;
 pub mod graph;
-mod graphview;
+pub mod graphview;
 pub mod lsm;
 mod misc;
 mod props;
@@ -17,6 +19,7 @@ mod tcell;
 pub mod tpartition;
 mod tprop;
 mod tpropvec;
+mod vertexview;
 
 // Denotes edge direction
 #[derive(Clone, Copy, PartialEq)]

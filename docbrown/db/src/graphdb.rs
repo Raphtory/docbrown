@@ -1,12 +1,15 @@
 use std::path::{Path, PathBuf};
 
 use docbrown_core::{
+    graphview::{GraphView, GraphViewInternals, Properties},
     tpartition::{TEdge, TemporalGraphPart},
     Direction, Prop,
 };
 
+use docbrown_core::graphview::VertexIterator;
 use rayon::prelude::{IntoParallelRefIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};
+use docbrown_core::graph::TemporalGraph;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GraphDB {
@@ -172,6 +175,28 @@ impl GraphDB {
     fn get_shard_id_from_global_vid(&self, v_gid: u64) -> usize {
         let a: usize = v_gid.try_into().unwrap();
         a % self.nr_shards
+    }
+}
+
+impl GraphViewInternals for GraphDB {
+    fn iter_vertices(&self) -> VertexIterator {
+        VertexIterator {
+            graph_view: self,
+            inner: Box::new(shards.iter().flat_map(|graph| -> VertexIterator {
+                let g: TemporalGraph = *(graph.clone().0.read());
+                g.
+            })),
+        }
+    }
+}
+
+impl GraphView for GraphDB {
+    fn with_state(&self, name: &str, value: polars_core::series::Series) -> Box<dyn GraphView> {
+        todo!()
+    }
+
+    fn state(&self) -> Properties {
+        todo!()
     }
 }
 

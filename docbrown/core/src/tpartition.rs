@@ -1,5 +1,6 @@
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
+use std::ops::Range;
 use std::path::Path;
 use std::sync::Arc;
 
@@ -7,6 +8,8 @@ use genawaiter::rc::gen;
 use genawaiter::yield_;
 
 use crate::graph::{EdgeView, TemporalGraph};
+use crate::graphview::{EdgeIterator, GraphViewInternals, VertexIterator};
+use crate::vertexview::VertexView;
 use crate::{Direction, Prop};
 use itertools::*;
 
@@ -32,7 +35,7 @@ impl<'a> From<EdgeView<'a, TemporalGraph>> for TEdge {
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 #[repr(transparent)]
-pub struct TemporalGraphPart(Arc<RwLock<TemporalGraph>>);
+pub struct TemporalGraphPart(pub Arc<RwLock<TemporalGraph>>);
 
 impl TemporalGraphPart {
     pub fn load_from_file<P: AsRef<Path>>(path: P) -> Result<Self, Box<bincode::ErrorKind>> {
@@ -183,6 +186,48 @@ impl TemporalGraphPart {
         });
 
         vertices_iter.into_iter()
+    }
+}
+
+impl GraphViewInternals for TemporalGraphPart {
+    fn local_n_vertices(&self) -> usize {
+        todo!()
+    }
+
+    fn local_n_edges(&self) -> usize {
+        todo!()
+    }
+
+    fn local_n_vertices_window(&self) -> usize {
+        todo!()
+    }
+
+    fn local_n_edges_window(&self) -> usize {
+        todo!()
+    }
+
+    fn vertex(&self, gid: u64) -> Option<VertexView<Self>> {
+        todo!()
+    }
+
+    fn iter_vertices(&self) -> VertexIterator<TemporalGraph> {
+        self.read_shard(|g| g.iter_vertices())
+    }
+
+    fn iter_vertices_window(&self, window: &Range<i64>) -> VertexIterator<Self> {
+        todo!()
+    }
+
+    fn degree(&self, vertex: &VertexView<Self>, direction: Direction) -> usize {
+        todo!()
+    }
+
+    fn neighbours(&self, vertex: &VertexView<Self>, direction: Direction) -> VertexIterator<Self> {
+        todo!()
+    }
+
+    fn edges(&self, vertex: &VertexView<Self>, direction: Direction) -> EdgeIterator<Self> {
+        todo!()
     }
 }
 
