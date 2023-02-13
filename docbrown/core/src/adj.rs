@@ -1,10 +1,10 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 use crate::tadjset::{AdjEdge, TAdjSet};
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub(crate) enum Adj {
-    Empty(u64),
+    Solo(u64),
     List {
         logical: u64,
         out: TAdjSet<usize, i64>,         // local
@@ -57,8 +57,15 @@ impl Adj {
 
     pub(crate) fn logical(&self) -> &u64 {
         match self {
-            Adj::Empty(logical) => logical,
+            Adj::Solo(logical) => logical,
             Adj::List { logical, .. } => logical,
+        }
+    }
+
+    pub(crate) fn out_edges_len(&self) -> usize {
+        match self {
+            Adj::Solo(_) => 0,
+            Adj::List{ out, remote_out, .. } => out.len() + remote_out.len()
         }
     }
 }

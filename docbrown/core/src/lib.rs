@@ -3,7 +3,6 @@
 extern crate quickcheck_macros;
 
 mod adj;
-// mod algo;
 mod algo;
 mod bitset;
 pub mod graph;
@@ -16,8 +15,10 @@ mod state;
 mod tadjset;
 mod tcell;
 pub mod tpartition;
+mod tprop;
+mod tpropvec;
 
-/// Specify the direction of the neighbours
+// Denotes edge direction
 #[derive(Clone, Copy, PartialEq)]
 pub enum Direction {
     OUT,
@@ -25,7 +26,7 @@ pub enum Direction {
     BOTH,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Prop {
     Str(String),
     I32(i32),
@@ -34,4 +35,5 @@ pub enum Prop {
     U64(u64),
     F32(f32),
     F64(f64),
+    Bool(bool),
 }
