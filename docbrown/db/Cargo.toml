@@ -28,3 +28,8 @@ uuid = { version = "1.3.0", features = ["v4"] }
 [dev-dependencies]
 quickcheck = "1"
 quickcheck_macros = "1"
+criterion = "0.3"
+
+[[bench]]
+name = "benchmark"
+harness = false
