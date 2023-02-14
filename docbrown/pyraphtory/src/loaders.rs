@@ -89,8 +89,6 @@ impl PyCSV {
         }
     }
 
-
-
     fn read_csv(&self) -> PyResult<()> {
         // READ THE FILE
         let delimiter: u8 = self.delimiter.as_bytes()[0];
@@ -107,4 +105,35 @@ impl PyCSV {
     }
 }
 
+mod pycsv_loader_test {
+    fn graph_loader_adds_edge() {
+        graph.add_edge()
+    }
+
+    fn graph_loader_adds_vertices() {
+        graph.add_vertex()
+    }
+
+    fn graph_loader_loads_src_correctly() {
+     assert!("goes into correct column")
+    }
+
+    fn graph_loader_loads_dst_correctly() {
+        assert!("goes into correct column")
+    }
+
+    fn graph_loader_loads_time_correctly() {
+        assert!("goes into correct column")
+    }
+
+    fn record_parses_correctly() {
+        assert!(srcid = "");
+        assert!(dstid = "");
+        assert!(time = "");
+    }
+
+    fn correct_hash_produced() {
+        calculate_hash(hash == "")
+    }
+}
 

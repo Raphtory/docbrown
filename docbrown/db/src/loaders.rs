@@ -212,4 +212,17 @@ mod csv_loader_test {
         let text = "bitcoin/address_000000000001.csv.gz";
         assert!(!r.is_match(&text));
     }
+
+    #[test]
+    fn test_headers_flag() {
+        assert!("if true top line is removed from csv output");
+        assert!("if false top line is not removed from csv output");
+    }
+
+    fn test_delimiter_setting() {
+        assert!("set delimiter "," csv file has "," delimiter and passes analysis");
+        assert!("set delimiter "," csv file does not have "," delimiter, fails analysis");
+    }
+
+
 }
