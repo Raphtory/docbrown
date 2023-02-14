@@ -89,6 +89,7 @@ fn main() {
     };
 
     let gandalf = utils::calculate_hash(&"Gandalf");
+    println!("Gandalf Hash = {}", gandalf);
     println!("Gandalf exists = {}", graph.contains(gandalf));
 
     println!("Gandalf's windowed outbound neighbours");
