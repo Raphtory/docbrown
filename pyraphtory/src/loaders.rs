@@ -1,14 +1,40 @@
-use pyo3::prelude::*;
+pub mod csv {
+    use docbrown_db::loaders::csv;
+    use regex::Regex;
+    use serde::de::DeserializeOwned;
+    use std::io;
+    use std::path::PathBuf;
 
-/// Formats the sum of two numbers as string.
-#[pyfunction]
-fn sum_as_string(a: usize, b: usize) -> PyResult<String> {
-    Ok((a + b).to_string())
-}
+    use crate::graphdb::GraphDB;
 
-/// A Python module implemented in Rust.
-#[pymodule]
-fn pyraphtory(_py: Python, m: &PyModule) -> PyResult<()> {
-    m.add_function(wrap_pyfunction!(sum_as_string, m)?)?;
-    Ok(())
+    pub struct CsvErr(io::Error);
+
+    pub struct CsvLoader {
+        csv_loader: csv::CsvLoader,
+    }
+
+    impl CsvLoader {
+        pub fn new<P: Into<PathBuf>>(p: P) -> Self {
+            Self {
+                csv_loader: csv::CsvLoader::new(p),
+            }
+        }
+
+        pub fn with_filter(self, r: Regex) -> Self {
+            Self {
+                csv_loader: self.csv_loader.with_filter(r),
+            }
+        }
+
+        pub fn load_into_graph<F, REC>(&self, g: &GraphDB, loader: F) -> Result<(), CsvErr>
+        where
+            REC: DeserializeOwned + std::fmt::Debug,
+            F: Fn(REC, &docbrown_db::graphdb::GraphDB) -> () + Send + Sync,
+        {
+            match self.csv_loader.load_into_graph(&g.graphdb, loader) {
+                Ok(_) => Ok(()),
+                Err(csv::CsvErr(e)) => Err(CsvErr(e)),
+            }
+        }
+    }
 }
