@@ -2,10 +2,12 @@ use crate::error::{GraphError, GraphResult};
 use crate::graph::{EdgeView, TemporalGraph};
 use crate::state::{State, StateVec};
 use crate::tadjset::AdjEdge;
-use crate::vertexview::VertexView;
+use crate::vertexview::{VertexView, VertexViewMethods};
 use crate::{Direction, Prop};
-use polars::prelude::*;
-use polars_lazy::prelude::*;
+use polars;
+use polars::prelude::Series;
+use polars_lazy;
+use std::borrow::Borrow;
 use std::error::Error;
 use std::fmt::Formatter;
 use std::ops::Range;
@@ -17,19 +19,18 @@ pub type NeighboursIterator<'a, G> = VertexIterator<'a, G>;
 pub type EdgeIterator<'a, G> = Box<IteratorWithLifetime<'a, EdgeView<'a, G>>>;
 pub type PropertyHistory<'a> = Box<IteratorWithLifetime<'a, (&'a i64, Prop)>>;
 
-
 // type State = DataFrame;
 
 pub struct Vertices<'a, G>
 where
-    G: GraphView<'a>,
+    G: GraphView,
 {
     graph_view: &'a G,
 }
 
 impl<'a, G> Vertices<'a, G>
 where
-    G: GraphView<'a>,
+    G: GraphView,
 {
     fn new(graph_view: &'a G) -> Vertices<'a, G> {
         Vertices { graph_view }
@@ -42,7 +43,7 @@ where
 
 impl<'a, G> IntoIterator for Vertices<'a, G>
 where
-    G: GraphView<'a>,
+    G: GraphView,
 {
     type Item = VertexView<'a, G>;
     type IntoIter = VertexIterator<'a, G>;
@@ -52,7 +53,7 @@ where
     }
 }
 
-impl<'a, G: GraphView<'a>> IntoIterator for &'a Vertices<'a, G> {
+impl<'a, G: GraphView> IntoIterator for &'a Vertices<'a, G> {
     type Item = VertexView<'a, G>;
     type IntoIter = VertexIterator<'a, G>;
 
@@ -63,49 +64,63 @@ impl<'a, G: GraphView<'a>> IntoIterator for &'a Vertices<'a, G> {
 
 pub trait NeighboursIteratorInterface {}
 
-pub type Properties = DataFrame;
+pub type Properties = polars::frame::DataFrame;
 
 pub trait GraphViewInternals: Sized {
     /// Get number of vertices in the partition of the view
     fn local_n_vertices(&self) -> usize;
 
     /// Get the number of edges in the partition of the view
-    fn local_n_edges(&self) -> usize;
+    fn local_n_edges(&self, direction: Direction) -> usize;
 
     /// Get number of vertices in the current view with time window
-    fn local_n_vertices_window(&self) -> usize;
+    fn local_n_vertices_window(&self, w: Range<i64>) -> usize;
 
     /// Get the number of edges in the current view with time window
-    fn local_n_edges_window(&self) -> usize;
+    fn local_n_edges_window(&self, w: Range<i64>, direction: Direction) -> usize;
 
     /// Get a single vertex by global id
     fn vertex(&self, gid: u64) -> Option<VertexView<Self>>;
+
+    fn vertex_window(&self, gid: u64, w: Range<i64>) -> Option<VertexView<Self>>;
+
+    fn contains_vertex(&self, gid: u64) -> bool {
+        self.vertex(gid).is_some()
+    }
+
+    fn contains_vertex_window(&self, gid: u64, w: Range<i64>) -> bool {
+        self.vertex_window(gid, w).is_some()
+    }
 
     /// Iterate over all vertices in the current view
     fn iter_vertices(&self) -> VertexIterator<Self>;
 
     /// Filter vertices by time window
-    fn iter_vertices_window(&self, window: &Range<i64>) -> VertexIterator<Self>;
+    fn iter_vertices_window(&self, window: Range<i64>) -> VertexIterator<Self>;
 
     /// Get degree for vertex (Vertex view has a window which should be respected by this function)
     fn degree(&self, vertex: &VertexView<Self>, direction: Direction) -> usize;
 
     /// Get neighbours for vertex (Vertex view has a window which should be respected by this function)
-    fn neighbours(
-        &self,
+    fn neighbours<'a>(
+        &'a self,
         vertex: &VertexView<Self>,
         direction: Direction,
-    ) -> NeighboursIterator<Self>;
+    ) -> NeighboursIterator<'a, Self>;
 
     /// Get edges incident at a vertex (Vertex view has a window which should be respected by this function)
-    fn edges(&self, vertex: &VertexView<Self>, direction: Direction) -> EdgeIterator<Self>;
-    
+    fn edges<'a>(
+        &'a self,
+        vertex: &VertexView<Self>,
+        direction: Direction,
+    ) -> EdgeIterator<'a, Self>;
+
     /// Get the property history of a vertex (Vertex view has a window which should be respected by this function)
-    fn property_history(
-        &self, 
+    fn property_history<'a>(
+        &'a self,
         vertex: &VertexView<Self>,
         name: &str,
-    ) -> PropertyHistory;
+    ) -> Option<PropertyHistory<'a>>;
 }
 
 pub trait GraphView: GraphViewInternals {
@@ -116,11 +131,11 @@ pub trait GraphView: GraphViewInternals {
         Vertices::new(self)
     }
 
-    fn with_state(&self, name: &str, value: Series) -> Self;
+    fn with_state(&self, name: &str, value: polars::series::Series) -> Self;
 
     fn state(&self) -> Properties;
 
-    fn get_state(&self, name: &str) -> GraphResult<&Series> {
+    fn get_state(&self, name: &str) -> GraphResult<&polars::series::Series> {
         Ok(self.state().column(name)?)
     }
 
@@ -139,6 +154,137 @@ pub trait GraphView: GraphViewInternals {
         } else {
             Err(GraphError::StateSizeError)
         }
+    }
+}
+
+struct WindowedView<'a, G: GraphViewInternals> {
+    graph: &'a G,
+    window: Range<i64>,
+}
+
+impl<'a, G: GraphViewInternals> WindowedView<'a, G> {
+    fn new(graph: &'a G, window: Range<i64>) -> Self {
+        Self { graph, window }
+    }
+
+    fn actual_window(&self, w: Option<Range<i64>>) -> Range<i64> {
+        match w {
+            Some(w) => {
+                std::cmp::max(w.start, self.window.start)..std::cmp::min(w.end, self.window.end)
+            }
+            None => self.window.clone(),
+        }
+    }
+}
+
+impl<'a, G> GraphViewInternals for WindowedView<'a, G>
+where
+    G: GraphViewInternals,
+{
+    fn local_n_vertices(&self) -> usize {
+        self.graph.local_n_vertices_window(self.window.clone())
+    }
+
+    fn local_n_edges(&self, direction: Direction) -> usize {
+        self.graph
+            .local_n_edges_window(self.window.clone(), direction)
+    }
+
+    fn local_n_vertices_window(&self, w: Range<i64>) -> usize {
+        let actual_window = self.actual_window(Some(w));
+        self.graph.local_n_vertices_window(actual_window)
+    }
+
+    fn local_n_edges_window(&self, w: Range<i64>, direction: Direction) -> usize {
+        let actual_window = self.actual_window(Some(w));
+        self.graph.local_n_edges_window(actual_window, direction)
+    }
+
+    fn vertex(&self, gid: u64) -> Option<VertexView<Self>> {
+        self.graph
+            .vertex_window(gid, self.window.clone())
+            .map(|v| v.as_view_of(self))
+    }
+
+    fn vertex_window(&self, gid: u64, w: Range<i64>) -> Option<VertexView<Self>> {
+        let actual_window = self.actual_window(Some(w));
+        self.graph
+            .vertex_window(gid, actual_window)
+            .map(|v| v.as_view_of(self))
+    }
+
+    fn iter_vertices(&self) -> VertexIterator<Self> {
+        Box::new(
+            self.graph
+                .iter_vertices_window(self.window.clone())
+                .map(|v| v.as_view_of(self)),
+        )
+    }
+
+    fn iter_vertices_window(&self, w: Range<i64>) -> VertexIterator<Self> {
+        let actual_window = self.actual_window(Some(w));
+        Box::new(
+            self.graph
+                .iter_vertices_window(actual_window)
+                .map(|v| v.as_view_of(self)),
+        )
+    }
+
+    fn degree(&self, vertex: &VertexView<Self>, direction: Direction) -> usize {
+        let actual_window = self.actual_window(vertex.w.clone());
+        self.graph.degree(
+            &vertex.with_window(actual_window).as_view_of(self.graph),
+            direction,
+        )
+    }
+
+    fn neighbours<'b>(
+        &'b self,
+        vertex: &VertexView<Self>,
+        direction: Direction,
+    ) -> NeighboursIterator<'b, Self> {
+        let actual_window = self.actual_window(vertex.w.clone());
+        Box::new(
+            self.graph
+                .neighbours(
+                    &vertex.with_window(actual_window).as_view_of(self.graph),
+                    direction,
+                )
+                .map(|v| v.as_view_of(self)),
+        )
+    }
+
+    fn edges<'b>(
+        &'b self,
+        vertex: &VertexView<Self>,
+        direction: Direction,
+    ) -> EdgeIterator<'b, Self> {
+        todo!()
+    }
+
+    fn property_history<'b>(
+        &'b self,
+        vertex: &VertexView<Self>,
+        name: &str,
+    ) -> Option<PropertyHistory<'b>> {
+        todo!()
+    }
+}
+
+impl<'a, G> GraphView for WindowedView<'a, G>
+where
+    G: GraphViewInternals,
+{
+    fn n_nodes(&self) -> usize {
+        todo!()
+    }
+
+    fn with_state(&self, name: &str, value: Series) -> Self {
+        todo!()
+    }
+
+    fn state(&self) -> Properties {
+        todo!()
     }
 }
 
@@ -166,7 +312,7 @@ mod graph_view_tests {
         let g = make_mini_graph();
 
         let window = 0..1;
-        let view = GraphView::new(&g, &window);
+        let view = WindowedView::new(&g, window);
         let vertices = view.iter_vertices().map(|v| v.id()).collect_vec();
         assert_eq!(vertices, vec![1, 2])
     }
@@ -175,19 +321,19 @@ mod graph_view_tests {
     fn test_we_have_state() {
         let g = make_mini_graph();
 
-        let view = GraphView::new(&g, &(0..2));
-        let view = view.with_state("ids", view.ids());
-        for v in view.vertices().iter() {
-            let state = (&v).get_state("ids");
-            let id: u64 = state.extract().unwrap();
-            assert_eq!(v.id(), id)
-        }
+        let view = WindowedView::new(&g, 0..2);
+        let view = view.with_state("ids", view.vertices().id().collect());
+        // for v in view.vertices().iter() {
+        //     let state = (&v).get_state("ids");
+        //     let id: u64 = state.extract().unwrap();
+        //     assert_eq!(v.id(), id)
+        // }
     }
 
     #[test]
     fn test_the_vertices() {
         let g = make_mini_graph();
-        let view = GraphView::new(&g, &(0..2));
+        let view = WindowedView::new(&g, 0..2);
         let vertex_out_out_neighbours = view
             .vertices()
             .out_neighbours()

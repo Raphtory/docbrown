@@ -1,14 +1,18 @@
-use crate::graphview::LocalVertexView;
+use crate::graphview::GraphViewInternals;
+use crate::vertexview::VertexView;
 use std::slice::Iter;
 
 pub struct StateVec<T> {
     pub(crate) values: Vec<T>,
 }
 
-pub trait State<T> {
-    fn get(&self, vertex: &LocalVertexView) -> &T;
+pub trait State<T, G>
+where
+    G: GraphViewInternals,
+{
+    fn get(&self, vertex: &VertexView<G>) -> &T;
 
-    fn set(&mut self, vertex: &LocalVertexView, value: T);
+    fn set(&mut self, vertex: &VertexView<G>, value: T);
 }
 
 impl<T: Clone> StateVec<T> {
@@ -63,12 +67,15 @@ impl<T: Clone> Clone for StateVec<T> {
     }
 }
 
-impl<T> State<T> for StateVec<T> {
-    fn get(&self, vertex: &LocalVertexView) -> &T {
+impl<T, G> State<T, G> for StateVec<T>
+where
+    G: GraphViewInternals,
+{
+    fn get(&self, vertex: &VertexView<G>) -> &T {
         &self.values[vertex.pid]
     }
 
-    fn set(&mut self, vertex: &LocalVertexView, value: T) {
+    fn set(&mut self, vertex: &VertexView<G>, value: T) {
         self.values[vertex.pid] = value
     }
 }

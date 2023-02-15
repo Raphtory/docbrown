@@ -1,8 +1,7 @@
 use crate::graph::{EdgeView, TemporalGraph};
-use crate::graphview::{
-    GraphView, GraphViewInternals, IteratorWithLifetime, NeighboursIterator, PropertyHistory,
-};
+use crate::graphview::{EdgeIterator, GraphView, GraphViewInternals, IteratorWithLifetime, NeighboursIterator, PropertyHistory};
 use crate::state::{State, StateVec};
+use crate::tpartition::TemporalGraphPart;
 use crate::{Direction, Prop};
 use std::borrow::Borrow;
 use std::ops::Range;
@@ -11,13 +10,27 @@ pub struct VertexView<'a, G>
 where
     G: GraphViewInternals,
 {
-    g_id: u64,
-    pid: usize,
-    g: &'a G,
-    w: Option<Range<i64>>,
+    pub(crate) g_id: u64,
+    pub(crate) pid: usize,
+    pub(crate) g: &'a G,
+    pub(crate) w: Option<Range<i64>>,
 }
 
-impl<'a> VertexView<'a, TemporalGraph> {
+impl<'a, G> VertexView<'a, G>
+where
+    G: GraphViewInternals,
+{
+    pub(crate) fn as_view_of<'b, GG: GraphViewInternals>(
+        &self,
+        graph: &'b GG,
+    ) -> VertexView<'b, GG> {
+        VertexView {
+            g_id: self.g_id,
+            pid: self.pid,
+            g: graph,
+            w: self.w.clone(),
+        }
+    }
     // pub fn global_id(&self) -> u64 {
     //     self.g_id
     // }
@@ -30,35 +43,6 @@ impl<'a> VertexView<'a, TemporalGraph> {
     //     }
     // }
     //
-    // // FIXME: all the functions using global ID need to be changed to use the physical ID instead
-    // pub fn edges(
-    //     &'a self,
-    //     d: Direction,
-    // ) -> Box<dyn Iterator<Item = EdgeView<'a, TemporalGraph>> + 'a> {
-    //     if let Some(r) = &self.w {
-    //         self.g.neighbours_window(self.g_id, r, d)
-    //     } else {
-    //         self.g.neighbours(self.g_id, d)
-    //     }
-    // }
-    //
-    // pub fn props(&self, name: &'a str) -> Option<Box<dyn Iterator<Item = (&'a i64, Prop)> + 'a>> {
-    //     let index = self.g.logical_to_physical.get(&self.g_id)?;
-    //     let meta = self.g.props.vertex_meta.get(*index)?;
-    //     let prop_id = self.g.props.prop_ids.get(name)?;
-    //     Some(meta.iter(*prop_id))
-    // }
-    //
-    // pub fn props_window(
-    //     &self,
-    //     name: &'a str,
-    //     r: Range<i64>,
-    // ) -> Option<Box<dyn Iterator<Item = (&'a i64, Prop)> + 'a>> {
-    //     let index = self.g.logical_to_physical.get(&self.g_id)?;
-    //     let meta = self.g.props.vertex_meta.get(*index)?;
-    //     let prop_id = self.g.props.prop_ids.get(name)?;
-    //     Some(meta.iter_window(*prop_id, r))
-    // }
 }
 
 pub trait VertexViewMethods<'a, G>
@@ -69,12 +53,16 @@ where
     fn out_neighbours(self) -> Self::ItemType<NeighboursIterator<'a, G>>;
     fn in_neighbours(self) -> Self::ItemType<NeighboursIterator<'a, G>>;
     fn neighbours(self) -> Self::ItemType<NeighboursIterator<'a, G>>;
+    fn out_edges(self) -> Self::ItemType<EdgeIterator<'a, G>>;
+    fn in_edges(self) -> Self::ItemType<EdgeIterator<'a, G>>;
+    fn edges(self) -> Self::ItemType<EdgeIterator<'a, G>>;
     fn id(self) -> Self::ItemType<u64>;
     fn out_degree(self) -> Self::ItemType<usize>;
     fn in_degree(self) -> Self::ItemType<usize>;
     fn degree(self) -> Self::ItemType<usize>;
     fn with_state<A: Clone>(self, state: &'a StateVec<A>) -> Self::ItemType<A>;
-    fn property_history(self, name: &str) -> Self::ItemType<PropertyHistory>;
+    fn with_window(self, window: Range<i64>) -> Self::ItemType<VertexView<'a, G>>;
+    fn property_history(self, name: &str) -> Self::ItemType<Option<PropertyHistory<'a>>>;
 }
 
 impl<'a, G> VertexViewMethods<'a, G> for VertexView<'a, G>
@@ -83,15 +71,27 @@ where
 {
     type ItemType<T: 'a> = T;
     fn out_neighbours(self) -> NeighboursIterator<'a, G> {
-        Box::new(self.g.neighbours(&self, Direction::OUT))
+        self.g.neighbours(&self, Direction::OUT)
     }
 
     fn in_neighbours(self) -> NeighboursIterator<'a, G> {
-        Box::new(self.g.neighbours(&self, Direction::IN))
+        self.g.neighbours(&self, Direction::IN)
     }
 
     fn neighbours(self) -> NeighboursIterator<'a, G> {
-        Box::new(self.g.neighbours(&self, Direction::BOTH))
+        self.g.neighbours(&self, Direction::BOTH)
+    }
+
+    fn out_edges(self) -> Self::ItemType<EdgeIterator<'a, G>> {
+        self.g.edges(&self, Direction::OUT)
+    }
+
+    fn in_edges(self) -> Self::ItemType<EdgeIterator<'a, G>> {
+        self.g.edges(&self, Direction::IN)
+    }
+
+    fn edges(self) -> Self::ItemType<EdgeIterator<'a, G>> {
+        self.g.edges(&self, Direction::BOTH)
     }
 
     fn id(self) -> Self::ItemType<u64> {
@@ -118,8 +118,15 @@ where
         state.get(&self).clone()
     }
 
-    fn property_history(self, name: &str) -> Self::ItemType<PropertyHistory> {
-        todo!()
+    fn with_window(self, window: Range<i64>) -> Self {
+        VertexView {
+            w: Some(window),
+            ..self
+        }
+    }
+
+    fn property_history(self, name: &str) -> Option<PropertyHistory<'a>> {
+        self.g.property_history(&self, name)
     }
 }
 
@@ -144,6 +151,21 @@ where
     fn neighbours(self) -> Self::ItemType<NeighboursIterator<'a, G>> {
         let inner = self.into_iter();
         Box::new(inner.map(|v| v.neighbours()))
+    }
+
+    fn out_edges(self) -> Self::ItemType<EdgeIterator<'a, G>> {
+        let inner = self.into_iter();
+        Box::new(inner.map(|v| v.out_edges()))
+    }
+
+    fn in_edges(self) -> Self::ItemType<EdgeIterator<'a, G>> {
+        let inner = self.into_iter();
+        Box::new(inner.map(|v| v.in_edges()))
+    }
+
+    fn edges(self) -> Self::ItemType<EdgeIterator<'a, G>> {
+        let inner = self.into_iter();
+        Box::new(inner.map(|v| v.edges()))
     }
 
     fn id(self) -> Self::ItemType<u64> {
@@ -172,7 +194,15 @@ where
         Box::new(inner.map(move |v: R| v.with_state(state)))
     }
 
-    fn property_history(self, name: &str) -> Self::ItemType<PropertyHistory> {
-        todo!()
+    fn with_window(self, window: Range<i64>) -> Self::ItemType<VertexView<'a, G>> {
+        let inner = self.into_iter();
+
+        Box::new(inner.map(move |v: R| v.with_window(window)))
+    }
+
+    fn property_history(self, name: &str) -> Self::ItemType<Option<PropertyHistory<'a>>> {
+        let inner = self.into_iter();
+
+        Box::new(inner.map(move |v: R| v.property_history(name)))
     }
 }

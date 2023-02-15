@@ -1,3 +1,4 @@
+use std::hash::Hasher;
 use std::{
     borrow::{Borrow, BorrowMut},
     collections::{BTreeMap, HashMap},
@@ -221,6 +222,20 @@ impl<V: Ord + Into<usize> + From<usize> + Copy + Hash, Time: Copy + Ord> TAdjSet
             TAdjSet::Large { vs, .. } => vs.get(&v).map(|e| *e),
         }
     }
+
+    pub fn union_iter(&self, other: &TAdjSet<V, Time>) -> Box<dyn Iterator<Item = (&V, AdjEdge)>> {
+        //FIXME: optimise by exploiting sorted nature
+        Box::new(self.iter().chain(other.iter()).unique())
+    }
+
+    pub fn union_iter_window(
+        &self,
+        other: &TAdjSet<V, Time>,
+        r: &Range<Time>,
+    ) -> Box<dyn Iterator<Item = (V, AdjEdge)>> {
+        //FIXME: optimise by exploiting sorted nature
+        Box::new(self.iter_window(r).chain(other.iter_window(r)).unique())
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -262,6 +277,12 @@ impl AdjEdge {
 
     pub(crate) fn edge_meta_id(&self) -> usize {
         self.0.abs().try_into().unwrap()
+    }
+}
+
+impl Hash for AdjEdge {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.0.hash(state)
     }
 }
 

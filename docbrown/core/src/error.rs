@@ -2,8 +2,9 @@ use polars::error::PolarsError;
 use std::error::Error;
 use std::fmt;
 use std::fmt::Formatter;
+use thiserror::__private::AsDynError;
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum GraphError {
     StateSizeError,
     ExternalError(Box<dyn Error>),
@@ -33,7 +34,7 @@ impl From<PolarsError> for GraphError {
 impl Error for GraphError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match *self {
-            GraphError::ExternalError(ref e) => Some(e),
+            GraphError::ExternalError(ref e) => Some(e.as_dyn_error()),
             GraphError::PolarsError(ref e) => Some(e),
             _ => None,
         }

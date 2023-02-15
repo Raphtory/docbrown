@@ -8,7 +8,7 @@ use genawaiter::rc::gen;
 use genawaiter::yield_;
 
 use crate::graph::{EdgeView, TemporalGraph};
-use crate::graphview::{EdgeIterator, GraphViewInternals, VertexIterator};
+use crate::graphview::{EdgeIterator, GraphViewInternals, PropertyHistory, VertexIterator};
 use crate::vertexview::VertexView;
 use crate::{Direction, Prop};
 use itertools::*;
@@ -70,22 +70,6 @@ impl TemporalGraphPart {
         f(&shard)
     }
 
-    pub fn len(&self) -> usize {
-        self.read_shard(|tg| tg.len())
-    }
-
-    pub fn out_edges_len(&self) -> usize {
-        self.read_shard(|tg| tg.out_edges_len())
-    }
-
-    pub fn contains(&self, v: u64) -> bool {
-        self.read_shard(|tg| tg.contains_vertex(v))
-    }
-
-    pub fn contains_window(&self, v: u64, t_start: i64, t_end: i64) -> bool {
-        self.read_shard(|tg| tg.contains_vertex_window(&(t_start..t_end), v))
-    }
-
     pub fn add_vertex(&self, v: u64, t: i64, props: &Vec<(String, Prop)>) {
         self.write_shard(|tg| tg.add_vertex(v, t))
     }
@@ -101,13 +85,23 @@ impl TemporalGraphPart {
     pub fn add_edge_remote_into(&self, src: u64, dst: u64, t: i64, props: &Vec<(String, Prop)>) {
         self.write_shard(|tg| tg.add_edge_remote_into(src, dst, t, props))
     }
+}
 
-    pub fn degree(&self, v: u64, d: Direction) -> usize {
-        self.read_shard(|tg: &TemporalGraph| tg.degree(v, d))
+impl GraphViewInternals for TemporalGraphPart {
+    fn local_n_vertices(&self) -> usize {
+        self.read_shard(|tg| tg.local_n_vertices())
     }
 
-    pub fn degree_window(&self, v: u64, t_start: i64, t_end: i64, d: Direction) -> usize {
-        self.read_shard(|tg: &TemporalGraph| tg.degree_window(v, &(t_start..t_end), d))
+    fn contains_vertex(&self, gid: u64) -> bool {
+        self.read_shard(|tg| tg.contains_vertex(gid))
+    }
+
+    fn contains_vertex_window(&self, gid: u64, w: Range<i64>) -> bool {
+        self.read_shard(|tg| tg.contains_vertex_window(gid, w))
+    }
+
+    fn degree(&self, v: u64, d: Direction) -> usize {
+        self.read_shard(|tg: &TemporalGraph| tg.degree(v, d))
     }
 
     // TODO: check if there is any value in returning Vec<usize> vs just usize, what is the cost of the generator
@@ -194,15 +188,15 @@ impl GraphViewInternals for TemporalGraphPart {
         todo!()
     }
 
-    fn local_n_edges(&self) -> usize {
+    fn local_n_edges(&self, direction: Direction) -> usize {
         todo!()
     }
 
-    fn local_n_vertices_window(&self) -> usize {
+    fn local_n_vertices_window(&self, w: Range<i64>) -> usize {
         todo!()
     }
 
-    fn local_n_edges_window(&self) -> usize {
+    fn local_n_edges_window(&self, w: Range<i64>, direction: Direction) -> usize {
         todo!()
     }
 
@@ -210,16 +204,26 @@ impl GraphViewInternals for TemporalGraphPart {
         todo!()
     }
 
-    fn iter_vertices(&self) -> VertexIterator<TemporalGraph> {
-        self.read_shard(|g| g.iter_vertices())
+    fn vertex_window(&self, gid: u64, w: Range<i64>) -> Option<VertexView<Self>> {
+        todo!()
     }
 
-    fn iter_vertices_window(&self, window: &Range<i64>) -> VertexIterator<Self> {
-        todo!()
+    fn iter_vertices(&self) -> VertexIterator<Self> {
+        Box::new(
+            self.read_shard(|g| g.iter_vertices())
+                .map(move |vertex| self.move_vertex_up(vertex)),
+        )
+    }
+
+    fn iter_vertices_window(&self, window: Range<i64>) -> VertexIterator<Self> {
+        Box::new(
+            self.read_shard(|g| g.iter_vertices_window(window))
+                .map(move |vertex| self.move_vertex_up(vertex)),
+        )
     }
 
     fn degree(&self, vertex: &VertexView<Self>, direction: Direction) -> usize {
-        todo!()
+        self.read_shard(|g| g.degree(vertex.as_view_of(g), direction))
     }
 
     fn neighbours(&self, vertex: &VertexView<Self>, direction: Direction) -> VertexIterator<Self> {
@@ -227,6 +231,14 @@ impl GraphViewInternals for TemporalGraphPart {
     }
 
     fn edges(&self, vertex: &VertexView<Self>, direction: Direction) -> EdgeIterator<Self> {
+        todo!()
+    }
+
+    fn property_history<'a>(
+        &'a self,
+        vertex: &VertexView<Self>,
+        name: &str,
+    ) -> Option<PropertyHistory<'a>> {
         todo!()
     }
 }
