@@ -1,5 +1,8 @@
 use crate::graph::{EdgeView, TemporalGraph};
-use crate::graphview::{EdgeIterator, GraphView, GraphViewInternals, IteratorWithLifetime, NeighboursIterator, PropertyHistory};
+use crate::graphview::{
+    EdgeIterator, GraphView, GraphViewInternals, IteratorWithLifetime, NeighboursIterator,
+    PropertyHistory,
+};
 use crate::state::{State, StateVec};
 use crate::tpartition::TemporalGraphPart;
 use crate::{Direction, Prop};
@@ -20,6 +23,7 @@ impl<'a, G> VertexView<'a, G>
 where
     G: GraphViewInternals,
 {
+    /// Change underlying graph this vertex view points to (useful when implementing a view)
     pub(crate) fn as_view_of<'b, GG: GraphViewInternals>(
         &self,
         graph: &'b GG,

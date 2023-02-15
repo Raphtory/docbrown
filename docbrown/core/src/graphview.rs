@@ -68,16 +68,37 @@ pub type Properties = polars::frame::DataFrame;
 
 pub trait GraphViewInternals: Sized {
     /// Get number of vertices in the partition of the view
-    fn local_n_vertices(&self) -> usize;
+    fn local_n_vertices(&self) -> usize {
+        self.iter_vertices().count()
+    }
 
     /// Get the number of edges in the partition of the view
-    fn local_n_edges(&self, direction: Direction) -> usize;
+    fn local_n_edges(&self, direction: Direction) -> usize {
+        match direction {
+            Direction::IN => self.iter_vertices().in_degree().sum(),
+            Direction::OUT => self.iter_vertices().out_degree().sum(),
+            Direction::BOTH => {
+                self.local_n_edges(Direction::IN) + self.local_n_edges(Direction::OUT)
+            }
+        }
+    }
 
     /// Get number of vertices in the current view with time window
-    fn local_n_vertices_window(&self, w: Range<i64>) -> usize;
+    fn local_n_vertices_window(&self, w: Range<i64>) -> usize {
+        self.iter_vertices_window(w).count()
+    }
 
     /// Get the number of edges in the current view with time window
-    fn local_n_edges_window(&self, w: Range<i64>, direction: Direction) -> usize;
+    fn local_n_edges_window(&self, w: Range<i64>, direction: Direction) -> usize {
+        match direction {
+            Direction::IN => self.iter_vertices_window(w).in_degree().sum(),
+            Direction::OUT => self.iter_vertices_window(w).out_degree().sum(),
+            Direction::BOTH => {
+                self.local_n_edges_window(w.clone(), Direction::IN)
+                    + self.local_n_edges_window(w, Direction::OUT)
+            }
+        }
+    }
 
     /// Get a single vertex by global id
     fn vertex(&self, gid: u64) -> Option<VertexView<Self>>;
@@ -259,7 +280,15 @@ where
         vertex: &VertexView<Self>,
         direction: Direction,
     ) -> EdgeIterator<'b, Self> {
-        todo!()
+        let actual_window = self.actual_window(vertex.w.clone());
+        Box::new(
+            self.graph
+                .edges(
+                    &vertex.with_window(actual_window).as_view_of(self.graph),
+                    direction,
+                )
+                .map(|e| e.as_view_of(self)),
+        )
     }
 
     fn property_history<'b>(
@@ -267,7 +296,11 @@ where
         vertex: &VertexView<Self>,
         name: &str,
     ) -> Option<PropertyHistory<'b>> {
-        todo!()
+        let actual_window = self.actual_window(vertex.w.clone());
+        self.graph.property_history(
+            &vertex.with_window(actual_window).as_view_of(self.graph),
+            name,
+        )
     }
 }
 
