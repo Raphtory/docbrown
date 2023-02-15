@@ -9,9 +9,9 @@ pub mod csv {
     use std::path::{Path, PathBuf};
     use std::{fs, io};
 
+    use crate::graphdb::GraphDB;
     use rayon::prelude::*;
     use regex::Regex;
-    use crate::graphdb::GraphDB;
 
     #[derive(Debug)]
     pub struct CsvErr(io::Error);
@@ -21,9 +21,8 @@ pub mod csv {
         path: PathBuf,
         regex_filter: Option<Regex>,
         header: bool,
-        delimiter: u8
+        delimiter: u8,
     }
-
 
     impl CsvLoader {
         pub fn new<P: Into<PathBuf>>(p: P) -> Self {
@@ -31,7 +30,7 @@ pub mod csv {
                 path: p.into(),
                 regex_filter: None,
                 header: false,
-                delimiter: b','
+                delimiter: b',',
             }
         }
 
@@ -136,31 +135,30 @@ pub mod csv {
             }
 
             Ok(())
-        } 
-
+        }
 
         pub fn load_file_into_graph_with_record<F>(
             &self,
             g: &GraphDB,
-            loader: &F) -> Result<(), CsvErr>
+            loader: &F,
+        ) -> Result<(), CsvErr>
         where
             F: Fn(&csv::StringRecord, &GraphDB) -> (),
-            {
-                let f = File::open(&self.path).expect(&format!("Can't open file {:?}", self.path));
-                let mut csv_gz_reader = csv::ReaderBuilder::new()
+        {
+            let f = File::open(&self.path).expect(&format!("Can't open file {:?}", self.path));
+            let mut csv_gz_reader = csv::ReaderBuilder::new()
                 .has_headers(self.header)
                 .delimiter(self.delimiter)
                 .from_reader(Box::new(BufReader::new(GzDecoder::new(f))));
-        
-                let mut rec = csv::StringRecord::new();
 
-                while csv_gz_reader.read_record(&mut rec).unwrap() {
-                    loader(&rec, g);
-                }
-            
-                Ok(())
+            let mut rec = csv::StringRecord::new();
+
+            while csv_gz_reader.read_record(&mut rec).unwrap() {
+                loader(&rec, g);
             }
-            
+
+            Ok(())
+        }
 
         fn csv_reader(&self, file_path: PathBuf) -> csv::Reader<Box<dyn io::Read>> {
             let is_gziped = file_path
@@ -191,16 +189,16 @@ pub mod csv {
 
 #[cfg(test)]
 mod csv_loader_test {
-    use regex::Regex;
-    use crate::loaders::csv::CsvLoader;
     use crate::graphdb::GraphDB;
-    use std::path::{Path,PathBuf};
+    use crate::loaders::csv::CsvLoader;
+    use csv::StringRecord;
+    use docbrown_core::Prop;
+    use regex::Regex;
+    use std::path::{Path, PathBuf};
     use std::{
         collections::hash_map::DefaultHasher,
         hash::{Hash, Hasher},
     };
-    use csv::StringRecord;
-    use docbrown_core::Prop;
     #[test]
     fn regex_match() {
         let r = Regex::new(r".+address").unwrap();
@@ -226,32 +224,45 @@ mod csv_loader_test {
         timestamp_column: usize,
     }
 
-    fn parse_record(rec: &StringRecord, src_id: usize, dst_id: usize, t_id: usize) -> Option<(String, String, i64)> {
+    fn parse_record(
+        rec: &StringRecord,
+        src_id: usize,
+        dst_id: usize,
+        t_id: usize,
+    ) -> Option<(String, String, i64)> {
         let src = rec.get(src_id).and_then(|s| s.parse::<String>().ok())?;
         let dst = rec.get(dst_id).and_then(|s| s.parse::<String>().ok())?;
         let t = rec.get(t_id).and_then(|s| s.parse::<i64>().ok())?;
         // println!("{:?}", (&src, &dst, &t));
         Some((src, dst, t))
     }
-    
+
     fn calculate_hash<T: Hash>(t: &T) -> u64 {
         let mut s = DefaultHasher::new();
         t.hash(&mut s);
         s.finish()
     }
 
-    fn graph_loader(ldr: &Lotr, record: &StringRecord, graphdb: &GraphDB) ->  () {   
-        let src_id : usize = ldr.src_id_column; 
-        let dst_id : usize  = ldr.dst_id_column;
-        let timestamp_id : usize = ldr.timestamp_column;
+    fn graph_loader(ldr: &Lotr, record: &StringRecord, graphdb: &GraphDB) -> () {
+        let src_id: usize = ldr.src_id_column;
+        let dst_id: usize = ldr.dst_id_column;
+        let timestamp_id: usize = ldr.timestamp_column;
         let tuple = parse_record(&record, src_id, dst_id, timestamp_id).unwrap();
-        let (src, dst, time)  = tuple;
-    
+        let (src, dst, time) = tuple;
+
         let srcid = calculate_hash(&src);
         let dstid = calculate_hash(&dst);
-    
-        graphdb.add_vertex(srcid, time, &vec![("name".to_string(), Prop::Str("Character".to_string()))]);
-        graphdb.add_vertex(dstid, time, &vec![("name".to_string(), Prop::Str("Character".to_string()))]);
+
+        graphdb.add_vertex(
+            srcid,
+            time,
+            &vec![("name".to_string(), Prop::Str("Character".to_string()))],
+        );
+        graphdb.add_vertex(
+            dstid,
+            time,
+            &vec![("name".to_string(), Prop::Str("Character".to_string()))],
+        );
         graphdb.add_edge(
             srcid,
             dstid,
@@ -259,16 +270,19 @@ mod csv_loader_test {
             &vec![(
                 "name".to_string(),
                 Prop::Str("Character Co-occurrence".to_string()),
-            )]
+            )],
         );
     }
 
     #[test]
     fn test_headers_flag_and_delimiter() {
         let g = GraphDB::new(2);
-        let csv_path: PathBuf = [env!("CARGO_MANIFEST_DIR"), "resources/test/lotr-withheaders.csv.gz"]
-                                .iter()
-                                .collect();
+        let csv_path: PathBuf = [
+            env!("CARGO_MANIFEST_DIR"),
+            "resources/test/lotr-withheaders.csv.gz",
+        ]
+        .iter()
+        .collect();
         let csv_loader = CsvLoader::new(Path::new(&csv_path));
         let has_header = true;
         let delimiter_string = ",";
@@ -276,29 +290,36 @@ mod csv_loader_test {
         let src_id_column = 0;
         let dst_id_column = 1;
         let timestamp_column = 2;
-   
-       csv_loader 
+
+        csv_loader
             .set_header(has_header)
             .set_delimiter(delimiter)
-            .load_file_into_graph_with_record(&g, &|rec, graph|{
-                graph_loader(&Lotr{
-                    src_id_column: src_id_column, 
-                    dst_id_column: dst_id_column, 
-                    timestamp_column: timestamp_column
-                    }, rec, graph);
+            .load_file_into_graph_with_record(&g, &|rec, graph| {
+                graph_loader(
+                    &Lotr {
+                        src_id_column: src_id_column,
+                        dst_id_column: dst_id_column,
+                        timestamp_column: timestamp_column,
+                    },
+                    rec,
+                    graph,
+                );
             })
             .expect("Csv did not parse.");
-         
-        assert_eq!(g.edges_len(),701);
+
+        assert_eq!(g.edges_len(), 701);
     }
 
     #[test]
     #[should_panic]
     fn test_wrong_header_flag_with_header() {
         let g = GraphDB::new(2);
-        let csv_path: PathBuf = [env!("CARGO_MANIFEST_DIR"), "resources/test/lotr-withheaders.csv.gz"]
-                                .iter()
-                                .collect();
+        let csv_path: PathBuf = [
+            env!("CARGO_MANIFEST_DIR"),
+            "resources/test/lotr-withheaders.csv.gz",
+        ]
+        .iter()
+        .collect();
         let csv_loader = CsvLoader::new(Path::new(&csv_path));
         let has_header = false;
         let delimiter_string = ",";
@@ -306,28 +327,35 @@ mod csv_loader_test {
         let src_id_column = 0;
         let dst_id_column = 1;
         let timestamp_column = 2;
-   
-       csv_loader 
+
+        csv_loader
             .set_header(has_header)
             .set_delimiter(delimiter)
-            .load_file_into_graph_with_record(&g, &|rec, graph|{
-                graph_loader(&Lotr{
-                    src_id_column: src_id_column, 
-                    dst_id_column: dst_id_column, 
-                    timestamp_column: timestamp_column
-                    }, rec, graph);
+            .load_file_into_graph_with_record(&g, &|rec, graph| {
+                graph_loader(
+                    &Lotr {
+                        src_id_column: src_id_column,
+                        dst_id_column: dst_id_column,
+                        timestamp_column: timestamp_column,
+                    },
+                    rec,
+                    graph,
+                );
             })
             .expect("Csv did not parse.");
-         
-        assert_eq!(g.edges_len(),701);
+
+        assert_eq!(g.edges_len(), 701);
     }
 
     #[test]
     fn test_no_headers_flag() {
         let g = GraphDB::new(2);
-        let csv_path: PathBuf = [env!("CARGO_MANIFEST_DIR"), "resources/test/lotr-withoutheaders.csv.gz"]
-                                .iter()
-                                .collect();
+        let csv_path: PathBuf = [
+            env!("CARGO_MANIFEST_DIR"),
+            "resources/test/lotr-withoutheaders.csv.gz",
+        ]
+        .iter()
+        .collect();
         let csv_loader = CsvLoader::new(Path::new(&csv_path));
         let has_header = false;
         let delimiter_string = ",";
@@ -335,19 +363,23 @@ mod csv_loader_test {
         let src_id_column = 0;
         let dst_id_column = 1;
         let timestamp_column = 2;
-   
-       csv_loader 
+
+        csv_loader
             .set_header(has_header)
             .set_delimiter(delimiter)
-            .load_file_into_graph_with_record(&g, &|rec, graph|{
-                graph_loader(&Lotr{
-                    src_id_column: src_id_column, 
-                    dst_id_column: dst_id_column, 
-                    timestamp_column: timestamp_column
-                    }, rec, graph);
+            .load_file_into_graph_with_record(&g, &|rec, graph| {
+                graph_loader(
+                    &Lotr {
+                        src_id_column: src_id_column,
+                        dst_id_column: dst_id_column,
+                        timestamp_column: timestamp_column,
+                    },
+                    rec,
+                    graph,
+                );
             })
             .expect("Csv did not parse.");
-            
+
         assert_eq!(g.edges_len(), 701);
     }
 
@@ -355,9 +387,12 @@ mod csv_loader_test {
     #[should_panic]
     fn test_wrong_header_flag_without_header() {
         let g = GraphDB::new(2);
-        let csv_path: PathBuf = [env!("CARGO_MANIFEST_DIR"), "resources/test/lotr-withoutheaders.csv.gz"]
-                                .iter()
-                                .collect();
+        let csv_path: PathBuf = [
+            env!("CARGO_MANIFEST_DIR"),
+            "resources/test/lotr-withoutheaders.csv.gz",
+        ]
+        .iter()
+        .collect();
         let csv_loader = CsvLoader::new(Path::new(&csv_path));
         let has_header = true;
         let delimiter_string = ",";
@@ -365,20 +400,24 @@ mod csv_loader_test {
         let src_id_column = 0;
         let dst_id_column = 1;
         let timestamp_column = 2;
-   
-       csv_loader 
+
+        csv_loader
             .set_header(has_header)
             .set_delimiter(delimiter)
-            .load_file_into_graph_with_record(&g, &|rec, graph|{
-                graph_loader(&Lotr{
-                    src_id_column: src_id_column, 
-                    dst_id_column: dst_id_column, 
-                    timestamp_column: timestamp_column
-                    }, rec, graph);
+            .load_file_into_graph_with_record(&g, &|rec, graph| {
+                graph_loader(
+                    &Lotr {
+                        src_id_column: src_id_column,
+                        dst_id_column: dst_id_column,
+                        timestamp_column: timestamp_column,
+                    },
+                    rec,
+                    graph,
+                );
             })
             .expect("Csv did not parse.");
-        
-            assert_eq!(g.edges_len(), 701);
+
+        assert_eq!(g.edges_len(), 701);
     }
 
     #[test]
@@ -386,25 +425,29 @@ mod csv_loader_test {
     fn test_out_of_bounds_columns() {
         let g = GraphDB::new(2);
         let csv_path: PathBuf = [env!("CARGO_MANIFEST_DIR"), "resources/test/lotr.csv.gz"]
-                                .iter()
-                                .collect();
+            .iter()
+            .collect();
         let csv_loader = CsvLoader::new(Path::new(&csv_path));
-       
+
         let delimiter_string = ",";
         let delimiter: u8 = delimiter_string.as_bytes()[0];
         let src_id_column = 3;
         let dst_id_column = 4;
         let timestamp_column = 5;
         let has_header = true;
-       csv_loader 
+        csv_loader
             .set_header(has_header)
             .set_delimiter(delimiter)
-            .load_file_into_graph_with_record(&g, &|rec, graph|{
-                graph_loader(&Lotr{
-                    src_id_column: src_id_column, 
-                    dst_id_column: dst_id_column, 
-                    timestamp_column: timestamp_column
-                    }, rec, graph);
+            .load_file_into_graph_with_record(&g, &|rec, graph| {
+                graph_loader(
+                    &Lotr {
+                        src_id_column: src_id_column,
+                        dst_id_column: dst_id_column,
+                        timestamp_column: timestamp_column,
+                    },
+                    rec,
+                    graph,
+                );
             })
             .expect("Csv did not parse.");
     }
@@ -414,25 +457,29 @@ mod csv_loader_test {
     fn test_wrong_delimiter() {
         let g = GraphDB::new(2);
         let csv_path: PathBuf = [env!("CARGO_MANIFEST_DIR"), "resources/test/lotr.csv.gz"]
-                                .iter()
-                                .collect();
+            .iter()
+            .collect();
         let csv_loader = CsvLoader::new(Path::new(&csv_path));
-       
+
         let delimiter_string = ".";
         let delimiter: u8 = delimiter_string.as_bytes()[0];
         let src_id_column = 0;
         let dst_id_column = 1;
         let timestamp_column = 2;
         let has_header = true;
-       csv_loader 
+        csv_loader
             .set_header(has_header)
             .set_delimiter(delimiter)
-            .load_file_into_graph_with_record(&g, &|rec, graph|{
-                graph_loader(&Lotr{
-                    src_id_column: src_id_column, 
-                    dst_id_column: dst_id_column, 
-                    timestamp_column: timestamp_column
-                    }, rec, graph);
+            .load_file_into_graph_with_record(&g, &|rec, graph| {
+                graph_loader(
+                    &Lotr {
+                        src_id_column: src_id_column,
+                        dst_id_column: dst_id_column,
+                        timestamp_column: timestamp_column,
+                    },
+                    rec,
+                    graph,
+                );
             })
             .expect("Csv did not parse.");
     }
