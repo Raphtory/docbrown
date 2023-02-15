@@ -105,16 +105,3 @@ impl PyCSV {
     }
 }
 
-mod pycsv_loader_test {
-
-    fn record_parses_correctly() {
-        assert!(srcid = "");
-        assert!(dstid = "");
-        assert!(time = "");
-    }
-
-    fn correct_hash_produced() {
-        calculate_hash(hash == "")
-    }
-}
-
