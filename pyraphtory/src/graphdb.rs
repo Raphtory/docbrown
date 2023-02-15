@@ -1,7 +1,8 @@
 use docbrown_core as dbc;
 use docbrown_db::graphdb as gdb;
 use pyo3::exceptions;
-use pyo3::types::PyIterator;
+use pyo3::PyRef;
+use pyo3::PyRefMut;
 use pyo3::{pyclass, pymethods, pymodule, types::PyModule, PyResult, Python};
 use std::path::{Path, PathBuf};
 
@@ -71,6 +72,21 @@ impl TEdge {
             t: t,
             is_remote: is_remote,
         }
+    }
+}
+
+#[pyclass]
+pub struct VertexIterator {
+    iter: std::vec::IntoIter<u64>,
+}
+
+#[pymethods]
+impl VertexIterator {
+    fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
+        slf
+    }
+    fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<u64> {
+        slf.iter.next()
     }
 }
 
@@ -158,9 +174,11 @@ impl GraphDB {
         self.graphdb.degree_window(v, t_start, t_end, d.convert())
     }
 
-    // pub fn vertices(&self) -> PyIterator  {
-    //     self.graphdb.vertices()
-    // }
+    pub fn vertices(&self) -> VertexIterator {
+        VertexIterator {
+            iter: self.graphdb.vertices().collect::<Vec<_>>().into_iter(),
+        }
+    }
 
     // pub fn neighbours(&self, v: u64, d: Direction) -> Box<dyn Iterator<Item = TEdge>> {
     //     Box::new(
