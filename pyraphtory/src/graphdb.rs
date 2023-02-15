@@ -52,9 +52,13 @@ impl Prop {
 
 #[pyclass]
 pub struct TEdge {
+    #[pyo3(get)]
     pub src: u64,
+    #[pyo3(get)]
     pub dst: u64,
+    #[pyo3(get)]
     pub t: Option<i64>,
+    #[pyo3(get)]
     pub is_remote: bool,
 }
 
@@ -67,10 +71,10 @@ impl TEdge {
             is_remote,
         } = edge;
         TEdge {
-            src: src,
-            dst: dst,
-            t: t,
-            is_remote: is_remote,
+            src,
+            dst,
+            t,
+            is_remote,
         }
     }
 }
@@ -86,6 +90,21 @@ impl VertexIterator {
         slf
     }
     fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<u64> {
+        slf.iter.next()
+    }
+}
+
+#[pyclass]
+pub struct EdgeIterator {
+    iter: std::vec::IntoIter<TEdge>,
+}
+
+#[pymethods]
+impl EdgeIterator {
+    fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
+        slf
+    }
+    fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<TEdge> {
         slf.iter.next()
     }
 }
@@ -180,13 +199,16 @@ impl GraphDB {
         }
     }
 
-    // pub fn neighbours(&self, v: u64, d: Direction) -> Box<dyn Iterator<Item = TEdge>> {
-    //     Box::new(
-    //         self.graphdb
-    //             .neighbours(v, d.convert())
-    //             .map(|f| TEdge::convert(f)),
-    //     )
-    // }
+    pub fn neighbours(&self, v: u64, d: Direction) -> EdgeIterator {
+        EdgeIterator {
+            iter: self
+                .graphdb
+                .neighbours(v, d.convert())
+                .map(|f| TEdge::convert(f))
+                .collect::<Vec<_>>()
+                .into_iter(),
+        }
+    }
 
     // pub fn neighbours_window(
     //     &self,
