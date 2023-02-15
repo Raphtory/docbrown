@@ -223,16 +223,19 @@ impl<V: Ord + Into<usize> + From<usize> + Copy + Hash, Time: Copy + Ord> TAdjSet
         }
     }
 
-    pub fn union_iter(&self, other: &TAdjSet<V, Time>) -> Box<dyn Iterator<Item = (&V, AdjEdge)>> {
+    pub fn union_iter<'a>(
+        &'a self,
+        other: &'a TAdjSet<V, Time>,
+    ) -> Box<dyn Iterator<Item = (&V, AdjEdge)> + 'a> {
         //FIXME: optimise by exploiting sorted nature
         Box::new(self.iter().chain(other.iter()).unique())
     }
 
-    pub fn union_iter_window(
-        &self,
-        other: &TAdjSet<V, Time>,
+    pub fn union_iter_window<'a>(
+        &'a self,
+        other: &'a TAdjSet<V, Time>,
         r: &Range<Time>,
-    ) -> Box<dyn Iterator<Item = (V, AdjEdge)>> {
+    ) -> Box<dyn Iterator<Item = (V, AdjEdge)> + 'a> {
         //FIXME: optimise by exploiting sorted nature
         Box::new(self.iter_window(r).chain(other.iter_window(r)).unique())
     }

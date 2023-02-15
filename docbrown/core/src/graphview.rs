@@ -2,7 +2,7 @@ use crate::error::{GraphError, GraphResult};
 use crate::graph::{EdgeView, TemporalGraph};
 use crate::state::{State, StateVec};
 use crate::tadjset::AdjEdge;
-use crate::vertexview::{VertexView, VertexViewMethods};
+use crate::vertexview::{VertexPointer, VertexView, VertexViewMethods};
 use crate::{Direction, Prop};
 use polars;
 use polars::prelude::Series;
@@ -17,7 +17,7 @@ pub type IteratorWithLifetime<'a, I> = dyn Iterator<Item = I> + 'a;
 pub type VertexIterator<'a, G> = Box<IteratorWithLifetime<'a, VertexView<'a, G>>>;
 pub type NeighboursIterator<'a, G> = VertexIterator<'a, G>;
 pub type EdgeIterator<'a, G> = Box<IteratorWithLifetime<'a, EdgeView<'a, G>>>;
-pub type PropertyHistory<'a> = Box<IteratorWithLifetime<'a, (&'a i64, Prop)>>;
+pub type PropertyHistory<'a> = Vec<(i64, Prop)>;
 
 // type State = DataFrame;
 
@@ -120,27 +120,23 @@ pub trait GraphViewInternals: Sized {
     fn iter_vertices_window(&self, window: Range<i64>) -> VertexIterator<Self>;
 
     /// Get degree for vertex (Vertex view has a window which should be respected by this function)
-    fn degree(&self, vertex: &VertexView<Self>, direction: Direction) -> usize;
+    fn degree(&self, vertex: VertexPointer, direction: Direction) -> usize;
 
     /// Get neighbours for vertex (Vertex view has a window which should be respected by this function)
     fn neighbours<'a>(
         &'a self,
-        vertex: &VertexView<Self>,
+        vertex: VertexPointer,
         direction: Direction,
     ) -> NeighboursIterator<'a, Self>;
 
     /// Get edges incident at a vertex (Vertex view has a window which should be respected by this function)
-    fn edges<'a>(
-        &'a self,
-        vertex: &VertexView<Self>,
-        direction: Direction,
-    ) -> EdgeIterator<'a, Self>;
+    fn edges<'a>(&'a self, vertex: VertexPointer, direction: Direction) -> EdgeIterator<'a, Self>;
 
     /// Get the property history of a vertex (Vertex view has a window which should be respected by this function)
     fn property_history<'a>(
         &'a self,
-        vertex: &VertexView<Self>,
-        name: &str,
+        vertex: VertexPointer,
+        name: &'a str,
     ) -> Option<PropertyHistory<'a>>;
 }
 
@@ -154,7 +150,7 @@ pub trait GraphView: GraphViewInternals {
 
     fn with_state(&self, name: &str, value: polars::series::Series) -> Self;
 
-    fn state(&self) -> Properties;
+    fn state(&self) -> &Properties;
 
     fn get_state(&self, name: &str) -> GraphResult<&polars::series::Series> {
         Ok(self.state().column(name)?)
@@ -251,56 +247,38 @@ where
         )
     }
 
-    fn degree(&self, vertex: &VertexView<Self>, direction: Direction) -> usize {
+    fn degree(&self, vertex: VertexPointer, direction: Direction) -> usize {
         let actual_window = self.actual_window(vertex.w.clone());
-        self.graph.degree(
-            &vertex.with_window(actual_window).as_view_of(self.graph),
-            direction,
-        )
+        self.graph
+            .degree(vertex.with_window(actual_window), direction)
     }
 
-    fn neighbours<'b>(
-        &'b self,
-        vertex: &VertexView<Self>,
-        direction: Direction,
-    ) -> NeighboursIterator<'b, Self> {
+    fn neighbours(&self, vertex: VertexPointer, direction: Direction) -> NeighboursIterator<Self> {
         let actual_window = self.actual_window(vertex.w.clone());
         Box::new(
             self.graph
-                .neighbours(
-                    &vertex.with_window(actual_window).as_view_of(self.graph),
-                    direction,
-                )
+                .neighbours(vertex.with_window(actual_window), direction)
                 .map(|v| v.as_view_of(self)),
         )
     }
 
-    fn edges<'b>(
-        &'b self,
-        vertex: &VertexView<Self>,
-        direction: Direction,
-    ) -> EdgeIterator<'b, Self> {
+    fn edges<'b>(&'b self, vertex: VertexPointer, direction: Direction) -> EdgeIterator<'b, Self> {
         let actual_window = self.actual_window(vertex.w.clone());
         Box::new(
             self.graph
-                .edges(
-                    &vertex.with_window(actual_window).as_view_of(self.graph),
-                    direction,
-                )
+                .edges(vertex.with_window(actual_window), direction)
                 .map(|e| e.as_view_of(self)),
         )
     }
 
     fn property_history<'b>(
         &'b self,
-        vertex: &VertexView<Self>,
-        name: &str,
+        vertex: VertexPointer,
+        name: &'b str,
     ) -> Option<PropertyHistory<'b>> {
         let actual_window = self.actual_window(vertex.w.clone());
-        self.graph.property_history(
-            &vertex.with_window(actual_window).as_view_of(self.graph),
-            name,
-        )
+        self.graph
+            .property_history(vertex.with_window(actual_window), name)
     }
 }
 
@@ -316,7 +294,7 @@ where
         todo!()
     }
 
-    fn state(&self) -> Properties {
+    fn state(&self) -> &Properties {
         todo!()
     }
 }

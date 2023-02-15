@@ -1,4 +1,4 @@
-use parking_lot::RwLock;
+use parking_lot::{MappedRwLockReadGuard, RwLock, RwLockReadGuard};
 use serde::{Deserialize, Serialize};
 use std::ops::Range;
 use std::path::Path;
@@ -11,7 +11,7 @@ use crate::graph::{EdgeView, TemporalGraph};
 use crate::graphview::{
     EdgeIterator, GraphViewInternals, NeighboursIterator, PropertyHistory, VertexIterator,
 };
-use crate::vertexview::VertexView;
+use crate::vertexview::{VertexPointer, VertexView, VertexViewMethods};
 use crate::{Direction, Prop};
 use itertools::*;
 
@@ -38,6 +38,10 @@ impl<'a> From<EdgeView<'a, TemporalGraph>> for TEdge {
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 #[repr(transparent)]
 pub struct TemporalGraphPart(pub Arc<RwLock<TemporalGraph>>);
+
+// pub struct ReadLockedGraphPart<'a>{
+//     guard: &'a
+// }
 
 impl TemporalGraphPart {
     pub fn load_from_file<P: AsRef<Path>>(path: P) -> Result<Self, Box<bincode::ErrorKind>> {
@@ -118,13 +122,11 @@ impl GraphViewInternals for TemporalGraphPart {
     }
 
     fn vertex(&self, gid: u64) -> Option<VertexView<Self>> {
-        self.read_shard(|g| g.vertex(gid))
-            .map(|v| v.as_view_of(self))
+        self.read_shard(|g| g.vertex(gid).map(move |v| v.as_view_of(self)))
     }
 
     fn vertex_window(&self, gid: u64, w: Range<i64>) -> Option<VertexView<Self>> {
-        self.read_shard(|g| g.vertex_window(gid, w))
-            .map(|v| v.as_view_of(self))
+        self.read_shard(|g| g.vertex_window(gid, w.clone()).map(|v| v.as_view_of(self)))
     }
 
     fn contains_vertex(&self, gid: u64) -> bool {
@@ -132,50 +134,68 @@ impl GraphViewInternals for TemporalGraphPart {
     }
 
     fn contains_vertex_window(&self, gid: u64, w: Range<i64>) -> bool {
-        self.read_shard(|tg| tg.contains_vertex_window(gid, w))
+        self.read_shard(|tg| tg.contains_vertex_window(gid, w.clone()))
     }
 
     fn iter_vertices(&self) -> VertexIterator<Self> {
-        Box::new(self.read_shard(|g| g.iter_vertices().map(|v| v.as_view_of(self))))
+        let vertex_iter = gen!({
+            let g = self.0.read();
+            let iter = (*g).iter_vertices().map(move |v| v.as_view_of(self));
+            for v in iter {
+                yield_!(v)
+            }
+        });
+        Box::new(vertex_iter.into_iter())
     }
 
     // TODO: check if there is any value in returning Vec<usize> vs just usize, what is the cost of the generator
     fn iter_vertices_window(&self, window: Range<i64>) -> VertexIterator<Self> {
-        Box::new(self.read_shard(|tg| tg.iter_vertices_window(window).map(|v| v.as_view_of(self))))
+        let vertex_iter = gen!({
+            let g = self.0.read();
+            let iter = (*g)
+                .iter_vertices_window(window)
+                .map(|v| v.as_view_of(self));
+            for v in iter {
+                yield_!(v)
+            }
+        });
+        Box::new(vertex_iter.into_iter())
     }
 
-    fn degree(&self, vertex: &VertexView<Self>, direction: Direction) -> usize {
-        self.read_shard(|g| g.degree(&vertex.as_view_of(g), direction))
+    fn degree(&self, vertex: VertexPointer, direction: Direction) -> usize {
+        self.read_shard(|g| g.degree(vertex.clone(), direction))
     }
 
-    fn neighbours<'a>(
-        &'a self,
-        vertex: &VertexView<Self>,
-        direction: Direction,
-    ) -> NeighboursIterator<'a, Self> {
-        Box::new(self.read_shard(|tg| {
-            tg.neighbours(&vertex.as_view_of(tg), direction)
-                .map(|v| v.as_view_of(self))
-        }))
+    fn neighbours(&self, vertex: VertexPointer, direction: Direction) -> NeighboursIterator<Self> {
+        let vertex_iter = gen!({
+            let g = self.0.read();
+            let iter = (*g)
+                .neighbours(vertex, direction)
+                .map(|v| v.as_view_of(self));
+            for v in iter {
+                yield_!(v)
+            }
+        });
+        Box::new(vertex_iter.into_iter())
     }
 
-    fn edges<'a>(
-        &'a self,
-        vertex: &VertexView<Self>,
-        direction: Direction,
-    ) -> EdgeIterator<'a, Self> {
-        Box::new(
-            self.read_shard(|g| g.edges(&vertex.as_view_of(g), direction))
-                .map(|e| e.as_view_of(self)),
-        )
+    fn edges(&self, vertex: VertexPointer, direction: Direction) -> EdgeIterator<Self> {
+        let edge_iter = gen!({
+            let g = self.0.read();
+            let iter = (*g).edges(vertex, direction).map(|v| v.as_view_of(self));
+            for v in iter {
+                yield_!(v)
+            }
+        });
+        Box::new(edge_iter.into_iter())
     }
 
     fn property_history<'a>(
         &'a self,
-        vertex: &VertexView<Self>,
-        name: &str,
+        vertex: VertexPointer,
+        name: &'a str,
     ) -> Option<PropertyHistory<'a>> {
-        self.read_shard(|g| g.property_history(&vertex.as_view_of(g), name))
+        self.read_shard(|g| g.property_history(vertex.clone(), name))
     }
 }
 
@@ -185,6 +205,7 @@ mod temporal_graph_partition_test {
 
     use super::TemporalGraphPart;
     use crate::graphview::GraphViewInternals;
+    use crate::vertexview::VertexViewMethods;
     use itertools::Itertools;
     use quickcheck::Arbitrary;
 
@@ -230,11 +251,10 @@ mod temporal_graph_partition_test {
         }
 
         for (v, (t_start, t_end)) in intervals.0.iter().enumerate() {
-            let vertex_window = g.iter_vertices_window((t_start..t_end), 1);
-            let iter = &mut vertex_window.into_iter().flatten();
-            let v_actual = iter.next();
-            assert_eq!(Some(v), v_actual);
-            assert_eq!(None, iter.next()); // one vertex per interval
+            let mut vertex_window = g.iter_vertices_window(*t_start..*t_end);
+            let v_actual = vertex_window.next().map(|v| v.g_id);
+            assert_eq!(Some(v.try_into().unwrap()), v_actual);
+            assert!(vertex_window.next().is_none()); // one vertex per interval
         }
     }
 
@@ -255,12 +275,35 @@ mod temporal_graph_partition_test {
         g.add_edge(102, 104, 9, &vec![]);
         g.add_edge(110, 104, 9, &vec![]);
 
-        assert_eq!(g.degree_window(101, 0, i64::MAX, Direction::IN), 1);
-        assert_eq!(g.degree_window(100, 0, i64::MAX, Direction::IN), 0);
-        assert_eq!(g.degree_window(101, 0, 1, Direction::IN), 0);
-        assert_eq!(g.degree_window(101, 10, 20, Direction::IN), 0);
-        assert_eq!(g.degree_window(105, 0, i64::MAX, Direction::IN), 0);
-        assert_eq!(g.degree_window(104, 0, i64::MAX, Direction::IN), 2)
+        let v100 = g.vertex(100).unwrap();
+        let v101 = g.vertex(101).unwrap();
+        let v104 = g.vertex(104).unwrap();
+        let v105 = g.vertex(105).unwrap();
+
+        assert_eq!(
+            g.degree(v101.as_pointer().with_window(0..i64::MAX), Direction::IN),
+            1
+        );
+        assert_eq!(
+            g.degree(v100.as_pointer().with_window(0..i64::MAX), Direction::IN),
+            0
+        );
+        assert_eq!(
+            g.degree(v101.as_pointer().with_window(0..1), Direction::IN),
+            0
+        );
+        assert_eq!(
+            g.degree(v101.as_pointer().with_window(10..20), Direction::IN),
+            0
+        );
+        assert_eq!(
+            g.degree(v105.as_pointer().with_window(0..i64::MAX), Direction::IN),
+            0
+        );
+        assert_eq!(
+            g.degree(v104.as_pointer().with_window(0..i64::MAX), Direction::IN),
+            2
+        )
     }
 
     #[test]
@@ -280,12 +323,26 @@ mod temporal_graph_partition_test {
         g.add_edge(102, 104, 9, &vec![]);
         g.add_edge(110, 104, 9, &vec![]);
 
-        assert_eq!(g.degree_window(101, 0, i64::MAX, Direction::OUT), 1);
-        assert_eq!(g.degree_window(103, 0, i64::MAX, Direction::OUT), 0);
-        assert_eq!(g.degree_window(105, 0, i64::MAX, Direction::OUT), 0);
-        assert_eq!(g.degree_window(101, 0, 1, Direction::OUT), 0);
-        assert_eq!(g.degree_window(101, 10, 20, Direction::OUT), 0);
-        assert_eq!(g.degree_window(100, 0, i64::MAX, Direction::OUT), 2)
+        let v100 = g.vertex(100).unwrap();
+        let v101 = g.vertex(101).unwrap();
+        let v103 = g.vertex(103).unwrap();
+        let v105 = g.vertex(105).unwrap();
+
+        assert_eq!(g.degree(v101.as_pointer(), Direction::OUT), 1);
+        assert_eq!(g.degree(v103.as_pointer(), Direction::OUT), 0);
+        assert_eq!(g.degree(v105.as_pointer(), Direction::OUT), 0);
+        assert_eq!(
+            g.degree(v101.as_pointer().with_window(0..1), Direction::OUT),
+            0
+        );
+        assert_eq!(
+            g.degree(v101.as_pointer().with_window(10..20), Direction::OUT),
+            0
+        );
+        assert_eq!(
+            g.degree(v100.as_pointer().with_window(0..i64::MAX), Direction::OUT),
+            2
+        )
     }
 
     #[test]
@@ -306,10 +363,19 @@ mod temporal_graph_partition_test {
         g.add_edge(102, 104, 9, &vec![]);
         g.add_edge(110, 104, 9, &vec![]);
 
-        assert_eq!(g.degree_window(101, 0, i64::MAX, Direction::BOTH), 2);
-        assert_eq!(g.degree_window(100, 0, i64::MAX, Direction::BOTH), 2);
-        assert_eq!(g.degree_window(100, 0, 1, Direction::BOTH), 0);
-        assert_eq!(g.degree_window(100, 10, 20, Direction::BOTH), 0);
-        assert_eq!(g.degree_window(105, 0, i64::MAX, Direction::BOTH), 0)
+        let v100 = g.vertex(100).unwrap();
+        let v101 = g.vertex(101).unwrap();
+        let v105 = g.vertex(105).unwrap();
+        assert_eq!(g.degree(v101.as_pointer(), Direction::BOTH), 2);
+        assert_eq!(g.degree(v100.as_pointer(), Direction::BOTH), 2);
+        assert_eq!(
+            g.degree(v100.as_pointer().with_window(0..1), Direction::BOTH),
+            0
+        );
+        assert_eq!(
+            g.degree(v100.as_pointer().with_window(10..20), Direction::BOTH),
+            0
+        );
+        assert_eq!(g.degree(v105.as_pointer(), Direction::BOTH), 0)
     }
 }
