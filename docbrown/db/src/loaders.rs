@@ -279,7 +279,7 @@ mod csv_loader_test {
         let g = GraphDB::new(2);
         let csv_path: PathBuf = [
             env!("CARGO_MANIFEST_DIR"),
-            "resources/test/lotr-withheaders.csv.gz",
+            "resources/test/lotr-withheader.csv.gz",
         ]
         .iter()
         .collect();
@@ -316,7 +316,7 @@ mod csv_loader_test {
         let g = GraphDB::new(2);
         let csv_path: PathBuf = [
             env!("CARGO_MANIFEST_DIR"),
-            "resources/test/lotr-withheaders.csv.gz",
+            "resources/test/lotr-withheader.csv.gz",
         ]
         .iter()
         .collect();
@@ -352,7 +352,7 @@ mod csv_loader_test {
         let g = GraphDB::new(2);
         let csv_path: PathBuf = [
             env!("CARGO_MANIFEST_DIR"),
-            "resources/test/lotr-withoutheaders.csv.gz",
+            "resources/test/lotr-withoutheader.csv.gz",
         ]
         .iter()
         .collect();
@@ -389,7 +389,7 @@ mod csv_loader_test {
         let g = GraphDB::new(2);
         let csv_path: PathBuf = [
             env!("CARGO_MANIFEST_DIR"),
-            "resources/test/lotr-withoutheaders.csv.gz",
+            "resources/test/lotr-withoutheader.csv.gz",
         ]
         .iter()
         .collect();
