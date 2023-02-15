@@ -192,7 +192,9 @@ pub mod csv {
 #[cfg(test)]
 mod csv_loader_test {
     use regex::Regex;
-
+    use crate::loaders::csv::CsvLoader;
+    use crate::graphdb::GraphDB;
+    
     #[test]
     fn regex_match() {
         let r = Regex::new(r".+address").unwrap();
@@ -214,14 +216,40 @@ mod csv_loader_test {
     }
 
     #[test]
-    fn test_headers_flag() {
+    fn test_headers_flag_and_delimiter() {
+        let g = GraphDB::new(2);
+        let path = [data_dir, "graphdb.bincode"].iter().collect();
+        let csv_loader = CsvLoader::new(path.as_path());
+
+
+
+
         assert!("if true top line is removed from csv output");
-        assert!("if false top line is not removed from csv output");
+        assert!("set delimiter "," csv file has "," delimiter and passes analysis");
     }
 
-    fn test_delimiter_setting() {
-        assert!("set delimiter "," csv file has "," delimiter and passes analysis");
+    fn test_headers_false() {
+    assert!("if false top line is not removed from csv output");
+
+    }
+    #[test]
+    fn test_delimiter_fails() {
         assert!("set delimiter "," csv file does not have "," delimiter, fails analysis");
+    }
+
+    #[test]
+    fn test_file_not_found() {
+
+    }
+
+    fn test_graph_loader() {
+        graph.add_vertex();
+        assert!();
+
+        graph.add_edge();
+        assert!();
+
+        assert!("goes into correct column")
     }
 
 
