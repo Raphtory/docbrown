@@ -1,11 +1,16 @@
+use std::ops::Range;
 use std::path::{Path, PathBuf};
 
 use docbrown_core::{
-    tpartition::{TEdge, TVertex, TemporalGraphPart},
+    graphview::{GraphView, GraphViewInternals, Properties},
+    tpartition::{TEdge, TemporalGraphPart},
     utils, Direction, Prop,
 };
 
-use itertools::Itertools;
+use docbrown_core::graph::TemporalGraph;
+use docbrown_core::graphview::{EdgeIterator, NeighboursIterator, PropertyHistory, VertexIterator};
+use docbrown_core::vertexview::{VertexPointer, VertexView};
+use polars;
 use rayon::prelude::{IntoParallelRefIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};
 
@@ -83,24 +88,6 @@ impl GraphDB {
         Ok(())
     }
 
-    pub fn len(&self) -> usize {
-        self.shards.iter().map(|shard| shard.len()).sum()
-    }
-
-    pub fn edges_len(&self) -> usize {
-        self.shards.iter().map(|shard| shard.out_edges_len()).sum()
-    }
-
-    pub fn contains(&self, v: u64) -> bool {
-        self.shards.iter().any(|shard| shard.contains(v))
-    }
-
-    pub fn contains_window(&self, v: u64, t_start: i64, t_end: i64) -> bool {
-        self.shards
-            .iter()
-            .any(|shard| shard.contains_window(v, t_start, t_end))
-    }
-
     // TODO: Probably add vector reference here like add
     pub fn add_vertex(&self, v: u64, t: i64, props: &Vec<(String, Prop)>) {
         let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
@@ -121,58 +108,6 @@ impl GraphDB {
         }
     }
 
-    pub fn degree(&self, v: u64, d: Direction) -> usize {
-        let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
-        let iter = self.shards[shard_id].degree(v, d);
-        iter
-    }
-
-    pub fn degree_window(&self, v: u64, t_start: i64, t_end: i64, d: Direction) -> usize {
-        let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
-        let iter = self.shards[shard_id].degree_window(v, t_start, t_end, d);
-        iter
-    }
-
-    pub fn vertices(&self) -> Box<dyn Iterator<Item = u64> + '_> {
-        Box::new(self.shards.iter().flat_map(|shard| shard.vertices()))
-    }
-
-    pub fn neighbours(&self, v: u64, d: Direction) -> Box<dyn Iterator<Item = TEdge>> {
-        let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
-
-        let iter = self.shards[shard_id].neighbours(v, d);
-
-        Box::new(iter)
-    }
-
-    pub fn vertices_window(
-        &self,
-        t_start: i64,
-        t_end: i64,
-    ) -> Box<dyn Iterator<Item = TVertex> + '_> {
-        Box::new(
-            self.shards
-                .iter()
-                .map(move |shard| shard.vertices_window(t_start, t_end))
-                .into_iter()
-                .flatten(),
-        )
-    }
-
-    pub fn neighbours_window(
-        &self,
-        v: u64,
-        t_start: i64,
-        t_end: i64,
-        d: Direction,
-    ) -> Box<dyn Iterator<Item = TEdge>> {
-        let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
-
-        let iter = self.shards[shard_id].neighbours_window(v, t_start, t_end, d);
-
-        Box::new(iter)
-    }
-
     pub fn neighbours_window_t(
         &self,
         v: u64,
@@ -180,18 +115,134 @@ impl GraphDB {
         t_end: i64,
         d: Direction,
     ) -> Box<dyn Iterator<Item = TEdge>> {
-        let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
+        let shard_id = self.get_shard_id_from_global_vid(v);
 
         let iter = self.shards[shard_id].neighbours_window_t(v, t_start, t_end, d);
 
         Box::new(iter)
+    }
+
+    #[inline(always)]
+    fn get_shard_id_from_global_vid(&self, v_gid: u64) -> usize {
+        utils::get_shard_id_from_global_vid(v_gid, self.nr_shards)
+    }
+}
+
+impl GraphViewInternals for GraphDB {
+    fn local_n_vertices(&self) -> usize {
+        self.shards.iter().map(|g| g.local_n_vertices()).sum()
+    }
+
+    fn local_n_edges(&self, direction: Direction) -> usize {
+        self.shards.iter().map(|g| g.local_n_edges(direction)).sum()
+    }
+
+    fn local_n_vertices_window(&self, w: Range<i64>) -> usize {
+        self.shards
+            .iter()
+            .map(|g| g.local_n_vertices_window(w.clone()))
+            .sum()
+    }
+
+    fn local_n_edges_window(&self, w: Range<i64>, direction: Direction) -> usize {
+        self.shards
+            .iter()
+            .map(|g| g.local_n_edges_window(w.clone(), direction))
+            .sum()
+    }
+
+    fn local_vertex(&self, gid: u64) -> Option<VertexView<Self>> {
+        let sid = self.get_shard_id_from_global_vid(gid);
+        self.shards[sid]
+            .local_vertex(gid)
+            .map(|v| v.as_view_of(self))
+    }
+
+    fn local_vertex_window(&self, gid: u64, w: Range<i64>) -> Option<VertexView<Self>> {
+        let sid = self.get_shard_id_from_global_vid(gid);
+        self.shards[sid]
+            .local_vertex_window(gid, w)
+            .map(|v| v.as_view_of(self))
+    }
+
+    fn local_contains_vertex(&self, gid: u64) -> bool {
+        let sid = self.get_shard_id_from_global_vid(gid);
+        self.shards[sid].local_contains_vertex(gid)
+    }
+
+    fn local_contains_vertex_window(&self, gid: u64, w: Range<i64>) -> bool {
+        let sid = self.get_shard_id_from_global_vid(gid);
+        self.shards[sid].local_contains_vertex_window(gid, w)
+    }
+
+    fn iter_local_vertices(&self) -> VertexIterator<Self> {
+        Box::new(
+            self.shards
+                .iter()
+                .flat_map(|g| g.iter_local_vertices().map(|v| v.as_view_of(self))),
+        )
+    }
+
+    fn iter_local_vertices_window(&self, window: Range<i64>) -> VertexIterator<Self> {
+        Box::new(self.shards.iter().flat_map(move |g| {
+            g.iter_local_vertices_window(window.clone())
+                .map(|v| v.as_view_of(self))
+        }))
+    }
+
+    fn degree(&self, vertex: VertexPointer, direction: Direction) -> usize {
+        let sid = self.get_shard_id_from_global_vid(vertex.gid);
+        self.shards[sid].degree(vertex, direction)
+    }
+
+    fn neighbours<'a>(
+        &'a self,
+        vertex: VertexPointer,
+        direction: Direction,
+    ) -> NeighboursIterator<'a, Self> {
+        let sid = self.get_shard_id_from_global_vid(vertex.gid);
+        Box::new(
+            self.shards[sid]
+                .neighbours(vertex, direction)
+                .map(|v| v.as_view_of(self)),
+        )
+    }
+
+    fn edges<'a>(&'a self, vertex: VertexPointer, direction: Direction) -> EdgeIterator<'a, Self> {
+        let sid = self.get_shard_id_from_global_vid(vertex.gid);
+        Box::new(
+            self.shards[sid]
+                .edges(vertex, direction)
+                .map(|v| v.as_view_of(self)),
+        )
+    }
+
+    fn property_history<'a>(
+        &'a self,
+        vertex: VertexPointer,
+        name: &'a str,
+    ) -> Option<PropertyHistory<'a>> {
+        let sid = self.get_shard_id_from_global_vid(vertex.gid);
+        self.shards[sid].property_history(vertex, name)
+    }
+}
+
+impl GraphView for GraphDB {
+    fn n_vertices(&self) -> usize {
+        self.local_n_vertices()
+    }
+
+    fn n_edges(&self) -> usize {
+        self.local_n_edges(Direction::OUT)
     }
 }
 
 #[cfg(test)]
 mod db_tests {
     use csv::StringRecord;
+    use docbrown_core::graphview::WindowedView;
     use docbrown_core::utils;
+    use docbrown_core::vertexview::VertexViewMethods;
     use itertools::Itertools;
     use quickcheck::{quickcheck, TestResult};
     use rand::Rng;
@@ -225,7 +276,7 @@ mod db_tests {
             g.add_vertex(v.into(), t.into(), &vec![]);
         }
 
-        assert_eq!(g.len(), expected_len)
+        assert_eq!(g.local_n_vertices(), expected_len)
     }
 
     #[quickcheck]
@@ -252,8 +303,8 @@ mod db_tests {
             g.add_edge(src, dst, t, &vec![]);
         }
 
-        assert_eq!(g.len(), unique_vertices_count);
-        assert_eq!(g.edges_len(), unique_edge_count);
+        assert_eq!(g.n_vertices(), unique_vertices_count);
+        assert_eq!(g.n_edges(), unique_edge_count);
     }
 
     #[test]
@@ -303,7 +354,7 @@ mod db_tests {
         // Load from files
         match GraphDB::load_from_file(Path::new(&shards_path)) {
             Ok(g) => {
-                assert!(g.contains(1));
+                assert!(g.contains_vertex(1));
                 assert_eq!(g.nr_shards, 2);
             }
             Err(e) => panic!("{e}"),
@@ -328,7 +379,7 @@ mod db_tests {
             g.add_vertex(v.into(), t.into(), &vec![]);
         }
 
-        TestResult::from_bool(g.contains(rand_vertex))
+        TestResult::from_bool(g.contains_vertex(rand_vertex))
     }
 
     #[quickcheck]
@@ -364,12 +415,12 @@ mod db_tests {
 
         if start == end {
             let v = vs.get(rand_start_index).unwrap().1;
-            return TestResult::from_bool(!g.contains_window(v, start, end));
+            return TestResult::from_bool(!g.contains_vertex_window(v, start..end));
         }
 
         if rand_start_index == rand_end_index {
             let v = vs.get(rand_start_index).unwrap().1;
-            return TestResult::from_bool(!g.contains_window(v, start, end));
+            return TestResult::from_bool(!g.contains_vertex_window(v, start..end));
         }
 
         let rand_index_within_rand_start_end: usize =
@@ -378,9 +429,9 @@ mod db_tests {
         let (i, v) = vs.get(rand_index_within_rand_start_end).unwrap();
 
         if *i == end {
-            return TestResult::from_bool(!g.contains_window(*v, start, end));
+            return TestResult::from_bool(!g.contains_vertex_window(*v, start..end));
         } else {
-            return TestResult::from_bool(g.contains_window(*v, start, end));
+            return TestResult::from_bool(g.contains_vertex_window(*v, start..end));
         }
     }
 
@@ -404,10 +455,11 @@ mod db_tests {
         let expected = vec![(2, 3, 3), (2, 1, 2), (1, 1, 2)];
         let actual = (1..=3)
             .map(|i| {
+                let v = g.vertex(i).unwrap();
                 (
-                    g.degree(i, Direction::IN),
-                    g.degree(i, Direction::OUT),
-                    g.degree(i, Direction::BOTH),
+                    v.clone().in_degree(),
+                    v.clone().out_degree(),
+                    v.clone().degree(),
                 )
             })
             .collect::<Vec<_>>();
@@ -423,10 +475,11 @@ mod db_tests {
 
         let expected = (1..=3)
             .map(|i| {
+                let v = g.vertex(i).unwrap();
                 (
-                    g.degree(i, Direction::IN),
-                    g.degree(i, Direction::OUT),
-                    g.degree(i, Direction::BOTH),
+                    v.clone().in_degree(),
+                    v.clone().out_degree(),
+                    v.clone().degree(),
                 )
             })
             .collect::<Vec<_>>();
@@ -454,10 +507,11 @@ mod db_tests {
         let expected = vec![(2, 3, 1), (1, 0, 0), (1, 0, 0)];
         let actual = (1..=3)
             .map(|i| {
+                let v = g.vertex(i).unwrap();
                 (
-                    g.degree_window(i, -1, 7, Direction::IN),
-                    g.degree_window(i, 1, 7, Direction::OUT),
-                    g.degree_window(i, 0, 1, Direction::BOTH),
+                    v.clone().with_window(-1..7).in_degree(),
+                    v.clone().with_window(1..7).out_degree(),
+                    v.clone().with_window(0..1).degree(),
                 )
             })
             .collect::<Vec<_>>();
@@ -473,10 +527,11 @@ mod db_tests {
 
         let expected = (1..=3)
             .map(|i| {
+                let v = g.vertex(i).unwrap();
                 (
-                    g.degree_window(i, -1, 7, Direction::IN),
-                    g.degree_window(i, 1, 7, Direction::OUT),
-                    g.degree_window(i, 0, 1, Direction::BOTH),
+                    v.clone().with_window(-1..7).in_degree(),
+                    v.clone().with_window(1..7).out_degree(),
+                    v.clone().with_window(0..1).degree(),
                 )
             })
             .collect::<Vec<_>>();
@@ -501,7 +556,7 @@ mod db_tests {
             g.add_edge(*src, *dst, *t, &vec![]);
         }
 
-        let actual = g.vertices().collect::<Vec<_>>();
+        let actual = g.vertices().id().collect::<Vec<_>>();
         assert_eq!(actual, vec![1, 2, 3]);
 
         // Check results from multiple graphs with different number of shards
@@ -511,7 +566,7 @@ mod db_tests {
             g.add_edge(*src, *dst, *t, &vec![]);
         }
 
-        let expected = g.vertices().collect::<Vec<_>>();
+        let expected = g.vertices().id().collect::<Vec<_>>();
         assert_eq!(actual, expected);
     }
 
@@ -535,10 +590,11 @@ mod db_tests {
         let expected = vec![(2, 3, 5), (2, 1, 3), (1, 1, 2)];
         let actual = (1..=3)
             .map(|i| {
+                let v = g.vertex(i).unwrap();
                 (
-                    g.neighbours(i, Direction::IN).collect::<Vec<_>>().len(),
-                    g.neighbours(i, Direction::OUT).collect::<Vec<_>>().len(),
-                    g.neighbours(i, Direction::BOTH).collect::<Vec<_>>().len(),
+                    v.clone().in_edges().count(),
+                    v.clone().out_edges().count(),
+                    v.clone().edges().count(),
                 )
             })
             .collect::<Vec<_>>();
@@ -554,10 +610,11 @@ mod db_tests {
 
         let expected = (1..=3)
             .map(|i| {
+                let v = g.vertex(i).unwrap();
                 (
-                    g.neighbours(i, Direction::IN).collect::<Vec<_>>().len(),
-                    g.neighbours(i, Direction::OUT).collect::<Vec<_>>().len(),
-                    g.neighbours(i, Direction::BOTH).collect::<Vec<_>>().len(),
+                    v.clone().in_edges().count(),
+                    v.clone().out_edges().count(),
+                    v.clone().edges().count(),
                 )
             })
             .collect::<Vec<_>>();
@@ -585,16 +642,11 @@ mod db_tests {
         let expected = vec![(2, 3, 2), (1, 0, 0), (1, 0, 0)];
         let actual = (1..=3)
             .map(|i| {
+                let v = g.vertex(i).unwrap();
                 (
-                    g.neighbours_window(i, -1, 7, Direction::IN)
-                        .collect::<Vec<_>>()
-                        .len(),
-                    g.neighbours_window(i, 1, 7, Direction::OUT)
-                        .collect::<Vec<_>>()
-                        .len(),
-                    g.neighbours_window(i, 0, 1, Direction::BOTH)
-                        .collect::<Vec<_>>()
-                        .len(),
+                    v.clone().with_window(-1..7).in_edges().count(),
+                    v.clone().with_window(1..7).out_edges().count(),
+                    v.clone().with_window(0..1).edges().count(),
                 )
             })
             .collect::<Vec<_>>();
@@ -610,16 +662,11 @@ mod db_tests {
 
         let expected = (1..=3)
             .map(|i| {
+                let v = g.vertex(i).unwrap();
                 (
-                    g.neighbours_window(i, -1, 7, Direction::IN)
-                        .collect::<Vec<_>>()
-                        .len(),
-                    g.neighbours_window(i, 1, 7, Direction::OUT)
-                        .collect::<Vec<_>>()
-                        .len(),
-                    g.neighbours_window(i, 0, 1, Direction::BOTH)
-                        .collect::<Vec<_>>()
-                        .len(),
+                    v.clone().with_window(-1..7).in_edges().count(),
+                    v.clone().with_window(1..7).out_edges().count(),
+                    v.clone().with_window(0..1).edges().count(),
                 )
             })
             .collect::<Vec<_>>();
@@ -719,7 +766,7 @@ mod db_tests {
     fn vertices_window() {
         let vs = vec![(1, 2, 1), (3, 4, 3), (5, 6, 5), (7, 1, 7)];
 
-        let args = vec![(i64::MIN, 8), (i64::MIN, 2), (i64::MIN, 4), (3, 6)];
+        let args = vec![(i64::MIN..8), (i64::MIN..2), (i64::MIN..4), (3..6)];
 
         let expected = vec![
             vec![1, 2, 3, 4, 5, 6, 7],
@@ -736,10 +783,8 @@ mod db_tests {
 
         let res: Vec<_> = (0..=3)
             .map(|i| {
-                let mut e = g
-                    .vertices_window(args[i].0, args[i].1)
-                    .map(move |v| v.g_id)
-                    .collect::<Vec<_>>();
+                let view = WindowedView::new(&g, args[i].clone());
+                let mut e = view.vertices().id().collect::<Vec<_>>();
                 e.sort();
                 e
             })
@@ -753,10 +798,8 @@ mod db_tests {
         }
         let res: Vec<_> = (0..=3)
             .map(|i| {
-                let mut e = g
-                    .vertices_window(args[i].0, args[i].1)
-                    .map(move |v| v.g_id)
-                    .collect::<Vec<_>>();
+                let view = WindowedView::new(&g, args[i].clone());
+                let mut e = view.vertices().id().collect::<Vec<_>>();
                 e.sort();
                 e
             })
@@ -815,6 +858,6 @@ mod db_tests {
         }
 
         let gandalf = utils::calculate_hash(&"Gandalf");
-        assert!(g.contains(gandalf));
+        assert!(g.contains_vertex(gandalf));
     }
 }
