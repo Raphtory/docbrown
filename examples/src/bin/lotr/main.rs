@@ -45,11 +45,9 @@ fn main() {
     } else {
         let g = GraphDB::new(2);
         let now = Instant::now();
-        let delimiter_string = ",";
-        let delimiter: u8 = delimiter_string.as_bytes()[0];
         let _ = CsvLoader::new(data_dir)
             .set_header(true)
-            .set_delimiter(delimiter)
+            .set_delimiter(",")
             .load_into_graph(&g, |lotr: Lotr, g: &GraphDB| {
                 let src_id = utils::calculate_hash(&lotr.src_id);
                 let dst_id = utils::calculate_hash(&lotr.dst_id);

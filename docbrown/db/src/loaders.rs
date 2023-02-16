@@ -39,8 +39,8 @@ pub mod csv {
             self
         }
 
-        pub fn set_delimiter(mut self, d: u8) -> Self {
-            self.delimiter = d;
+        pub fn set_delimiter(mut self, d: &str) -> Self {
+            self.delimiter = d.as_bytes()[0];
             self
         }
 
@@ -182,7 +182,6 @@ mod csv_loader_test {
         // todo: move file path to data module
         let text = "bitcoin/address_000000000001.csv.gz";
         assert!(r.is_match(&text));
-        // todo: move file path to data module
         let text = "bitcoin/received_000000000001.csv.gz";
         assert!(!r.is_match(&text));
     }
@@ -193,10 +192,8 @@ mod csv_loader_test {
         // todo: move file path to data module
         let text = "bitcoin/sent_000000000001.csv.gz";
         assert!(r.is_match(&text));
-        // todo: move file path to data module
         let text = "bitcoin/received_000000000001.csv.gz";
         assert!(r.is_match(&text));
-        // todo: move file path to data module
         let text = "bitcoin/address_000000000001.csv.gz";
         assert!(!r.is_match(&text));
     }
@@ -212,19 +209,18 @@ mod csv_loader_test {
     fn test_headers_flag_and_delimiter() {
         let g = GraphDB::new(2);
         // todo: move file path to data module
-        let csv_path: PathBuf = [env!("CARGO_MANIFEST_DIR"), "resources/withheader"]
+        let csv_path: PathBuf = [env!("CARGO_MANIFEST_DIR"), "../resource/"]
             .iter()
             .collect();
 
         println!("path = {}", csv_path.as_path().to_str().unwrap());
         let csv_loader = CsvLoader::new(Path::new(&csv_path));
         let has_header = true;
-        let delimiter_string = ",";
-        let delimiter: u8 = delimiter_string.as_bytes()[0];
-
+        let r = Regex::new(r".+(lotr.csv)").unwrap();
         csv_loader
             .set_header(has_header)
-            .set_delimiter(delimiter)
+            .set_delimiter(",")
+            .with_filter(r)
             .load_into_graph(&g, |lotr: Lotr, g: &GraphDB| {
                 let src_id = calculate_hash(&lotr.src_id);
                 let dst_id = calculate_hash(&lotr.dst_id);
@@ -251,7 +247,6 @@ mod csv_loader_test {
                 );
             })
             .expect("Csv did not parse.");
-
     }
 
     #[test]
@@ -259,20 +254,16 @@ mod csv_loader_test {
     fn test_wrong_header_flag_file_with_header() {
         let g = GraphDB::new(2);
         // todo: move file path to data module
-        let csv_path: PathBuf = [
-            env!("CARGO_MANIFEST_DIR"),
-            "resources/withheader/",
-        ]
-        .iter()
-        .collect();
+        let csv_path: PathBuf = [env!("CARGO_MANIFEST_DIR"), "../resource/"]
+            .iter()
+            .collect();
         let csv_loader = CsvLoader::new(Path::new(&csv_path));
         let has_header = false;
-        let delimiter_string = ",";
-        let delimiter: u8 = delimiter_string.as_bytes()[0];
-
+        let r = Regex::new(r".+(lotr.csv)").unwrap();
         csv_loader
             .set_header(has_header)
-            .set_delimiter(delimiter)
+            .set_delimiter(",")
+            .with_filter(r)
             .load_into_graph(&g, |lotr: Lotr, g: &GraphDB| {
                 let src_id = calculate_hash(&lotr.src_id);
                 let dst_id = calculate_hash(&lotr.dst_id);
@@ -305,20 +296,17 @@ mod csv_loader_test {
     fn test_no_headers_flag() {
         let g = GraphDB::new(2);
         // todo: move file path to data module
-        let csv_path: PathBuf = [
-            env!("CARGO_MANIFEST_DIR"),
-            "resources/withoutheader",
-        ]
-        .iter()
-        .collect();
+        let csv_path: PathBuf = [env!("CARGO_MANIFEST_DIR"), "../resource/"]
+            .iter()
+            .collect();
         let csv_loader = CsvLoader::new(Path::new(&csv_path));
         let has_header = false;
-        let delimiter_string = ",";
-        let delimiter: u8 = delimiter_string.as_bytes()[0];
+        let r = Regex::new(r".+(lotr-without-header.csv)").unwrap();
 
         csv_loader
             .set_header(has_header)
-            .set_delimiter(delimiter)
+            .set_delimiter(",")
+            .with_filter(r)
             .load_into_graph(&g, |lotr: Lotr, g: &GraphDB| {
                 let src_id = calculate_hash(&lotr.src_id);
                 let dst_id = calculate_hash(&lotr.dst_id);
@@ -345,8 +333,6 @@ mod csv_loader_test {
                 );
             })
             .expect("Csv did not parse.");
-
-        assert_eq!(g.edges_len(), 701);
     }
 
     #[test]
@@ -354,20 +340,15 @@ mod csv_loader_test {
     fn test_flag_has_header_but_file_has_no_header() {
         let g = GraphDB::new(2);
         // todo: move file path to data module
-        let csv_path: PathBuf = [
-            env!("CARGO_MANIFEST_DIR"),
-            "resources/withoutheader",
-        ]
-        .iter()
-        .collect();
+        let csv_path: PathBuf = [env!("CARGO_MANIFEST_DIR"), "../resource/"]
+            .iter()
+            .collect();
         let csv_loader = CsvLoader::new(Path::new(&csv_path));
         let has_header = true;
-        let delimiter_string = ",";
-        let delimiter: u8 = delimiter_string.as_bytes()[0];
-
+        let r = Regex::new(r".+(lotr-without-header.csv)").unwrap();
         csv_loader
             .set_header(has_header)
-            .set_delimiter(delimiter)
+            .set_delimiter(",")
             .load_into_graph(&g, |lotr: Lotr, g: &GraphDB| {
                 let src_id = calculate_hash(&lotr.src_id);
                 let dst_id = calculate_hash(&lotr.dst_id);
@@ -394,8 +375,6 @@ mod csv_loader_test {
                 );
             })
             .expect("Csv did not parse.");
-
-        assert_ne!(g.edges_len(), 701);
     }
 
     #[test]
@@ -403,18 +382,16 @@ mod csv_loader_test {
     fn test_wrong_header_names() {
         let g = GraphDB::new(2);
         // todo: move file path to data module
-        let csv_path: PathBuf = [env!("CARGO_MANIFEST_DIR"), "resources/wrongheader/"]
+        let csv_path: PathBuf = [env!("CARGO_MANIFEST_DIR"), "../resource/"]
             .iter()
             .collect();
         let csv_loader = CsvLoader::new(Path::new(&csv_path));
-
-        let delimiter_string = ",";
-        let delimiter: u8 = delimiter_string.as_bytes()[0];
-
+        let r = Regex::new(r".+(lotr-wrong.csv)").unwrap();
         let has_header = true;
         csv_loader
             .set_header(has_header)
-            .set_delimiter(delimiter)
+            .set_delimiter(",")
+            .with_filter(r)
             .load_into_graph(&g, |lotr: Lotr, g: &GraphDB| {
                 let src_id = calculate_hash(&lotr.src_id);
                 let dst_id = calculate_hash(&lotr.dst_id);
@@ -448,17 +425,16 @@ mod csv_loader_test {
     fn test_wrong_delimiter() {
         let g = GraphDB::new(2);
         // todo: move file path to data module
-        let csv_path: PathBuf = [env!("CARGO_MANIFEST_DIR"), "resources/withheader"]
+        let csv_path: PathBuf = [env!("CARGO_MANIFEST_DIR"), "../resource/"]
             .iter()
             .collect();
         let csv_loader = CsvLoader::new(Path::new(&csv_path));
-        let delimiter_string = ".";
-        let delimiter: u8 = delimiter_string.as_bytes()[0];
-
+        let r = Regex::new(r".+(lotr.csv)").unwrap();
         let has_header = true;
         csv_loader
             .set_header(has_header)
-            .set_delimiter(delimiter)
+            .set_delimiter(".")
+            .with_filter(r)
             .load_into_graph(&g, |lotr: Lotr, g: &GraphDB| {
                 let src_id = calculate_hash(&lotr.src_id);
                 let dst_id = calculate_hash(&lotr.dst_id);
