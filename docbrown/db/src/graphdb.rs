@@ -766,7 +766,7 @@ mod db_tests {
     fn vertices_window() {
         let vs = vec![(1, 2, 1), (3, 4, 3), (5, 6, 5), (7, 1, 7)];
 
-        let args = vec![(i64::MIN, 8), (i64::MIN, 2), (i64::MIN, 4), (3, 6)];
+        let args = vec![(i64::MIN..8), (i64::MIN..2), (i64::MIN..4), (3..6)];
 
         let expected = vec![
             vec![1, 2, 3, 4, 5, 6, 7],
@@ -783,10 +783,8 @@ mod db_tests {
 
         let res: Vec<_> = (0..=3)
             .map(|i| {
-                let mut e = WindowedView::new(&g, args[i].0..args[i].1)
-                    .vertices()
-                    .id()
-                    .collect::<Vec<_>>();
+                let view = WindowedView::new(&g, args[i].clone());
+                let mut e = view.vertices().id().collect::<Vec<_>>();
                 e.sort();
                 e
             })
@@ -800,11 +798,8 @@ mod db_tests {
         }
         let res: Vec<_> = (0..=3)
             .map(|i| {
-                let mut e = g
-                    .vertices()
-                    .with_window(args[i].0..args[i].1)
-                    .id()
-                    .collect::<Vec<_>>();
+                let view = WindowedView::new(&g, args[i].clone());
+                let mut e = view.vertices().id().collect::<Vec<_>>();
                 e.sort();
                 e
             })

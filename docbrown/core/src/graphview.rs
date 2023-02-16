@@ -407,7 +407,7 @@ mod graph_view_tests {
 
         let window = 0..1;
         let view = WindowedView::new(&g, window);
-        let vertices = view.iter_local_vertices().map(|v| v.id()).collect_vec();
+        let vertices = view.vertices().id().collect_vec();
         assert_eq!(vertices, vec![1, 2])
     }
 

@@ -154,7 +154,7 @@ impl GraphViewInternals for TemporalGraphPart {
         let vertex_iter = gen!({
             let g = self.0.read();
             let iter = (*g)
-                .iter_local_vertices_window(window)
+                .iter_local_vertices_window(window.clone())
                 .map(|v| v.as_view_of(self));
             for v in iter {
                 yield_!(v)

@@ -11,6 +11,7 @@ pub mod graphview;
 pub mod lsm;
 mod misc;
 mod props;
+pub mod singlepartitiongraph;
 mod sorted_vec_map;
 mod state;
 mod tadjset;
@@ -18,10 +19,8 @@ mod tcell;
 pub mod tpartition;
 mod tprop;
 mod tpropvec;
-pub mod vertexview;
-mod singlepartitiongraph;
 pub mod utils;
-
+pub mod vertexview;
 
 // Denotes edge direction
 #[derive(Clone, Copy, PartialEq)]
