@@ -811,7 +811,7 @@ mod db_tests {
     fn db_lotr() {
         let g = GraphDB::new(4);
 
-        let data_dir: PathBuf = [env!("CARGO_MANIFEST_DIR"), "resources/lotr.csv"]
+        let data_dir: PathBuf = [env!("CARGO_MANIFEST_DIR"), "../resource/lotr.csv"]
             .iter()
             .collect();
 
