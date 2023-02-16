@@ -1,5 +1,5 @@
 use crate::error::GraphError;
-use crate::graphview::GraphView;
+use crate::graphview::{GraphView, StateView};
 use crate::state::StateVec;
 use crate::vertexview::VertexViewMethods;
 use itertools::{izip, Itertools};
@@ -7,7 +7,10 @@ use polars::prelude::*;
 use std::cmp::min;
 use std::iter::zip;
 
-pub fn connected_components<'a>(g: &'a GraphView) -> Result<GraphView<'a>, GraphError> {
+pub fn connected_components<G>(g: &G) -> Result<G, GraphError>
+where
+    G: GraphView + StateView,
+{
     println!("starting");
     let mut labels = g.new_state_from(g.vertices().id())?;
 
@@ -38,37 +41,38 @@ pub fn connected_components<'a>(g: &'a GraphView) -> Result<GraphView<'a>, Graph
             break;
         }
     }
-    Ok(g.with_state("cc_label", labels.iter().collect()))
+    g.with_state("cc_label", labels.iter().collect())
 }
 
 #[cfg(test)]
 mod algo_tests {
     use super::*;
-    use crate::graph::TemporalGraph;
-    use crate::graphview::LocalVertexView;
+    use crate::graphview::{MutableGraph, WindowedView};
+    use crate::singlepartitiongraph::SinglePartitionGraph;
     use crate::vertexview::VertexViewMethods;
 
     #[test]
     fn cc_test() {
         println!("very start");
-        let mut g = TemporalGraph::default();
+        let mut g = SinglePartitionGraph::default();
 
         g.add_edge(2, 1, 0);
         g.add_vertex(3, 0);
         println!("creating view");
-        let gv = GraphView::new(&g, &(0..1));
+        let gv = WindowedView::new(&g, 0..1);
         println!("we have view");
         println!("{:?}", gv.vertices().id().collect_vec());
         let gv = connected_components(&gv).unwrap();
-        let cc = gv.get_state("cc_label");
+        let cc = gv.get_state("cc_label").unwrap();
         for c in cc.u64().unwrap() {
             println!("{}", c.unwrap())
         }
+
         for v in gv.vertices() {
-            match (&v).id() {
-                1 => assert_eq!(v.get_state("cc_label").extract(), Some(1)),
-                2 => assert_eq!(v.get_state("cc_label").extract(), Some(1)),
-                3 => assert_eq!(v.get_state("cc_label").extract(), Some(3)),
+            match (v.clone()).id() {
+                1 => assert_eq!(v.get_property("cc_label").unwrap().extract(), Some(1)),
+                2 => assert_eq!(v.get_property("cc_label").unwrap().extract(), Some(1)),
+                3 => assert_eq!(v.get_property("cc_label").unwrap().extract(), Some(3)),
                 id => panic!("unknown node {id}"),
             }
         }

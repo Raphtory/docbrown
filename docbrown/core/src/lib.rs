@@ -4,7 +4,7 @@ extern crate quickcheck_macros;
 extern crate core;
 
 mod adj;
-// mod algo;
+mod algo;
 mod bitset;
 mod error;
 pub mod graph;
@@ -20,6 +20,7 @@ pub mod tpartition;
 mod tprop;
 mod tpropvec;
 pub mod vertexview;
+mod singlepartitiongraph;
 
 // Denotes edge direction
 #[derive(Clone, Copy, PartialEq)]

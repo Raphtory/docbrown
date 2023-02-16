@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::ops::Range;
 
 use crate::tadjset::{AdjEdge, TAdjSet};
 
@@ -71,12 +72,30 @@ impl Adj {
         }
     }
 
+    pub(crate) fn out_edges_len_window(&self, w: Range<i64>) -> usize {
+        match self {
+            Adj::Solo(_) => 0,
+            Adj::List {
+                out, remote_out, ..
+            } => out.len_window(&w) + remote_out.len_window(&w),
+        }
+    }
+
     pub(crate) fn in_edges_len(&self) -> usize {
         match self {
             Adj::Solo(_) => 0,
             Adj::List {
                 into, remote_into, ..
             } => into.len() + remote_into.len(),
+        }
+    }
+
+    pub(crate) fn in_edges_len_window(&self, w: Range<i64>) -> usize {
+        match self {
+            Adj::Solo(_) => 0,
+            Adj::List {
+                into, remote_into, ..
+            } => into.len_window(&w) + remote_into.len_window(&w),
         }
     }
 }

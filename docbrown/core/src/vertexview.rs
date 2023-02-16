@@ -1,11 +1,14 @@
+use crate::error::GraphResult;
 use crate::graph::{EdgeView, TemporalGraph};
 use crate::graphview::{
     EdgeIterator, GraphView, GraphViewInternals, IteratorWithLifetime, NeighboursIterator,
-    PropertyHistory,
+    PropertyHistory, StateView,
 };
 use crate::state::{State, StateVec};
 use crate::tpartition::TemporalGraphPart;
 use crate::{Direction, Prop};
+use polars::datatypes::AnyValue;
+use std::any::Any;
 use std::borrow::Borrow;
 use std::ops::Range;
 
@@ -65,6 +68,15 @@ where
     //     }
     // }
     //
+}
+
+impl<'a, G> VertexView<'a, G>
+where
+    G: StateView,
+{
+    pub fn get_property(&self, name: &str) -> GraphResult<AnyValue> {
+        Ok(self.g.get_state(name)?.get(self.pid)?)
+    }
 }
 
 impl<'a, G> Clone for VertexView<'a, G>

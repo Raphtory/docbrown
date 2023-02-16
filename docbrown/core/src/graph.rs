@@ -1,3 +1,4 @@
+use std::ops::Deref;
 use std::{
     collections::{BTreeMap, HashMap},
     ops::Range,
@@ -8,7 +9,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::adj::Adj;
 use crate::graphview::{
-    EdgeIterator, GraphViewInternals, NeighboursIterator, PropertyHistory, VertexIterator,
+    EdgeIterator, GraphView, GraphViewInternals, MutableGraph, NeighboursIterator, PropertyHistory,
+    VertexIterator,
 };
 use crate::props::Props;
 use crate::vertexview::{VertexPointer, VertexView, VertexViewMethods};
@@ -57,11 +59,26 @@ impl GraphViewInternals for TemporalGraph {
     }
 
     fn local_n_vertices_window(&self, w: Range<i64>) -> usize {
-        todo!()
+        self.iter_local_vertices_window(w).count()
     }
 
     fn local_n_edges_window(&self, w: Range<i64>, direction: Direction) -> usize {
-        todo!()
+        match direction {
+            Direction::OUT => self
+                .adj_lists
+                .iter()
+                .map(|adj| adj.out_edges_len_window(w.clone()))
+                .sum(),
+            Direction::IN => self
+                .adj_lists
+                .iter()
+                .map(|adj| adj.in_edges_len_window(w.clone()))
+                .sum(),
+            Direction::BOTH => {
+                self.local_n_edges_window(w.clone(), Direction::OUT)
+                    + self.local_n_edges_window(w.clone(), Direction::IN)
+            }
+        }
     }
 
     fn local_vertex(&self, gid: u64) -> Option<VertexView<Self>> {

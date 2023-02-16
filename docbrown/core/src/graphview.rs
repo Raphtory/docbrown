@@ -67,6 +67,20 @@ pub trait NeighboursIteratorInterface {}
 
 pub type Properties = polars::frame::DataFrame;
 
+pub trait MutableGraph {
+    fn add_vertex(&mut self, v: u64, t: i64) {
+        self.add_vertex_with_props(v, t, &vec![])
+    }
+
+    fn add_vertex_with_props(&mut self, v: u64, t: i64, props: &Vec<(String, Prop)>);
+
+    fn add_edge(&mut self, src: u64, dst: u64, t: i64) {
+        self.add_edge_with_props(src, dst, t, &vec![])
+    }
+
+    fn add_edge_with_props(&mut self, src: u64, dst: u64, t: i64, props: &Vec<(String, Prop)>);
+}
+
 pub trait GraphViewInternals: Sized {
     /// Get number of vertices in the partition of the view
     fn local_n_vertices(&self) -> usize {
@@ -141,12 +155,17 @@ pub trait GraphViewInternals: Sized {
     ) -> Option<PropertyHistory<'a>>;
 }
 
+/// Implement this trait to mark a graph as a global view
 pub trait GraphView: GraphViewInternals {
     /// Global number of nodes (should be the sum over all partitions)
-    fn n_nodes(&self) -> usize;
+    fn n_nodes(&self) -> usize {
+        self.local_n_vertices()
+    }
 
     /// Global number of edges (should be the sum over all partitions)
-    fn n_edges(&self) -> usize;
+    fn n_edges(&self) -> usize {
+        self.local_n_edges(Direction::OUT)
+    }
 
     fn vertices(&self) -> Vertices<'_, Self> {
         Vertices::new(self)
@@ -180,14 +199,14 @@ pub trait StateView: GraphViewInternals {
     }
 }
 
-struct WindowedView<'a, G: GraphViewInternals> {
+pub struct WindowedView<'a, G: GraphViewInternals> {
     graph: &'a G,
     window: Range<i64>,
     state: Properties,
 }
 
 impl<'a, G: GraphViewInternals> WindowedView<'a, G> {
-    fn new(graph: &'a G, window: Range<i64>) -> Self {
+    pub fn new(graph: &'a G, window: Range<i64>) -> Self {
         Self {
             graph,
             window,
@@ -206,7 +225,7 @@ impl<'a, G: GraphViewInternals> WindowedView<'a, G> {
 }
 
 impl<'a, G: StateView> WindowedView<'a, G> {
-    fn new_from_view(graph: &'a G, window: Range<i64>) -> Self {
+    pub fn new_from_view(graph: &'a G, window: Range<i64>) -> Self {
         Self {
             graph,
             window,
@@ -339,23 +358,12 @@ where
 #[cfg(test)]
 mod graph_view_tests {
     use super::*;
-    use crate::graph::TemporalGraph;
+    use crate::singlepartitiongraph::SinglePartitionGraph;
     use crate::vertexview::VertexViewMethods;
     use itertools::Itertools;
 
-    // For testing implement the global counts by pointing to the local counts as we have a single partition
-    impl<'a> GraphView for WindowedView<'a, TemporalGraph> {
-        fn n_nodes(&self) -> usize {
-            self.graph.local_n_vertices()
-        }
-
-        fn n_edges(&self) -> usize {
-            self.graph.local_n_edges(Direction::OUT)
-        }
-    }
-
-    fn make_mini_graph() -> TemporalGraph {
-        let mut g = TemporalGraph::default();
+    fn make_mini_graph() -> SinglePartitionGraph {
+        let mut g = SinglePartitionGraph::default();
 
         g.add_vertex(1, 0);
         g.add_vertex(2, 0);
