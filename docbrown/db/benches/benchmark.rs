@@ -16,7 +16,7 @@ fn calculate_hash<T: Hash>(t: &T) -> u64 {
     s.finish()
 }
 
-fn read_csv(path: &Path, source: usize, target: usize, time: Option<usize>) -> GraphDB {
+fn read_csv(path: &Path, source: usize, target: usize, time: Option<usize>, delimiter: u8) -> GraphDB {
     let mut times: Range<i64> = (0..i64::MAX);
     let mut parse_record = |rec: &StringRecord| {
         let source_value: String = rec.get(source).ok_or("No source id")?.parse()?;
@@ -28,8 +28,12 @@ fn read_csv(path: &Path, source: usize, target: usize, time: Option<usize>) -> G
         Ok::<(String, String, i64), Box<dyn Error>>((source_value, target_value, time_value))
     };
 
-    let mut reader = csv::Reader::from_path(path).unwrap();
     let graph = GraphDB::new(4);
+    let mut reader = csv::ReaderBuilder::new()
+        .has_headers(false)
+        .delimiter(delimiter)
+        .from_path(path)
+        .unwrap();
 
     for record in reader.records() {
         let record_ok = record.unwrap();
@@ -63,14 +67,14 @@ pub fn element_additions(c: &mut Criterion) {
 
 pub fn edges_len(c: &mut Criterion) {
     let path = data::lotr().unwrap();
-    let graph = read_csv(&path, 0, 1, Some(2));
+    let graph = read_csv(&path, 0, 1, Some(2), b',');
 
     c.bench_function("edges len", |b| b.iter(|| graph.edges_len()));
 }
 
 pub fn degree(c: &mut Criterion) {
     let path = data::lotr().unwrap();
-    let graph = read_csv(&path, 0, 1, Some(2));
+    let graph = read_csv(&path, 0, 1, Some(2), b',');
     let vertex = calculate_hash(&"Frodo");
 
     c.bench_function("degree", |b| b.iter(|| graph.degree(vertex, Direction::OUT)));
@@ -78,10 +82,10 @@ pub fn degree(c: &mut Criterion) {
 
 pub fn ingestion(c: &mut Criterion) {
     let lotr = data::lotr().unwrap();
-    c.bench_function("load lotr.csv", |b: &mut Bencher| b.iter_with_large_drop(|| read_csv(&lotr, 0, 1, Some(2))));
+    c.bench_function("load lotr.csv", |b: &mut Bencher| b.iter_with_large_drop(|| read_csv(&lotr, 0, 1, Some(2), b',')));
 
     let twitter = data::twitter().unwrap();
-    c.bench_function("load twitter.csv", |b: &mut Bencher| b.iter_with_large_drop(|| read_csv(&twitter, 0, 1, None)));
+    c.bench_function("load twitter.csv", |b: &mut Bencher| b.iter_with_large_drop(|| read_csv(&twitter, 0, 1, None, b' ')));
 }
 
 criterion_group!(benches, element_additions, edges_len, degree, ingestion);
