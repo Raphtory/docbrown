@@ -210,33 +210,39 @@ impl GraphDB {
         }
     }
 
-    // pub fn neighbours_window(
-    //     &self,
-    //     v: u64,
-    //     t_start: i64,
-    //     t_end: i64,
-    //     d: Direction,
-    // ) -> Box<dyn Iterator<Item = TEdge>> {
-    //     Box::new(
-    //         self.graphdb
-    //             .neighbours_window(v, t_start, t_end, d.convert())
-    //             .map(|f| TEdge::convert(f)),
-    //     )
-    // }
+    pub fn neighbours_window(
+        &self,
+        v: u64,
+        t_start: i64,
+        t_end: i64,
+        d: Direction,
+    ) -> EdgeIterator {
+        EdgeIterator {
+            iter: self
+                .graphdb
+                .neighbours_window(v, t_start, t_end, d.convert())
+                .map(|f| TEdge::convert(f))
+                .collect::<Vec<_>>()
+                .into_iter(),
+        }
+    }
 
-    // pub fn neighbours_window_t(
-    //     &self,
-    //     v: u64,
-    //     t_start: i64,
-    //     t_end: i64,
-    //     d: Direction,
-    // ) -> Box<dyn Iterator<Item = TEdge>> {
-    //     Box::new(
-    //         self.graphdb
-    //             .neighbours_window_t(v, t_start, t_end, d.convert())
-    //             .map(|f| TEdge::convert(f)),
-    //     )
-    // }
+    pub fn neighbours_window_t(
+        &self,
+        v: u64,
+        t_start: i64,
+        t_end: i64,
+        d: Direction,
+    ) -> EdgeIterator {
+        EdgeIterator {
+            iter: self
+                .graphdb
+                .neighbours_window_t(v, t_start, t_end, d.convert())
+                .map(|f| TEdge::convert(f))
+                .collect::<Vec<_>>()
+                .into_iter(),
+        }
+    }
 }
 
 #[pymodule]

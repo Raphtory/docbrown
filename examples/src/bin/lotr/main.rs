@@ -1,6 +1,6 @@
+use docbrown_core::utils;
 use docbrown_core::{Direction, Prop};
 use docbrown_db::{graphdb::GraphDB, loaders::csv::CsvLoader};
-use docbrown_core::utils;
 use serde::Deserialize;
 use std::{env, path::Path, time::Instant};
 
@@ -88,35 +88,47 @@ fn main() {
         g
     };
 
+    println!("Graph length = {}", graph.len());
+    println!("Graph edge length = {}", graph.edges_len());
+
     let gandalf = utils::calculate_hash(&"Gandalf");
     println!("Gandalf Hash = {}", gandalf);
     println!("Gandalf exists = {}", graph.contains(gandalf));
 
-    println!("Gandalf's windowed outbound neighbours");
+    let in_degree = graph.degree(gandalf, Direction::IN);
+    let out_degree = graph.degree(gandalf, Direction::OUT);
+    let degree = graph.degree(gandalf, Direction::BOTH);
+
+    println!(
+        "Gandalf has {} in-degree, {} out-degree and {} total degree",
+        in_degree, out_degree, degree
+    );
+
+    let in_degree_w = graph.degree_window(gandalf, 0, i64::MAX, Direction::IN);
+    let out_degree_w = graph.degree_window(gandalf, 0, i64::MAX, Direction::OUT);
+    let degree_w = graph.degree_window(gandalf, 0, i64::MAX, Direction::BOTH);
+
+    println!(
+        "Gandalf has {} windowed in-degree, {} windowed out-degree and {} total degree",
+        in_degree_w, out_degree_w, degree_w
+    );
+
+    println!("\nGandalf's windowed outbound neighbours");
     graph
         .neighbours_window(gandalf, 0, i64::MAX, Direction::OUT)
         .for_each(|e| println!("{:?}", e));
 
-    println!("Gandalf's outbound neighbours");
+    println!("\nGandalf's outbound neighbours");
     graph
         .neighbours(gandalf, Direction::OUT)
         .for_each(|e| println!("{:?}", e));
 
-    println!("Gandalf's windowed outbound neighbours with timestamp");
+    println!("\nGandalf's windowed outbound neighbours with timestamp");
     graph
         .neighbours_window_t(gandalf, 0, i64::MAX, Direction::OUT)
         .for_each(|e| println!("{:?}", e));
 
-    let in_degree = graph.degree_window(gandalf, 0, i64::MAX, Direction::IN);
-    let out_degree = graph.degree_window(gandalf, 0, i64::MAX, Direction::OUT);
-    let degree = graph.degree_window(gandalf, 0, i64::MAX, Direction::BOTH);
-
-    println!(
-        "{} has {} windowed in-degree, {} windowed out-degree and {} total degree",
-        gandalf, in_degree, out_degree, degree
-    );
-
-    println!("Print all vertices!");
+    println!("\nAll Vertices!");
     for v in graph.vertices() {
         println!("{v}")
     }
