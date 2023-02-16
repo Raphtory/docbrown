@@ -45,8 +45,11 @@ fn main() {
     } else {
         let g = GraphDB::new(2);
         let now = Instant::now();
-
+        let delimiter_string = ",";
+        let delimiter: u8 = delimiter_string.as_bytes()[0];
         let _ = CsvLoader::new(data_dir)
+            .set_header(true)
+            .set_delimiter(delimiter)
             .load_into_graph(&g, |lotr: Lotr, g: &GraphDB| {
                 let src_id = utils::calculate_hash(&lotr.src_id);
                 let dst_id = utils::calculate_hash(&lotr.dst_id);
@@ -58,7 +61,7 @@ fn main() {
                     &vec![("name".to_string(), Prop::Str("Character".to_string()))],
                 );
                 g.add_vertex(
-                    src_id,
+                    dst_id,
                     time,
                     &vec![("name".to_string(), Prop::Str("Character".to_string()))],
                 );
