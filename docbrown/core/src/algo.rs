@@ -14,7 +14,7 @@ where
     println!("starting");
     let mut labels = g.new_state_from(g.vertices().id())?;
 
-    for it in 0..g.n_nodes() {
+    for it in 0..g.n_vertices() {
         println!("next iteration {}", it);
         let new_in_labels: StateVec<u64> = g
             .vertices()

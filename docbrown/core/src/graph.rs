@@ -7,7 +7,11 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 use crate::adj::Adj;
+use crate::graphview::{
+    EdgeIterator, GraphViewInternals, NeighboursIterator, PropertyHistory, VertexIterator,
+};
 use crate::props::Props;
+use crate::vertexview::{VertexPointer, VertexView};
 use crate::Prop;
 use crate::{bitset::BitSet, tadjset::AdjEdge, Direction};
 

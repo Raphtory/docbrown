@@ -208,7 +208,8 @@ mod temporal_graph_partition_test {
     use crate::graphview::GraphViewInternals;
     use crate::vertexview::VertexViewMethods;
     use itertools::Itertools;
-    use quickcheck::Arbitrary;
+    use quickcheck::{Arbitrary, TestResult};
+    use rand::Rng;
 
     // non overlaping time intervals
     #[derive(Clone, Debug)]
@@ -242,7 +243,7 @@ mod temporal_graph_partition_test {
             g.add_vertex(v.into(), t.into(), &vec![]);
         }
 
-        TestResult::from_bool(g.contains(rand_vertex))
+        TestResult::from_bool(g.local_contains_vertex(rand_vertex))
     }
 
     #[test]
@@ -262,9 +263,9 @@ mod temporal_graph_partition_test {
             g.add_edge(*src, *dst, *t, &vec![]);
         }
 
-        assert!(g.contains_window(1, -1, 7));
-        assert!(!g.contains_window(2, 0, 1));
-        assert!(g.contains_window(3, 0, 8));
+        assert!(g.local_contains_vertex_window(1, -1..7));
+        assert!(!g.local_contains_vertex_window(2, 0..1));
+        assert!(g.local_contains_vertex_window(3, 0..8));
     }
 
     #[quickcheck]
@@ -296,7 +297,7 @@ mod temporal_graph_partition_test {
             g.add_edge(*src, *dst, *t, &vec![]);
         }
 
-        let actual = g.vertices().collect::<Vec<_>>();
+        let actual = g.iter_local_vertices().id().collect::<Vec<_>>();
         assert_eq!(actual, vec![1, 2, 3]);
     }
 
@@ -340,15 +341,17 @@ mod temporal_graph_partition_test {
         let expected = vec![(2, 3, 3), (2, 1, 2), (1, 1, 2)];
         let actual = (1..=3)
             .map(|i| {
+                let v = g.local_vertex(i).unwrap();
                 (
-                    g.degree(i, Direction::IN),
-                    g.degree(i, Direction::OUT),
-                    g.degree(i, Direction::BOTH),
+                    v.clone().in_degree(),
+                    v.clone().out_degree(),
+                    v.clone().degree(),
                 )
             })
             .collect::<Vec<_>>();
 
         assert_eq!(actual, expected);
+    }
 
     #[test]
     fn get_in_degree_window() {
@@ -418,27 +421,29 @@ mod temporal_graph_partition_test {
         let v100 = g.local_vertex(100).unwrap();
         let v101 = g.local_vertex(101).unwrap();
         let v103 = g.local_vertex(103).unwrap();
+        let v104 = g.local_vertex(104).unwrap();
         let v105 = g.local_vertex(105).unwrap();
 
-        assert_eq!(g.degree_window(101, 0, i64::MAX, Direction::IN), 1);
-        assert_eq!(g.degree_window(100, 0, i64::MAX, Direction::IN), 0);
-        assert_eq!(g.degree_window(101, 0, 1, Direction::IN), 0);
-        assert_eq!(g.degree_window(101, 10, 20, Direction::IN), 0);
-        assert_eq!(g.degree_window(105, 0, i64::MAX, Direction::IN), 0);
-        assert_eq!(g.degree_window(104, 0, i64::MAX, Direction::IN), 2);
+        assert_eq!(v101.clone().in_degree(), 1);
+        assert_eq!(v100.clone().in_degree(), 0);
+        assert_eq!(v101.clone().with_window(0..1).in_degree(), 0);
+        assert_eq!(v101.clone().with_window(10..20).in_degree(), 0);
+        assert_eq!(v105.clone().in_degree(), 0);
+        assert_eq!(v104.clone().in_degree(), 2);
 
-        assert_eq!(g.degree_window(101, 0, i64::MAX, Direction::OUT), 1);
-        assert_eq!(g.degree_window(103, 0, i64::MAX, Direction::OUT), 0);
-        assert_eq!(g.degree_window(105, 0, i64::MAX, Direction::OUT), 0);
-        assert_eq!(g.degree_window(101, 0, 1, Direction::OUT), 0);
-        assert_eq!(g.degree_window(101, 10, 20, Direction::OUT), 0);
-        assert_eq!(g.degree_window(100, 0, i64::MAX, Direction::OUT), 2);
+        assert_eq!(v101.clone().out_degree(), 1);
+        assert_eq!(v103.clone().out_degree(), 0);
+        assert_eq!(v105.clone().out_degree(), 0);
+        assert_eq!(v101.clone().with_window(0..1).out_degree(), 0);
+        assert_eq!(v101.clone().with_window(10..20).out_degree(), 0);
+        assert_eq!(v100.clone().out_degree(), 2);
 
-        assert_eq!(g.degree_window(101, 0, i64::MAX, Direction::BOTH), 2);
-        assert_eq!(g.degree_window(100, 0, i64::MAX, Direction::BOTH), 2);
-        assert_eq!(g.degree_window(100, 0, 1, Direction::BOTH), 0);
-        assert_eq!(g.degree_window(100, 10, 20, Direction::BOTH), 0);
-        assert_eq!(g.degree_window(105, 0, i64::MAX, Direction::BOTH), 0);
+        assert_eq!(v101.clone().degree(), 2);
+        assert_eq!(v100.clone().degree(), 2);
+        assert_eq!(v100.clone().with_window(0..1).degree(), 0);
+        assert_eq!(v100.clone().with_window(10..20).degree(), 0);
+        assert_eq!(v105.clone().degree(), 0);
+    }
 
     #[test]
     fn get_degree_window() {
@@ -494,10 +499,11 @@ mod temporal_graph_partition_test {
         let expected = vec![(2, 3, 5), (2, 1, 3), (1, 1, 2)];
         let actual = (1..=3)
             .map(|i| {
+                let v = g.local_vertex(i).unwrap();
                 (
-                    g.neighbours(i, Direction::IN).collect::<Vec<_>>().len(),
-                    g.neighbours(i, Direction::OUT).collect::<Vec<_>>().len(),
-                    g.neighbours(i, Direction::BOTH).collect::<Vec<_>>().len(),
+                    v.clone().in_edges().count(),
+                    v.clone().out_edges().count(),
+                    v.clone().edges().count(),
                 )
             })
             .collect::<Vec<_>>();
@@ -525,16 +531,11 @@ mod temporal_graph_partition_test {
         let expected = vec![(2, 3, 2), (1, 0, 0), (1, 0, 0)];
         let actual = (1..=3)
             .map(|i| {
+                let v = g.local_vertex(i).unwrap();
                 (
-                    g.neighbours_window(i, -1, 7, Direction::IN)
-                        .collect::<Vec<_>>()
-                        .len(),
-                    g.neighbours_window(i, 1, 7, Direction::OUT)
-                        .collect::<Vec<_>>()
-                        .len(),
-                    g.neighbours_window(i, 0, 1, Direction::BOTH)
-                        .collect::<Vec<_>>()
-                        .len(),
+                    v.clone().with_window(-1..7).in_edges().count(),
+                    v.clone().with_window(1..7).out_edges().count(),
+                    v.clone().with_window(0..1).edges().count(),
                 )
             })
             .collect::<Vec<_>>();

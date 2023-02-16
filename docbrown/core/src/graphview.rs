@@ -158,7 +158,7 @@ pub trait GraphViewInternals: Sized {
 /// Implement this trait to mark a graph as a global view
 pub trait GraphView: GraphViewInternals {
     /// Global number of nodes (should be the sum over all partitions)
-    fn n_nodes(&self) -> usize {
+    fn n_vertices(&self) -> usize {
         self.local_n_vertices()
     }
 
@@ -169,6 +169,33 @@ pub trait GraphView: GraphViewInternals {
 
     fn vertices(&self) -> Vertices<'_, Self> {
         Vertices::new(self)
+    }
+
+    /// Get number of vertices in the current view with time window
+    fn n_vertices_window(&self, w: Range<i64>) -> usize {
+        self.local_n_vertices_window(w)
+    }
+
+    /// Get the number of edges in the current view with time window
+    fn n_edges_window(&self, w: Range<i64>) -> usize {
+        self.local_n_edges_window(w, Direction::OUT)
+    }
+
+    /// Get a single vertex by global id
+    fn vertex(&self, gid: u64) -> Option<VertexView<Self>> {
+        self.local_vertex(gid)
+    }
+
+    fn vertex_window(&self, gid: u64, w: Range<i64>) -> Option<VertexView<Self>> {
+        self.local_vertex_window(gid, w)
+    }
+
+    fn contains_vertex(&self, gid: u64) -> bool {
+        self.local_contains_vertex(gid)
+    }
+
+    fn contains_vertex_window(&self, gid: u64, w: Range<i64>) -> bool {
+        self.local_contains_vertex_window(gid, w)
     }
 }
 
@@ -326,8 +353,8 @@ impl<'a, G> GraphView for WindowedView<'a, G>
 where
     G: GraphView,
 {
-    fn n_nodes(&self) -> usize {
-        self.graph.n_nodes()
+    fn n_vertices(&self) -> usize {
+        self.graph.n_vertices()
     }
 
     fn n_edges(&self) -> usize {
