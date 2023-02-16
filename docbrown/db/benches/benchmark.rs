@@ -1,92 +1,101 @@
 use std::collections::hash_map::DefaultHasher;
 use std::error::Error;
+use std::fs::File;
 use std::hash::{Hash, Hasher};
 use std::ops::Range;
 use std::path::Path;
-use criterion::{black_box, criterion_group, criterion_main, Criterion, Bencher, BatchSize};
+use criterion::{black_box, criterion_group, criterion_main, Criterion, Bencher, BatchSize, Throughput};
 use csv::StringRecord;
+use csv_sniffer::Type;
 use docbrown_core::Direction;
 use docbrown_db::graphdb::GraphDB;
 
 use docbrown_it::data;
 
-fn calculate_hash<T: Hash>(t: &T) -> u64 {
+fn hash<T: Hash>(t: &T) -> u64 {
     let mut s = DefaultHasher::new();
     t.hash(&mut s);
     s.finish()
 }
 
-fn read_csv(path: &Path, source: usize, target: usize, time: Option<usize>, delimiter: u8) -> GraphDB {
+fn load_csv(graph: &mut GraphDB, path: &Path, source: usize, target: usize, time: Option<usize>) {
     let mut times: Range<i64> = (0..i64::MAX);
+    let mut metadata = csv_sniffer::Sniffer::new().sniff_path(path).unwrap();
+    metadata.dialect.header = csv_sniffer::metadata::Header{ has_header_row: false, num_preamble_rows: 0 };
+    let ids_are_numbers = metadata.types[source] == Type::Unsigned  && metadata.types[target] == Type::Unsigned;
+    let mut reader = metadata.dialect.open_reader(File::open(path).unwrap()).unwrap();
+
     let mut parse_record = |rec: &StringRecord| {
-        let source_value: String = rec.get(source).ok_or("No source id")?.parse()?;
-        let target_value: String = rec.get(target).ok_or("No target id")?.parse()?;
+        let source_str = rec.get(source).ok_or("No source id")?;
+        let target_str = rec.get(target).ok_or("No target id")?;
+        let (source_value, target_value): (u64, u64) = if ids_are_numbers {
+            (source_str.parse::<u64>()?, target_str.parse::<u64>()?)
+        } else {
+            (hash(&source_str), hash(&target_str))
+        };
         let time_value: i64 = match time {
             Some(time) => rec.get(time).ok_or("No time value")?.parse()?,
             None => times.next().ok_or("Max time reached")?
         };
-        Ok::<(String, String, i64), Box<dyn Error>>((source_value, target_value, time_value))
+        Ok::<(u64, u64, i64), Box<dyn Error>>((source_value, target_value, time_value))
     };
-
-    let graph = GraphDB::new(4);
-    let mut reader = csv::ReaderBuilder::new()
-        .has_headers(false)
-        .delimiter(delimiter)
-        .from_path(path)
-        .unwrap();
 
     for record in reader.records() {
         let record_ok = record.unwrap();
-        let (source, target, time) = parse_record(&record_ok).expect(&format!("Unable to parse record: {:?}", record_ok));
-        let src_id = calculate_hash(&source);
-        let dst_id = calculate_hash(&target);
-        graph.add_vertex(src_id, time, &vec![]);
-        graph.add_vertex(dst_id, time, &vec![]);
-        graph.add_edge(src_id, dst_id, time, &vec![]);
+        let (source_id, target_id, time) = parse_record(&record_ok).expect(&format!("Unable to parse record: {:?}", record_ok));
+        graph.add_vertex(source_id, time, &vec![]);
+        graph.add_vertex(target_id, time, &vec![]);
+        graph.add_edge(source_id, target_id, time, &vec![]);
     }
-
-    graph
 }
 
-// TODO: use different number of partitions using a criterion group
-
-pub fn element_additions(c: &mut Criterion) {
+pub fn additions(c: &mut Criterion) {
     let mut graph = GraphDB::new(4);
     graph.add_vertex(0, 0, &vec![]);
 
-    c.bench_function("existing vertex addition constant time", |b| b.iter(|| graph.add_vertex(1, 0, &vec![])));
+    let mut g = c.benchmark_group("additions");
+    g.throughput(Throughput::Elements(1));
 
     let mut times: Range<i64> = (0..i64::MAX);
-    c.bench_function("existing vertex addition varying time", |b: &mut Bencher| b.iter_batched(|| times.next().unwrap(), |t| graph.add_vertex(0, t, &vec![]), BatchSize::SmallInput));
-
     let mut indexes: Range<u64> = (0..u64::MAX);
-    c.bench_function("new vertex addition constant time", |b: &mut Bencher| b.iter_batched(|| indexes.next().unwrap(), |vid| graph.add_vertex(vid, 0, &vec![]), BatchSize::SmallInput));
 
-    c.bench_function("existing edge addition constant time", |b| b.iter(|| graph.add_edge(0, 1, 0, &vec![])));
-}
+    g.bench_function("existing vertex constant time", |b| b.iter(|| graph.add_vertex(1, 0, &vec![])));
+    g.bench_function("existing vertex varying time", |b: &mut Bencher| b.iter_batched(|| times.next().unwrap(), |t| graph.add_vertex(0, t, &vec![]), BatchSize::SmallInput));
+    g.bench_function("new vertex constant time", |b: &mut Bencher| b.iter_batched(|| indexes.next().unwrap(), |vid| graph.add_vertex(vid, 0, &vec![]), BatchSize::SmallInput));
 
-pub fn edges_len(c: &mut Criterion) {
-    let path = data::lotr().unwrap();
-    let graph = read_csv(&path, 0, 1, Some(2), b',');
+    g.bench_function("existing edge constant time", |b| b.iter(|| graph.add_edge(0, 1, 0, &vec![])));
+    g.bench_function("existing edge varying time", |b: &mut Bencher| b.iter_batched(|| times.next().unwrap(), |t| graph.add_edge(0, 0, t, &vec![]), BatchSize::SmallInput));
+    g.bench_function("new edge constant time", |b: &mut Bencher| b.iter_batched(|| (indexes.next().unwrap(), indexes.next().unwrap()), |(v1, v2)| graph.add_edge(v1, v2, 0, &vec![]), BatchSize::SmallInput));
 
-    c.bench_function("edges len", |b| b.iter(|| graph.edges_len()));
-}
-
-pub fn degree(c: &mut Criterion) {
-    let path = data::lotr().unwrap();
-    let graph = read_csv(&path, 0, 1, Some(2), b',');
-    let vertex = calculate_hash(&"Frodo");
-
-    c.bench_function("degree", |b| b.iter(|| graph.degree(vertex, Direction::OUT)));
+    g.finish();
 }
 
 pub fn ingestion(c: &mut Criterion) {
-    let lotr = data::lotr().unwrap();
-    c.bench_function("load lotr.csv", |b: &mut Bencher| b.iter_with_large_drop(|| read_csv(&lotr, 0, 1, Some(2), b',')));
+    let mut g = c.benchmark_group("ingestion");
 
+    g.throughput(Throughput::Elements(2649));
+    let lotr = data::lotr().unwrap();
+    let mut graph = GraphDB::new(3);
+    g.bench_function("load lotr.csv", |b: &mut Bencher| b.iter_with_large_drop(|| load_csv(&mut graph, &lotr, 0, 1, Some(2))));
+
+    g.throughput(Throughput::Elements(1400000));
     let twitter = data::twitter().unwrap();
-    c.bench_function("load twitter.csv", |b: &mut Bencher| b.iter_with_large_drop(|| read_csv(&twitter, 0, 1, None, b' ')));
+    let mut graph = GraphDB::new(3);
+    g.bench_function("load twitter.csv", |b: &mut Bencher| b.iter_with_large_drop(|| load_csv(&mut graph, &twitter, 0, 1, None)));
+
+    g.finish();
 }
 
-criterion_group!(benches, element_additions, edges_len, degree, ingestion);
+pub fn analysis(c: &mut Criterion) {
+    let lotr = data::lotr().unwrap();
+    let mut graph = GraphDB::new(3);
+    load_csv(&mut graph, &lotr, 0, 1, Some(2));
+
+    c.bench_function("edges len", |b| b.iter(|| graph.edges_len()));
+
+    let vertex = hash(&"Frodo");
+    c.bench_function("degree", |b| b.iter(|| graph.degree(vertex, Direction::OUT)));
+}
+
+criterion_group!(benches, additions, ingestion, analysis);
 criterion_main!(benches);
