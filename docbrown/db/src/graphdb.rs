@@ -152,39 +152,41 @@ impl GraphViewInternals for GraphDB {
             .sum()
     }
 
-    fn vertex(&self, gid: u64) -> Option<VertexView<Self>> {
-        let sid = self.get_shard_id_from_global_vid(gid);
-        self.shards[sid].vertex(gid).map(|v| v.as_view_of(self))
-    }
-
-    fn vertex_window(&self, gid: u64, w: Range<i64>) -> Option<VertexView<Self>> {
+    fn local_vertex(&self, gid: u64) -> Option<VertexView<Self>> {
         let sid = self.get_shard_id_from_global_vid(gid);
         self.shards[sid]
-            .vertex_window(gid, w)
+            .local_vertex(gid)
             .map(|v| v.as_view_of(self))
     }
 
-    fn contains_vertex(&self, gid: u64) -> bool {
+    fn local_vertex_window(&self, gid: u64, w: Range<i64>) -> Option<VertexView<Self>> {
         let sid = self.get_shard_id_from_global_vid(gid);
-        self.shards[sid].contains_vertex(gid)
+        self.shards[sid]
+            .local_vertex_window(gid, w)
+            .map(|v| v.as_view_of(self))
     }
 
-    fn contains_vertex_window(&self, gid: u64, w: Range<i64>) -> bool {
+    fn local_contains_vertex(&self, gid: u64) -> bool {
         let sid = self.get_shard_id_from_global_vid(gid);
-        self.shards[sid].contains_vertex_window(gid, w)
+        self.shards[sid].local_contains_vertex(gid)
     }
 
-    fn iter_vertices(&self) -> VertexIterator<Self> {
+    fn local_contains_vertex_window(&self, gid: u64, w: Range<i64>) -> bool {
+        let sid = self.get_shard_id_from_global_vid(gid);
+        self.shards[sid].local_contains_vertex_window(gid, w)
+    }
+
+    fn iter_local_vertices(&self) -> VertexIterator<Self> {
         Box::new(
             self.shards
                 .iter()
-                .flat_map(|g| g.iter_vertices().map(|v| v.as_view_of(self))),
+                .flat_map(|g| g.iter_local_vertices().map(|v| v.as_view_of(self))),
         )
     }
 
-    fn iter_vertices_window(&self, window: Range<i64>) -> VertexIterator<Self> {
+    fn iter_local_vertices_window(&self, window: Range<i64>) -> VertexIterator<Self> {
         Box::new(self.shards.iter().flat_map(move |g| {
-            g.iter_vertices_window(window.clone())
+            g.iter_local_vertices_window(window.clone())
                 .map(|v| v.as_view_of(self))
         }))
     }
@@ -233,14 +235,6 @@ impl GraphView for GraphDB {
 
     fn n_edges(&self) -> usize {
         self.local_n_edges(Direction::OUT)
-    }
-
-    fn with_state(&self, name: &str, value: polars::series::Series) -> Self {
-        todo!()
-    }
-
-    fn state(&self) -> &Properties {
-        todo!()
     }
 }
 

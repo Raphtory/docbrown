@@ -35,6 +35,8 @@ impl<'a> From<EdgeView<'a, TemporalGraph>> for TEdge {
     }
 }
 
+// FIXME: This implementation is currently asking for deadlocks when using the iterators as we acquire read locks while still holding a read lock.
+// Probably, the best option is to create read and write locked views of the graph which hold on to the lock guard and then allow working with the iterators without problems.
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 #[repr(transparent)]
 pub struct TemporalGraphPart(pub Arc<RwLock<TemporalGraph>>);
@@ -121,26 +123,29 @@ impl GraphViewInternals for TemporalGraphPart {
         self.read_shard(|tg| tg.local_n_vertices())
     }
 
-    fn vertex(&self, gid: u64) -> Option<VertexView<Self>> {
-        self.read_shard(|g| g.vertex(gid).map(move |v| v.as_view_of(self)))
+    fn local_vertex(&self, gid: u64) -> Option<VertexView<Self>> {
+        self.read_shard(|g| g.local_vertex(gid).map(move |v| v.as_view_of(self)))
     }
 
-    fn vertex_window(&self, gid: u64, w: Range<i64>) -> Option<VertexView<Self>> {
-        self.read_shard(|g| g.vertex_window(gid, w.clone()).map(|v| v.as_view_of(self)))
+    fn local_vertex_window(&self, gid: u64, w: Range<i64>) -> Option<VertexView<Self>> {
+        self.read_shard(|g| {
+            g.local_vertex_window(gid, w.clone())
+                .map(|v| v.as_view_of(self))
+        })
     }
 
-    fn contains_vertex(&self, gid: u64) -> bool {
-        self.read_shard(|tg| tg.contains_vertex(gid))
+    fn local_contains_vertex(&self, gid: u64) -> bool {
+        self.read_shard(|tg| tg.local_contains_vertex(gid))
     }
 
-    fn contains_vertex_window(&self, gid: u64, w: Range<i64>) -> bool {
-        self.read_shard(|tg| tg.contains_vertex_window(gid, w.clone()))
+    fn local_contains_vertex_window(&self, gid: u64, w: Range<i64>) -> bool {
+        self.read_shard(|tg| tg.local_contains_vertex_window(gid, w.clone()))
     }
 
-    fn iter_vertices(&self) -> VertexIterator<Self> {
+    fn iter_local_vertices(&self) -> VertexIterator<Self> {
         let vertex_iter = gen!({
             let g = self.0.read();
-            let iter = (*g).iter_vertices().map(move |v| v.as_view_of(self));
+            let iter = (*g).iter_local_vertices().map(move |v| v.as_view_of(self));
             for v in iter {
                 yield_!(v)
             }
@@ -149,11 +154,11 @@ impl GraphViewInternals for TemporalGraphPart {
     }
 
     // TODO: check if there is any value in returning Vec<usize> vs just usize, what is the cost of the generator
-    fn iter_vertices_window(&self, window: Range<i64>) -> VertexIterator<Self> {
+    fn iter_local_vertices_window(&self, window: Range<i64>) -> VertexIterator<Self> {
         let vertex_iter = gen!({
             let g = self.0.read();
             let iter = (*g)
-                .iter_vertices_window(window)
+                .iter_local_vertices_window(window)
                 .map(|v| v.as_view_of(self));
             for v in iter {
                 yield_!(v)
@@ -251,7 +256,7 @@ mod temporal_graph_partition_test {
         }
 
         for (v, (t_start, t_end)) in intervals.0.iter().enumerate() {
-            let mut vertex_window = g.iter_vertices_window(*t_start..*t_end);
+            let mut vertex_window = g.iter_local_vertices_window(*t_start..*t_end);
             let v_actual = vertex_window.next().map(|v| v.gid);
             assert_eq!(Some(v.try_into().unwrap()), v_actual);
             assert!(vertex_window.next().is_none()); // one vertex per interval
@@ -275,10 +280,10 @@ mod temporal_graph_partition_test {
         g.add_edge(102, 104, 9, &vec![]);
         g.add_edge(110, 104, 9, &vec![]);
 
-        let v100 = g.vertex(100).unwrap();
-        let v101 = g.vertex(101).unwrap();
-        let v104 = g.vertex(104).unwrap();
-        let v105 = g.vertex(105).unwrap();
+        let v100 = g.local_vertex(100).unwrap();
+        let v101 = g.local_vertex(101).unwrap();
+        let v104 = g.local_vertex(104).unwrap();
+        let v105 = g.local_vertex(105).unwrap();
 
         assert_eq!(
             g.degree(v101.as_pointer().with_window(0..i64::MAX), Direction::IN),
@@ -323,10 +328,10 @@ mod temporal_graph_partition_test {
         g.add_edge(102, 104, 9, &vec![]);
         g.add_edge(110, 104, 9, &vec![]);
 
-        let v100 = g.vertex(100).unwrap();
-        let v101 = g.vertex(101).unwrap();
-        let v103 = g.vertex(103).unwrap();
-        let v105 = g.vertex(105).unwrap();
+        let v100 = g.local_vertex(100).unwrap();
+        let v101 = g.local_vertex(101).unwrap();
+        let v103 = g.local_vertex(103).unwrap();
+        let v105 = g.local_vertex(105).unwrap();
 
         assert_eq!(g.degree(v101.as_pointer(), Direction::OUT), 1);
         assert_eq!(g.degree(v103.as_pointer(), Direction::OUT), 0);
@@ -363,9 +368,9 @@ mod temporal_graph_partition_test {
         g.add_edge(102, 104, 9, &vec![]);
         g.add_edge(110, 104, 9, &vec![]);
 
-        let v100 = g.vertex(100).unwrap();
-        let v101 = g.vertex(101).unwrap();
-        let v105 = g.vertex(105).unwrap();
+        let v100 = g.local_vertex(100).unwrap();
+        let v101 = g.local_vertex(101).unwrap();
+        let v105 = g.local_vertex(105).unwrap();
         assert_eq!(g.degree(v101.as_pointer(), Direction::BOTH), 2);
         assert_eq!(g.degree(v100.as_pointer(), Direction::BOTH), 2);
         assert_eq!(
