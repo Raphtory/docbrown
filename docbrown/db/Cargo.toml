@@ -33,5 +33,5 @@ criterion = "0.3"
 docbrown-it = {path = "../../it" }
 
 [[bench]]
-name = "benchmark"
+name = "base"
 harness = false
