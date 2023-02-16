@@ -144,6 +144,9 @@ pub trait GraphView: GraphViewInternals {
     /// Global number of nodes (should be the sum over all partitions)
     fn n_nodes(&self) -> usize;
 
+    /// Global number of edges (should be the sum over all partitions)
+    fn n_edges(&self) -> usize;
+
     fn vertices(&self) -> Vertices<'_, Self> {
         Vertices::new(self)
     }
@@ -287,6 +290,10 @@ where
     G: GraphViewInternals,
 {
     fn n_nodes(&self) -> usize {
+        todo!()
+    }
+
+    fn n_edges(&self) -> usize {
         todo!()
     }
 

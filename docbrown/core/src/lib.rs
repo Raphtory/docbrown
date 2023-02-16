@@ -19,7 +19,7 @@ mod tcell;
 pub mod tpartition;
 mod tprop;
 mod tpropvec;
-mod vertexview;
+pub mod vertexview;
 
 // Denotes edge direction
 #[derive(Clone, Copy, PartialEq)]

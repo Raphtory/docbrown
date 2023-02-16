@@ -66,7 +66,7 @@ impl GraphViewInternals for TemporalGraph {
 
     fn vertex(&self, gid: u64) -> Option<VertexView<Self>> {
         self.logical_to_physical.get(&gid).map(|pid| VertexView {
-            g_id: gid,
+            gid: gid,
             pid: *pid,
             g: self,
             w: None,
@@ -77,7 +77,7 @@ impl GraphViewInternals for TemporalGraph {
         if let Some(v_id) = self.logical_to_physical.get(&gid) {
             if self.index.range(w.clone()).any(|(_, bs)| bs.contains(v_id)) {
                 Some(VertexView {
-                    g_id: gid,
+                    gid: gid,
                     pid: *v_id,
                     g: self,
                     w: Some(w.clone()),
@@ -108,7 +108,7 @@ impl GraphViewInternals for TemporalGraph {
                 .iter()
                 .enumerate()
                 .map(|(pid, v)| VertexView {
-                    g_id: *v.logical(),
+                    gid: *v.logical(),
                     pid,
                     g: self,
                     w: None,
@@ -125,13 +125,13 @@ impl GraphViewInternals for TemporalGraph {
             .dedup()
             .map(move |pid| match self.adj_lists[pid] {
                 Adj::Solo(lid) => VertexView {
-                    g_id: lid,
+                    gid: lid,
                     pid,
                     g: self,
                     w: Some(window.clone()),
                 },
                 Adj::List { logical, .. } => VertexView {
-                    g_id: logical,
+                    gid: logical,
                     pid,
                     g: self,
                     w: Some(window.clone()),
@@ -195,14 +195,14 @@ impl GraphViewInternals for TemporalGraph {
                             out.iter_window(window)
                                 .map(|(id, edge)| VertexView {
                                     g: self,
-                                    g_id: *self.adj_lists[id.clone()].logical(),
+                                    gid: *self.adj_lists[id.clone()].logical(),
                                     pid: id.clone(),
                                     w: None,
                                 })
                                 .chain(remote_out.iter_window(window).map(|(id, edge)| {
                                     VertexView {
                                         g: self,
-                                        g_id: id.clone().try_into().unwrap(),
+                                        gid: id.clone().try_into().unwrap(),
                                         pid: id.clone(),
                                         w: None,
                                     }
@@ -212,14 +212,14 @@ impl GraphViewInternals for TemporalGraph {
                             into.iter_window(window)
                                 .map(|(id, edge)| VertexView {
                                     g: self,
-                                    g_id: *self.adj_lists[id.clone()].logical(),
+                                    gid: *self.adj_lists[id.clone()].logical(),
                                     pid: id.clone(),
                                     w: None,
                                 })
                                 .chain(remote_into.iter_window(window).map(|(id, edge)| {
                                     VertexView {
                                         g: self,
-                                        g_id: id.clone().try_into().unwrap(),
+                                        gid: id.clone().try_into().unwrap(),
                                         pid: id.clone(),
                                         w: None,
                                     }
@@ -228,7 +228,7 @@ impl GraphViewInternals for TemporalGraph {
                         Direction::BOTH => Box::new(
                             GraphViewInternals::neighbours(self, vertex.clone(), Direction::IN)
                                 .chain(GraphViewInternals::neighbours(self, vertex, Direction::OUT))
-                                .unique_by(|v| v.g_id),
+                                .unique_by(|v| v.gid),
                         ),
                     }
                 } else {
@@ -238,13 +238,13 @@ impl GraphViewInternals for TemporalGraph {
                             out.iter()
                                 .map(|(id, edge)| VertexView {
                                     g: self,
-                                    g_id: *self.adj_lists[id.clone()].logical(),
+                                    gid: *self.adj_lists[id.clone()].logical(),
                                     pid: id.clone(),
                                     w: None,
                                 })
                                 .chain(remote_out.iter().map(|(id, edge)| VertexView {
                                     g: self,
-                                    g_id: id.clone().try_into().unwrap(),
+                                    gid: id.clone().try_into().unwrap(),
                                     pid: id.clone(),
                                     w: None,
                                 })),
@@ -253,13 +253,13 @@ impl GraphViewInternals for TemporalGraph {
                             into.iter()
                                 .map(|(id, edge)| VertexView {
                                     g: self,
-                                    g_id: *self.adj_lists[id.clone()].logical(),
+                                    gid: *self.adj_lists[id.clone()].logical(),
                                     pid: id.clone(),
                                     w: None,
                                 })
                                 .chain(remote_into.iter().map(|(id, edge)| VertexView {
                                     g: self,
-                                    g_id: id.clone().try_into().unwrap(),
+                                    gid: id.clone().try_into().unwrap(),
                                     pid: id.clone(),
                                     w: None,
                                 })),
@@ -267,7 +267,7 @@ impl GraphViewInternals for TemporalGraph {
                         Direction::BOTH => Box::new(
                             GraphViewInternals::neighbours(self, vertex.clone(), Direction::IN)
                                 .chain(GraphViewInternals::neighbours(self, vertex, Direction::OUT))
-                                .unique_by(|v| v.g_id),
+                                .unique_by(|v| v.gid),
                         ),
                     }
                 }
@@ -339,7 +339,7 @@ impl GraphViewInternals for TemporalGraph {
         vertex: VertexPointer,
         name: &'a str,
     ) -> Option<PropertyHistory<'a>> {
-        let index = self.logical_to_physical.get(&vertex.g_id)?;
+        let index = self.logical_to_physical.get(&vertex.gid)?;
         let meta = self.props.vertex_meta.get(*index)?;
         let prop_id = *self.props.prop_ids.get(name)?;
         match vertex.w {
@@ -671,7 +671,7 @@ impl<'a, G> EdgeView<'a, G>
 where
     G: GraphViewInternals,
 {
-    pub(crate) fn as_view_of<'b, GG>(&self, graph: &'b GG) -> EdgeView<'b, GG>
+    pub fn as_view_of<'b, GG>(&self, graph: &'b GG) -> EdgeView<'b, GG>
     where
         GG: GraphViewInternals,
     {

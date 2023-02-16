@@ -20,6 +20,8 @@ serde = { version = "1", features = ["derive", "rc"] }
 rayon = "1"
 chrono = "0.4"
 bincode = "1"
+polars = "0.26"
+polars-lazy = "0.26"
 # mimalloc = "0.1"
 # mimalloc = { version = "0.1", default-features = false }
 

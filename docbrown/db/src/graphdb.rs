@@ -1,3 +1,4 @@
+use std::ops::Range;
 use std::path::{Path, PathBuf};
 
 use docbrown_core::{
@@ -6,10 +7,12 @@ use docbrown_core::{
     Direction, Prop,
 };
 
-use docbrown_core::graphview::VertexIterator;
+use docbrown_core::graph::TemporalGraph;
+use docbrown_core::graphview::{EdgeIterator, NeighboursIterator, PropertyHistory, VertexIterator};
+use docbrown_core::vertexview::{VertexPointer, VertexView};
+use polars;
 use rayon::prelude::{IntoParallelRefIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};
-use docbrown_core::graph::TemporalGraph;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GraphDB {
@@ -85,24 +88,6 @@ impl GraphDB {
         Ok(())
     }
 
-    pub fn len(&self) -> usize {
-        self.shards.iter().map(|shard| shard.len()).sum()
-    }
-
-    pub fn edges_len(&self) -> usize {
-        self.shards.iter().map(|shard| shard.out_edges_len()).sum()
-    }
-
-    pub fn contains(&self, v: u64) -> bool {
-        self.shards.iter().any(|shard| shard.contains(v))
-    }
-
-    pub fn contains_window(&self, v: u64, t_start: i64, t_end: i64) -> bool {
-        self.shards
-            .iter()
-            .any(|shard| shard.contains_window(v, t_start, t_end))
-    }
-
     // TODO: Probably add vector reference here like add
     pub fn add_vertex(&self, v: u64, t: i64, props: &Vec<(String, Prop)>) {
         let shard_id = self.get_shard_id_from_global_vid(v);
@@ -121,40 +106,6 @@ impl GraphDB {
             self.shards[src_shard_id].add_edge_remote_out(src, dst, t, props);
             self.shards[dst_shard_id].add_edge_remote_into(src, dst, t, props);
         }
-    }
-
-    pub fn degree(&self, v: u64, d: Direction) -> usize {
-        let shard_id = self.get_shard_id_from_global_vid(v);
-        let iter = self.shards[shard_id].degree(v, d);
-        iter
-    }
-
-    pub fn degree_window(&self, v: u64, t_start: i64, t_end: i64, d: Direction) -> usize {
-        let shard_id = self.get_shard_id_from_global_vid(v);
-        let iter = self.shards[shard_id].degree_window(v, t_start, t_end, d);
-        iter
-    }
-
-    pub fn neighbours(&self, v: u64, d: Direction) -> Box<dyn Iterator<Item = TEdge>> {
-        let shard_id = self.get_shard_id_from_global_vid(v);
-
-        let iter = self.shards[shard_id].neighbours(v, d);
-
-        Box::new(iter)
-    }
-
-    pub fn neighbours_window(
-        &self,
-        v: u64,
-        t_start: i64,
-        t_end: i64,
-        d: Direction,
-    ) -> Box<dyn Iterator<Item = TEdge>> {
-        let shard_id = self.get_shard_id_from_global_vid(v);
-
-        let iter = self.shards[shard_id].neighbours_window(v, t_start, t_end, d);
-
-        Box::new(iter)
     }
 
     pub fn neighbours_window_t(
@@ -179,23 +130,116 @@ impl GraphDB {
 }
 
 impl GraphViewInternals for GraphDB {
-    fn iter_vertices(&self) -> VertexIterator {
-        VertexIterator {
-            graph_view: self,
-            inner: Box::new(shards.iter().flat_map(|graph| -> VertexIterator {
-                let g: TemporalGraph = *(graph.clone().0.read());
-                g.
-            })),
-        }
+    fn local_n_vertices(&self) -> usize {
+        self.shards.iter().map(|g| g.local_n_vertices()).sum()
+    }
+
+    fn local_n_edges(&self, direction: Direction) -> usize {
+        self.shards.iter().map(|g| g.local_n_edges(direction)).sum()
+    }
+
+    fn local_n_vertices_window(&self, w: Range<i64>) -> usize {
+        self.shards
+            .iter()
+            .map(|g| g.local_n_vertices_window(w.clone()))
+            .sum()
+    }
+
+    fn local_n_edges_window(&self, w: Range<i64>, direction: Direction) -> usize {
+        self.shards
+            .iter()
+            .map(|g| g.local_n_edges_window(w.clone(), direction))
+            .sum()
+    }
+
+    fn vertex(&self, gid: u64) -> Option<VertexView<Self>> {
+        let sid = self.get_shard_id_from_global_vid(gid);
+        self.shards[sid].vertex(gid).map(|v| v.as_view_of(self))
+    }
+
+    fn vertex_window(&self, gid: u64, w: Range<i64>) -> Option<VertexView<Self>> {
+        let sid = self.get_shard_id_from_global_vid(gid);
+        self.shards[sid]
+            .vertex_window(gid, w)
+            .map(|v| v.as_view_of(self))
+    }
+
+    fn contains_vertex(&self, gid: u64) -> bool {
+        let sid = self.get_shard_id_from_global_vid(gid);
+        self.shards[sid].contains_vertex(gid)
+    }
+
+    fn contains_vertex_window(&self, gid: u64, w: Range<i64>) -> bool {
+        let sid = self.get_shard_id_from_global_vid(gid);
+        self.shards[sid].contains_vertex_window(gid, w)
+    }
+
+    fn iter_vertices(&self) -> VertexIterator<Self> {
+        Box::new(
+            self.shards
+                .iter()
+                .flat_map(|g| g.iter_vertices().map(|v| v.as_view_of(self))),
+        )
+    }
+
+    fn iter_vertices_window(&self, window: Range<i64>) -> VertexIterator<Self> {
+        Box::new(self.shards.iter().flat_map(move |g| {
+            g.iter_vertices_window(window.clone())
+                .map(|v| v.as_view_of(self))
+        }))
+    }
+
+    fn degree(&self, vertex: VertexPointer, direction: Direction) -> usize {
+        let sid = self.get_shard_id_from_global_vid(vertex.gid);
+        self.shards[sid].degree(vertex, direction)
+    }
+
+    fn neighbours<'a>(
+        &'a self,
+        vertex: VertexPointer,
+        direction: Direction,
+    ) -> NeighboursIterator<'a, Self> {
+        let sid = self.get_shard_id_from_global_vid(vertex.gid);
+        Box::new(
+            self.shards[sid]
+                .neighbours(vertex, direction)
+                .map(|v| v.as_view_of(self)),
+        )
+    }
+
+    fn edges<'a>(&'a self, vertex: VertexPointer, direction: Direction) -> EdgeIterator<'a, Self> {
+        let sid = self.get_shard_id_from_global_vid(vertex.gid);
+        Box::new(
+            self.shards[sid]
+                .edges(vertex, direction)
+                .map(|v| v.as_view_of(self)),
+        )
+    }
+
+    fn property_history<'a>(
+        &'a self,
+        vertex: VertexPointer,
+        name: &'a str,
+    ) -> Option<PropertyHistory<'a>> {
+        let sid = self.get_shard_id_from_global_vid(vertex.gid);
+        self.shards[sid].property_history(vertex, name)
     }
 }
 
 impl GraphView for GraphDB {
-    fn with_state(&self, name: &str, value: polars_core::series::Series) -> Box<dyn GraphView> {
+    fn n_nodes(&self) -> usize {
+        self.local_n_vertices()
+    }
+
+    fn n_edges(&self) -> usize {
+        self.local_n_edges(Direction::OUT)
+    }
+
+    fn with_state(&self, name: &str, value: polars::series::Series) -> Self {
         todo!()
     }
 
-    fn state(&self) -> Properties {
+    fn state(&self) -> &Properties {
         todo!()
     }
 }
@@ -232,12 +276,12 @@ mod db_tests {
     #[test]
     fn basic_additions_to_graph_len() {
         let graph = GraphDB::new(4);
-        assert_eq!(graph.len(), 0);
-        assert_eq!(graph.edges_len(), 0);
+        assert_eq!(graph.n_nodes(), 0);
+        assert_eq!(graph.local_n_edges(Direction::BOTH), 0);
         graph.add_edge(1, 2, 0, &Vec::new());
         graph.add_edge(1, 3, 0, &Vec::new());
-        assert_eq!(graph.len(), 3);
-        assert_eq!(graph.edges_len(), 2);
+        assert_eq!(graph.n_nodes(), 3);
+        assert_eq!(graph.n_edges(), 2);
     }
 
     #[quickcheck]
@@ -249,7 +293,7 @@ mod db_tests {
             g.add_vertex(v.into(), t.into(), &vec![]);
         }
 
-        assert_eq!(g.len(), expected_len)
+        assert_eq!(g.n_nodes(), expected_len)
     }
 
     #[test]

@@ -13,7 +13,7 @@ pub struct VertexView<'a, G>
 where
     G: GraphViewInternals,
 {
-    pub(crate) g_id: u64,
+    pub(crate) gid: u64,
     pub(crate) pid: usize,
     pub(crate) g: &'a G,
     pub(crate) w: Option<Range<i64>>,
@@ -21,13 +21,13 @@ where
 
 #[derive(Clone)]
 pub struct VertexPointer {
-    pub(crate) g_id: u64,
-    pub(crate) pid: usize,
-    pub(crate) w: Option<Range<i64>>,
+    pub gid: u64,
+    pub pid: usize,
+    pub w: Option<Range<i64>>,
 }
 
 impl VertexPointer {
-    pub(crate) fn with_window(self, w: Range<i64>) -> VertexPointer {
+    pub fn with_window(self, w: Range<i64>) -> VertexPointer {
         VertexPointer { w: Some(w), ..self }
     }
 }
@@ -37,12 +37,9 @@ where
     G: GraphViewInternals,
 {
     /// Change underlying graph this vertex view points to (useful when implementing a view)
-    pub(crate) fn as_view_of<'b, GG: GraphViewInternals>(
-        &self,
-        graph: &'b GG,
-    ) -> VertexView<'b, GG> {
+    pub fn as_view_of<'b, GG: GraphViewInternals>(&self, graph: &'b GG) -> VertexView<'b, GG> {
         VertexView {
-            g_id: self.g_id,
+            gid: self.gid,
             pid: self.pid,
             g: graph,
             w: self.w.clone(),
@@ -51,7 +48,7 @@ where
 
     pub(crate) fn as_pointer(&self) -> VertexPointer {
         VertexPointer {
-            g_id: self.g_id,
+            gid: self.gid,
             pid: self.pid,
             w: self.w.clone(),
         }
@@ -76,7 +73,7 @@ where
 {
     fn clone(&self) -> Self {
         VertexView {
-            g_id: self.g_id,
+            gid: self.gid,
             pid: self.pid,
             w: self.w.clone(),
             g: self.g,
@@ -135,7 +132,7 @@ where
 
     fn id(self) -> Self::ItemType<u64> {
         // need to take ownership for chaining iterators
-        self.g_id
+        self.gid
     }
 
     fn out_degree(self) -> Self::ItemType<usize> {

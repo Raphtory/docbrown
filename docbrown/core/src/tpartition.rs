@@ -252,7 +252,7 @@ mod temporal_graph_partition_test {
 
         for (v, (t_start, t_end)) in intervals.0.iter().enumerate() {
             let mut vertex_window = g.iter_vertices_window(*t_start..*t_end);
-            let v_actual = vertex_window.next().map(|v| v.g_id);
+            let v_actual = vertex_window.next().map(|v| v.gid);
             assert_eq!(Some(v.try_into().unwrap()), v_actual);
             assert!(vertex_window.next().is_none()); // one vertex per interval
         }
