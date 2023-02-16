@@ -1,4 +1,3 @@
-use std::ops::Deref;
 use std::{
     collections::{BTreeMap, HashMap},
     ops::Range,
@@ -8,12 +7,7 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 use crate::adj::Adj;
-use crate::graphview::{
-    EdgeIterator, GraphView, GraphViewInternals, MutableGraph, NeighboursIterator, PropertyHistory,
-    VertexIterator,
-};
 use crate::props::Props;
-use crate::vertexview::{VertexPointer, VertexView, VertexViewMethods};
 use crate::Prop;
 use crate::{bitset::BitSet, tadjset::AdjEdge, Direction};
 
@@ -387,6 +381,7 @@ impl TemporalGraph {
                 self.adj_lists.push(Adj::Solo(v));
 
                 self.logical_to_physical.insert(v, physical_id);
+
                 self.index
                     .entry(t)
                     .and_modify(|set| {
@@ -499,9 +494,10 @@ impl TemporalGraph {
                     e_meta,
                 },
             )),
-            Direction::BOTH => {
-                panic!()
-            }
+            Direction::BOTH => Box::new(itertools::chain!(
+                self.neighbours_window_t(v, r, Direction::IN),
+                self.neighbours_window_t(v, r, Direction::OUT)
+            )),
         }
     }
 }
@@ -589,14 +585,13 @@ impl TemporalGraph {
                 match d {
                     Direction::OUT => Box::new(itertools::chain!(out.iter(), remote_out.iter())),
                     Direction::IN => Box::new(itertools::chain!(into.iter(), remote_into.iter())),
-                    _ => {
-                        Box::new(itertools::chain!(
-                            out.iter(),
-                            into.iter(),
-                            remote_out.iter(),
-                            remote_into.iter()
-                        )) // probably awful but will have to do for now
-                    }
+                    // This piece of code is only for the sake of symmetry. Not really used.
+                    _ => Box::new(itertools::chain!(
+                        out.iter(),
+                        into.iter(),
+                        remote_out.iter(),
+                        remote_into.iter()
+                    )),
                 }
             }
             _ => Box::new(std::iter::empty()),
@@ -626,14 +621,13 @@ impl TemporalGraph {
                         into.iter_window(window),
                         remote_into.iter_window(window),
                     )),
-                    _ => {
-                        Box::new(itertools::chain!(
-                            out.iter_window(window),
-                            into.iter_window(window),
-                            remote_out.iter_window(window),
-                            remote_into.iter_window(window)
-                        )) // probably awful but will have to do for now
-                    }
+                    // This piece of code is only for the sake of symmetry. Not really used.
+                    _ => Box::new(itertools::chain!(
+                        out.iter_window(window),
+                        into.iter_window(window),
+                        remote_out.iter_window(window),
+                        remote_into.iter_window(window)
+                    )),
                 }
             }
             _ => Box::new(std::iter::empty()),
@@ -663,12 +657,13 @@ impl TemporalGraph {
                         into.iter_window_t(window),
                         remote_into.iter_window_t(window),
                     )),
+                    // This piece of code is only for the sake of symmetry. Not really used.
                     _ => Box::new(itertools::chain!(
                         out.iter_window_t(window),
                         into.iter_window_t(window),
                         remote_out.iter_window_t(window),
                         remote_into.iter_window_t(window)
-                    )), // probably awful but will have to do for now
+                    )),
                 }
             }
             _ => Box::new(std::iter::empty()),
@@ -749,15 +744,12 @@ extern crate quickcheck;
 
 #[cfg(test)]
 mod graph_test {
-    use std::iter::{FlatMap, Map};
-    use std::{
-        collections::hash_map::DefaultHasher,
-        hash::{Hash, Hasher},
-        path::PathBuf,
-    };
+    use std::path::PathBuf;
 
     use crate::vertexview::VertexViewMethods;
     use csv::StringRecord;
+
+    use crate::utils;
 
     use super::*;
 
@@ -1669,12 +1661,6 @@ mod graph_test {
     fn lotr_degree() {
         let mut g = TemporalGraph::default();
 
-        fn calculate_hash<T: Hash>(t: &T) -> u64 {
-            let mut s = DefaultHasher::new();
-            t.hash(&mut s);
-            s.finish()
-        }
-
         fn parse_record(rec: &StringRecord) -> Option<(String, String, i64)> {
             let src = rec.get(0).and_then(|s| s.parse::<String>().ok())?;
             let dst = rec.get(1).and_then(|s| s.parse::<String>().ok())?;
@@ -1682,17 +1668,21 @@ mod graph_test {
             Some((src, dst, t))
         }
 
-        let lotr_csv: PathBuf = [env!("CARGO_MANIFEST_DIR"), "resources/test/lotr.csv"]
+        let data_dir: PathBuf = [env!("CARGO_MANIFEST_DIR"), "resources/test/lotr.csv"]
             .iter()
             .collect();
 
-        if let Ok(mut reader) = csv::Reader::from_path(lotr_csv) {
+        if !data_dir.exists() {
+            panic!("Missing data dir = {}", data_dir.to_str().unwrap())
+        }
+
+        if let Ok(mut reader) = csv::Reader::from_path(data_dir) {
             for rec_res in reader.records() {
                 if let Ok(rec) = rec_res {
                     if let Some((src, dst, t)) = parse_record(&rec) {
-                        let src_id = calculate_hash(&src);
+                        let src_id = utils::calculate_hash(&src);
 
-                        let dst_id = calculate_hash(&dst);
+                        let dst_id = utils::calculate_hash(&dst);
 
                         g.add_vertex(src_id, t);
                         g.add_vertex(dst_id, t);
@@ -1735,7 +1725,7 @@ mod graph_test {
             ("Daeron", 1, 0, 1),
         ]
         .into_iter()
-        .map(|(name, indeg, outdeg, deg)| (calculate_hash(&name), indeg, outdeg, deg))
+        .map(|(name, indeg, outdeg, deg)| (utils::calculate_hash(&name), indeg, outdeg, deg))
         .collect_vec();
 
         expected_degrees_w1.sort();
@@ -1761,7 +1751,7 @@ mod graph_test {
             ("Elendil", 0, 1, 1),
         ]
         .into_iter()
-        .map(|(name, indeg, outdeg, deg)| (calculate_hash(&name), indeg, outdeg, deg))
+        .map(|(name, indeg, outdeg, deg)| (utils::calculate_hash(&name), indeg, outdeg, deg))
         .collect_vec();
 
         let mut degrees_w2 = g
@@ -1782,13 +1772,8 @@ mod graph_test {
         assert_eq!(degrees_w2, expected_degrees_w2);
     }
 
-    fn shard_from_id<N: Into<usize>>(v_id: N, n_shards: usize) -> usize {
-        let v: usize = v_id.try_into().unwrap();
-        v % n_shards
-    }
-
     #[quickcheck]
-    fn add_vertices_into_two_graph_partitions(vs: Vec<(u16, u16)>) {
+    fn add_vertices_into_two_graph_partitions(vs: Vec<(u64, u64)>) {
         let mut g1 = TemporalGraph::default();
 
         let mut g2 = TemporalGraph::default();
@@ -1798,8 +1783,8 @@ mod graph_test {
 
         let n_shards = shards.len();
         for (t, (src, dst)) in vs.into_iter().enumerate() {
-            let src_shard = shard_from_id(src, n_shards);
-            let dst_shard = shard_from_id(src, n_shards);
+            let src_shard = utils::get_shard_id_from_global_vid(src, n_shards);
+            let dst_shard = utils::get_shard_id_from_global_vid(src, n_shards);
 
             shards[src_shard].add_vertex(src.into(), t.try_into().unwrap());
             shards[dst_shard].add_vertex(dst.into(), t.try_into().unwrap());
