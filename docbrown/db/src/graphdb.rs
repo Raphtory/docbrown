@@ -966,7 +966,7 @@ mod db_tests {
 
         let gandalf = utils::calculate_hash(&"Gandalf");
         assert!(g.contains_vertex(gandalf));
+        // make sure connected components can run
         let g = connected_components(g).unwrap();
-        println!("{:?}", g.get_state("cc_label"))
     }
 }
