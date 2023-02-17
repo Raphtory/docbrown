@@ -1,7 +1,7 @@
-use crate::error::GraphError;
-use crate::graphview::{GraphView, StateView};
-use crate::state::{State, StateVec};
-use crate::vertexview::{VertexViewMethods, VertexViewStateMethods};
+use docbrown_core::error::GraphError;
+use docbrown_core::graphview::{GraphView, StateView};
+use docbrown_core::state::{State, StateVec};
+use docbrown_core::vertexview::{VertexViewMethods, VertexViewStateMethods};
 use itertools::izip;
 use std::cmp::min;
 
@@ -40,11 +40,11 @@ where
 }
 
 #[cfg(test)]
-mod algo_tests {
+mod connected_components_tests {
     use super::*;
-    use crate::graphview::{MutableGraph, WindowedView};
-    use crate::singlepartitiongraph::SinglePartitionGraph;
-    use crate::vertexview::VertexViewMethods;
+    use docbrown_core::graphview::{MutableGraph, WindowedView};
+    use docbrown_core::singlepartitiongraph::SinglePartitionGraph;
+    use docbrown_core::vertexview::VertexViewMethods;
     use itertools::Itertools;
 
     #[test]

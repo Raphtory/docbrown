@@ -1,6 +1,6 @@
+use docbrown_core::utils;
 use docbrown_core::{Direction, Prop};
 use docbrown_db::{graphdb::GraphDB, loaders::csv::CsvLoader};
-use docbrown_core::utils;
 use serde::Deserialize;
 use std::{env, path::Path, time::Instant};
 
@@ -45,8 +45,9 @@ fn main() {
     } else {
         let g = GraphDB::new(2);
         let now = Instant::now();
-
         let _ = CsvLoader::new(data_dir)
+            .set_header(true)
+            .set_delimiter(",")
             .load_into_graph(&g, |lotr: Lotr, g: &GraphDB| {
                 let src_id = utils::calculate_hash(&lotr.src_id);
                 let dst_id = utils::calculate_hash(&lotr.dst_id);
@@ -58,7 +59,7 @@ fn main() {
                     &vec![("name".to_string(), Prop::Str("Character".to_string()))],
                 );
                 g.add_vertex(
-                    src_id,
+                    dst_id,
                     time,
                     &vec![("name".to_string(), Prop::Str("Character".to_string()))],
                 );

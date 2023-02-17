@@ -8,6 +8,7 @@ use docbrown_core::{
     utils, Direction, Prop,
 };
 
+use crate::data;
 use docbrown_core::error::{GraphError, GraphResult};
 use docbrown_core::graphview::{
     EdgeIterator, NeighboursIterator, PropertyHistory, StateView, VertexIterator,
@@ -923,13 +924,7 @@ mod db_tests {
     fn db_lotr() {
         let g = GraphDB::new(4);
 
-        let data_dir: PathBuf = [env!("CARGO_MANIFEST_DIR"), "resources/test/lotr.csv"]
-            .iter()
-            .collect();
-
-        if !data_dir.exists() {
-            panic!("Missing data dir = {}", data_dir.to_str().unwrap())
-        }
+        let data_dir = data::lotr().expect("Failed to get lotr.csv file");
 
         fn parse_record(rec: &StringRecord) -> Option<(String, String, i64)> {
             let src = rec.get(0).and_then(|s| s.parse::<String>().ok())?;

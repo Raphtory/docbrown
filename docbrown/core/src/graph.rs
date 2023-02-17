@@ -1669,7 +1669,7 @@ mod graph_test {
             Some((src, dst, t))
         }
 
-        let data_dir: PathBuf = [env!("CARGO_MANIFEST_DIR"), "resources/test/lotr.csv"]
+        let data_dir: PathBuf = [env!("CARGO_MANIFEST_DIR"), "../../resource/lotr.csv"]
             .iter()
             .collect();
 

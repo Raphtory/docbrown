@@ -2,7 +2,7 @@ use crate::vertexview::VertexPointer;
 use std::slice::Iter;
 
 pub struct StateVec<T> {
-    pub(crate) values: Vec<T>,
+    pub values: Vec<T>,
 }
 
 // FIXME: State to vertex mapping is currently only implicit, we can't set state on a subset of vertices this way easily and it is possible for errors to creep in
