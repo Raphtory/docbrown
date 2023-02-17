@@ -13,7 +13,7 @@ build:
     rust: "1.64"
   jobs:
     pre_build:
-      - make rust-build
+      - make rust-build-readthedocs
 
 conda:
   environment: .environment.yml
