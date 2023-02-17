@@ -184,6 +184,7 @@ impl GraphDB {
         utils::get_shard_id_from_global_vid(v_gid, self.nr_shards)
     }
 
+    // FIXME: this is a quick hack to make sure all vertex views are always local, should implement an enum.
     fn move_remote_vertex(&self, vertex: VertexPointer) -> VertexView<Self> {
         let sid = self.get_shard_id_from_global_vid(vertex.gid);
         self.shards[sid]
