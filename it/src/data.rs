@@ -21,7 +21,12 @@ pub fn twitter() -> Result<PathBuf, FetchDataError> {
 }
 
 fn fetch_file(name: &str, url: &str, hash: &str) -> Result<PathBuf, FetchDataError> {
-    let tmp_dir = env::temp_dir();
+    let mut tmp_dir = env::temp_dir();
+    println!(tmp_dir.display());
+    if tmp_dir == PathBuf::from("") {
+        println!("overriding tmp_dir");
+        tmp_dir = PathBuf::from("/tmp"); // TMPDIR is not set in ubuntu-latest
+    }
     let docbrown_dir = tmp_dir.join("docbrown");
     fs::create_dir_all(&docbrown_dir).expect("Impossible to create directory");
     let file = docbrown_dir.join(name);
