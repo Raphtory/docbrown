@@ -13,7 +13,6 @@ build:
     rust: "1.64"
   jobs:
     pre_build:
-      - rustup update
       - make rust-build-readthedocs
 
 conda:
