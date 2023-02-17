@@ -40,7 +40,7 @@ extensions = [
     'sphinx.ext.autosummary',
     'sphinx.ext.intersphinx',
     # 'extractScalaAlgoDocs',
-    'extractRustDocs', 
+    # 'extractRustDocs', 
     'sphinx.ext.autodoc',
     'processWrapperDocs',
     'myst_parser',
