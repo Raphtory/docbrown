@@ -1,7 +1,6 @@
 use fetch_data::{fetch, FetchDataError};
 use std::path::PathBuf;
-use std::process::{Command, Stdio};
-use std::{env, fs};
+use std::env;
 
 // In order to add new files to this module, obtain the hash using bin/hash_for_url.rs
 

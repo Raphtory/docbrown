@@ -11,6 +11,7 @@ use std::fs::File;
 use std::hash::{Hash, Hasher};
 use std::ops::Range;
 use std::path::Path;
+use docbrown_core::graphview::GraphView;
 
 use docbrown_it::data;
 
@@ -134,16 +135,12 @@ pub fn ingestion(c: &mut Criterion) {
 }
 
 pub fn analysis(c: &mut Criterion) {
+    let mut g = c.benchmark_group("analysis");
     let lotr = data::lotr().unwrap();
     let mut graph = GraphDB::new(3);
     load_csv(&mut graph, &lotr, 0, 1, Some(2));
-
-    c.bench_function("edges len", |b| b.iter(|| graph.edges_len()));
-
-    let vertex = hash(&"Frodo");
-    c.bench_function("degree", |b| {
-        b.iter(|| graph.degree(vertex, Direction::OUT))
-    });
+    g.bench_function("n_edges", |b| b.iter(|| graph.n_edges()));
+    g.finish();
 }
 
 criterion_group!(benches, additions, ingestion, analysis);
