@@ -1,28 +1,27 @@
-use crate::graphview::GraphViewInternals;
-use crate::vertexview::VertexView;
+use crate::vertexview::VertexPointer;
 use std::slice::Iter;
 
 pub struct StateVec<T> {
     pub values: Vec<T>,
 }
 
-pub trait State<T, G>
-where
-    G: GraphViewInternals,
-{
-    fn get(&self, vertex: &VertexView<G>) -> &T;
+// FIXME: State to vertex mapping is currently only implicit, we can't set state on a subset of vertices this way easily and it is possible for errors to creep in
+pub trait State<T> {
+    fn get(&self, vertex: VertexPointer) -> &T;
 
-    fn set(&mut self, vertex: &VertexView<G>, value: T);
+    fn set(&mut self, vertex: VertexPointer, value: T);
+
+    fn iter(&self) -> Box<dyn Iterator<Item = &T> + '_>;
 }
 
 impl<T: Clone> StateVec<T> {
-    pub(crate) fn empty(size: usize) -> StateVec<Option<T>> {
+    pub fn empty(size: usize) -> StateVec<Option<T>> {
         StateVec {
             values: vec![None; size],
         }
     }
 
-    pub(crate) fn full(value: T, size: usize) -> StateVec<T> {
+    pub fn full(value: T, size: usize) -> StateVec<T> {
         StateVec {
             values: vec![value; size],
         }
@@ -32,10 +31,6 @@ impl<T: Clone> StateVec<T> {
 impl<T> StateVec<T> {
     pub(crate) fn len(&self) -> usize {
         self.values.len()
-    }
-
-    pub fn iter(&self) -> Iter<'_, T> {
-        self.values.iter()
     }
 }
 
@@ -67,15 +62,16 @@ impl<T: Clone> Clone for StateVec<T> {
     }
 }
 
-impl<T, G> State<T, G> for StateVec<T>
-where
-    G: GraphViewInternals,
-{
-    fn get(&self, vertex: &VertexView<G>) -> &T {
+impl<T> State<T> for StateVec<T> {
+    fn get(&self, vertex: VertexPointer) -> &T {
         &self.values[vertex.pid]
     }
 
-    fn set(&mut self, vertex: &VertexView<G>, value: T) {
+    fn set(&mut self, vertex: VertexPointer, value: T) {
         self.values[vertex.pid] = value
+    }
+
+    fn iter(&self) -> Box<(dyn Iterator<Item = &T> + '_)> {
+        Box::new(self.values.iter())
     }
 }

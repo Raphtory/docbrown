@@ -208,36 +208,32 @@ impl GraphViewInternals for TemporalGraph {
                         // FIXME: Should probably have local and remote VertexView as an enum to make this easier
                         Direction::OUT => Box::new(
                             out.iter_window(window)
-                                .map(|(id, edge)| VertexView {
+                                .map(|(id, _)| VertexView {
                                     g: self,
-                                    gid: *self.adj_lists[id.clone()].logical(),
-                                    pid: id.clone(),
+                                    gid: *self.adj_lists[id].logical(),
+                                    pid: id,
                                     w: None,
                                 })
-                                .chain(remote_out.iter_window(window).map(|(id, edge)| {
-                                    VertexView {
-                                        g: self,
-                                        gid: id.clone().try_into().unwrap(),
-                                        pid: id.clone(),
-                                        w: None,
-                                    }
+                                .chain(remote_out.iter_window(window).map(|(id, _)| VertexView {
+                                    g: self,
+                                    gid: id.try_into().unwrap(),
+                                    pid: id,
+                                    w: None,
                                 })),
                         ),
                         Direction::IN => Box::new(
                             into.iter_window(window)
-                                .map(|(id, edge)| VertexView {
+                                .map(|(id, _)| VertexView {
                                     g: self,
-                                    gid: *self.adj_lists[id.clone()].logical(),
-                                    pid: id.clone(),
+                                    gid: *self.adj_lists[id].logical(),
+                                    pid: id,
                                     w: None,
                                 })
-                                .chain(remote_into.iter_window(window).map(|(id, edge)| {
-                                    VertexView {
-                                        g: self,
-                                        gid: id.clone().try_into().unwrap(),
-                                        pid: id.clone(),
-                                        w: None,
-                                    }
+                                .chain(remote_into.iter_window(window).map(|(id, _)| VertexView {
+                                    g: self,
+                                    gid: id.try_into().unwrap(),
+                                    pid: id,
+                                    w: None,
                                 })),
                         ),
                         Direction::BOTH => Box::new(
@@ -251,31 +247,31 @@ impl GraphViewInternals for TemporalGraph {
                         // FIXME: Should probably have local and remote VertexView as an enum to make this easier
                         Direction::OUT => Box::new(
                             out.iter()
-                                .map(|(id, edge)| VertexView {
+                                .map(|(id, _)| VertexView {
                                     g: self,
-                                    gid: *self.adj_lists[id.clone()].logical(),
-                                    pid: id.clone(),
+                                    gid: *self.adj_lists[*id].logical(),
+                                    pid: *id,
                                     w: None,
                                 })
-                                .chain(remote_out.iter().map(|(id, edge)| VertexView {
+                                .chain(remote_out.iter().map(|(id, _)| VertexView {
                                     g: self,
-                                    gid: id.clone().try_into().unwrap(),
-                                    pid: id.clone(),
+                                    gid: (*id).try_into().unwrap(),
+                                    pid: *id,
                                     w: None,
                                 })),
                         ),
                         Direction::IN => Box::new(
                             into.iter()
-                                .map(|(id, edge)| VertexView {
+                                .map(|(id, _)| VertexView {
                                     g: self,
-                                    gid: *self.adj_lists[id.clone()].logical(),
-                                    pid: id.clone(),
+                                    gid: *self.adj_lists[*id].logical(),
+                                    pid: *id,
                                     w: None,
                                 })
-                                .chain(remote_into.iter().map(|(id, edge)| VertexView {
+                                .chain(remote_into.iter().map(|(id, _)| VertexView {
                                     g: self,
-                                    gid: id.clone().try_into().unwrap(),
-                                    pid: id.clone(),
+                                    gid: (*id).try_into().unwrap(),
+                                    pid: *id,
                                     w: None,
                                 })),
                         ),
@@ -372,8 +368,9 @@ impl GraphViewInternals for TemporalGraph {
     }
 }
 
+// FIXME: Implement these using the MutableGraph trait so we have a consistent format everywhere?
 impl TemporalGraph {
-    /// FIXME: would be nice if these return the vertex and edge views for the added item?
+    // FIXME: would be nice if these return the vertex and edge views for the added item?
     pub(crate) fn add_vertex(&mut self, v: u64, t: i64) {
         self.add_vertex_with_props(v, t, &vec![])
     }

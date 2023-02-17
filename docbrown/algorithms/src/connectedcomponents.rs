@@ -1,13 +1,11 @@
 use docbrown_core::error::GraphError;
 use docbrown_core::graphview::{GraphView, StateView};
-use docbrown_core::state::StateVec;
-use docbrown_core::vertexview::VertexViewMethods;
-use itertools::{izip, Itertools};
-use polars::prelude::*;
+use docbrown_core::state::{State, StateVec};
+use docbrown_core::vertexview::{VertexViewMethods, VertexViewStateMethods};
+use itertools::izip;
 use std::cmp::min;
-use std::iter::zip;
 
-pub fn connected_components<G>(g: &G) -> Result<G, GraphError>
+pub fn connected_components<G>(g: G) -> Result<G, GraphError>
 where
     G: GraphView + StateView,
 {
@@ -16,25 +14,22 @@ where
 
     for it in 0..g.n_vertices() {
         println!("next iteration {}", it);
-        let new_in_labels: StateVec<u64> = g
-            .vertices()
-            .out_neighbours()
-            .with_state(&labels)
-            .map(|inner| inner.min().unwrap_or(u64::MAX))
-            .collect();
-        println!("{:?}", new_in_labels.values);
-        let new_out_labels: StateVec<u64> = g
-            .vertices()
-            .in_neighbours()
-            .with_state(&labels)
-            .map(|inner| inner.min().unwrap_or(u64::MAX))
-            .collect();
-        println!("{:?}", new_out_labels.values);
-        let new_labels: StateVec<u64> =
+        let new_in_labels: G::StateType<u64> = g.new_state_from(
+            g.vertices()
+                .out_neighbours()
+                .with_state(&labels)
+                .map(|inner| inner.min().unwrap_or(u64::MAX)),
+        )?;
+        let new_out_labels: G::StateType<u64> = g.new_state_from(
+            g.vertices()
+                .in_neighbours()
+                .with_state(&labels)
+                .map(|inner| inner.min().unwrap_or(u64::MAX)),
+        )?;
+        let new_labels = g.new_state_from(
             izip!(new_in_labels.iter(), new_out_labels.iter(), labels.iter())
-                .map(|(v1, v2, v3)| min(min(*v1, *v2), *v3))
-                .collect();
-        println!("{:?}", new_labels.values);
+                .map(|(v1, v2, v3)| min(min(*v1, *v2), *v3)),
+        )?;
         let converged = labels.iter().eq(new_labels.iter());
         labels = new_labels;
         if converged {
@@ -45,15 +40,13 @@ where
 }
 
 #[cfg(test)]
-mod connected_components_test {
-    use docbrown_core::*;
+mod connected_components_tests {
+    use super::*;
     use docbrown_core::graphview::{MutableGraph, WindowedView};
     use docbrown_core::singlepartitiongraph::SinglePartitionGraph;
     use docbrown_core::vertexview::VertexViewMethods;
-    use crate::connectedcomponents::connected_components;
-    use docbrown_core::graphview::GraphView;
     use itertools::Itertools;
-    use docbrown_core::graphview::StateView;
+
     #[test]
     fn cc_test() {
         println!("very start");
@@ -65,7 +58,7 @@ mod connected_components_test {
         let gv = WindowedView::new(&g, 0..1);
         println!("we have view");
         println!("{:?}", gv.vertices().id().collect_vec());
-        let gv = connected_components(&gv).unwrap();
+        let gv = connected_components(gv).unwrap();
         let cc = gv.get_state("cc_label").unwrap();
         for c in cc.u64().unwrap() {
             println!("{}", c.unwrap())

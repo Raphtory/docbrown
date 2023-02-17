@@ -11,9 +11,8 @@ use crate::graph::{EdgeView, TemporalGraph};
 use crate::graphview::{
     EdgeIterator, GraphViewInternals, NeighboursIterator, PropertyHistory, VertexIterator,
 };
-use crate::vertexview::{VertexPointer, VertexView, VertexViewMethods};
+use crate::vertexview::{VertexPointer, VertexView};
 use crate::{Direction, Prop};
-use itertools::*;
 
 #[derive(Debug)]
 pub struct TEdge {
@@ -74,7 +73,8 @@ impl TemporalGraphPart {
         f(&shard)
     }
 
-    /// FIXME: Trait for this
+    /// FIXME: Implement using MutableGraph trait so we have a consistent format for this!
+    /// FIXME: What happened to the vertex properties?
     pub fn add_vertex(&self, v: u64, t: i64, props: &Vec<(String, Prop)>) {
         self.write_shard(|tg| tg.add_vertex(v, t))
     }

@@ -8,6 +8,7 @@ keywords = ["graph", "temporal-graph", "temporal"]
 
 [dependencies]
 docbrown-core = {path = "../core"}
+docbrown-algorithms = {path = "../algorithms"}
 parking_lot = { version = "0.12" , features = ["serde"] }
 flume = "0.10"
 futures = {version = "0.3", features = ["thread-pool"] }
