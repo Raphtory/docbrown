@@ -3,7 +3,7 @@
 extern crate quickcheck_macros;
 
 mod adj;
-mod algo;
+pub mod algo;
 mod bitset;
 pub mod error;
 pub mod graph;
