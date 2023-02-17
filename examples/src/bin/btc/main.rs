@@ -7,8 +7,8 @@ use std::{env, thread};
 
 use chrono::{DateTime, Utc};
 use docbrown_core::graph::TemporalGraph;
-use docbrown_core::{Direction, Prop};
 use docbrown_core::utils;
+use docbrown_core::{Direction, Prop};
 use docbrown_db::loaders::csv::CsvLoader;
 use regex::Regex;
 use serde::Deserialize;
@@ -116,7 +116,7 @@ fn main() {
     let deg_out = graph
         .neighbours_window(test_v, 0, i64::MAX, Direction::OUT)
         .count();
-        
+
     let deg_in = graph
         .neighbours_window(test_v, 0, i64::MAX, Direction::IN)
         .count();
@@ -125,7 +125,6 @@ fn main() {
         "{} has {} out degree and {} in degree",
         test_v, deg_out, deg_in
     );
-
 }
 
 mod custom_date_format {
