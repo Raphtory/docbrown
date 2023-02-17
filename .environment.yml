@@ -24,7 +24,7 @@ dependencies:
   - tzdata=2022a
   - wheel=0.37.1
   - xz=5.2.5
-  - zlib=1.2.12
+  - zlib>=1.2.12
   - pip:
       - alabaster==0.7.12
       - babel==2.10.1
