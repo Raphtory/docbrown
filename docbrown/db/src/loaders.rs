@@ -205,11 +205,44 @@ mod csv_loader_test {
         time: i64,
     }
 
+    fn lotr_test(g: GraphDB, csv_loader: CsvLoader, has_header: bool, delimiter: &str, r: Regex) {
+        csv_loader
+        .set_header(has_header)
+        .set_delimiter(delimiter)
+        .with_filter(r)
+        .load_into_graph(&g, |lotr: Lotr, g: &GraphDB| {
+            let src_id = calculate_hash(&lotr.src_id);
+            let dst_id = calculate_hash(&lotr.dst_id);
+            let time = lotr.time;
+
+            g.add_vertex(
+                src_id,
+                time,
+                &vec![("name".to_string(), Prop::Str("Character".to_string()))],
+            );
+            g.add_vertex(
+                dst_id,
+                time,
+                &vec![("name".to_string(), Prop::Str("Character".to_string()))],
+            );
+            g.add_edge(
+                src_id,
+                dst_id,
+                time,
+                &vec![(
+                    "name".to_string(),
+                    Prop::Str("Character Co-occurrence".to_string()),
+                )],
+            );
+        })
+        .expect("Csv did not parse.");
+    }
+
     #[test]
     fn test_headers_flag_and_delimiter() {
         let g = GraphDB::new(2);
         // todo: move file path to data module
-        let csv_path: PathBuf = [env!("CARGO_MANIFEST_DIR"), "../resource/"]
+        let csv_path: PathBuf = [env!("CARGO_MANIFEST_DIR"), "../../resource/"]
             .iter()
             .collect();
 
@@ -217,36 +250,9 @@ mod csv_loader_test {
         let csv_loader = CsvLoader::new(Path::new(&csv_path));
         let has_header = true;
         let r = Regex::new(r".+(lotr.csv)").unwrap();
-        csv_loader
-            .set_header(has_header)
-            .set_delimiter(",")
-            .with_filter(r)
-            .load_into_graph(&g, |lotr: Lotr, g: &GraphDB| {
-                let src_id = calculate_hash(&lotr.src_id);
-                let dst_id = calculate_hash(&lotr.dst_id);
-                let time = lotr.time;
-
-                g.add_vertex(
-                    src_id,
-                    time,
-                    &vec![("name".to_string(), Prop::Str("Character".to_string()))],
-                );
-                g.add_vertex(
-                    dst_id,
-                    time,
-                    &vec![("name".to_string(), Prop::Str("Character".to_string()))],
-                );
-                g.add_edge(
-                    src_id,
-                    dst_id,
-                    time,
-                    &vec![(
-                        "name".to_string(),
-                        Prop::Str("Character Co-occurrence".to_string()),
-                    )],
-                );
-            })
-            .expect("Csv did not parse.");
+        let delimiter = ",";
+        lotr_test(g, csv_loader, has_header, delimiter, r);
+       
     }
 
     #[test]
@@ -254,85 +260,15 @@ mod csv_loader_test {
     fn test_wrong_header_flag_file_with_header() {
         let g = GraphDB::new(2);
         // todo: move file path to data module
-        let csv_path: PathBuf = [env!("CARGO_MANIFEST_DIR"), "../resource/"]
+        let csv_path: PathBuf = [env!("CARGO_MANIFEST_DIR"), "../../resource/"]
             .iter()
             .collect();
         let csv_loader = CsvLoader::new(Path::new(&csv_path));
         let has_header = false;
         let r = Regex::new(r".+(lotr.csv)").unwrap();
-        csv_loader
-            .set_header(has_header)
-            .set_delimiter(",")
-            .with_filter(r)
-            .load_into_graph(&g, |lotr: Lotr, g: &GraphDB| {
-                let src_id = calculate_hash(&lotr.src_id);
-                let dst_id = calculate_hash(&lotr.dst_id);
-                let time = lotr.time;
-
-                g.add_vertex(
-                    src_id,
-                    time,
-                    &vec![("name".to_string(), Prop::Str("Character".to_string()))],
-                );
-                g.add_vertex(
-                    dst_id,
-                    time,
-                    &vec![("name".to_string(), Prop::Str("Character".to_string()))],
-                );
-                g.add_edge(
-                    src_id,
-                    dst_id,
-                    time,
-                    &vec![(
-                        "name".to_string(),
-                        Prop::Str("Character Co-occurrence".to_string()),
-                    )],
-                );
-            })
-            .expect("Csv did not parse.");
-    }
-
-    #[test]
-    fn test_no_headers_flag() {
-        let g = GraphDB::new(2);
-        // todo: move file path to data module
-        let csv_path: PathBuf = [env!("CARGO_MANIFEST_DIR"), "../resource/"]
-            .iter()
-            .collect();
-        let csv_loader = CsvLoader::new(Path::new(&csv_path));
-        let has_header = false;
-        let r = Regex::new(r".+(lotr-without-header.csv)").unwrap();
-
-        csv_loader
-            .set_header(has_header)
-            .set_delimiter(",")
-            .with_filter(r)
-            .load_into_graph(&g, |lotr: Lotr, g: &GraphDB| {
-                let src_id = calculate_hash(&lotr.src_id);
-                let dst_id = calculate_hash(&lotr.dst_id);
-                let time = lotr.time;
-
-                g.add_vertex(
-                    src_id,
-                    time,
-                    &vec![("name".to_string(), Prop::Str("Character".to_string()))],
-                );
-                g.add_vertex(
-                    dst_id,
-                    time,
-                    &vec![("name".to_string(), Prop::Str("Character".to_string()))],
-                );
-                g.add_edge(
-                    src_id,
-                    dst_id,
-                    time,
-                    &vec![(
-                        "name".to_string(),
-                        Prop::Str("Character Co-occurrence".to_string()),
-                    )],
-                );
-            })
-            .expect("Csv did not parse.");
+        let delimiter = ",";
+        lotr_test(g, csv_loader, has_header, delimiter, r);
+       
     }
 
     #[test]
@@ -340,41 +276,15 @@ mod csv_loader_test {
     fn test_flag_has_header_but_file_has_no_header() {
         let g = GraphDB::new(2);
         // todo: move file path to data module
-        let csv_path: PathBuf = [env!("CARGO_MANIFEST_DIR"), "../resource/"]
+        let csv_path: PathBuf = [env!("CARGO_MANIFEST_DIR"), "../../resource/"]
             .iter()
             .collect();
         let csv_loader = CsvLoader::new(Path::new(&csv_path));
         let has_header = true;
         let r = Regex::new(r".+(lotr-without-header.csv)").unwrap();
-        csv_loader
-            .set_header(has_header)
-            .set_delimiter(",")
-            .load_into_graph(&g, |lotr: Lotr, g: &GraphDB| {
-                let src_id = calculate_hash(&lotr.src_id);
-                let dst_id = calculate_hash(&lotr.dst_id);
-                let time = lotr.time;
-
-                g.add_vertex(
-                    src_id,
-                    time,
-                    &vec![("name".to_string(), Prop::Str("Character".to_string()))],
-                );
-                g.add_vertex(
-                    dst_id,
-                    time,
-                    &vec![("name".to_string(), Prop::Str("Character".to_string()))],
-                );
-                g.add_edge(
-                    src_id,
-                    dst_id,
-                    time,
-                    &vec![(
-                        "name".to_string(),
-                        Prop::Str("Character Co-occurrence".to_string()),
-                    )],
-                );
-            })
-            .expect("Csv did not parse.");
+        let delimiter = ",";
+        lotr_test(g, csv_loader, has_header, delimiter, r);
+       
     }
 
     #[test]
@@ -382,42 +292,15 @@ mod csv_loader_test {
     fn test_wrong_header_names() {
         let g = GraphDB::new(2);
         // todo: move file path to data module
-        let csv_path: PathBuf = [env!("CARGO_MANIFEST_DIR"), "../resource/"]
+        let csv_path: PathBuf = [env!("CARGO_MANIFEST_DIR"), "../../resource/"]
             .iter()
             .collect();
         let csv_loader = CsvLoader::new(Path::new(&csv_path));
         let r = Regex::new(r".+(lotr-wrong.csv)").unwrap();
         let has_header = true;
-        csv_loader
-            .set_header(has_header)
-            .set_delimiter(",")
-            .with_filter(r)
-            .load_into_graph(&g, |lotr: Lotr, g: &GraphDB| {
-                let src_id = calculate_hash(&lotr.src_id);
-                let dst_id = calculate_hash(&lotr.dst_id);
-                let time = lotr.time;
-
-                g.add_vertex(
-                    src_id,
-                    time,
-                    &vec![("name".to_string(), Prop::Str("Character".to_string()))],
-                );
-                g.add_vertex(
-                    dst_id,
-                    time,
-                    &vec![("name".to_string(), Prop::Str("Character".to_string()))],
-                );
-                g.add_edge(
-                    src_id,
-                    dst_id,
-                    time,
-                    &vec![(
-                        "name".to_string(),
-                        Prop::Str("Character Co-occurrence".to_string()),
-                    )],
-                );
-            })
-            .expect("Csv did not parse.");
+        let delimiter = ",";
+        lotr_test(g, csv_loader, has_header, delimiter, r);
+       
     }
 
     #[test]
@@ -425,41 +308,14 @@ mod csv_loader_test {
     fn test_wrong_delimiter() {
         let g = GraphDB::new(2);
         // todo: move file path to data module
-        let csv_path: PathBuf = [env!("CARGO_MANIFEST_DIR"), "../resource/"]
+        let csv_path: PathBuf = [env!("CARGO_MANIFEST_DIR"), "../../resource/"]
             .iter()
             .collect();
         let csv_loader = CsvLoader::new(Path::new(&csv_path));
         let r = Regex::new(r".+(lotr.csv)").unwrap();
         let has_header = true;
-        csv_loader
-            .set_header(has_header)
-            .set_delimiter(".")
-            .with_filter(r)
-            .load_into_graph(&g, |lotr: Lotr, g: &GraphDB| {
-                let src_id = calculate_hash(&lotr.src_id);
-                let dst_id = calculate_hash(&lotr.dst_id);
-                let time = lotr.time;
-
-                g.add_vertex(
-                    src_id,
-                    time,
-                    &vec![("name".to_string(), Prop::Str("Character".to_string()))],
-                );
-                g.add_vertex(
-                    dst_id,
-                    time,
-                    &vec![("name".to_string(), Prop::Str("Character".to_string()))],
-                );
-                g.add_edge(
-                    src_id,
-                    dst_id,
-                    time,
-                    &vec![(
-                        "name".to_string(),
-                        Prop::Str("Character Co-occurrence".to_string()),
-                    )],
-                );
-            })
-            .expect("Csv did not parse.");
+        let delimiter = ".";
+        lotr_test(g, csv_loader, has_header, delimiter, r);
+       
     }
 }
