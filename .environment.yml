@@ -16,6 +16,7 @@ dependencies:
   - python=3.9.13
   - python_abi=3.9
   - readline=8.1.2
+  - libzlib=1.2.13
   - rust=1.67.1
   - setuptools=61.2.0
   - sqlite>=3.38.3
