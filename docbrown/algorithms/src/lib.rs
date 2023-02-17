@@ -2,6 +2,6 @@
 #[macro_use(quickcheck)]
 extern crate quickcheck_macros;
 
-pub mod graphdb;
-pub mod loaders;
-pub mod data;
+pub mod connectedcomponents;
+//pub mod trianglecount;
+

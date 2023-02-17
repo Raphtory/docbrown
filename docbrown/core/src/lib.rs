@@ -3,9 +3,8 @@
 extern crate quickcheck_macros;
 
 mod adj;
-mod algo;
 mod bitset;
-mod error;
+pub mod error;
 pub mod graph;
 pub mod graphview;
 pub mod lsm;
@@ -13,7 +12,7 @@ mod misc;
 mod props;
 pub mod singlepartitiongraph;
 mod sorted_vec_map;
-mod state;
+pub mod state;
 mod tadjset;
 mod tcell;
 pub mod tpartition;

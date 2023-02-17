@@ -1,0 +1,15 @@
+[package]
+name = "docbrown-algorithms"
+version.workspace = true
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+docbrown-core = {path = "../core"}
+polars = "0.26"
+itertools="0.10"
+
+[dev-dependencies]
+quickcheck = "1"
+quickcheck_macros = "1"
