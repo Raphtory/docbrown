@@ -352,7 +352,7 @@ impl StateView for GraphDB {
 #[cfg(test)]
 mod db_tests {
     use csv::StringRecord;
-    use docbrown_core::algo::connected_components;
+    use docbrown_algorithms::connectedcomponents::connected_components;
     use docbrown_core::graphview::WindowedView;
     use docbrown_core::utils;
     use docbrown_core::vertexview::VertexViewMethods;
