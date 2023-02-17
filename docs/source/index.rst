@@ -54,9 +54,9 @@ Alternatively, hit next and lets get Raphtory :doc:`installed <Install/python/py
    :hidden:
    :caption: Raphtory Rust
 
-   rust/quickstart.md
+   RustDocs/quickstart.md
    Analysis/analysis-explained.md
-   rust/apidocs.md
+   RustDocs/apidocs.md
 
 .. toctree::
    :hidden:
