@@ -50,7 +50,7 @@ mod connected_components_test {
     use docbrown_core::graphview::{MutableGraph, WindowedView};
     use docbrown_core::singlepartitiongraph::SinglePartitionGraph;
     use docbrown_core::vertexview::VertexViewMethods;
-    use crate::wcc::connected_components;
+    use crate::connectedcomponents::connected_components;
     use docbrown_core::graphview::GraphView;
     use itertools::Itertools;
     use docbrown_core::graphview::StateView;
