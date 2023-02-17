@@ -14,21 +14,20 @@ import os
 import sys
 import subprocess
 from pathlib import Path
-from pyraphtory import __version__
 sys.path.insert(0, os.path.abspath('exts'))
 
-# This is needed by the own-algorithms notebook:
-subprocess.run(['curl', '-o', '/tmp/lotr.csv', 'https://raw.githubusercontent.com/Raphtory/Data/main/lotr.csv'])
+# # This is needed by the own-algorithms notebook:
+# subprocess.run(['curl', '-o', '/tmp/lotr.csv', 'https://raw.githubusercontent.com/Raphtory/Data/main/lotr.csv'])
 
 
 # -- Project information -----------------------------------------------------
 
 project = 'Raphtory'
-copyright = '2022, Ben Steer'
-author = 'Ben Steer'
+copyright = '2023, Pometry'
+author = 'Pometry'
 
 # The full version, including alpha/beta/rc tags
-release = __version__
+release = "0.0.1"
 
 
 # -- General configuration ---------------------------------------------------
@@ -70,12 +69,12 @@ myst_enable_extensions = ["deflist", "dollarmath"]
 myst_heading_anchors = 3
 
 raphtory_root = str(Path(__file__).resolve().parents[2])
-raphtory_src_root = str(Path(__file__).resolve().parents[2] / "core" / "src" / "main" / "scala")
-autodoc_packages = [
-    "com.raphtory.algorithms.generic",
-    "com.raphtory.algorithms.temporal",
-    "com.raphtory.algorithms.filters"
-]
+# raphtory_src_root = str(Path(__file__).resolve().parents[2] / "core" / "src" / "main" / "scala")
+# autodoc_packages = [
+#     "com.raphtory.algorithms.generic",
+#     "com.raphtory.algorithms.temporal",
+#     "com.raphtory.algorithms.filters"
+# ]
 
 # Uncomment to turn of rebuilding of scala and algorithm docs (use when writing other docs to speed up compile)
 build_scaladocs = False
@@ -108,7 +107,7 @@ html_theme_options = {
 html_static_path = ['_static', 'images', '_rustdoc']
 nbsphinx_kernel_name = 'python3'
 
-rst_prolog = f"""
-.. |binder_link| replace:: Click here to launch the notebook
-.. _binder_link: https://mybinder.org/v2/gh/Raphtory/Raphtory/v{__version__}?labpath=examples%2Fbinder_python%2Findex.ipynb
-"""
+# rst_prolog = f"""
+# .. |binder_link| replace:: Click here to launch the notebook
+# .. _binder_link: https://mybinder.org/v2/gh/Raphtory/Raphtory/v{__version__}?labpath=examples%2Fbinder_python%2Findex.ipynb
+# """
