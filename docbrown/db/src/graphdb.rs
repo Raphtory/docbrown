@@ -183,6 +183,14 @@ impl GraphDB {
     fn get_shard_id_from_global_vid(&self, v_gid: u64) -> usize {
         utils::get_shard_id_from_global_vid(v_gid, self.nr_shards)
     }
+
+    fn move_remote_vertex(&self, vertex: VertexPointer) -> VertexView<Self> {
+        let sid = self.get_shard_id_from_global_vid(vertex.gid);
+        self.shards[sid]
+            .local_vertex(vertex.gid)
+            .expect("vertex should exist")
+            .as_view_of(self)
+    }
 }
 
 impl GraphViewInternals for GraphDB {
@@ -261,7 +269,7 @@ impl GraphViewInternals for GraphDB {
         Box::new(
             self.shards[sid]
                 .neighbours(vertex, direction)
-                .map(|v| v.as_view_of(self)),
+                .map(|v| self.move_remote_vertex(v.as_pointer())),
         )
     }
 
@@ -342,6 +350,7 @@ impl StateView for GraphDB {
 #[cfg(test)]
 mod db_tests {
     use csv::StringRecord;
+    use docbrown_core::algo::connected_components;
     use docbrown_core::graphview::WindowedView;
     use docbrown_core::utils;
     use docbrown_core::vertexview::VertexViewMethods;
@@ -961,5 +970,7 @@ mod db_tests {
 
         let gandalf = utils::calculate_hash(&"Gandalf");
         assert!(g.contains_vertex(gandalf));
+        let g = connected_components(g).unwrap();
+        println!("{:?}", g.get_state("cc_label"))
     }
 }
