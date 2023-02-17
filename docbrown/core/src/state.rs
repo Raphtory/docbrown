@@ -3,7 +3,7 @@ use crate::vertexview::VertexView;
 use std::slice::Iter;
 
 pub struct StateVec<T> {
-    pub(crate) values: Vec<T>,
+    pub values: Vec<T>,
 }
 
 pub trait State<T, G>

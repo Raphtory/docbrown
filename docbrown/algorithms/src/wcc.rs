@@ -1,7 +1,7 @@
-use crate::error::GraphError;
-use crate::graphview::{GraphView, StateView};
-use crate::state::StateVec;
-use crate::vertexview::VertexViewMethods;
+use docbrown_core::error::GraphError;
+use docbrown_core::graphview::{GraphView, StateView};
+use docbrown_core::state::StateVec;
+use docbrown_core::vertexview::VertexViewMethods;
 use itertools::{izip, Itertools};
 use polars::prelude::*;
 use std::cmp::min;
@@ -45,12 +45,15 @@ where
 }
 
 #[cfg(test)]
-mod algo_tests {
-    use super::*;
-    use crate::graphview::{MutableGraph, WindowedView};
-    use crate::singlepartitiongraph::SinglePartitionGraph;
-    use crate::vertexview::VertexViewMethods;
-
+mod connected_components_test {
+    use docbrown_core::*;
+    use docbrown_core::graphview::{MutableGraph, WindowedView};
+    use docbrown_core::singlepartitiongraph::SinglePartitionGraph;
+    use docbrown_core::vertexview::VertexViewMethods;
+    use crate::wcc::connected_components;
+    use docbrown_core::graphview::GraphView;
+    use itertools::Itertools;
+    use docbrown_core::graphview::StateView;
     #[test]
     fn cc_test() {
         println!("very start");
