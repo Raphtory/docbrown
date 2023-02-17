@@ -44,7 +44,7 @@ where
         }
     }
 
-    pub(crate) fn as_pointer(&self) -> VertexPointer {
+    pub fn as_pointer(&self) -> VertexPointer {
         VertexPointer {
             gid: self.gid,
             pid: self.pid,
