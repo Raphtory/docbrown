@@ -9,7 +9,6 @@ dependencies:
   - ipykernel
   - libcxx=12.0.0
   - libffi>=3.3
-  - libzlib>=1.2.13
   - ncurses=6.3
   - make=4.3
   - openssl=1.1.1q
@@ -17,8 +16,6 @@ dependencies:
   - python=3.9.13
   - python_abi=3.9
   - readline=8.1.2
-  - rust=1.67.1
-  - sbt=1.6.2
   - setuptools=61.2.0
   - sqlite>=3.38.3
   - tk>=8.6.11
