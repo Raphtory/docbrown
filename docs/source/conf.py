@@ -41,7 +41,7 @@ extensions = [
     # 'extractScalaAlgoDocs',
     # 'extractRustDocs', 
     'sphinx.ext.autodoc',
-    'processWrapperDocs',
+    # 'processWrapperDocs',
     'myst_parser',
     'sphinx_tabs.tabs',
     "nbsphinx"
