@@ -20,7 +20,7 @@ genawaiter = "0.99"
 parking_lot = { version = "0.12" , features = ["serde"] }
 serde = { version = "1", features = ["derive","rc"] }
 bincode = "1"
-polars = "0.26"
+polars = {version="0.26", features=["serde", "lazy"]}
 polars-lazy = "0.26"
 
 # crossbeam = "0.8"

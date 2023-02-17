@@ -103,9 +103,17 @@ where
     fn out_degree(self) -> Self::ItemType<usize>;
     fn in_degree(self) -> Self::ItemType<usize>;
     fn degree(self) -> Self::ItemType<usize>;
-    fn with_state<A: Clone>(self, state: &'a StateVec<A>) -> Self::ItemType<A>;
+
     fn with_window(self, window: Range<i64>) -> Self::ItemType<VertexView<'a, G>>;
     fn property_history(self, name: &'a str) -> Self::ItemType<Option<PropertyHistory<'a>>>;
+}
+
+pub trait VertexViewStateMethods<'a, G>
+where
+    G: StateView,
+{
+    type ItemType<T: 'a>;
+    fn with_state<A: Clone>(self, state: &'a G::StateType<A>) -> Self::ItemType<A>;
 }
 
 impl<'a, G> VertexViewMethods<'a, G> for VertexView<'a, G>
@@ -157,10 +165,6 @@ where
         self.g.degree(self.as_pointer(), Direction::BOTH)
     }
 
-    fn with_state<A: Clone>(self, state: &'a StateVec<A>) -> Self::ItemType<A> {
-        state.get(&self).clone()
-    }
-
     fn with_window(self, window: Range<i64>) -> Self {
         VertexView {
             w: Some(window),
@@ -170,6 +174,16 @@ where
 
     fn property_history(self, name: &str) -> Option<PropertyHistory<'a>> {
         self.g.property_history(self.as_pointer(), name)
+    }
+}
+
+impl<'a, G> VertexViewStateMethods<'a, G> for VertexView<'a, G>
+where
+    G: StateView,
+{
+    type ItemType<T: 'a> = T;
+    fn with_state<A: Clone + 'a>(self, state: &'a G::StateType<A>) -> Self::ItemType<A> {
+        state.get(self.as_pointer()).clone()
     }
 }
 
@@ -231,12 +245,6 @@ where
         Box::new(inner.map(|v| v.degree()))
     }
 
-    fn with_state<A: Clone>(self, state: &'a StateVec<A>) -> Self::ItemType<A> {
-        let inner = self.into_iter();
-
-        Box::new(inner.map(move |v: R| v.with_state(state)))
-    }
-
     fn with_window(self, window: Range<i64>) -> Self::ItemType<VertexView<'a, G>> {
         let inner = self.into_iter();
 
@@ -247,5 +255,19 @@ where
         let inner = self.into_iter();
 
         Box::new(inner.map(move |v: R| v.property_history(name)))
+    }
+}
+
+impl<'a, T, R, G> VertexViewStateMethods<'a, G> for T
+where
+    T: IntoIterator<Item = R> + 'a,
+    R: VertexViewStateMethods<'a, G> + 'a,
+    G: StateView,
+{
+    type ItemType<U: 'a> = Box<dyn Iterator<Item = R::ItemType<U>> + 'a>;
+    fn with_state<A: Clone + 'a>(self, state: &'a G::StateType<A>) -> Self::ItemType<A> {
+        let inner = self.into_iter();
+
+        Box::new(inner.map(move |v: R| v.with_state(state)))
     }
 }

@@ -1,3 +1,4 @@
+use polars::prelude::{NamedFrom, Series};
 use std::ops::Range;
 use std::path::{Path, PathBuf};
 
@@ -7,7 +8,11 @@ use docbrown_core::{
     utils, Direction, Prop,
 };
 
-use docbrown_core::graphview::{EdgeIterator, NeighboursIterator, PropertyHistory, VertexIterator};
+use docbrown_core::error::{GraphError, GraphResult};
+use docbrown_core::graphview::{
+    EdgeIterator, NeighboursIterator, PropertyHistory, StateView, VertexIterator,
+};
+use docbrown_core::state::{State, StateVec};
 use docbrown_core::vertexview::{VertexPointer, VertexView};
 use rayon::prelude::{IntoParallelRefIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};
@@ -16,6 +21,52 @@ use serde::{Deserialize, Serialize};
 pub struct GraphDB {
     nr_shards: usize,
     shards: Vec<TemporalGraphPart>,
+    state: Properties,
+}
+
+pub struct ShardedState<T: Clone> {
+    shards: Vec<StateVec<T>>,
+}
+
+impl<T: Clone> ShardedState<T> {
+    fn n_shards(&self) -> usize {
+        self.shards.len()
+    }
+
+    pub(crate) fn empty(sizes: Vec<usize>) -> ShardedState<Option<T>> {
+        ShardedState {
+            shards: sizes.iter().map(|size| StateVec::empty(*size)).collect(),
+        }
+    }
+
+    pub(crate) fn full(value: T, sizes: Vec<usize>) -> ShardedState<T> {
+        ShardedState {
+            shards: sizes
+                .iter()
+                .map(|size| StateVec::full(value.clone(), *size))
+                .collect(),
+        }
+    }
+}
+
+impl<T: Clone> State<T> for ShardedState<T> {
+    fn get(&self, vertex: VertexPointer) -> &T {
+        let sid = utils::get_shard_id_from_global_vid(vertex.gid, self.n_shards());
+        self.shards[sid].get(vertex)
+    }
+
+    fn set(&mut self, vertex: VertexPointer, value: T) {
+        let sid = utils::get_shard_id_from_global_vid(vertex.gid, self.n_shards());
+        self.shards[sid].set(vertex, value)
+    }
+
+    fn iter(&self) -> Box<dyn Iterator<Item = &T> + '_> {
+        let mut iter: Box<dyn Iterator<Item = &T>> = Box::new(std::iter::empty());
+        for shard in self.shards.iter() {
+            iter = Box::new(iter.chain(shard.iter()))
+        }
+        Box::new(iter)
+    }
 }
 
 impl GraphDB {
@@ -25,9 +76,11 @@ impl GraphDB {
             shards: (0..nr_shards)
                 .map(|_| TemporalGraphPart::default())
                 .collect(),
+            state: Properties::default(),
         }
     }
 
+    // FIXME: support writing out state and loading back
     pub fn load_from_file<P: AsRef<Path>>(path: P) -> Result<Self, Box<bincode::ErrorKind>> {
         // use BufReader for better performance
 
@@ -57,9 +110,14 @@ impl GraphDB {
 
         let shards = shards.into_iter().map(|(_, shard)| shard).collect();
 
-        Ok(GraphDB { nr_shards, shards })
+        Ok(GraphDB {
+            nr_shards,
+            shards,
+            state: Properties::default(),
+        })
     }
 
+    // FIXME: support writing out state and loading back
     pub fn save_to_file<P: AsRef<Path>>(&self, path: P) -> Result<(), Box<bincode::ErrorKind>> {
         // write each shard to a different file
 
@@ -233,6 +291,51 @@ impl GraphView for GraphDB {
 
     fn n_edges(&self) -> usize {
         self.local_n_edges(Direction::OUT)
+    }
+}
+
+impl StateView for GraphDB {
+    type StateType<T: Clone> = ShardedState<T>;
+
+    fn with_state(self, name: &str, value: Series) -> GraphResult<Self> {
+        let named_value = Series::new(name, value);
+        let mut state = self.state.clone();
+        state.with_column(named_value)?;
+        Ok(Self { state, ..self })
+    }
+
+    fn state(&self) -> &Properties {
+        &self.state
+    }
+
+    fn new_empty_state<T: Clone>(&self) -> Self::StateType<Option<T>> {
+        ShardedState::empty(self.shards.iter().map(|g| g.local_n_vertices()).collect())
+    }
+
+    fn new_full_state<T: Clone>(&self, value: T) -> Self::StateType<T> {
+        ShardedState::full(
+            value,
+            self.shards.iter().map(|g| g.local_n_vertices()).collect(),
+        )
+    }
+
+    fn new_state_from<T: Clone, I: IntoIterator<Item = T>>(
+        &self,
+        iter: I,
+    ) -> docbrown_core::error::GraphResult<Self::StateType<T>> {
+        let mut it = iter.into_iter();
+        let mut shard_states = vec![];
+        for shard in self.shards.iter() {
+            let mut values = vec![];
+            for _ in 0..shard.local_n_vertices() {
+                let val = it.next().ok_or(GraphError::StateSizeError)?;
+                values.push(val);
+            }
+            shard_states.push(StateVec::from(values));
+        }
+        Ok(ShardedState {
+            shards: shard_states,
+        })
     }
 }
 
