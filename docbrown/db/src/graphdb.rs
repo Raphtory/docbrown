@@ -7,6 +7,7 @@ use docbrown_core::{
     utils, Direction, Prop,
 };
 
+use crate::data;
 use docbrown_core::graph::TemporalGraph;
 use docbrown_core::graphview::{EdgeIterator, NeighboursIterator, PropertyHistory, VertexIterator};
 use docbrown_core::vertexview::{VertexPointer, VertexView};
@@ -249,7 +250,6 @@ mod db_tests {
     use std::fs;
     use std::{path::PathBuf, sync::Arc};
     use uuid::Uuid;
-    use docbrown_it::data;
 
     use super::*;
 

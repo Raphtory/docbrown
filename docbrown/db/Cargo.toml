@@ -27,12 +27,12 @@ polars-lazy = "0.26"
 # mimalloc = { version = "0.1", default-features = false }
 rand = "0.8.5"
 uuid = { version = "1.3.0", features = ["v4"] }
+fetch-data = "0.1.6"
 
 [dev-dependencies]
 quickcheck = "1"
 quickcheck_macros = "1"
 criterion = "0.3"
-docbrown-it = {path = "../../it" }
 
 [[bench]]
 name = "base"
