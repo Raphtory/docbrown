@@ -3,18 +3,24 @@
 extern crate quickcheck_macros;
 
 mod adj;
+mod algo;
 mod bitset;
+mod error;
 pub mod graph;
+pub mod graphview;
 pub mod lsm;
 mod misc;
 mod props;
+pub mod singlepartitiongraph;
 mod sorted_vec_map;
+mod state;
 mod tadjset;
 mod tcell;
 pub mod tpartition;
 mod tprop;
 mod tpropvec;
 pub mod utils;
+pub mod vertexview;
 
 // Denotes edge direction
 #[derive(Clone, Copy, PartialEq)]
@@ -33,5 +39,5 @@ pub enum Prop {
     U64(u64),
     F32(f32),
     F64(f64),
-    Bool(bool)
+    Bool(bool),
 }
