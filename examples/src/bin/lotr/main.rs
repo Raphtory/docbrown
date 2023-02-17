@@ -1,6 +1,6 @@
+use docbrown_core::utils;
 use docbrown_core::{Direction, Prop};
 use docbrown_db::{graphdb::GraphDB, loaders::csv::CsvLoader};
-use docbrown_core::utils;
 use serde::Deserialize;
 use std::{env, path::Path, time::Instant};
 
