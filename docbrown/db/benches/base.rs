@@ -66,8 +66,8 @@ pub fn additions(c: &mut Criterion) {
     let mut g = c.benchmark_group("additions");
     g.throughput(Throughput::Elements(1));
 
-    let mut times: Range<i64> = (0..i64::MAX);
-    let mut indexes: Range<u64> = (0..u64::MAX);
+    let mut times: Range<i64> = 0..i64::MAX;
+    let mut indexes: Range<u64> = 0..u64::MAX;
 
     g.bench_function("existing vertex constant time", |b| {
         b.iter(|| graph.add_vertex(0, 0, &vec![]))
@@ -113,7 +113,7 @@ pub fn ingestion(c: &mut Criterion) {
 
     g.throughput(Throughput::Elements(2649));
     let lotr = data::lotr().unwrap();
-    g.bench_function("load lotr.csv", |b: &mut Bencher| {
+    g.bench_function("lotr.csv", |b: &mut Bencher| {
         b.iter(|| {
             let mut graph = GraphDB::new(3);
             load_csv(&mut graph, &lotr, 0, 1, Some(2));
@@ -123,7 +123,7 @@ pub fn ingestion(c: &mut Criterion) {
     g.throughput(Throughput::Elements(1400000));
     g.sample_size(20);
     let twitter = data::twitter().unwrap();
-    g.bench_function("load twitter.csv", |b: &mut Bencher| {
+    g.bench_function("twitter.csv", |b: &mut Bencher| {
         b.iter(|| {
             let mut graph = GraphDB::new(3);
             load_csv(&mut graph, &twitter, 0, 1, None);
