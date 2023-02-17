@@ -1,15 +1,10 @@
 use crate::error::GraphResult;
-use crate::graph::{EdgeView, TemporalGraph};
 use crate::graphview::{
-    EdgeIterator, GraphView, GraphViewInternals, IteratorWithLifetime, NeighboursIterator,
-    PropertyHistory, StateView,
+    EdgeIterator, GraphViewInternals, NeighboursIterator, PropertyHistory, StateView,
 };
 use crate::state::{State, StateVec};
-use crate::tpartition::TemporalGraphPart;
-use crate::{Direction, Prop};
+use crate::Direction;
 use polars::datatypes::AnyValue;
-use std::any::Any;
-use std::borrow::Borrow;
 use std::ops::Range;
 
 pub struct VertexView<'a, G>

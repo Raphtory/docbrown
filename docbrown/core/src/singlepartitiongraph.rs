@@ -3,7 +3,7 @@ use crate::graphview::{
     EdgeIterator, GraphView, GraphViewInternals, MutableGraph, NeighboursIterator, PropertyHistory,
     VertexIterator,
 };
-use crate::vertexview::{VertexPointer, VertexView, VertexViewMethods};
+use crate::vertexview::{VertexPointer, VertexView};
 use crate::{Direction, Prop};
 use serde::{Deserialize, Serialize};
 use std::ops::Range;

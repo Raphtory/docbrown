@@ -1,18 +1,12 @@
 use crate::error::{GraphError, GraphResult};
-use crate::graph::{EdgeView, TemporalGraph};
-use crate::state::{State, StateVec};
-use crate::tadjset::AdjEdge;
+use crate::graph::EdgeView;
+use crate::state::StateVec;
 use crate::vertexview::{VertexPointer, VertexView, VertexViewMethods};
 use crate::{Direction, Prop};
 use polars;
 use polars::prelude::NamedFrom;
-use polars::series::{IntoSeries, Series};
-use polars_lazy;
-use std::borrow::Borrow;
-use std::error::Error;
-use std::fmt::Formatter;
+use polars::series::Series;
 use std::ops::Range;
-use std::{error, fmt};
 
 pub type IteratorWithLifetime<'a, I> = dyn Iterator<Item = I> + 'a;
 pub type VertexIterator<'a, G> = Box<IteratorWithLifetime<'a, VertexView<'a, G>>>;
@@ -72,6 +66,7 @@ pub trait MutableGraph {
         self.add_vertex_with_props(v, t, &vec![])
     }
 
+    // FIXME: Change these to take slices instead of explit vector references?
     fn add_vertex_with_props(&mut self, v: u64, t: i64, props: &Vec<(String, Prop)>);
 
     fn add_edge(&mut self, src: u64, dst: u64, t: i64) {
@@ -81,6 +76,8 @@ pub trait MutableGraph {
     fn add_edge_with_props(&mut self, src: u64, dst: u64, t: i64, props: &Vec<(String, Prop)>);
 }
 
+// FIXME: Need to implement exploded edges methods
+/// Trait for the methods implemented by a view of a graph partition
 pub trait GraphViewInternals: Sized {
     /// Get number of vertices in the partition of the view
     fn local_n_vertices(&self) -> usize {
@@ -416,12 +413,14 @@ mod graph_view_tests {
         let g = make_mini_graph();
 
         let view = WindowedView::new(&g, 0..2);
-        let view = view.with_state("ids", view.vertices().id().collect());
-        // for v in view.vertices().iter() {
-        //     let state = (&v).get_state("ids");
-        //     let id: u64 = state.extract().unwrap();
-        //     assert_eq!(v.id(), id)
-        // }
+        let view = view
+            .with_state("ids", view.vertices().id().collect())
+            .unwrap();
+        for v in view.vertices().iter() {
+            let state = v.get_property("ids").unwrap();
+            let id: u64 = state.extract().unwrap();
+            assert_eq!(v.id(), id)
+        }
     }
 
     #[test]

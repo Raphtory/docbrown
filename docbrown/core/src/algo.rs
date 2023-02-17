@@ -2,10 +2,8 @@ use crate::error::GraphError;
 use crate::graphview::{GraphView, StateView};
 use crate::state::StateVec;
 use crate::vertexview::VertexViewMethods;
-use itertools::{izip, Itertools};
-use polars::prelude::*;
+use itertools::izip;
 use std::cmp::min;
-use std::iter::zip;
 
 pub fn connected_components<G>(g: &G) -> Result<G, GraphError>
 where
@@ -50,6 +48,7 @@ mod algo_tests {
     use crate::graphview::{MutableGraph, WindowedView};
     use crate::singlepartitiongraph::SinglePartitionGraph;
     use crate::vertexview::VertexViewMethods;
+    use itertools::Itertools;
 
     #[test]
     fn cc_test() {

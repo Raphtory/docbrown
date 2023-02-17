@@ -7,10 +7,8 @@ use docbrown_core::{
     utils, Direction, Prop,
 };
 
-use docbrown_core::graph::TemporalGraph;
 use docbrown_core::graphview::{EdgeIterator, NeighboursIterator, PropertyHistory, VertexIterator};
 use docbrown_core::vertexview::{VertexPointer, VertexView};
-use polars;
 use rayon::prelude::{IntoParallelRefIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};
 
@@ -88,6 +86,7 @@ impl GraphDB {
         Ok(())
     }
 
+    // TODO: Implement this using the MutableGraph trait so we have a consistent format!
     // TODO: Probably add vector reference here like add
     pub fn add_vertex(&self, v: u64, t: i64, props: &Vec<(String, Prop)>) {
         let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);

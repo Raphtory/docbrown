@@ -1,4 +1,3 @@
-use std::hash::Hasher;
 use std::{
     borrow::{Borrow, BorrowMut},
     collections::{BTreeMap, HashMap},
@@ -253,7 +252,7 @@ pub(crate) struct Edge<V: Clone + PartialEq + Eq + PartialOrd + Ord> {
 }
 
 #[repr(transparent)]
-#[derive(Serialize, Deserialize, Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Serialize, Deserialize, Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub(crate) struct AdjEdge(pub(crate) i64);
 
 impl AdjEdge {
@@ -287,16 +286,9 @@ impl AdjEdge {
     }
 }
 
-impl Hash for AdjEdge {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.0.hash(state)
-    }
-}
-
 #[cfg(test)]
 mod tadjset_tests {
     use super::*;
-    use crate::adj::Adj;
 
     #[test]
     fn insert() {
