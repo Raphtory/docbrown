@@ -22,7 +22,7 @@ sys.path.insert(0, os.path.abspath('exts'))
 
 # -- Project information -----------------------------------------------------
 
-project = 'Raphtory'
+project = 'DocBrown'
 copyright = '2023, Pometry'
 author = 'Pometry'
 

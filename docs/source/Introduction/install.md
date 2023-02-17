@@ -6,16 +6,15 @@ DocBrown requires rust, please see the rust guide to [install](https://doc.rust-
 
 Clone the DocBrown Repository
 
-```
+```sh
 git clone git@github.com:Raphtory/docbrown.git
-
 ```
 
 ### 2. Build DocBrown
 
 `cd`into the `docbrown` folder and run 
 
-```
+```sh
 cargo build
 ```
 
