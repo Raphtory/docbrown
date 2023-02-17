@@ -22,7 +22,7 @@ pub fn twitter() -> Result<PathBuf, FetchDataError> {
 
 fn fetch_file(name: &str, url: &str, hash: &str) -> Result<PathBuf, FetchDataError> {
     let mut tmp_dir = env::temp_dir();
-    println!(tmp_dir.display());
+    println!("{}", tmp_dir.display());
     if tmp_dir == PathBuf::from("") {
         println!("overriding tmp_dir");
         tmp_dir = PathBuf::from("/tmp"); // TMPDIR is not set in ubuntu-latest
