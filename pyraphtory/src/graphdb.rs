@@ -1,9 +1,11 @@
 use docbrown_core as dbc;
 use docbrown_db::graphdb as gdb;
 use pyo3::exceptions;
+use pyo3::FromPyObject;
 use pyo3::PyRef;
 use pyo3::PyRefMut;
 use pyo3::{pyclass, pymethods, pymodule, types::PyModule, PyResult, Python};
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 #[pyclass]
@@ -24,13 +26,11 @@ impl Direction {
     }
 }
 
+#[derive(FromPyObject, Debug)]
 pub enum Prop {
     Str(String),
-    I32(i32),
     I64(i64),
-    U32(u32),
     U64(u64),
-    F32(f32),
     F64(f64),
     Bool(bool),
 }
@@ -38,12 +38,9 @@ pub enum Prop {
 impl Prop {
     fn convert(&self) -> dbc::Prop {
         match self {
-            Prop::Str(String) => dbc::Prop::Str(String.clone()),
-            Prop::I32(i32) => dbc::Prop::I32(*i32),
+            Prop::Str(string) => dbc::Prop::Str(string.clone()),
             Prop::I64(i64) => dbc::Prop::I64(*i64),
-            Prop::U32(u32) => dbc::Prop::U32(*u32),
             Prop::U64(u64) => dbc::Prop::U64(*u64),
-            Prop::F32(f32) => dbc::Prop::F32(*f32),
             Prop::F64(f64) => dbc::Prop::F64(*f64),
             Prop::Bool(bool) => dbc::Prop::Bool(*bool),
         }
@@ -162,28 +159,28 @@ impl GraphDB {
         self.graphdb.contains_window(v, t_start, t_end)
     }
 
-    // pub fn add_vertex(&self, v: u64, t: i64, props: &Vec<(String, Prop)>) {
-    //     self.graphdb.add_vertex(
-    //         v,
-    //         t,
-    //         &props
-    //             .iter()
-    //             .map(|f| (f.0.clone(), f.1.convert()))
-    //             .collect::<Vec<(String, dbc::Prop)>>(),
-    //     )
-    // }
+    pub fn add_vertex(&self, v: u64, t: i64, props: HashMap<String, Prop>) {
+        self.graphdb.add_vertex(
+            v,
+            t,
+            &props
+                .into_iter()
+                .map(|f| (f.0.clone(), f.1.convert()))
+                .collect::<Vec<(String, dbc::Prop)>>(),
+        )
+    }
 
-    // pub fn add_edge(&self, src: u64, dst: u64, t: i64, props: &Vec<(String, Prop)>) {
-    //     self.graphdb.add_edge(
-    //         src,
-    //         dst,
-    //         t,
-    //         &props
-    //             .iter()
-    //             .map(|f| (f.0.clone(), f.1.convert()))
-    //             .collect::<Vec<(String, dbc::Prop)>>(),
-    //     )
-    // }
+    pub fn add_edge(&self, src: u64, dst: u64, t: i64, props: HashMap<String, Prop>) {
+        self.graphdb.add_edge(
+            src,
+            dst,
+            t,
+            &props
+                .into_iter()
+                .map(|f| (f.0.clone(), f.1.convert()))
+                .collect::<Vec<(String, dbc::Prop)>>(),
+        )
+    }
 
     pub fn degree(&self, v: u64, d: Direction) -> usize {
         self.graphdb.degree(v, d.convert())
