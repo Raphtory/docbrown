@@ -2,7 +2,7 @@
 members = [
 	"docbrown/core",
 	"docbrown/db",
-	"examples",
+	"examples/rust",
 	"pyraphtory"
 ]
 default-members = ["docbrown/core", "docbrown/db", "pyraphtory"]

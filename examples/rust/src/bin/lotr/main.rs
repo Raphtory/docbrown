@@ -2,6 +2,7 @@ use docbrown_core::utils;
 use docbrown_core::{Direction, Prop};
 use docbrown_db::{graphdb::GraphDB, loaders::csv::CsvLoader};
 use serde::Deserialize;
+use std::path::PathBuf;
 use std::{env, path::Path, time::Instant};
 
 #[derive(Deserialize, std::fmt::Debug)]
@@ -14,13 +15,15 @@ pub struct Lotr {
 fn main() {
     let args: Vec<String> = env::args().collect();
 
-    let default_data_dir = String::from("./examples/src/bin/lotr/data");
+    let default_data_dir: PathBuf = [env!("CARGO_MANIFEST_DIR"), "src/bin/lotr/data"]
+        .iter()
+        .collect();
 
-    let data_dir = Path::new(if args.len() < 2 {
+    let data_dir = if args.len() < 2 {
         &default_data_dir
     } else {
-        args.get(1).unwrap()
-    });
+        Path::new(args.get(1).unwrap())
+    };
 
     if !data_dir.exists() {
         panic!("Missing data dir = {}", data_dir.to_str().unwrap())
