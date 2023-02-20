@@ -135,4 +135,10 @@ fn main() {
     for v in graph.vertices() {
         println!("{v}")
     }
+
+    println!("Print windowed vertices!");
+    graph.vertices_window(0, 300).for_each(|v| {
+        println!("{:?}", v.g_id);
+    });
+
 }
