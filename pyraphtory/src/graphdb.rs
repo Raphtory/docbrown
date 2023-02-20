@@ -165,7 +165,7 @@ impl GraphDB {
             t,
             &props
                 .into_iter()
-                .map(|f| (f.0.clone(), f.1.convert()))
+                .map(|(key, value)| (key, value.convert()))
                 .collect::<Vec<(String, dbc::Prop)>>(),
         )
     }
