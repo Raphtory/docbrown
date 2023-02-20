@@ -14,7 +14,9 @@
 </p>
 <p align="center">
 <a href="https://www.raphtory.com">🌍 Website </a>
-&nbsp 
+&nbsp
+<a href="https://docbrown.readthedocs.io">📖 Docs</a>
+&nbsp
 <a href="https://www.pometry.com"><img src="https://user-images.githubusercontent.com/6665739/202438989-2859f8b8-30fb-4402-820a-563049e1fdb3.png" height="20" align="center"/> Pometry</a> 
 &nbsp
 <a href="https://github.com/Raphtory/docbrown/issues">🐛 Report a Bug</a> 
@@ -120,6 +122,11 @@ let in_degree = graph.degree_window(gandalf, 0, i64::MAX, Direction::IN);
 let out_degree = graph.degree_window(gandalf, 0, i64::MAX, Direction::OUT);
 let degree = graph.degree_window(gandalf, 0, i64::MAX, Direction::BOTH);
 ```
+
+# Documentation
+
+DocBrown has Documentation with tutorials, explanations and rust docs. 
+It can be found here on [ReadTheDocs](https://docbrown.readthedocs.io)
 
 # Community  
 Join the growing community of open-source enthusiasts using Raphtory to power their graph analysis projects!
