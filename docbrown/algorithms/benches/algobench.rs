@@ -22,7 +22,6 @@ pub fn connected_components_lotr_analysis(c: &mut Criterion) {
     benchmark_group.bench_function("connected-components-lotr", |b| {
         b.iter(|| {
             let g = GraphDB::new(1);
-            //insert directory where file is located in empty quotes
             let csv_path: PathBuf = [env!("CARGO_MANIFEST_DIR"), "../../resources"]
                 .iter()
                 .collect();
