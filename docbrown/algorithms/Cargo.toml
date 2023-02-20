@@ -7,9 +7,17 @@ edition = "2021"
 
 [dependencies]
 docbrown-core = {path = "../core"}
+docbrown-db = {path = "../db"}
 polars = "0.26"
 itertools="0.10"
+serde = { version = "1", features = ["derive","rc"] }
+regex = "1"
 
 [dev-dependencies]
 quickcheck = "1"
 quickcheck_macros = "1"
+criterion = "0.3"
+
+[[bench]]
+name = "algobench"
+harness = false
