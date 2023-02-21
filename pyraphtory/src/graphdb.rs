@@ -1,5 +1,6 @@
 use docbrown_core as dbc;
 use docbrown_db::graphdb as gdb;
+use itertools::Itertools;
 use pyo3::exceptions;
 use pyo3::FromPyObject;
 use pyo3::PyRef;
@@ -7,6 +8,7 @@ use pyo3::PyRefMut;
 use pyo3::{pyclass, pymethods, pymodule, types::PyModule, PyResult, Python};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 #[pyclass]
 #[derive(Copy, Clone, PartialEq, Eq)]
@@ -78,7 +80,7 @@ impl TEdge {
 
 #[pyclass]
 pub struct VertexIterator {
-    iter: std::vec::IntoIter<u64>,
+    iter: Box<dyn Iterator<Item = u64> + Send>
 }
 
 #[pymethods]
@@ -192,7 +194,7 @@ impl GraphDB {
 
     pub fn vertices(&self) -> VertexIterator {
         VertexIterator {
-            iter: self.graphdb.vertices().collect::<Vec<_>>().into_iter(),
+            iter: self.graphdb.vertices()
         }
     }
 

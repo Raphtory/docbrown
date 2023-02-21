@@ -1,11 +1,12 @@
+use guardian::ArcRwLockReadGuardian;
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use std::ops::Range;
 use std::path::Path;
 use std::sync::Arc;
 
-use genawaiter::rc::gen;
-use genawaiter::yield_;
+use genawaiter::sync::{gen, GenBoxed};
+use genawaiter::{sync_producer, yield_};
 
 use crate::graph::{EdgeView, TemporalGraph, VertexView};
 use crate::{Direction, Prop};
@@ -48,7 +49,42 @@ impl<'a> From<VertexView<'a, TemporalGraph>> for TVertex {
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 #[repr(transparent)]
-pub struct TemporalGraphPart(Arc<RwLock<TemporalGraph>>);
+pub struct TemporalGraphPart {
+    #[serde(with = "arc_rwlock_serde")]
+    rc: Arc<tokio::sync::RwLock<TemporalGraph>>,
+}
+
+mod arc_rwlock_serde {
+    use serde::de::Deserializer;
+    use serde::ser::Serializer;
+    use serde::{Deserialize, Serialize};
+    use std::sync::{Arc, RwLock};
+
+    pub fn serialize<S, T>(val: &Arc<tokio::sync::RwLock<T>>, s: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+        T: Serialize,
+    {
+        T::serialize(&*val.blocking_read(), s)
+    }
+
+    pub fn deserialize<'de, D, T>(d: D) -> Result<Arc<tokio::sync::RwLock<T>>, D::Error>
+    where
+        D: Deserializer<'de>,
+        T: Deserialize<'de>,
+    {
+        Ok(Arc::new(tokio::sync::RwLock::new(T::deserialize(d)?)))
+    }
+}
+
+#[derive(Clone, Debug, Default)]
+#[repr(transparent)]
+// pub struct TemporalGraphPart2(Arc<RwLock<TemporalGraph>>);
+pub struct TemporalGraphPart2(Arc<tokio::sync::RwLock<TemporalGraph>>);
+
+impl TemporalGraphPart2 {
+
+}
 
 impl TemporalGraphPart {
     pub fn load_from_file<P: AsRef<Path>>(path: P) -> Result<Self, Box<bincode::ErrorKind>> {
@@ -70,7 +106,7 @@ impl TemporalGraphPart {
     where
         F: Fn(&mut TemporalGraph) -> A,
     {
-        let mut shard = self.0.write();
+        let mut shard = self.rc.blocking_write();
         f(&mut shard)
     }
 
@@ -79,7 +115,7 @@ impl TemporalGraphPart {
     where
         F: Fn(&TemporalGraph) -> A,
     {
-        let shard = self.0.read();
+        let shard = self.rc.blocking_read();
         f(&shard)
     }
 
@@ -123,25 +159,25 @@ impl TemporalGraphPart {
         self.read_shard(|tg: &TemporalGraph| tg.degree_window(v, &(t_start..t_end), d))
     }
 
-    pub fn vertices(&self) -> impl Iterator<Item = u64> {
-        let tg = self.clone();
-
-        let vertices_iter = gen!({
-            let g = tg.0.read();
-            let iter = (*g).vertices().into_iter();
+    // Vertex{id, name: .., prop1: ..}
+    pub fn vertices(&self) -> Box<impl Iterator<Item = u64> + Send> {
+        let tpart = self.rc.clone();
+        let iter: GenBoxed<u64> = GenBoxed::new_boxed(|co| async move {
+            let g = tpart.blocking_read(); 
+            let iter = (*g).vertices();
             for v_id in iter {
-                yield_!(v_id)
+                co.yield_(v_id).await;
             }
         });
 
-        vertices_iter.into_iter()
+        Box::new(iter.into_iter())
     }
 
     // TODO: check if there is any value in returning Vec<usize> vs just usize, what is the cost of the generator
     pub fn vertices_window(&self, t_start: i64, t_end: i64) -> impl Iterator<Item = TVertex> {
         let tg = self.clone();
         let vertices_iter = gen!({
-            let g = tg.0.read();
+            let g = tg.rc.blocking_read();
             let iter = (*g).vertices_window(t_start..t_end).map(|v| v.into());
             for v_id in iter {
                 yield_!(v_id)
@@ -153,7 +189,7 @@ impl TemporalGraphPart {
     pub fn neighbours(&self, v: u64, d: Direction) -> impl Iterator<Item = TEdge> {
         let tg = self.clone();
         let vertices_iter = gen!({
-            let g = tg.0.read();
+            let g = tg.rc.blocking_read();
             let chunks = (*g).neighbours(v, d).map(|e| e.into());
             let iter = chunks.into_iter();
             for v_id in iter {
@@ -173,7 +209,7 @@ impl TemporalGraphPart {
     ) -> impl Iterator<Item = TEdge> {
         let tg = self.clone();
         let vertices_iter = gen!({
-            let g = tg.0.read();
+            let g = tg.rc.blocking_read();
             let chunks = (*g)
                 .neighbours_window(v, &(t_start..t_end), d)
                 .map(|e| e.into());
@@ -195,7 +231,7 @@ impl TemporalGraphPart {
     ) -> impl Iterator<Item = TEdge> {
         let tg = self.clone();
         let vertices_iter = gen!({
-            let g = tg.0.read();
+            let g = tg.rc.blocking_read();
             let chunks = (*g)
                 .neighbours_window_t(v, &(t_start..t_end), d)
                 .map(|e| e.into());
@@ -212,7 +248,7 @@ impl TemporalGraphPart {
 #[cfg(test)]
 mod temporal_graph_partition_test {
     use super::TemporalGraphPart;
-    use crate::Direction;
+    use crate::{graph::TemporalGraph, Direction};
     use itertools::Itertools;
     use quickcheck::{Arbitrary, TestResult};
     use rand::Rng;

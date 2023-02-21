@@ -134,8 +134,9 @@ impl GraphDB {
         iter
     }
 
-    pub fn vertices(&self) -> Box<dyn Iterator<Item = u64> + '_> {
-        Box::new(self.shards.iter().flat_map(|shard| shard.vertices()))
+    pub fn vertices(&self) -> Box<dyn Iterator<Item = u64> + Send> {
+        let shards = self.shards.clone();
+        Box::new(shards.into_iter().flat_map(|shard| shard.vertices()))
     }
 
     pub fn neighbours(&self, v: u64, d: Direction) -> Box<dyn Iterator<Item = TEdge>> {

@@ -216,7 +216,7 @@ impl TemporalGraph {
         }
     }
 
-    pub(crate) fn vertices(&self) -> Box<dyn Iterator<Item = u64> + '_> {
+    pub(crate) fn vertices(&self) -> Box<dyn Iterator<Item = u64> + Send + '_> {
         Box::new(self.adj_lists.iter().map(|adj| match *adj {
             Adj::Solo(lid) => lid,
             Adj::List { logical, .. } => logical,
