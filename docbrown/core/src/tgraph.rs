@@ -614,6 +614,13 @@ impl<'a> VertexView<'a, TemporalGraph> {
         }
     }
 
+    pub fn neighbours(
+        &'a self,
+        d: Direction,
+    ) -> Box<dyn Iterator<Item = VertexView<'a, TemporalGraph>> + 'a> {
+        Box::new(std::iter::empty())
+    }
+
     pub fn props(&self, name: &'a str) -> Option<Box<dyn Iterator<Item = (&'a i64, Prop)> + 'a>> {
         let index = self.g.logical_to_physical.get(&self.g_id)?;
         let meta = self.g.props.vertex_meta.get(*index)?;
@@ -1834,5 +1841,4 @@ mod graph_test {
         let g2: TemporalGraph = bincode::deserialize_from(&mut buffer.as_slice()).unwrap();
         assert_eq!(g, g2);
     }
-
 }
