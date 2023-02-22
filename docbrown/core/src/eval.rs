@@ -481,7 +481,7 @@ mod eval_test {
     use std::collections::HashMap;
 
     use crate::{
-        eval::{Eval, Monoid, PairAcc},
+        eval::{Eval, Monoid, PairAcc, Accumulator},
         tgraph::TemporalGraph,
     };
 
@@ -578,19 +578,18 @@ mod eval_test {
             g.add_edge(ts, src, dst);
         }
 
-        let min = Monoid::new(u64::MAX, |a: &mut u64, b: u64| *a = u64::min(*a, b));
+        let min: Monoid<u64, u64, fn(&mut u64, u64)> = Monoid::new(u64::MAX, |a: &mut u64, b: u64| *a = u64::min(*a, b));
 
         // initial step where we init every vertex to it's own ID
         let state = g.eval(
             None,
             0..9,
             |vertex, ctx| {
-                let min_cc_id = ctx.acc(&min); // get the accumulator for the min_cc_id
+                let min_cc_id= ctx.acc(&min); // get the accumulator for the min_cc_id
 
-                let gid = vertex.vv.g_id;
+                let mut min_acc= vertex.get(&min_cc_id); // get the entry for this vertex in the min_cc_id accumulator
 
-                let mut min_acc = vertex.get(&min_cc_id); // get the entry for this vertex in the min_cc_id accumulator
-                min_acc += gid; // set the value to the global id of the vertex
+                min_acc += vertex.vv.g_id; // set the value to the global id of the vertex
 
                 vec![] // nothing to propagate at this step
             },

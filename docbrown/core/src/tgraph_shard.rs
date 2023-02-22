@@ -8,8 +8,8 @@ use genawaiter::sync::{gen, GenBoxed};
 use genawaiter::yield_;
 
 use crate::tgraph::{AddEdgeResult, AddVertexResult, EdgeRef, TemporalGraph, VertexRef};
-use crate::{Direction, Prop};
 use crate::vertex::InputVertex;
+use crate::{Direction, Prop};
 
 mod lock {
 
@@ -134,7 +134,12 @@ impl TGraphShard {
         self.read_shard(|tg| tg.has_vertex_window(v, &w))
     }
 
-    pub fn add_vertex<T: InputVertex>(&self, t: i64, v: T, props: &Vec<(String, Prop)>) -> AddVertexResult {
+    pub fn add_vertex<T: InputVertex>(
+        &self,
+        t: i64,
+        v: T,
+        props: &Vec<(String, Prop)>,
+    ) -> AddVertexResult {
         self.write_shard(move |tg| tg.add_vertex_with_props(t, v, props))
     }
 
@@ -154,7 +159,12 @@ impl TGraphShard {
         self.write_shard(|tg| tg.add_edge_remote_into(t, src, dst, props))
     }
 
-    pub fn add_edge_properties(&self, src: u64, dst: u64, data: &Vec<(String, Prop)>) -> AddEdgeResult {
+    pub fn add_edge_properties(
+        &self,
+        src: u64,
+        dst: u64,
+        data: &Vec<(String, Prop)>,
+    ) -> AddEdgeResult {
         self.write_shard(|tg| tg.add_edge_properties(src, dst, data))
     }
 
@@ -239,7 +249,7 @@ impl TGraphShard {
         let iter: GenBoxed<EdgeRef> = GenBoxed::new_boxed(|co| async move {
             let g = tgshard.read();
             let iter = (*g).vertex_edges(v, d);
-            for ev in iter {
+            for (_, ev) in iter {
                 co.yield_(ev).await;
             }
         });
@@ -256,7 +266,7 @@ impl TGraphShard {
         let tgshard = self.clone();
         let iter = gen!({
             let g = tgshard.rc.read();
-            let chunks = (*g).vertex_edges_window(v, &w, d).map(|e| e.into());
+            let chunks = (*g).vertex_edges_window(v, &w, d).map(|(_, e)| e.into());
             let iter = chunks.into_iter();
             for v_id in iter {
                 yield_!(v_id)
@@ -369,7 +379,12 @@ impl TGraphShard {
         self.read_shard(|tg| tg.temporal_vertex_prop_vec(v, &name))
     }
 
-    pub fn temporal_vertex_prop_vec_window(&self, v: u64, name: String, w: Range<i64>) -> Vec<(i64, Prop)> {
+    pub fn temporal_vertex_prop_vec_window(
+        &self,
+        v: u64,
+        name: String,
+        w: Range<i64>,
+    ) -> Vec<(i64, Prop)> {
         self.read_shard(|tg| tg.temporal_vertex_prop_vec_window(v, &name, &w))
     }
 
@@ -377,7 +392,11 @@ impl TGraphShard {
         self.read_shard(|tg| tg.temporal_vertex_props(v))
     }
 
-    pub fn temporal_vertex_props_window(&self, v: u64, w: Range<i64>) -> HashMap<String, Vec<(i64, Prop)>> {
+    pub fn temporal_vertex_props_window(
+        &self,
+        v: u64,
+        w: Range<i64>,
+    ) -> HashMap<String, Vec<(i64, Prop)>> {
         self.read_shard(|tg| tg.temporal_vertex_props_window(v, &w))
     }
 
@@ -393,7 +412,12 @@ impl TGraphShard {
         self.read_shard(|tg| tg.temporal_edge_prop_vec(e, &name))
     }
 
-    pub fn temporal_edge_props_vec_window(&self, e: usize, name: String, w: Range<i64>) -> Vec<(i64, Prop)> {
+    pub fn temporal_edge_props_vec_window(
+        &self,
+        e: usize,
+        name: String,
+        w: Range<i64>,
+    ) -> Vec<(i64, Prop)> {
         self.read_shard(|tg| tg.temporal_edge_prop_vec_window(e, &name, w.clone()))
     }
 }

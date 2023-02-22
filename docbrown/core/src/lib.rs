@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 extern crate quickcheck_macros;
 
 mod adj;
+pub mod agg;
 mod bitset;
 pub mod tgraph;
 pub mod lsm;
@@ -19,9 +20,10 @@ mod lazy_vec;
 pub mod utils;
 pub mod eval;
 pub mod vertex;
+pub mod state;
 
 // Denotes edge direction
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Direction {
     OUT,
     IN,

@@ -136,6 +136,10 @@ impl GraphViewInternalOps for WindowedGraph {
         self.graph.vertex_refs_window(self.t_start, self.t_end)
     }
 
+    fn vertex_refs_window_shard(&self, shard: usize, t_start: i64, t_end: i64) -> Box<dyn Iterator<Item=VertexRef> + Send> {
+        self.graph.vertex_refs_window_shard(shard, self.actual_start(t_start), self.actual_end(t_end))
+    }
+
     fn vertex_refs_window(
         &self,
         t_start: i64,
@@ -421,6 +425,15 @@ impl GraphViewOps for WindowedGraph {
         Box::new(
             self.graph
                 .vertex_refs_window(self.t_start, self.t_end)
+                .map(move |vv| WindowedVertex::new(Arc::new(graph_w.clone()), vv)),
+        )
+    }
+
+    fn vertices_shard(&self, shard: usize) -> Self::Vertices  {
+        let graph_w = self.clone();
+        Box::new(
+            self.graph
+                .vertex_refs_window_shard(shard, self.t_start, self.t_end)
                 .map(move |vv| WindowedVertex::new(Arc::new(graph_w.clone()), vv)),
         )
     }

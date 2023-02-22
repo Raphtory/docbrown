@@ -6,6 +6,7 @@ use docbrown_core::{Direction, Prop};
 use std::collections::HashMap;
 use std::sync::Arc;
 
+#[derive(Debug)]
 pub struct VertexView<G: GraphViewInternalOps> {
     //FIXME: Not sure Arc is good here, maybe this should just own a graph and rely on cheap clone...
     graph: Arc<G>,
