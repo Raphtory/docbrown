@@ -560,168 +560,21 @@ impl TemporalGraph {
             _ => Box::new(std::iter::empty()),
         }
     }
-
-    // run a function accross every [[VertexView]] in the graph, accounting for the window
-    // capture one or more accumulators
-    // combine the accumulators per each vertex on each partition
-    // track all the active vertices
-    fn eval<A, K, MAP, ACCF>(
-        &self,
-        window: Range<i64>,
-        prev_state: &mut HashMap<K, A>,
-        f: MAP,
-        accf: ACCF,
-    ) where
-        MAP: Fn(VertexView<'_, Self>) -> Vec<Acc<K, A>>,
-        ACCF: Fn(&mut A, &A),
-        A: Send + Default,
-        K: Eq + std::hash::Hash,
-    {
-        // we start with all the vertices considered inside the working set
-        let active_set: Rc<RefCell<WorkingSet<usize>>> = Rc::new(RefCell::new(WorkingSet::All));
-
-        while !active_set.borrow().is_empty() {
-            // items that have been made active in this round cannot be deactivated
-            let mut active_this_round = HashSet::new();
-
-            // define iterator over the active vertices
-            let as2 = active_set.borrow();
-            let iter = if !as2.is_all() {
-                let active_vertices_iter = as2.iter().map(|pid| {
-                    let g_id = self.adj_lists[*pid].logical();
-                    VertexView {
-                        g: self,
-                        pid: *pid,
-                        g_id: *g_id,
-                        w: Some(window.clone()),
-                    }
-                });
-                Box::new(active_vertices_iter)
-            } else {
-                self.vertices_window(window.clone())
-            };
-
-            // iterate over the active vertices
-            // accumulate the results
-            // remove the vertex id from active_set if it is not needed anymore
-            for v_view in iter {
-                let pid = v_view.pid;
-                let accs = f(v_view);
-                for acc in accs {
-                    match acc {
-                        Acc::Done(_) => {
-                            // done with this vertex
-                            if !active_this_round.contains(&pid) {
-                                active_set.borrow_mut().remove(pid);
-                            }
-                        }
-                        Acc::Value(k, v) => {
-                            // update the accumulator
-                            prev_state
-                                .entry(k)
-                                .and_modify(|prev| accf(prev, &v))
-                                .or_insert_with(|| A::default());
-
-                            // done with this vertex
-                            if !active_this_round.contains(&pid) {
-                                active_set.borrow_mut().remove(pid);
-                            }
-                        }
-                        Acc::Keep(_) => {
-                            active_this_round.insert(pid);
-                            active_set.borrow_mut().insert(pid);
-                        }
-                        Acc::ValueKeep(k, v) => {
-                            // update the accumulator
-                            prev_state
-                                .entry(k)
-                                .and_modify(|prev| accf(prev, &v))
-                                .or_insert_with(|| A::default());
-
-                            active_this_round.insert(pid);
-                            active_set.borrow_mut().insert(pid);
-                        }
-                    }
-                }
-            }
-
-            active_this_round.clear();
-        }
-    }
 }
 
 // helps us track what are we iterating over
-enum WorkingSet<A> {
-    All,
-    Set(HashSet<A>),
-}
-
-impl<A> WorkingSet<A>
-where
-    A: Eq + std::hash::Hash,
-{
-    fn is_empty(&self) -> bool {
-        match self {
-            WorkingSet::All => false,
-            WorkingSet::Set(s) => s.is_empty(),
-        }
-    }
-
-    fn remove(&mut self, a: A) {
-        match self {
-            WorkingSet::All => {}
-            WorkingSet::Set(s) => {
-                s.remove(&a);
-            }
-        }
-    }
-
-    fn is_all(&self) -> bool {
-        match self {
-            WorkingSet::All => true,
-            _ => false,
-        }
-    }
-
-    fn iter(&self) -> impl Iterator<Item = &A> {
-        match self {
-            WorkingSet::All => panic!("cannot iterate over all"),
-            WorkingSet::Set(s) => s.iter(),
-        }
-    }
-
-    fn insert(&mut self, a: A) {
-        match self {
-            WorkingSet::All => {
-                *self = WorkingSet::Set(HashSet::new());
-                self.insert(a)
-            }
-            WorkingSet::Set(s) => {
-                s.insert(a);
-            }
-        }
-    }
-}
-
-// there are 4 possible states for
-// an accumulated value out of the
-// mapping function
-// 0 no value and remove vertex from the next working set
-// 1 no value and keep vertex in the next working set
-// 2 value and remove vertex from the next working set
-// 3 value and keep vertex in the next working set
-enum Acc<K, A> {
-    Done(K),         // 0
-    Keep(K),         // 1
-    Value(K, A),     // 2
-    ValueKeep(K, A), // 3
-}
 
 pub(crate) struct VertexView<'a, G> {
     g_id: u64,
-    pid: usize,
+    pub(crate) pid: usize,
     g: &'a G,
     w: Option<Range<i64>>,
+}
+
+impl<'a, G> VertexView<'a, G> {
+    pub fn new(g: &'a G, g_id: u64, pid: usize, w: Option<Range<i64>>) -> Self {
+        Self { g_id, pid, g, w }
+    }
 }
 
 impl<'a> VertexView<'a, TemporalGraph> {
@@ -1981,4 +1834,5 @@ mod graph_test {
         let g2: TemporalGraph = bincode::deserialize_from(&mut buffer.as_slice()).unwrap();
         assert_eq!(g, g2);
     }
+
 }
