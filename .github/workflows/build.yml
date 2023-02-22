@@ -54,6 +54,7 @@ jobs:
           output-file-path: output.txt
           # Where the previous data file is stored
           external-data-json-path: ./cache/benchmark-data.json
+          save-data-file: true # should be true only if this branch is main
           # Workflow will fail when an alert happens
           fail-on-alert: true
         # Upload the updated cache file for the next job by actions/cache
