@@ -1,11 +1,15 @@
-use std::path::{Path, PathBuf};
+use std::{
+    collections::btree_map::Range,
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
 use docbrown_core::{
     tpartition::{TEdge, TVertex, TemporalGraphPart},
     utils, Direction, Prop,
 };
 
-use crate::data;
+use crate::{data, views::WindowedGraph};
 
 use rayon::prelude::{IntoParallelRefIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};
@@ -24,6 +28,10 @@ impl GraphDB {
                 .map(|_| TemporalGraphPart::default())
                 .collect(),
         }
+    }
+
+    pub fn window(&self, t_start: i64, t_end: i64) -> WindowedGraph {
+        WindowedGraph::new(Arc::new(self.clone()), t_start, t_end)
     }
 
     pub fn load_from_file<P: AsRef<Path>>(path: P) -> Result<Self, Box<bincode::ErrorKind>> {
@@ -134,9 +142,23 @@ impl GraphDB {
         iter
     }
 
-    pub fn vertices(&self) -> Box<dyn Iterator<Item = u64> + Send> {
+    pub fn vertex_ids(&self) -> Box<dyn Iterator<Item = u64> + Send> {
         let shards = self.shards.clone();
-        Box::new(shards.into_iter().flat_map(|shard| shard.vertices()))
+        Box::new(shards.into_iter().flat_map(|shard| shard.vertex_ids()))
+    }
+
+    pub fn vertex_ids_window(
+        &self,
+        t_start: i64,
+        t_end: i64,
+    ) -> Box<dyn Iterator<Item = TVertex> + '_> {
+        Box::new(
+            self.shards
+                .iter()
+                .map(move |shard| shard.vertex_ids_window(t_start, t_end))
+                .into_iter()
+                .flatten(),
+        )
     }
 
     pub fn neighbours(&self, v: u64, d: Direction) -> Box<dyn Iterator<Item = TEdge>> {
@@ -145,20 +167,6 @@ impl GraphDB {
         let iter = self.shards[shard_id].neighbours(v, d);
 
         Box::new(iter)
-    }
-
-    pub fn vertices_window(
-        &self,
-        t_start: i64,
-        t_end: i64,
-    ) -> Box<dyn Iterator<Item = TVertex> + '_> {
-        Box::new(
-            self.shards
-                .iter()
-                .map(move |shard| shard.vertices_window(t_start, t_end))
-                .into_iter()
-                .flatten(),
-        )
     }
 
     pub fn neighbours_window(
@@ -202,6 +210,12 @@ mod db_tests {
     use uuid::Uuid;
 
     use super::*;
+
+    #[test]
+    fn get_view() {
+        let g = GraphDB::new(1);
+        g.window(4, 9).say_hello()
+    }
 
     #[test]
     fn cloning_vec() {
@@ -503,7 +517,7 @@ mod db_tests {
             g.add_edge(*src, *dst, *t, &vec![]);
         }
 
-        let actual = g.vertices().collect::<Vec<_>>();
+        let actual = g.vertex_ids().collect::<Vec<_>>();
         assert_eq!(actual, vec![1, 2, 3]);
 
         // Check results from multiple graphs with different number of shards
@@ -513,7 +527,7 @@ mod db_tests {
             g.add_edge(*src, *dst, *t, &vec![]);
         }
 
-        let expected = g.vertices().collect::<Vec<_>>();
+        let expected = g.vertex_ids().collect::<Vec<_>>();
         assert_eq!(actual, expected);
     }
 
@@ -739,7 +753,7 @@ mod db_tests {
         let res: Vec<_> = (0..=3)
             .map(|i| {
                 let mut e = g
-                    .vertices_window(args[i].0, args[i].1)
+                    .vertex_ids_window(args[i].0, args[i].1)
                     .map(move |v| v.g_id)
                     .collect::<Vec<_>>();
                 e.sort();
@@ -756,7 +770,7 @@ mod db_tests {
         let res: Vec<_> = (0..=3)
             .map(|i| {
                 let mut e = g
-                    .vertices_window(args[i].0, args[i].1)
+                    .vertex_ids_window(args[i].0, args[i].1)
                     .map(move |v| v.g_id)
                     .collect::<Vec<_>>();
                 e.sort();

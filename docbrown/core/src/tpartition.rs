@@ -77,15 +77,6 @@ mod arc_rwlock_serde {
     }
 }
 
-#[derive(Clone, Debug, Default)]
-#[repr(transparent)]
-// pub struct TemporalGraphPart2(Arc<RwLock<TemporalGraph>>);
-pub struct TemporalGraphPart2(Arc<tokio::sync::RwLock<TemporalGraph>>);
-
-impl TemporalGraphPart2 {
-
-}
-
 impl TemporalGraphPart {
     pub fn load_from_file<P: AsRef<Path>>(path: P) -> Result<Self, Box<bincode::ErrorKind>> {
         // use BufReader for better performance
@@ -160,11 +151,11 @@ impl TemporalGraphPart {
     }
 
     // Vertex{id, name: .., prop1: ..}
-    pub fn vertices(&self) -> Box<impl Iterator<Item = u64> + Send> {
+    pub fn vertex_ids(&self) -> Box<impl Iterator<Item = u64> + Send> {
         let tpart = self.rc.clone();
         let iter: GenBoxed<u64> = GenBoxed::new_boxed(|co| async move {
-            let g = tpart.blocking_read(); 
-            let iter = (*g).vertices();
+            let g = tpart.blocking_read();
+            let iter = (*g).vertex_ids();
             for v_id in iter {
                 co.yield_(v_id).await;
             }
@@ -174,7 +165,7 @@ impl TemporalGraphPart {
     }
 
     // TODO: check if there is any value in returning Vec<usize> vs just usize, what is the cost of the generator
-    pub fn vertices_window(&self, t_start: i64, t_end: i64) -> impl Iterator<Item = TVertex> {
+    pub fn vertex_ids_window(&self, t_start: i64, t_end: i64) -> impl Iterator<Item = TVertex> {
         let tg = self.clone();
         let vertices_iter = gen!({
             let g = tg.rc.blocking_read();
@@ -184,6 +175,20 @@ impl TemporalGraphPart {
             }
         });
         vertices_iter.into_iter()
+    }
+
+    pub fn vertices(&self) -> Box<impl Iterator<Item = TVertex> + Send> {
+        let tpart = self.rc.clone();
+        let iter: GenBoxed<TVertex> = GenBoxed::new_boxed(|co| async move {
+            let g = tpart.blocking_read();
+            let iter = (*g).vertices();
+            for vv in iter {
+                let tv: TVertex = vv.into();
+                co.yield_(tv).await;
+            }
+        });
+
+        Box::new(iter.into_iter())
     }
 
     pub fn neighbours(&self, v: u64, d: Direction) -> impl Iterator<Item = TEdge> {
@@ -339,7 +344,7 @@ mod temporal_graph_partition_test {
             g.add_edge(*src, *dst, *t, &vec![]);
         }
 
-        let actual = g.vertices().collect::<Vec<_>>();
+        let actual = g.vertex_ids().collect::<Vec<_>>();
         assert_eq!(actual, vec![1, 2, 3]);
     }
 
@@ -357,7 +362,7 @@ mod temporal_graph_partition_test {
 
         for (v, (t_start, t_end)) in intervals.0.iter().enumerate() {
             let vertex_window = g
-                .vertices_window(*t_start, *t_end)
+                .vertex_ids_window(*t_start, *t_end)
                 .map(move |v| v.g_id)
                 .collect::<Vec<_>>();
             let iter = &mut vertex_window.iter();

@@ -80,7 +80,7 @@ impl TEdge {
 
 #[pyclass]
 pub struct VertexIterator {
-    iter: Box<dyn Iterator<Item = u64> + Send>
+    iter: Box<dyn Iterator<Item = u64> + Send>,
 }
 
 #[pymethods]
@@ -192,9 +192,9 @@ impl GraphDB {
         self.graphdb.degree_window(v, t_start, t_end, d.convert())
     }
 
-    pub fn vertices(&self) -> VertexIterator {
+    pub fn vertex_ids(&self) -> VertexIterator {
         VertexIterator {
-            iter: self.graphdb.vertices()
+            iter: self.graphdb.vertex_ids(),
         }
     }
 
