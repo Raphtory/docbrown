@@ -1,11 +1,15 @@
 use std::{
-    collections::{hash_map::Entry, HashMap, HashSet},
+    collections::{HashMap, HashSet},
     hash::Hash,
     ops::{AddAssign, Deref, Index, IndexMut, Range},
     option::Option,
 };
 
-use dashmap::mapref::one::{Ref, RefMut};
+use dashmap::mapref::{
+    entry::Entry,
+    one::{Ref, RefMut},
+};
+use replace_with::replace_with_or_abort;
 
 use crate::{
     graph::{TemporalGraph, VertexView},
@@ -52,10 +56,19 @@ where
             .get_mut(&k)
             .map(|r| MutAccumulatorEntry(r, self.acc.clone()))
     }
+
+    fn entry<'a>(&'a self, k: K) -> AccEntry<'a, K, A, F> {
+        AccEntry::EntryAcc(self.state.entry(k), self.acc.clone())
+    }
 }
 
 struct AccumulatorEntry<'a, K, A>(Ref<'a, K, A>);
 struct MutAccumulatorEntry<'a, K, A, F>(RefMut<'a, K, A>, F);
+
+enum AccEntry<'a, K, A, F> {
+    MutAcc(RefMut<'a, K, A>, F),
+    EntryAcc(Entry<'a, K, A>, F),
+}
 
 impl<'a, K, A, F> AddAssign<A> for MutAccumulatorEntry<'a, K, A, F>
 where
@@ -64,6 +77,32 @@ where
 {
     fn add_assign(&mut self, rhs: A) {
         self.1(&mut self.0, rhs);
+    }
+}
+
+impl<'a, K, A, F> AddAssign<A> for AccEntry<'a, K, A, F>
+where
+    F: Fn(&mut A, A),
+    K: std::hash::Hash + std::cmp::Eq + Clone,
+    A: Clone,
+{
+    fn add_assign(&mut self, rhs: A) {
+        match self {
+            AccEntry::MutAcc(ref mut entry, acc) => {
+                acc(entry, rhs);
+            }
+            entry => replace_with_or_abort(entry, |_self| match _self {
+                AccEntry::EntryAcc(e @ Entry::Occupied(_), acc) => {
+                    let same_entry = e.and_modify(|prev| acc(prev, rhs.clone()));
+                    AccEntry::EntryAcc(same_entry, acc)
+                }
+                AccEntry::EntryAcc(e @ Entry::Vacant(_), acc) => {
+                    let same_entry = e.or_insert(rhs);
+                    AccEntry::MutAcc(same_entry, acc)
+                }
+                _ => unreachable!(),
+            }),
+        }
     }
 }
 
