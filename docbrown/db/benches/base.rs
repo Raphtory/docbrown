@@ -10,6 +10,8 @@ use std::hash::{Hash, Hasher};
 use std::ops::Range;
 use std::path::Path;
 use std::time::Duration;
+use rand::distributions::Uniform;
+use rand::Rng;
 
 fn hash<T: Hash>(t: &T) -> u64 {
     let mut s = DefaultHasher::new();
@@ -56,93 +58,80 @@ fn load_csv(graph: &mut GraphDB, path: &Path, source: usize, target: usize, time
     }
 }
 
-pub fn additions(c: &mut Criterion) {
-    let mut graph = GraphDB::new(4);
-    graph.add_vertex(0, 0, &vec![]);
-
-    let mut g = c.benchmark_group("additions");
-    g.throughput(Throughput::Elements(1));
-    g.warm_up_time(Duration::from_millis(10));
-    g.measurement_time(Duration::from_millis(10));
-
-    let mut times: Range<i64> = 0..i64::MAX;
-    let mut indexes: Range<u64> = 0..u64::MAX;
-
-    g.bench_function("existing vertex constant time", |b| {
-        b.iter(|| graph.add_vertex(0, 0, &vec![]))
-    });
-    g.bench_function("existing vertex varying time", |b: &mut Bencher| {
-        b.iter_batched(
-            || times.next().unwrap(),
-            |t| graph.add_vertex(0, t, &vec![]),
-            BatchSize::SmallInput,
-        )
-    });
-    g.bench_function("new vertex constant time", |b: &mut Bencher| {
-        b.iter_batched(
-            || indexes.next().unwrap(),
-            |vid| graph.add_vertex(vid, 0, &vec![]),
-            BatchSize::SmallInput,
-        )
-    });
-
-    g.bench_function("existing edge constant time", |b| {
-        b.iter(|| graph.add_edge(0, 1, 0, &vec![]))
-    });
-    g.bench_function("existing edge varying time", |b: &mut Bencher| {
-        b.iter_batched(
-            || times.next().unwrap(),
-            |t| graph.add_edge(0, 0, t, &vec![]),
-            BatchSize::SmallInput,
-        )
-    });
-    g.bench_function("new edge constant time", |b: &mut Bencher| {
-        b.iter_batched(
-            || (indexes.next().unwrap(), indexes.next().unwrap()),
-            |(v1, v2)| graph.add_edge(v1, v2, 0, &vec![]),
-            BatchSize::SmallInput,
-        )
-    });
-
-    g.finish();
-}
-
 pub fn ingestion(c: &mut Criterion) {
-    let mut g = c.benchmark_group("ingestion");
+    fn make_index_gen() -> Box<dyn Iterator<Item = u64>> {
+        let mut rng = rand::thread_rng();
+        let range = Uniform::new(u64::MIN, u64::MAX);
+        Box::new(rng.sample_iter(range))
+    }
+    fn make_time_gen() -> Box<dyn Iterator<Item = i64>> {
+        let mut rng = rand::thread_rng();
+        let range = Uniform::new(i64::MIN, i64::MAX);
+        Box::new(rng.sample_iter(range))
+    }
 
-    g.throughput(Throughput::Elements(2649));
-    let lotr = data::lotr().unwrap();
-    g.bench_function("lotr.csv", |b: &mut Bencher| {
-        b.iter(|| {
-            let mut graph = GraphDB::new(3);
-            load_csv(&mut graph, &lotr, 0, 1, Some(2));
-        })
+    let mut indexes = make_index_gen();
+    let mut times = make_time_gen();
+    let mut index_sample = || indexes.next().unwrap();
+    let mut time_sample = || times.next().unwrap();
+
+    let mut group = c.benchmark_group("additions");
+    group.throughput(Throughput::Elements(1));
+
+    // Creates a graph with 50k random edges -> 100k random vertices
+    fn bootstrap_graph() -> GraphDB {
+        let mut graph = GraphDB::new(4);
+        let mut indexes = make_index_gen();
+        let mut times = make_time_gen();
+        for _ in 0..50_000 {
+            let source = indexes.next().unwrap();
+            let target = indexes.next().unwrap();
+            let time = times.next().unwrap();
+            graph.add_edge(source, target, time, &vec![]);
+        }
+        graph
+    };
+
+    group.bench_function("existing vertex varying time", |b: &mut Bencher| {
+        b.iter_batched_ref(
+            || (bootstrap_graph(), time_sample()),
+            |(g, t): &mut (GraphDB, i64)| g.add_vertex(0, t.clone(), &vec![]),
+            BatchSize::SmallInput,
+        )
+    });
+    group.bench_function("new vertex constant time", |b: &mut Bencher| {
+        b.iter_batched_ref(
+            || (bootstrap_graph(), index_sample()),
+            |(g, v): &mut (GraphDB, u64)| g.add_vertex(v.clone(), 0, &vec![]),
+            BatchSize::SmallInput,
+        )
+    });
+    group.bench_function("existing edge varying time", |b: &mut Bencher| {
+        b.iter_batched_ref(
+            || (bootstrap_graph(), time_sample()),
+            |(g, t)| g.add_edge(0, 0, t.clone(), &vec![]),
+            BatchSize::SmallInput,
+        )
+    });
+    group.bench_function("new edge constant time", |b: &mut Bencher| {
+        b.iter_batched_ref(
+            || (bootstrap_graph(), index_sample(), index_sample()),
+            |(g, s, d)| g.add_edge(s.clone(), d.clone(), 0, &vec![]),
+            BatchSize::SmallInput,
+        )
     });
 
-    // TODO: uncomment or move to different bench
-    // g.throughput(Throughput::Elements(1400000));
-    // g.sample_size(20);
-    // let twitter = data::twitter().unwrap();
-    // g.bench_function("twitter.csv", |b: &mut Bencher| {
-    //     b.iter(|| {
-    //         let mut graph = GraphDB::new(3);
-    //         load_csv(&mut graph, &twitter, 0, 1, None);
-    //     })
-    // });
-
-    g.finish();
+    group.finish();
 }
 
 pub fn analysis(c: &mut Criterion) {
     let mut g = c.benchmark_group("analysis");
-    g.warm_up_time(Duration::from_millis(100));
-    g.warm_up_time(Duration::from_millis(100));
     let lotr = data::lotr().unwrap();
-    let mut graph = GraphDB::new(3);
+    let mut graph = GraphDB::new(4);
     load_csv(&mut graph, &lotr, 0, 1, Some(2));
-    g.bench_function("n_edges", |b| b.iter(|| graph.edges_len()));
+    g.bench_function("edges_len", |b| b.iter(|| graph.edges_len()));
     g.finish();
 }
 
-criterion_group!(benches, additions, ingestion, analysis);
+criterion_group!(benches, ingestion, analysis);
 criterion_main!(benches);
