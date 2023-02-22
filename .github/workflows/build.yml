@@ -38,7 +38,7 @@ jobs:
         with:
           command: test
       - name: Run benchmark
-          run: cargo bench --bench base | tee output.txt
+        run: cargo bench --bench base | tee output.txt
       - name: Download previous benchmark data
         uses: actions/cache@v1
         with:
