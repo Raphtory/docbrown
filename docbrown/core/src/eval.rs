@@ -55,6 +55,13 @@ impl<A> PairAcc<A> {
             prev: None,
         }
     }
+
+    fn new_with_prev(current: A, prev: A) -> Self {
+        Self {
+            current,
+            prev: Some(prev),
+        }
+    }
 }
 
 impl<A> PairAcc<A>
@@ -77,9 +84,15 @@ impl<A> PairAcc<A> {
 }
 
 #[derive(Clone)]
-struct Accumulator<K: std::cmp::Eq + std::hash::Hash, A, F> {
+struct Accumulator<K: std::cmp::Eq + std::hash::Hash, A: Clone, F> {
     state: dashmap::DashMap<K, PairAcc<A>>,
     acc: F,
+}
+
+impl<K: std::cmp::Eq + std::hash::Hash, A: std::clone::Clone, F> Accumulator<K, A, F> {
+    fn flip(&self, id: K) {
+        self.state.get_mut(&id).map(|mut e| e.value_mut().update_prev());
+    }
 }
 
 impl<K, A, F> Accumulator<K, A, F>
@@ -242,6 +255,8 @@ impl Eval for TemporalGraph {
                 having(&EvalVertexView { vv: v_view })
             });
 
+            println!("next_active_set: {:?}", next_active_set);
+
             cur_active_set = WorkingSet::Set(next_active_set);
             next_active_set = HashSet::new();
         }
@@ -255,6 +270,27 @@ pub(crate) struct EvalVertexView<'a, G> {
 }
 
 // here we implement the Fn trait for the EvalVertexView to return Option<AccumulatorEntry>
+
+struct PrevAcc<'a, A: Clone, F> {
+    id: u64,
+    acc: &'a Accumulator<u64, A, F>,
+    value: Option<A>,
+}
+
+impl <'a, A:Clone, F> PrevAcc<'a, A, F> {
+
+    fn value(&self) -> Option<A> {
+        self.value.clone()
+    }
+
+}
+
+// when dropped the PrevAcc will trigger a flip (meaning: the current value will become the previous value)
+impl<'a, A: Clone, F> Drop for PrevAcc<'a, A, F> {
+    fn drop(&mut self) {
+        self.acc.flip(self.id);
+    }
+}
 
 impl<'a> EvalVertexView<'a, TemporalGraph> {
     fn get<A: Clone, F>(&self, acc: &'a Accumulator<u64, A, F>) -> AccEntry<'a, u64, A, F>
@@ -271,6 +307,18 @@ impl<'a> EvalVertexView<'a, TemporalGraph> {
     {
         let id = self.vv.global_id();
         acc.prev_value(id)
+    }
+
+    fn get_prev_acc<A: Clone, F>(&self, acc: &'a Accumulator<u64, A, F>) -> PrevAcc<'a, A, F>
+    where
+        F: Fn(&mut A, A) + Clone,
+    {
+        let id = self.vv.global_id();
+        PrevAcc {
+            id,
+            acc,
+            value: acc.prev_value(id),
+        }
     }
 
     fn as_vertex_ref(&self) -> VertexRef {
@@ -385,6 +433,7 @@ mod eval_test {
                 min_acc += gid;
                 vec![] // nothing to propagate at this step
             },
+            // insert exchange step
             |_| false,
         );
 
@@ -406,23 +455,37 @@ mod eval_test {
             0..3,
             |vertex| {
                 let mut out = vec![];
-                for neighbour in vertex.neighbours(crate::Direction::OUT) {
+                for neighbour in vertex.neighbours(crate::Direction::BOTH) {
+
                     let mut n_min_acc = neighbour.get(&min_cc_id);
-                    let v_min_acc = vertex.get(&min_cc_id);
-                    n_min_acc += v_min_acc;
+
+                    n_min_acc += vertex.get(&min_cc_id);
+
                     out.push(neighbour.as_vertex_ref());
                 }
 
                 out
             },
             |v| {
-                let min_acc = v.get(&min_cc_id);
-                let prev_min_acc = v.get_prev(&min_cc_id);
+
+                let prev_min_acc = v.get_prev_acc(&min_cc_id).value();
+                let min_acc = v.get(&min_cc_id); // this line needs to only get an immutable reference otherwise it will block if it's callled before the one above
 
                 let value = min_acc.read();
-                // value != prev_min_acc
-                false
+                value != prev_min_acc
             },
-        )
+        );
+
+        let state = &min_cc_id.as_hash_map();
+
+        assert_eq!(
+            state,
+            &HashMap::from_iter(vec![
+                (1, PairAcc::new_with_prev(1, 1)),
+                (2, PairAcc::new_with_prev(1, 1)),
+                (3, PairAcc::new_with_prev(3, 3)),
+                (4, PairAcc::new_with_prev(3, 3)) 
+            ])
+        );
     }
 }

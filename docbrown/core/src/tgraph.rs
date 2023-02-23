@@ -566,7 +566,7 @@ impl TemporalGraph {
 
 pub(crate) struct VertexView<'a, G> {
     g_id: u64,
-    pub(crate) pid: usize,
+    pub(crate) pid: usize, // this needs to be Option<pid> if we ever want to map from EdgeView to VertexView, some edges are remote
     g: &'a G,
     w: Option<Range<i64>>,
 }
@@ -618,7 +618,25 @@ impl<'a> VertexView<'a, TemporalGraph> {
         &'a self,
         d: Direction,
     ) -> Box<dyn Iterator<Item = VertexView<'a, TemporalGraph>> + 'a> {
-        Box::new(std::iter::empty())
+        let edges_iter = if let Some(r) = &self.w {
+            self.g.neighbours_window(self.g_id, &r, d)
+        } else {
+            self.g.neighbours(self.g_id, d)
+        };
+
+        Box::new(edges_iter.map(|edge|{
+            let EdgeView{src_id, dst_id, ..} = edge;
+
+            let src_g_id = edge.global_src();
+            let dst_g_id = edge.global_dst();
+
+            if self.g_id == src_g_id {
+                VertexView::new(self.g, dst_g_id, dst_id, self.w.clone())
+            } else {
+                VertexView::new(self.g, src_g_id, src_id, self.w.clone())
+            }
+
+        }))
     }
 
     pub fn props(&self, name: &'a str) -> Option<Box<dyn Iterator<Item = (&'a i64, Prop)> + 'a>> {
