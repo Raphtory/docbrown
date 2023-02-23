@@ -47,6 +47,7 @@ jobs:
          key: ${{ runner.os }}-benchmark
       - name: Compare benchmark results
         uses: benchmark-action/github-action-benchmark@v1
+        if: github.ref != 'refs/heads/main'
         with:
           tool: 'cargo'
           output-file-path: benchmark-result.txt
