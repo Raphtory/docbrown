@@ -13,7 +13,7 @@ mod tadjset;
 mod tcell;
 pub mod tgraph_shard;
 mod tprop;
-mod tpropvec;
+mod tprop_vec;
 pub mod utils;
 
 // Denotes edge direction

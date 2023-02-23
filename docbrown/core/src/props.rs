@@ -1,4 +1,4 @@
-use crate::tpropvec::TPropVec;
+use crate::tprop_vec::TPropVec;
 use crate::Prop;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
