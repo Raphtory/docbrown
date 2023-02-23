@@ -25,7 +25,8 @@ jobs:
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-            target/
+            target/debug
+            target/release
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-cargo-
       - name: Build project quietly
@@ -37,24 +38,19 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
+      - name: Restore benchmark results from main
+        uses: actions/cache/restore@v3
+        id: restore-cache
+        with:
+          path: target/criterion
+          key: ${{ runner.os }}-criterion
       - name: Run benchmark
-        run: cargo bench --bench base | tee output.txt
-      - name: Download previous benchmark data
-        uses: actions/cache@v1
+        run: cargo bench --bench base | tee benchmark-result.txt
+      - name: Fail on performance regresion
+        run: ! cat benchmark-result.txt | grep "Performance has regressed" > /dev/null
+      - name: Save benchmark results from main
+        uses: actions/cache/save@v3
+        if: github.ref == 'refs/heads/main'
         with:
-          path: ./cache
-          key: ${{ runner.os }}-benchmark
-          # Run `github-action-benchmark` action
-      - name: Store benchmark result
-        uses: benchmark-action/github-action-benchmark@v1
-        with:
-          # What benchmark tool the output.txt came from
-          tool: 'cargo'
-          # Where the output from the benchmark tool is stored
-          output-file-path: output.txt
-          # Where the previous data file is stored
-          external-data-json-path: ./cache/benchmark-data.json
-          save-data-file: true # should be true only if this branch is main
-          # Workflow will fail when an alert happens
-          fail-on-alert: true
-        # Upload the updated cache file for the next job by actions/cache
+          path: target/criterion
+          key: ${{ steps.restore-cache.outputs.cache-primary-key }}
