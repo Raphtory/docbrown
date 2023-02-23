@@ -18,10 +18,6 @@ impl WindowedGraph {
         }
     }
 
-    pub fn say_hello(&self) {
-        println!("Hello world!")
-    }
-
     pub fn vertex_ids(&self) -> Box<dyn Iterator<Item = u64> + Send> {
         self.gdb.vertex_ids_window(self.t_start, self.t_end)
     }
@@ -30,6 +26,7 @@ impl WindowedGraph {
         self.gdb.vertices_window(self.t_start, self.t_end)
     }
 }
+
 #[cfg(test)]
 mod views_test {
     use crate::graphdb::GraphDB;
