@@ -50,9 +50,9 @@ fn load_csv(graph: &mut Graph, path: &Path, source: usize, target: usize, time: 
         let record_ok = record.unwrap();
         let (source_id, target_id, time) =
             parse_record(&record_ok).expect(&format!("Unable to parse record: {:?}", record_ok));
-        graph.add_vertex(source_id, time, &vec![]);
-        graph.add_vertex(target_id, time, &vec![]);
-        graph.add_edge(source_id, target_id, time, &vec![]);
+        graph.add_vertex(time, source_id, &vec![]);
+        graph.add_vertex(time, target_id, &vec![]);
+        graph.add_edge(time, source_id, target_id, &vec![]);
     }
 }
 
@@ -74,32 +74,32 @@ pub fn additions(c: &mut Criterion) {
     g.bench_function("existing vertex varying time", |b: &mut Bencher| {
         b.iter_batched(
             || times.next().unwrap(),
-            |t| graph.add_vertex(0, t, &vec![]),
+            |t| graph.add_vertex(t, 0, &vec![]),
             BatchSize::SmallInput,
         )
     });
     g.bench_function("new vertex constant time", |b: &mut Bencher| {
         b.iter_batched(
             || indexes.next().unwrap(),
-            |vid| graph.add_vertex(vid, 0, &vec![]),
+            |vid| graph.add_vertex(0, vid, &vec![]),
             BatchSize::SmallInput,
         )
     });
 
     g.bench_function("existing edge constant time", |b| {
-        b.iter(|| graph.add_edge(0, 1, 0, &vec![]))
+        b.iter(|| graph.add_edge(0, 0, 1, &vec![]))
     });
     g.bench_function("existing edge varying time", |b: &mut Bencher| {
         b.iter_batched(
             || times.next().unwrap(),
-            |t| graph.add_edge(0, 0, t, &vec![]),
+            |t| graph.add_edge(t, 0, 0, &vec![]),
             BatchSize::SmallInput,
         )
     });
     g.bench_function("new edge constant time", |b: &mut Bencher| {
         b.iter_batched(
             || (indexes.next().unwrap(), indexes.next().unwrap()),
-            |(v1, v2)| graph.add_edge(v1, v2, 0, &vec![]),
+            |(v1, v2)| graph.add_edge(0, v1, v2, &vec![]),
             BatchSize::SmallInput,
         )
     });
