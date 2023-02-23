@@ -33,15 +33,52 @@ impl VertexRef {
 }
 
 enum AccEntry<'a, K, A, F> {
-    MutAcc(RefMut<'a, K, A>, F),
-    EntryAcc(Entry<'a, K, A>, F),
+    MutAcc(RefMut<'a, K, PairAcc<A>>, F),
+    EntryAcc(Entry<'a, K, PairAcc<A>>, F),
 }
 
-// struct PairAcc<A>{current: A, prev:A}
+// this always updates the current value so get_mut returns mutable reference to current
+// when calling update_prev it will copy the current value to prev
+// prev is NEVER updated only copied from current
+// TODO we should be to copy current into prev then reset
+// A has to be Clone
+#[derive(Clone, PartialEq, Debug)]
+struct PairAcc<A> {
+    current: A,
+    prev: Option<A>,
+}
+
+impl<A> PairAcc<A> {
+    fn new(current: A) -> Self {
+        Self {
+            current,
+            prev: None,
+        }
+    }
+}
+
+impl<A> PairAcc<A>
+where
+    A: Clone,
+{
+    fn update_prev(&mut self) {
+        self.prev = Some(self.current.clone());
+    }
+
+    fn clone_prev(&self) -> Option<A> {
+        self.prev.clone()
+    }
+}
+
+impl<A> PairAcc<A> {
+    fn as_mut(&mut self) -> &mut A {
+        &mut self.current
+    }
+}
 
 #[derive(Clone)]
 struct Accumulator<K: std::cmp::Eq + std::hash::Hash, A, F> {
-    state: dashmap::DashMap<K, A>,
+    state: dashmap::DashMap<K, PairAcc<A>>,
     acc: F,
 }
 
@@ -49,6 +86,7 @@ impl<K, A, F> Accumulator<K, A, F>
 where
     F: Fn(&mut A, A) + Clone,
     K: std::hash::Hash + std::cmp::Eq,
+    A: Clone,
 {
     fn new(acc: F) -> Self {
         Self {
@@ -60,6 +98,10 @@ where
     fn entry<'a>(&'a self, k: K) -> AccEntry<'a, K, A, F> {
         AccEntry::EntryAcc(self.state.entry(k), self.acc.clone())
     }
+
+    fn prev_value(&self, k: K) -> Option<A> {
+        self.state.get(&k).and_then(|e| e.value().clone_prev())
+    }
 }
 
 impl<K, A, F> Accumulator<K, A, F>
@@ -68,7 +110,7 @@ where
     K: std::hash::Hash + std::cmp::Eq + Clone,
     A: Clone,
 {
-    fn as_hash_map(&self) -> HashMap<K, A> {
+    fn as_hash_map(&self) -> HashMap<K, PairAcc<A>> {
         self.state
             .iter()
             .map(|e| (e.key().clone(), e.value().clone()))
@@ -88,16 +130,16 @@ where
 {
     fn read(&self) -> Option<A> {
         match self {
-            AccEntry::MutAcc(ref entry, _) => Some(entry.value().clone()),
-            AccEntry::EntryAcc(Entry::Occupied(e), _) => Some(e.get().clone()),
+            AccEntry::MutAcc(ref entry, _) => Some(entry.value().current.clone()),
+            AccEntry::EntryAcc(Entry::Occupied(e), _) => Some(e.get().current.clone()),
             _ => None,
         }
     }
 
     fn read_ref(&self) -> Option<&A> {
         match self {
-            AccEntry::MutAcc(ref entry, _) => Some(entry.value()),
-            AccEntry::EntryAcc(Entry::Occupied(e), _) => Some(e.get()),
+            AccEntry::MutAcc(ref entry, _) => Some(&entry.value().current),
+            AccEntry::EntryAcc(Entry::Occupied(e), _) => Some(&e.get().current),
             _ => None,
         }
     }
@@ -112,15 +154,18 @@ where
     fn add_assign(&mut self, rhs: A) {
         match self {
             AccEntry::MutAcc(ref mut entry, acc) => {
-                acc(entry, rhs);
+                acc(entry.as_mut(), rhs);
             }
             entry => replace_with_or_abort(entry, |_self| match _self {
                 AccEntry::EntryAcc(e @ Entry::Occupied(_), acc) => {
-                    let same_entry = e.and_modify(|prev| acc(prev, rhs.clone()));
+                    let same_entry = e.and_modify(|prev| acc(prev.as_mut(), rhs.clone()));
                     AccEntry::EntryAcc(same_entry, acc)
                 }
                 AccEntry::EntryAcc(e @ Entry::Vacant(_), acc) => {
-                    let same_entry = e.or_insert(rhs);
+                    let same_entry = e.or_insert(PairAcc {
+                        current: rhs,
+                        prev: None,
+                    });
                     AccEntry::MutAcc(same_entry, acc)
                 }
                 _ => unreachable!(),
@@ -184,13 +229,18 @@ impl Eval for TemporalGraph {
             // iterate over the active vertices
             for v_view in iter {
                 let eval_v_view = EvalVertexView { vv: v_view };
-                if having(&eval_v_view) {
-                    let next_vertices = f(eval_v_view);
-                    for next_vertex in next_vertices {
-                        next_active_set.insert(next_vertex.pid());
-                    }
+                let next_vertices = f(eval_v_view);
+                for next_vertex in next_vertices {
+                    next_active_set.insert(next_vertex.pid());
                 }
             }
+
+            // from the next_active_set we apply the PRED
+            next_active_set.retain(|pid| {
+                let g_id = self.adj_lists[*pid].logical();
+                let v_view = VertexView::new(self, *g_id, *pid, Some(window.clone()));
+                having(&EvalVertexView { vv: v_view })
+            });
 
             cur_active_set = WorkingSet::Set(next_active_set);
             next_active_set = HashSet::new();
@@ -207,7 +257,7 @@ pub(crate) struct EvalVertexView<'a, G> {
 // here we implement the Fn trait for the EvalVertexView to return Option<AccumulatorEntry>
 
 impl<'a> EvalVertexView<'a, TemporalGraph> {
-    fn get<A, F>(&self, acc: &'a Accumulator<u64, A, F>) -> AccEntry<'a, u64, A, F>
+    fn get<A: Clone, F>(&self, acc: &'a Accumulator<u64, A, F>) -> AccEntry<'a, u64, A, F>
     where
         F: Fn(&mut A, A) + Clone,
     {
@@ -215,14 +265,13 @@ impl<'a> EvalVertexView<'a, TemporalGraph> {
         acc.entry(id)
     }
 
-
-    // fn get_prev<A, F>(&self, acc: &'a Accumulator<u64, A, F>) -> Option<A>
-    // where
-    //     F: Fn(&mut A, A) + Clone,
-    // {
-    //     let id = self.vv.global_id();
-    //     acc.entry(id)
-    // }
+    fn get_prev<A: Clone, F>(&self, acc: &'a Accumulator<u64, A, F>) -> Option<A>
+    where
+        F: Fn(&mut A, A) + Clone,
+    {
+        let id = self.vv.global_id();
+        acc.prev_value(id)
+    }
 
     fn as_vertex_ref(&self) -> VertexRef {
         VertexRef(self.vv.pid)
@@ -309,7 +358,7 @@ mod eval_test {
     use std::collections::HashMap;
 
     use crate::{
-        eval::{Acc, Accumulator, Eval},
+        eval::{Acc, Accumulator, Eval, PairAcc},
         graph::TemporalGraph,
     };
 
@@ -336,14 +385,19 @@ mod eval_test {
                 min_acc += gid;
                 vec![] // nothing to propagate at this step
             },
-            |_| true,
+            |_| false,
         );
 
         let state = &min_cc_id.as_hash_map();
 
         assert_eq!(
             state,
-            &HashMap::from_iter(vec![(1, 1), (2, 2), (3, 3), (4, 4)])
+            &HashMap::from_iter(vec![
+                (1, PairAcc::new(1)),
+                (2, PairAcc::new(2)),
+                (3, PairAcc::new(3)),
+                (4, PairAcc::new(4))
+            ])
         );
 
         // second step where we check the state of our neighbours and set ourselves to the min
@@ -366,8 +420,8 @@ mod eval_test {
                 let prev_min_acc = v.get_prev(&min_cc_id);
 
                 let value = min_acc.read();
-                let prev_value = prev_min_acc.read();
-                value != prev_value
+                // value != prev_min_acc
+                false
             },
         )
     }
