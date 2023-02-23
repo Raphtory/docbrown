@@ -1,5 +1,5 @@
 use crate::graphdb::GraphDB;
-use docbrown_core::tpartition::TVertex;
+use docbrown_core::tgraph_shard::TVertex;
 
 use std::sync::Arc;
 

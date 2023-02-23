@@ -4,7 +4,7 @@ use std::{
 };
 
 use docbrown_core::{
-    tpartition::{TEdge, TVertex, TemporalGraphPart},
+    tgraph_shard::{TEdge, TVertex, TGraphShard},
     utils, Direction, Prop,
 };
 
@@ -16,7 +16,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GraphDB {
     nr_shards: usize,
-    shards: Vec<TemporalGraphPart>,
+    shards: Vec<TGraphShard>,
 }
 
 impl GraphDB {
@@ -24,7 +24,7 @@ impl GraphDB {
         GraphDB {
             nr_shards,
             shards: (0..nr_shards)
-                .map(|_| TemporalGraphPart::default())
+                .map(|_| TGraphShard::default())
                 .collect(),
         }
     }
@@ -53,7 +53,7 @@ impl GraphDB {
         let mut shards = shard_paths
             .par_iter()
             .map(|(i, path)| {
-                let shard = TemporalGraphPart::load_from_file(path)?;
+                let shard = TGraphShard::load_from_file(path)?;
                 Ok((*i, shard))
             })
             .collect::<Result<Vec<_>, Box<bincode::ErrorKind>>>()?;

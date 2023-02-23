@@ -46,7 +46,7 @@ impl<'a> From<VertexView<'a, TGraph>> for TVertex {
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 #[repr(transparent)]
-pub struct TemporalGraphPart {
+pub struct TGraphShard {
     #[serde(with = "arc_rwlock_serde")]
     rc: Arc<tokio::sync::RwLock<TGraph>>,
 }
@@ -74,7 +74,7 @@ mod arc_rwlock_serde {
     }
 }
 
-impl TemporalGraphPart {
+impl TGraphShard {
     pub fn load_from_file<P: AsRef<Path>>(path: P) -> Result<Self, Box<bincode::ErrorKind>> {
         // use BufReader for better performance
         let f = std::fs::File::open(path).unwrap();
@@ -256,7 +256,7 @@ impl TemporalGraphPart {
 
 #[cfg(test)]
 mod temporal_graph_partition_test {
-    use super::TemporalGraphPart;
+    use super::TGraphShard;
     use crate::{tgraph::TGraph, Direction};
     use itertools::Itertools;
     use quickcheck::{Arbitrary, TestResult};
@@ -285,7 +285,7 @@ mod temporal_graph_partition_test {
             return TestResult::discard();
         }
 
-        let g = TemporalGraphPart::default();
+        let g = TGraphShard::default();
 
         let rand_index = rand::thread_rng().gen_range(0..vs.len());
         let rand_vertex = vs.get(rand_index).unwrap().0;
@@ -308,7 +308,7 @@ mod temporal_graph_partition_test {
             (1, 1, 1),
         ];
 
-        let g = TemporalGraphPart::default();
+        let g = TGraphShard::default();
 
         for (t, src, dst) in &vs {
             g.add_edge(*t, *src, *dst, &vec![]);
@@ -321,7 +321,7 @@ mod temporal_graph_partition_test {
 
     #[quickcheck]
     fn add_vertex_to_shard_len_grows(vs: Vec<(u8, u8)>) {
-        let g = TemporalGraphPart::default();
+        let g = TGraphShard::default();
 
         let expected_len = vs.iter().map(|(_, v)| v).sorted().dedup().count();
         for (t, v) in vs {
@@ -342,7 +342,7 @@ mod temporal_graph_partition_test {
             (1, 1, 1),
         ];
 
-        let g = TemporalGraphPart::default();
+        let g = TGraphShard::default();
 
         for (t, src, dst) in &vs {
             g.add_edge(*t, *src, *dst, &vec![]);
@@ -358,7 +358,7 @@ mod temporal_graph_partition_test {
     // should recover each inserted vertex exactly once
     #[quickcheck]
     fn iterate_vertex_windows(intervals: Intervals) {
-        let g = TemporalGraphPart::default();
+        let g = TGraphShard::default();
 
         for (v, (t_start, _)) in intervals.0.iter().enumerate() {
             g.add_vertex(*t_start, v.try_into().unwrap(), &vec![])
@@ -387,7 +387,7 @@ mod temporal_graph_partition_test {
             (1, 1, 1),
         ];
 
-        let g = TemporalGraphPart::default();
+        let g = TGraphShard::default();
 
         for (t, src, dst) in &vs {
             g.add_edge(*t, *src, *dst, &vec![]);
@@ -409,7 +409,7 @@ mod temporal_graph_partition_test {
 
     #[test]
     fn get_shard_degree_window() {
-        let g = TemporalGraphPart::default();
+        let g = TGraphShard::default();
 
         g.add_vertex(1, 100, &vec![]);
         g.add_vertex(2, 101, &vec![]);
@@ -454,7 +454,7 @@ mod temporal_graph_partition_test {
             (1, 1, 1),
         ];
 
-        let g = TemporalGraphPart::default();
+        let g = TGraphShard::default();
 
         for (t, src, dst) in &vs {
             g.add_edge(*t, *src, *dst, &vec![]);
@@ -485,7 +485,7 @@ mod temporal_graph_partition_test {
             (1, 1, 1),
         ];
 
-        let g = TemporalGraphPart::default();
+        let g = TGraphShard::default();
 
         for (t, src, dst) in &vs {
             g.add_edge(*t, *src, *dst, &vec![]);
@@ -522,7 +522,7 @@ mod temporal_graph_partition_test {
             (1, 1, 1),
         ];
 
-        let g = TemporalGraphPart::default();
+        let g = TGraphShard::default();
 
         for (t, src, dst) in &vs {
             g.add_edge(*t, *src, *dst, &vec![]);

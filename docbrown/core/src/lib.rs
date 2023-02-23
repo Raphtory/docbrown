@@ -11,7 +11,7 @@ mod props;
 mod sorted_vec_map;
 mod tadjset;
 mod tcell;
-pub mod tpartition;
+pub mod tgraph_shard;
 mod tprop;
 mod tpropvec;
 pub mod utils;

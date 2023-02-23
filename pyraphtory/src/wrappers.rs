@@ -1,7 +1,7 @@
 use pyo3::prelude::*;
 use std::ops::Range;
 
-use dbc::tpartition;
+use dbc::tgraph_shard;
 use docbrown_core as dbc;
 
 #[pyclass]
@@ -56,8 +56,8 @@ pub struct TEdge {
 }
 
 impl TEdge {
-    pub(crate) fn convert(edge: tpartition::TEdge) -> TEdge {
-        let tpartition::TEdge {
+    pub(crate) fn convert(edge: tgraph_shard::TEdge) -> TEdge {
+        let tgraph_shard::TEdge {
             src,
             dst,
             t,
@@ -79,8 +79,8 @@ pub struct TVertex {
 }
 
 impl TVertex {
-    pub(crate) fn convert(vertex: tpartition::TVertex) -> TVertex {
-        let tpartition::TVertex { g_id, .. } = vertex;
+    pub(crate) fn convert(vertex: tgraph_shard::TVertex) -> TVertex {
+        let tgraph_shard::TVertex { g_id, .. } = vertex;
         TVertex { g_id }
     }
 }
