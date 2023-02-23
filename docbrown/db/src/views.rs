@@ -30,7 +30,6 @@ impl WindowedGraph {
 #[cfg(test)]
 mod views_test {
     use crate::graphdb::GraphDB;
-
     use super::WindowedGraph;
 
     #[test]

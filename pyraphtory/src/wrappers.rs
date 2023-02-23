@@ -1,5 +1,7 @@
 use pyo3::prelude::*;
+use std::ops::Range;
 
+use dbc::tpartition;
 use docbrown_core as dbc;
 
 #[pyclass]
@@ -54,8 +56,8 @@ pub struct TEdge {
 }
 
 impl TEdge {
-    pub(crate) fn convert(edge: dbc::tpartition::TEdge) -> TEdge {
-        let dbc::tpartition::TEdge {
+    pub(crate) fn convert(edge: tpartition::TEdge) -> TEdge {
+        let tpartition::TEdge {
             src,
             dst,
             t,
@@ -67,6 +69,19 @@ impl TEdge {
             t,
             is_remote,
         }
+    }
+}
+
+#[pyclass]
+pub struct TVertex {
+    #[pyo3(get)]
+    pub g_id: u64,
+}
+
+impl TVertex {
+    pub(crate) fn convert(vertex: tpartition::TVertex) -> TVertex {
+        let tpartition::TVertex { g_id, .. } = vertex;
+        TVertex { g_id }
     }
 }
 
