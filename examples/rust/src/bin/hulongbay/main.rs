@@ -73,9 +73,9 @@ fn main() {
                 let time = sent.time;
 
                 g.add_edge(
+                    time.try_into().unwrap(),
                     src,
                     dst,
-                    time.try_into().unwrap(),
                     &vec![("amount".to_string(), Prop::U64(sent.amount_usd))],
                 )
             })
@@ -94,4 +94,3 @@ fn main() {
 
         g
     };
-}
