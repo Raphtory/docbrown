@@ -12,7 +12,7 @@ use crate::Prop;
 use crate::{bitset::BitSet, tadjset::AdjEdge, Direction};
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
-pub struct TemporalGraph {
+pub struct TGraph {
     // Maps global (logical) id to the local (physical) id which is an index to the adjacency list vector
     logical_to_physical: HashMap<u64, usize>,
 
@@ -26,7 +26,7 @@ pub struct TemporalGraph {
     pub(crate) props: Props,
 }
 
-impl Default for TemporalGraph {
+impl Default for TGraph {
     fn default() -> Self {
         Self {
             logical_to_physical: Default::default(),
@@ -37,7 +37,7 @@ impl Default for TemporalGraph {
     }
 }
 
-impl TemporalGraph {
+impl TGraph {
     pub(crate) fn len(&self) -> usize {
         self.logical_to_physical.len()
     }
@@ -394,7 +394,7 @@ impl TemporalGraph {
     }
 }
 
-impl TemporalGraph {
+impl TGraph {
     fn link_inbound_edge(
         &mut self,
         t: i64,
@@ -570,7 +570,7 @@ pub(crate) struct VertexView<'a, G> {
     w: Option<Range<i64>>,
 }
 
-impl<'a> VertexView<'a, TemporalGraph> {
+impl<'a> VertexView<'a, TGraph> {
     pub fn global_id(&self) -> u64 {
         self.g_id
     }
@@ -595,7 +595,7 @@ impl<'a> VertexView<'a, TemporalGraph> {
     pub fn edges(
         &'a self,
         d: Direction,
-    ) -> Box<dyn Iterator<Item = EdgeView<'a, TemporalGraph>> + 'a> {
+    ) -> Box<dyn Iterator<Item = EdgeView<'a, TGraph>> + 'a> {
         if let Some(r) = &self.w {
             self.g.neighbours_window(self.g_id, r, d)
         } else {
@@ -630,7 +630,7 @@ pub(crate) struct EdgeView<'a, G: Sized> {
     e_meta: AdjEdge,
 }
 
-impl<'a> EdgeView<'a, TemporalGraph> {
+impl<'a> EdgeView<'a, TGraph> {
     pub fn global_src(&self) -> u64 {
         if self.e_meta.is_local() {
             *self.g.adj_lists[self.src_id].logical()
@@ -687,7 +687,7 @@ mod graph_test {
 
     #[test]
     fn add_vertex_at_time_t1() {
-        let mut g = TemporalGraph::default();
+        let mut g = TGraph::default();
 
         g.add_vertex(1, 9);
 
@@ -702,7 +702,7 @@ mod graph_test {
 
     #[test]
     fn add_vertices_with_1_property() {
-        let mut g = TemporalGraph::default();
+        let mut g = TGraph::default();
 
         let v_id = 1;
         let ts = 1;
@@ -726,7 +726,7 @@ mod graph_test {
 
     #[test]
     fn add_vertices_with_multiple_properties() {
-        let mut g = TemporalGraph::default();
+        let mut g = TGraph::default();
 
         g.add_vertex_with_props(
             1,
@@ -758,7 +758,7 @@ mod graph_test {
 
     #[test]
     fn add_vertices_with_1_property_different_times() {
-        let mut g = TemporalGraph::default();
+        let mut g = TGraph::default();
 
         g.add_vertex_with_props(
             1,
@@ -810,7 +810,7 @@ mod graph_test {
 
     #[test]
     fn add_vertices_with_multiple_properties_at_different_times_window() {
-        let mut g = TemporalGraph::default();
+        let mut g = TGraph::default();
 
         g.add_vertex_with_props(
             1,
@@ -877,7 +877,7 @@ mod graph_test {
     #[test]
     #[ignore = "Undecided on the semantics of the time window over vertices shoule be supported in Docbrown"]
     fn add_vertex_at_time_t1_window() {
-        let mut g = TemporalGraph::default();
+        let mut g = TGraph::default();
 
         g.add_vertex(9, 1);
 
@@ -888,7 +888,7 @@ mod graph_test {
 
     #[test]
     fn add_vertex_at_time_t1_t2() {
-        let mut g = TemporalGraph::default();
+        let mut g = TGraph::default();
 
         g.add_vertex(1, 9);
         g.add_vertex(2, 1);
@@ -903,7 +903,7 @@ mod graph_test {
 
     #[test]
     fn add_edge_at_time_t1() {
-        let mut g = TemporalGraph::default();
+        let mut g = TGraph::default();
 
         g.add_vertex(1, 9);
         g.add_vertex(2, 1);
@@ -944,7 +944,7 @@ mod graph_test {
 
     #[test]
     fn add_edge_at_time_t1_t2_t3() {
-        let mut g = TemporalGraph::default();
+        let mut g = TGraph::default();
 
         g.add_vertex(1, 9);
         g.add_vertex(2, 1);
@@ -984,7 +984,7 @@ mod graph_test {
 
     #[test]
     fn add_edge_at_time_t1_t2_t3_overwrite() {
-        let mut g = TemporalGraph::default();
+        let mut g = TGraph::default();
 
         g.add_vertex(1, 9);
         g.add_vertex(2, 1);
@@ -1044,7 +1044,7 @@ mod graph_test {
 
     #[test]
     fn add_edges_at_t1t2t3_check_times() {
-        let mut g = TemporalGraph::default();
+        let mut g = TGraph::default();
 
         g.add_vertex(1, 11);
         g.add_vertex(2, 22);
@@ -1111,7 +1111,7 @@ mod graph_test {
 
     #[test]
     fn add_the_same_edge_multiple_times() {
-        let mut g = TemporalGraph::default();
+        let mut g = TGraph::default();
 
         g.add_vertex(1, 11);
         g.add_vertex(2, 22);
@@ -1128,7 +1128,7 @@ mod graph_test {
 
     #[test]
     fn add_edge_with_1_property() {
-        let mut g = TemporalGraph::default();
+        let mut g = TGraph::default();
 
         g.add_vertex(1, 11);
         g.add_vertex(2, 22);
@@ -1154,7 +1154,7 @@ mod graph_test {
 
     #[test]
     fn add_edge_with_multiple_properties() {
-        let mut g = TemporalGraph::default();
+        let mut g = TGraph::default();
 
         g.add_vertex(1, 11);
         g.add_vertex(2, 22);
@@ -1203,7 +1203,7 @@ mod graph_test {
 
     #[test]
     fn add_edge_with_1_property_different_times() {
-        let mut g = TemporalGraph::default();
+        let mut g = TGraph::default();
 
         g.add_vertex(1, 11);
         g.add_vertex(2, 22);
@@ -1247,7 +1247,7 @@ mod graph_test {
 
     #[test]
     fn add_edges_with_multiple_properties_at_different_times_window() {
-        let mut g = TemporalGraph::default();
+        let mut g = TGraph::default();
 
         g.add_vertex(1, 11);
         g.add_vertex(2, 22);
@@ -1326,7 +1326,7 @@ mod graph_test {
 
     #[test]
     fn edge_metadata_id_bug() {
-        let mut g = TemporalGraph::default();
+        let mut g = TGraph::default();
 
         let edges: Vec<(i64, u64, u64)> = vec![(1, 1, 2), (2, 3, 4), (3, 5, 4), (4, 1, 4)];
 
@@ -1339,7 +1339,7 @@ mod graph_test {
 
     #[test]
     fn add_multiple_edges_with_1_property_same_time() {
-        let mut g = TemporalGraph::default();
+        let mut g = TGraph::default();
 
         g.add_vertex(1, 11);
         g.add_vertex(2, 22);
@@ -1385,7 +1385,7 @@ mod graph_test {
 
     #[test]
     fn add_edges_with_multiple_properties_at_different_times() {
-        let mut g = TemporalGraph::default();
+        let mut g = TGraph::default();
 
         g.add_vertex(1, 11);
         g.add_vertex(2, 22);
@@ -1478,7 +1478,7 @@ mod graph_test {
 
     #[test]
     fn correctness_degree_test() {
-        let mut g = TemporalGraph::default();
+        let mut g = TGraph::default();
 
         let triplets = vec![
             (1, 1, 2, 1),
@@ -1546,7 +1546,7 @@ mod graph_test {
 
     #[test]
     fn lotr_degree() {
-        let mut g = TemporalGraph::default();
+        let mut g = TGraph::default();
 
         fn parse_record(rec: &StringRecord) -> Option<(String, String, i64)> {
             let src = rec.get(0).and_then(|s| s.parse::<String>().ok())?;
@@ -1661,9 +1661,9 @@ mod graph_test {
 
     #[quickcheck]
     fn add_vertices_into_two_graph_partitions(vs: Vec<(u64, u64)>) {
-        let mut g1 = TemporalGraph::default();
+        let mut g1 = TGraph::default();
 
-        let mut g2 = TemporalGraph::default();
+        let mut g2 = TGraph::default();
 
         let mut shards = vec![&mut g1, &mut g2];
         let some_props: Vec<(String, Prop)> = vec![("bla".to_string(), Prop::U32(1))];
@@ -1702,14 +1702,14 @@ mod graph_test {
 
     #[test]
     fn adding_remote_edge_does_not_break_local_indices() {
-        let mut g1 = TemporalGraph::default();
+        let mut g1 = TGraph::default();
         g1.add_edge_remote_out(11, 1, 1, &vec![("bla".to_string(), Prop::U32(1))]);
         g1.add_edge_with_props(11, 0, 2, &vec![("bla".to_string(), Prop::U32(1))]);
     }
 
     #[test]
     fn check_edges_after_adding_remote() {
-        let mut g1 = TemporalGraph::default();
+        let mut g1 = TGraph::default();
         g1.add_vertex(1, 11);
 
         g1.add_edge_remote_out(2, 11, 22, &vec![("bla".to_string(), Prop::U32(1))]);
@@ -1730,7 +1730,7 @@ mod graph_test {
     // this test checks TemporalGraph can be serialized and deserialized
     #[test]
     fn serialize_and_deserialize_with_bincode() {
-        let mut g = TemporalGraph::default();
+        let mut g = TGraph::default();
 
         g.add_vertex(1, 1);
         g.add_vertex(2, 2);
@@ -1751,7 +1751,7 @@ mod graph_test {
 
         bincode::serialize_into(&mut buffer, &g).unwrap();
 
-        let g2: TemporalGraph = bincode::deserialize_from(&mut buffer.as_slice()).unwrap();
+        let g2: TGraph = bincode::deserialize_from(&mut buffer.as_slice()).unwrap();
         assert_eq!(g, g2);
     }
 }

@@ -6,7 +6,7 @@ use std::sync::Arc;
 use genawaiter::sync::{gen, GenBoxed};
 use genawaiter::yield_;
 
-use crate::graph::{EdgeView, TemporalGraph, VertexView};
+use crate::tgraph::{EdgeView, TGraph, VertexView};
 use crate::{Direction, Prop};
 
 #[derive(Debug)]
@@ -18,8 +18,8 @@ pub struct TEdge {
     pub is_remote: bool,
 }
 
-impl<'a> From<EdgeView<'a, TemporalGraph>> for TEdge {
-    fn from(e: EdgeView<'a, TemporalGraph>) -> Self {
+impl<'a> From<EdgeView<'a, TGraph>> for TEdge {
+    fn from(e: EdgeView<'a, TGraph>) -> Self {
         Self {
             src: e.global_src(),
             dst: e.global_dst(),
@@ -35,8 +35,8 @@ pub struct TVertex {
     pub w: Option<Range<i64>>,
 }
 
-impl<'a> From<VertexView<'a, TemporalGraph>> for TVertex {
-    fn from(v: VertexView<'a, TemporalGraph>) -> Self {
+impl<'a> From<VertexView<'a, TGraph>> for TVertex {
+    fn from(v: VertexView<'a, TGraph>) -> Self {
         Self {
             g_id: v.global_id(),
             w: v.window(),
@@ -48,7 +48,7 @@ impl<'a> From<VertexView<'a, TemporalGraph>> for TVertex {
 #[repr(transparent)]
 pub struct TemporalGraphPart {
     #[serde(with = "arc_rwlock_serde")]
-    rc: Arc<tokio::sync::RwLock<TemporalGraph>>,
+    rc: Arc<tokio::sync::RwLock<TGraph>>,
 }
 
 mod arc_rwlock_serde {
@@ -92,7 +92,7 @@ impl TemporalGraphPart {
     #[inline(always)]
     fn write_shard<A, F>(&self, f: F) -> A
     where
-        F: Fn(&mut TemporalGraph) -> A,
+        F: Fn(&mut TGraph) -> A,
     {
         let mut shard = self.rc.blocking_write();
         f(&mut shard)
@@ -101,7 +101,7 @@ impl TemporalGraphPart {
     #[inline(always)]
     fn read_shard<A, F>(&self, f: F) -> A
     where
-        F: Fn(&TemporalGraph) -> A,
+        F: Fn(&TGraph) -> A,
     {
         let shard = self.rc.blocking_read();
         f(&shard)
@@ -140,11 +140,11 @@ impl TemporalGraphPart {
     }
 
     pub fn degree(&self, v: u64, d: Direction) -> usize {
-        self.read_shard(|tg: &TemporalGraph| tg.degree(v, d))
+        self.read_shard(|tg: &TGraph| tg.degree(v, d))
     }
 
     pub fn degree_window(&self, v: u64, r: Range<i64>, d: Direction) -> usize {
-        self.read_shard(|tg: &TemporalGraph| tg.degree_window(v, &r, d))
+        self.read_shard(|tg: &TGraph| tg.degree_window(v, &r, d))
     }
 
     pub fn vertex_ids(&self) -> Box<impl Iterator<Item = u64> + Send> {
@@ -257,7 +257,7 @@ impl TemporalGraphPart {
 #[cfg(test)]
 mod temporal_graph_partition_test {
     use super::TemporalGraphPart;
-    use crate::{graph::TemporalGraph, Direction};
+    use crate::{tgraph::TGraph, Direction};
     use itertools::Itertools;
     use quickcheck::{Arbitrary, TestResult};
     use rand::Rng;

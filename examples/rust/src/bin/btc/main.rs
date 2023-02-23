@@ -6,7 +6,7 @@ use std::thread::JoinHandle;
 use std::{env, thread};
 
 use chrono::{DateTime, Utc};
-use docbrown_core::graph::TemporalGraph;
+use docbrown_core::tgraph::TGraph;
 use docbrown_core::utils;
 use docbrown_core::{Direction, Prop};
 use docbrown_db::loaders::csv::CsvLoader;

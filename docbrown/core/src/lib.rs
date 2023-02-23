@@ -4,7 +4,7 @@ extern crate quickcheck_macros;
 
 mod adj;
 mod bitset;
-pub mod graph;
+pub mod tgraph;
 pub mod lsm;
 mod misc;
 mod props;
