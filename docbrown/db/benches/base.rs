@@ -75,7 +75,7 @@ pub fn ingestion(c: &mut Criterion) {
     let mut index_sample = || indexes.next().unwrap();
     let mut time_sample = || times.next().unwrap();
 
-    let mut group = c.benchmark_group("additions");
+    let mut group = c.benchmark_group("ingestion");
     group.throughput(Throughput::Elements(1));
 
     // Creates a graph with 50k random edges -> 100k random vertices
