@@ -125,12 +125,12 @@ pub fn ingestion(c: &mut Criterion) {
 }
 
 pub fn analysis(c: &mut Criterion) {
-    let mut g = c.benchmark_group("analysis");
+    let mut group = c.benchmark_group("analysis");
     let lotr = data::lotr().unwrap();
     let mut graph = GraphDB::new(4);
     load_csv(&mut graph, &lotr, 0, 1, Some(2));
-    g.bench_function("edges_len", |b| b.iter(|| graph.edges_len()));
-    g.finish();
+    group.bench_function("edges_len", |b| b.iter(|| graph.edges_len()));
+    group.finish();
 }
 
 criterion_group!(benches, ingestion, analysis);
