@@ -5,8 +5,8 @@ use std::sync::Arc;
 
 pub struct WindowedGraph {
     gdb: Arc<GraphDB>,
-    t_start: i64,
-    t_end: i64,
+    pub t_start: i64,
+    pub t_end: i64,
 }
 
 impl WindowedGraph {
@@ -29,8 +29,8 @@ impl WindowedGraph {
 
 #[cfg(test)]
 mod views_test {
-    use crate::graphdb::GraphDB;
     use super::WindowedGraph;
+    use crate::graphdb::GraphDB;
 
     #[test]
     fn get_vertex_ids() {

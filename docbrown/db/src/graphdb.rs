@@ -8,7 +8,7 @@ use docbrown_core::{
     utils, Direction, Prop,
 };
 
-use crate::views::WindowedGraph;
+use crate::graph_window::WindowedGraph;
 
 use rayon::prelude::{IntoParallelRefIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};

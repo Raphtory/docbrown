@@ -1,5 +1,6 @@
-pub mod graph;
 pub mod wrappers;
+pub mod graph;
+pub mod graph_window;
 
 use pyo3::prelude::*;
 

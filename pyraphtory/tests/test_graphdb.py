@@ -1,11 +1,11 @@
 import sys
 import pyraphtory
-from pyraphtory import GraphDB
+from pyraphtory import Graph
 from pyraphtory import Direction
 
 
 def create_graph(num_shards):
-    g = GraphDB(num_shards)
+    g = Graph(num_shards)
 
     edges = [
         (1, 2, 1),
@@ -135,10 +135,19 @@ def test_graph_neighbours_window_t():
     assert neighbours_w_t == [[1, 0, 2, True], [0, 2, 7, True]]
 
 
-def test_graph_vertices():
+def test_graph_vertex_ids():
     g = create_graph(3)
 
-    vs = [v for v in g.vertices()]
+    vs = [v for v in g.vertex_ids()]
     vs.sort()
 
     assert vs == [1, 2, 3]
+
+
+def test_windowed_graph_vertex_ids():
+    g = create_graph(3)
+
+    vs = [v for v in g.window(-1, 1).vertex_ids()]
+    vs.sort()
+
+    assert vs == [1, 2]

@@ -11,6 +11,8 @@ use crate::wrappers::Prop;
 use crate::wrappers::TEdge;
 use crate::wrappers::VertexIterator;
 
+use crate::graph_window::WindowedGraph;
+
 #[pyclass]
 pub struct Graph {
     pub(crate) graph: graphdb::GraphDB,
@@ -23,6 +25,10 @@ impl Graph {
         Self {
             graph: graphdb::GraphDB::new(nr_shards),
         }
+    }
+
+    pub fn window(&self, t_start: i64, t_end: i64) -> WindowedGraph {
+        WindowedGraph::new(self, t_start, t_end)
     }
 
     #[staticmethod]
