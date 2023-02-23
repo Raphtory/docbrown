@@ -95,28 +95,28 @@ pub fn ingestion(c: &mut Criterion) {
     group.bench_function("existing vertex varying time", |b: &mut Bencher| {
         b.iter_batched_ref(
             || (bootstrap_graph(), time_sample()),
-            |(g, t): &mut (GraphDB, i64)| g.add_vertex(0, t.clone(), &vec![]),
+            |(g, t): &mut (GraphDB, i64)| g.add_vertex(0, *t, &vec![]),
             BatchSize::SmallInput,
         )
     });
     group.bench_function("new vertex constant time", |b: &mut Bencher| {
         b.iter_batched_ref(
             || (bootstrap_graph(), index_sample()),
-            |(g, v): &mut (GraphDB, u64)| g.add_vertex(v.clone(), 0, &vec![]),
+            |(g, v): &mut (GraphDB, u64)| g.add_vertex(*v, 0, &vec![]),
             BatchSize::SmallInput,
         )
     });
     group.bench_function("existing edge varying time", |b: &mut Bencher| {
         b.iter_batched_ref(
             || (bootstrap_graph(), time_sample()),
-            |(g, t)| g.add_edge(0, 0, t.clone(), &vec![]),
+            |(g, t)| g.add_edge(0, 0, *t, &vec![]),
             BatchSize::SmallInput,
         )
     });
     group.bench_function("new edge constant time", |b: &mut Bencher| {
         b.iter_batched_ref(
             || (bootstrap_graph(), index_sample(), index_sample()),
-            |(g, s, d)| g.add_edge(s.clone(), d.clone(), 0, &vec![]),
+            |(g, s, d)| g.add_edge(*s, *d, 0, &vec![]),
             BatchSize::SmallInput,
         )
     });
