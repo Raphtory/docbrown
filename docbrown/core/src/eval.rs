@@ -3,6 +3,7 @@ use std::{
     hash::Hash,
     ops::{AddAssign, Deref, Index, IndexMut, Range},
     option::Option,
+    sync::Arc,
 };
 
 use dashmap::mapref::{
@@ -17,20 +18,29 @@ use crate::{
 };
 
 pub(crate) trait Eval {
-    fn eval<A, MAP, ACCF>(
-        &self,
-        window: Range<i64>,
-        // prev_state: &mut HashMap<u64, A>,
-        f: MAP,
-        accf: ACCF,
-    ) where
-        MAP: Fn(EvalVertexView<'_, Self>) -> Vec<Acc<u64, A>>,
-        ACCF: Fn(&mut A, A),
-        A: Send + Default;
-    // K: Eq + std::hash::Hash;
+    fn eval<'a, FMAP, PRED>(&'a self, window: Range<i64>, f: FMAP, having: PRED)
+    where
+        FMAP: Fn(EvalVertexView<'a, Self>) -> Vec<VertexRef>,
+        PRED: Fn(&EvalVertexView<'a, Self>) -> bool,
+        Self: Sized + 'a;
+}
+pub(crate) struct VertexRef(usize);
+
+impl VertexRef {
+    fn pid(&self) -> usize {
+        self.0
+    }
 }
 
-struct Accumulator<K, A, F> {
+enum AccEntry<'a, K, A, F> {
+    MutAcc(RefMut<'a, K, A>, F),
+    EntryAcc(Entry<'a, K, A>, F),
+}
+
+// struct PairAcc<A>{current: A, prev:A}
+
+#[derive(Clone)]
+struct Accumulator<K: std::cmp::Eq + std::hash::Hash, A, F> {
     state: dashmap::DashMap<K, A>,
     acc: F,
 }
@@ -47,36 +57,49 @@ where
         }
     }
 
-    fn read<'a>(&'a self, k: &K) -> Option<AccumulatorEntry<'a, K, A>> {
-        self.state.get(k).map(|r| AccumulatorEntry(r))
-    }
-
-    fn write<'a>(&'a self, k: &K) -> Option<MutAccumulatorEntry<'a, K, A, F>> {
-        self.state
-            .get_mut(&k)
-            .map(|r| MutAccumulatorEntry(r, self.acc.clone()))
-    }
-
     fn entry<'a>(&'a self, k: K) -> AccEntry<'a, K, A, F> {
         AccEntry::EntryAcc(self.state.entry(k), self.acc.clone())
     }
 }
 
-struct AccumulatorEntry<'a, K, A>(Ref<'a, K, A>);
-struct MutAccumulatorEntry<'a, K, A, F>(RefMut<'a, K, A>, F);
-
-enum AccEntry<'a, K, A, F> {
-    MutAcc(RefMut<'a, K, A>, F),
-    EntryAcc(Entry<'a, K, A>, F),
+impl<K, A, F> Accumulator<K, A, F>
+where
+    F: Fn(&mut A, A) + Clone,
+    K: std::hash::Hash + std::cmp::Eq + Clone,
+    A: Clone,
+{
+    fn as_hash_map(&self) -> HashMap<K, A> {
+        self.state
+            .iter()
+            .map(|e| (e.key().clone(), e.value().clone()))
+            .collect()
+    }
 }
 
-impl<'a, K, A, F> AddAssign<A> for MutAccumulatorEntry<'a, K, A, F>
+// impl of AccEntry contains 2 functions
+// read to extract a clone of the value A
+// read_ref to extract a reference to the value A
+
+impl<'a, K, A, F> AccEntry<'a, K, A, F>
 where
     F: Fn(&mut A, A),
-    K: std::hash::Hash + std::cmp::Eq,
+    K: std::hash::Hash + std::cmp::Eq + Clone,
+    A: Clone,
 {
-    fn add_assign(&mut self, rhs: A) {
-        self.1(&mut self.0, rhs);
+    fn read(&self) -> Option<A> {
+        match self {
+            AccEntry::MutAcc(ref entry, _) => Some(entry.value().clone()),
+            AccEntry::EntryAcc(Entry::Occupied(e), _) => Some(e.get().clone()),
+            _ => None,
+        }
+    }
+
+    fn read_ref(&self) -> Option<&A> {
+        match self {
+            AccEntry::MutAcc(ref entry, _) => Some(entry.value()),
+            AccEntry::EntryAcc(Entry::Occupied(e), _) => Some(e.get()),
+            _ => None,
+        }
     }
 }
 
@@ -106,18 +129,41 @@ where
     }
 }
 
+impl<'a, K, A, F> AddAssign<Option<A>> for AccEntry<'a, K, A, F>
+where
+    F: Fn(&mut A, A),
+    K: std::hash::Hash + std::cmp::Eq + Clone,
+    A: Clone,
+    Self: AddAssign<A>,
+{
+    fn add_assign(&mut self, rhs: Option<A>) {
+        match rhs {
+            Some(rhs0) => {
+                self.add_assign(rhs0);
+            }
+            None => {}
+        }
+    }
+}
+
+impl<'a, K, A, F> AddAssign<AccEntry<'a, K, A, F>> for AccEntry<'a, K, A, F>
+where
+    F: Fn(&mut A, A),
+    K: std::hash::Hash + std::cmp::Eq + Clone,
+    A: Clone,
+    Self: AddAssign<Option<A>>,
+{
+    fn add_assign(&mut self, rhs: AccEntry<'a, K, A, F>) {
+        self.add_assign(rhs.read());
+    }
+}
+
 impl Eval for TemporalGraph {
-    fn eval<A, MAP, ACCF>(
-        &self,
-        window: Range<i64>,
-        // prev_state: &mut HashMap<u64, A>,
-        f: MAP,
-        accf: ACCF,
-    ) where
-        MAP: Fn(EvalVertexView<'_, Self>) -> Vec<Acc<u64, A>>,
-        ACCF: Fn(&mut A, A),
-        A: Send + Default,
-        // K: Eq + std::hash::Hash,
+    fn eval<'a, MAP, PRED>(&'a self, window: Range<i64>, f: MAP, having: PRED)
+    where
+        MAP: Fn(EvalVertexView<'a, Self>) -> Vec<VertexRef>,
+        PRED: Fn(&EvalVertexView<'a, Self>) -> bool,
+        Self: Sized + 'a,
     {
         // we start with all the vertices considered inside the working set
         let mut cur_active_set: WorkingSet<usize> = WorkingSet::All;
@@ -136,46 +182,14 @@ impl Eval for TemporalGraph {
             };
 
             // iterate over the active vertices
-            // accumulate the results
-            // remove the vertex id from active_set if it is not needed anymore
             for v_view in iter {
-                let pid = v_view.pid;
                 let eval_v_view = EvalVertexView { vv: v_view };
-                let accs = f(eval_v_view);
-                // for acc in accs {
-                //     match acc {
-                //         Acc::Done(_) => {
-                //             // done with this vertex
-                //             if !next_active_set.contains(&pid) {
-                //                 next_active_set.remove(&pid);
-                //             }
-                //         }
-                //         Acc::Value(k, v) => {
-                //             // update the accumulator
-                //             prev_state
-                //                 .entry(k)
-                //                 .and_modify(|prev| accf(prev, &v))
-                //                 .or_insert_with(|| v);
-
-                //             // done with this vertex
-                //             if !next_active_set.contains(&pid) {
-                //                 next_active_set.remove(&pid);
-                //             }
-                //         }
-                //         Acc::Keep(_) => {
-                //             next_active_set.insert(pid);
-                //         }
-                //         Acc::ValueKeep(k, v) => {
-                //             // update the accumulator
-                //             prev_state
-                //                 .entry(k)
-                //                 .and_modify(|prev| accf(prev, &v))
-                //                 .or_insert_with(|| v);
-
-                //             next_active_set.insert(pid);
-                //         }
-                //     }
-                // }
+                if having(&eval_v_view) {
+                    let next_vertices = f(eval_v_view);
+                    for next_vertex in next_vertices {
+                        next_active_set.insert(next_vertex.pid());
+                    }
+                }
             }
 
             cur_active_set = WorkingSet::Set(next_active_set);
@@ -193,23 +207,25 @@ pub(crate) struct EvalVertexView<'a, G> {
 // here we implement the Fn trait for the EvalVertexView to return Option<AccumulatorEntry>
 
 impl<'a> EvalVertexView<'a, TemporalGraph> {
-    fn get<A, F>(&self, acc: &'a Accumulator<u64, A, F>) -> Option<AccumulatorEntry<'a, u64, A>>
+    fn get<A, F>(&self, acc: &'a Accumulator<u64, A, F>) -> AccEntry<'a, u64, A, F>
     where
         F: Fn(&mut A, A) + Clone,
     {
         let id = self.vv.global_id();
-        acc.read(&id)
+        acc.entry(id)
     }
 
-    fn get_mut<A, F>(
-        &self,
-        acc: &'a Accumulator<u64, A, F>,
-    ) -> Option<MutAccumulatorEntry<'a, u64, A, F>>
-    where
-        F: Fn(&mut A, A) + Clone,
-    {
-        let id = self.vv.global_id();
-        acc.write(&id)
+
+    // fn get_prev<A, F>(&self, acc: &'a Accumulator<u64, A, F>) -> Option<A>
+    // where
+    //     F: Fn(&mut A, A) + Clone,
+    // {
+    //     let id = self.vv.global_id();
+    //     acc.entry(id)
+    // }
+
+    fn as_vertex_ref(&self) -> VertexRef {
+        VertexRef(self.vv.pid)
     }
 }
 
@@ -313,24 +329,46 @@ mod eval_test {
         // initial step where we init every vertex to it's own ID
         g.eval(
             0..3,
-            // &mut state,
-            move |vertex| {
+            |vertex| {
                 let gid = vertex.vv.global_id();
 
-                let mut bla = vertex.get_mut(&min_cc_id).unwrap();
-                bla += gid;
-                vec![Acc::Value(vertex.vv.global_id(), vertex.vv.global_id())]
+                let mut min_acc = vertex.get(&min_cc_id);
+                min_acc += gid;
+                vec![] // nothing to propagate at this step
             },
-            |c1, c2| {
-                *c1 = u64::min(*c1, c2); // not really needed but for completeness
-            },
+            |_| true,
         );
 
-        // assert_eq!(
-        //     state,
-        //     HashMap::from_iter(vec![(1, 1), (2, 2), (3, 3), (4, 4)])
-        // );
+        let state = &min_cc_id.as_hash_map();
+
+        assert_eq!(
+            state,
+            &HashMap::from_iter(vec![(1, 1), (2, 2), (3, 3), (4, 4)])
+        );
 
         // second step where we check the state of our neighbours and set ourselves to the min
+        // we stop when the state of the vertex does not change
+        g.eval(
+            0..3,
+            |vertex| {
+                let mut out = vec![];
+                for neighbour in vertex.neighbours(crate::Direction::OUT) {
+                    let mut n_min_acc = neighbour.get(&min_cc_id);
+                    let v_min_acc = vertex.get(&min_cc_id);
+                    n_min_acc += v_min_acc;
+                    out.push(neighbour.as_vertex_ref());
+                }
+
+                out
+            },
+            |v| {
+                let min_acc = v.get(&min_cc_id);
+                let prev_min_acc = v.get_prev(&min_cc_id);
+
+                let value = min_acc.read();
+                let prev_value = prev_min_acc.read();
+                value != prev_value
+            },
+        )
     }
 }
