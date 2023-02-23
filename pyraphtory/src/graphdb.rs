@@ -163,8 +163,8 @@ impl GraphDB {
 
     pub fn add_vertex(&self, v: u64, t: i64, props: HashMap<String, Prop>) {
         self.graphdb.add_vertex(
-            v,
             t,
+            v,
             &props
                 .into_iter()
                 .map(|(key, value)| (key, value.convert()))
@@ -174,9 +174,9 @@ impl GraphDB {
 
     pub fn add_edge(&self, src: u64, dst: u64, t: i64, props: HashMap<String, Prop>) {
         self.graphdb.add_edge(
+            t,
             src,
             dst,
-            t,
             &props
                 .into_iter()
                 .map(|f| (f.0.clone(), f.1.convert()))

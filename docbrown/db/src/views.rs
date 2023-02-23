@@ -12,20 +12,23 @@
 //     window: (i64, i64), // fancy window stuff could be here
 // }
 
-use std::{ops::Range, sync::Arc};
-
 use crate::graphdb::GraphDB;
+use docbrown_core::tpartition::TVertex;
+
+use std::{ops::Range, sync::Arc};
 
 pub struct WindowedGraph {
     gdb: Arc<GraphDB>,
-    window: Range<i64>,
+    t_start: i64,
+    t_end: i64,
 }
 
 impl WindowedGraph {
     pub fn new(gdb: Arc<GraphDB>, t_start: i64, t_end: i64) -> Self {
         WindowedGraph {
             gdb,
-            window: t_start..t_end,
+            t_start,
+            t_end,
         }
     }
 
@@ -33,7 +36,40 @@ impl WindowedGraph {
         println!("Hello world!")
     }
 
-    pub fn vertices() {
-        
+    pub fn vertex_ids(&self) -> Box<dyn Iterator<Item = u64> + Send> {
+        self.gdb.vertex_ids_window(self.t_start, self.t_end)
+    }
+
+    pub fn vertices(&self) -> Box<dyn Iterator<Item = TVertex> + Send> {
+        self.gdb.vertices_window(self.t_start, self.t_end)
+    }
+}
+
+#[cfg(test)]
+mod views_test {
+    use crate::graphdb::GraphDB;
+
+    use super::WindowedGraph;
+
+    #[test]
+    fn get_vertices() {
+        let vs = vec![
+            (1, 1, 2),
+            (2, 1, 3),
+            (-1, 2, 1),
+            (0, 1, 1),
+            (7, 3, 2),
+            (1, 1, 1),
+        ];
+
+        let g = GraphDB::new(2);
+
+        for (t, src, dst) in &vs {
+            g.add_edge(*t, *src, *dst, &vec![]);
+        }
+
+        let wg = WindowedGraph::new(g.into(), 0, 7);
+
+        // assert_eq!(wg.ver().collect(), [])
     }
 }

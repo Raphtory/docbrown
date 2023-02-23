@@ -54,19 +54,19 @@ impl TemporalGraph {
         self.logical_to_physical.contains_key(&v)
     }
 
-    pub(crate) fn contains_vertex_window(&self, w: &Range<i64>, v: u64) -> bool {
+    pub(crate) fn contains_vertex_window(&self, r: &Range<i64>, v: u64) -> bool {
         if let Some(v_id) = self.logical_to_physical.get(&v) {
-            self.index.range(w.clone()).any(|(_, bs)| bs.contains(v_id))
+            self.index.range(r.clone()).any(|(_, bs)| bs.contains(v_id))
         } else {
             false
         }
     }
 
-    pub(crate) fn add_vertex(&mut self, v: u64, t: i64) {
-        self.add_vertex_with_props(v, t, &vec![])
+    pub(crate) fn add_vertex(&mut self, t: i64, v: u64) {
+        self.add_vertex_with_props(t, v, &vec![])
     }
 
-    pub(crate) fn add_vertex_with_props(&mut self, v: u64, t: i64, props: &Vec<(String, Prop)>) {
+    pub(crate) fn add_vertex_with_props(&mut self, t: i64, v: u64, props: &Vec<(String, Prop)>) {
         let index = match self.logical_to_physical.get(&v) {
             None => {
                 let physical_id: usize = self.adj_lists.len();
@@ -93,29 +93,29 @@ impl TemporalGraph {
             }
         };
 
-        self.props.upsert_vertex_props(index, t, props);
+        self.props.upsert_vertex_props(t, index, props);
     }
 
-    pub(crate) fn add_edge(&mut self, src: u64, dst: u64, t: i64) {
-        self.add_edge_with_props(src, dst, t, &vec![])
+    pub(crate) fn add_edge(&mut self, t: i64, src: u64, dst: u64) {
+        self.add_edge_with_props(t, src, dst, &vec![])
     }
 
     pub(crate) fn add_edge_with_props(
         &mut self,
+        t: i64,
         src: u64,
         dst: u64,
-        t: i64,
         props: &Vec<(String, Prop)>,
     ) {
         // mark the times of the vertices at t
-        self.add_vertex(src, t);
-        self.add_vertex(dst, t);
+        self.add_vertex(t, src);
+        self.add_vertex(t, dst);
 
         let src_pid = self.logical_to_physical[&src];
         let dst_pid = self.logical_to_physical[&dst];
 
-        let src_edge_meta_id = self.link_outbound_edge(src, t, src_pid, dst_pid, false);
-        let dst_edge_meta_id = self.link_inbound_edge(dst, t, src_pid, dst_pid, false);
+        let src_edge_meta_id = self.link_outbound_edge(t, src, src_pid, dst_pid, false);
+        let dst_edge_meta_id = self.link_inbound_edge(t, dst, src_pid, dst_pid, false);
 
         if src_edge_meta_id != dst_edge_meta_id {
             panic!(
@@ -123,39 +123,39 @@ impl TemporalGraph {
             );
         }
 
-        self.props.upsert_edge_props(src_edge_meta_id, t, props)
+        self.props.upsert_edge_props(t, src_edge_meta_id, props)
     }
 
     pub(crate) fn add_edge_remote_out(
         &mut self,
+        t: i64,
         src: u64, // we are on the source shard
         dst: u64,
-        t: i64,
         props: &Vec<(String, Prop)>,
     ) {
-        self.add_vertex(src, t);
+        self.add_vertex(t, src);
         let src_pid = self.logical_to_physical[&src];
         let src_edge_meta_id =
-            self.link_outbound_edge(src, t, src_pid, dst.try_into().unwrap(), true);
+            self.link_outbound_edge(t, src, src_pid, dst.try_into().unwrap(), true);
 
-        self.props.upsert_edge_props(src_edge_meta_id, t, props)
+        self.props.upsert_edge_props(t, src_edge_meta_id, props)
     }
 
     pub(crate) fn add_edge_remote_into(
         &mut self,
+        t: i64,
         src: u64,
         dst: u64, // we are on the destination shard
-        t: i64,
         props: &Vec<(String, Prop)>,
     ) {
-        self.add_vertex(dst, t);
+        self.add_vertex(t, dst);
 
         let dst_pid = self.logical_to_physical[&dst];
 
         let dst_edge_meta_id =
-            self.link_inbound_edge(dst, t, src.try_into().unwrap(), dst_pid, true);
+            self.link_inbound_edge(t, dst, src.try_into().unwrap(), dst_pid, true);
 
-        self.props.upsert_edge_props(dst_edge_meta_id, t, props)
+        self.props.upsert_edge_props(t, dst_edge_meta_id, props)
     }
 
     pub(crate) fn degree(&self, v: u64, d: Direction) -> usize {
@@ -226,7 +226,7 @@ impl TemporalGraph {
     pub(crate) fn vertex_ids_window(
         &self,
         r: Range<i64>,
-    ) -> Box<dyn Iterator<Item = VertexView<'_, Self>> + '_> {
+    ) -> Box<dyn Iterator<Item = u64> + Send + '_> {
         Box::new(
             self.index
                 .range(r.clone())
@@ -234,18 +234,8 @@ impl TemporalGraph {
                 .kmerge()
                 .dedup()
                 .map(move |pid| match self.adj_lists[pid] {
-                    Adj::Solo(lid) => VertexView {
-                        g_id: lid,
-                        pid,
-                        g: self,
-                        w: Some(r.clone()),
-                    },
-                    Adj::List { logical, .. } => VertexView {
-                        g_id: logical,
-                        pid,
-                        g: self,
-                        w: Some(r.clone()),
-                    },
+                    Adj::Solo(lid) => lid,
+                    Adj::List { logical, .. } => logical,
                 }),
         )
     }
@@ -267,28 +257,30 @@ impl TemporalGraph {
     pub(crate) fn vertices_window(
         &self,
         r: Range<i64>,
-    ) -> Box<dyn Iterator<Item = VertexView<'_, Self>> + '_> {
-        let iter = self
+    ) -> Box<dyn Iterator<Item = VertexView<'_, Self>> + Send + '_> {
+        let unique_vids = self
             .index
             .range(r.clone())
             .map(|(_, vs)| vs.iter())
             .kmerge()
-            .dedup()
-            .map(move |pid| match self.adj_lists[pid] {
-                Adj::Solo(lid) => VertexView {
-                    g_id: lid,
-                    pid,
-                    g: self,
-                    w: Some(r.clone()),
-                },
-                Adj::List { logical, .. } => VertexView {
-                    g_id: logical,
-                    pid,
-                    g: self,
-                    w: Some(r.clone()),
-                },
-            });
-        Box::new(iter)
+            .dedup();
+
+        let vs = unique_vids.map(move |pid| match self.adj_lists[pid] {
+            Adj::Solo(lid) => VertexView {
+                g_id: lid,
+                pid,
+                g: self,
+                w: Some(r.clone()),
+            },
+            Adj::List { logical, .. } => VertexView {
+                g_id: logical,
+                pid,
+                g: self,
+                w: Some(r.clone()),
+            },
+        });
+
+        Box::new(vs)
     }
 
     pub(crate) fn neighbours(
@@ -405,8 +397,8 @@ impl TemporalGraph {
 impl TemporalGraph {
     fn link_inbound_edge(
         &mut self,
-        dst_gid: u64,
         t: i64,
+        dst_gid: u64,
         src: usize, // may or may not be physical id depending on remote_edge flag
         dst_pid: usize,
         remote_edge: bool,
@@ -438,8 +430,8 @@ impl TemporalGraph {
 
     fn link_outbound_edge(
         &mut self,
-        src_gid: u64,
         t: i64,
+        src_gid: u64,
         src_pid: usize,
         dst: usize, // may or may not pe physical id depending on remote_edge flag
         remote_edge: bool,
@@ -501,7 +493,7 @@ impl TemporalGraph {
     fn neighbours_iter_window(
         &self,
         vid: usize,
-        window: &Range<i64>,
+        r: &Range<i64>,
         d: Direction,
     ) -> Box<dyn Iterator<Item = (usize, AdjEdge)> + '_> {
         match &self.adj_lists[vid] {
@@ -514,19 +506,19 @@ impl TemporalGraph {
             } => {
                 match d {
                     Direction::OUT => Box::new(itertools::chain!(
-                        out.iter_window(window),
-                        remote_out.iter_window(window)
+                        out.iter_window(r),
+                        remote_out.iter_window(r)
                     )),
                     Direction::IN => Box::new(itertools::chain!(
-                        into.iter_window(window),
-                        remote_into.iter_window(window),
+                        into.iter_window(r),
+                        remote_into.iter_window(r),
                     )),
                     // This piece of code is only for the sake of symmetry. Not really used.
                     _ => Box::new(itertools::chain!(
-                        out.iter_window(window),
-                        into.iter_window(window),
-                        remote_out.iter_window(window),
-                        remote_into.iter_window(window)
+                        out.iter_window(r),
+                        into.iter_window(r),
+                        remote_out.iter_window(r),
+                        remote_into.iter_window(r)
                     )),
                 }
             }
@@ -697,7 +689,7 @@ mod graph_test {
     fn add_vertex_at_time_t1() {
         let mut g = TemporalGraph::default();
 
-        g.add_vertex(9, 1);
+        g.add_vertex(1, 9);
 
         assert!(g.contains_vertex(9));
         assert!(g.contains_vertex_window(&(1..15), 9));
@@ -714,7 +706,7 @@ mod graph_test {
 
         let v_id = 1;
         let ts = 1;
-        g.add_vertex_with_props(v_id, ts, &vec![("type".into(), Prop::Str("wallet".into()))]);
+        g.add_vertex_with_props(ts, v_id, &vec![("type".into(), Prop::Str("wallet".into()))]);
 
         assert!(g.contains_vertex(v_id));
         assert!(g.contains_vertex_window(&(1..15), v_id));
@@ -778,8 +770,8 @@ mod graph_test {
         );
 
         g.add_vertex_with_props(
-            1,
             2,
+            1,
             &vec![
                 ("type".into(), Prop::Str("wallet".into())),
                 ("active".into(), Prop::U32(1)),
@@ -787,8 +779,8 @@ mod graph_test {
         );
 
         g.add_vertex_with_props(
-            1,
             3,
+            1,
             &vec![
                 ("type".into(), Prop::Str("wallet".into())),
                 ("active".into(), Prop::U32(2)),
@@ -829,11 +821,11 @@ mod graph_test {
             ],
         );
 
-        g.add_vertex_with_props(1, 2, &vec![("label".into(), Prop::I32(12345))]);
+        g.add_vertex_with_props(2, 1, &vec![("label".into(), Prop::I32(12345))]);
 
         g.add_vertex_with_props(
-            1,
             3,
+            1,
             &vec![
                 ("origin".into(), Prop::F32(0.1)),
                 ("active".into(), Prop::U32(2)),
@@ -898,8 +890,8 @@ mod graph_test {
     fn add_vertex_at_time_t1_t2() {
         let mut g = TemporalGraph::default();
 
-        g.add_vertex(9, 1);
-        g.add_vertex(1, 2);
+        g.add_vertex(1, 9);
+        g.add_vertex(2, 1);
 
         let actual: Vec<u64> = g.vertices_window(0..2).map(|v| v.global_id()).collect();
         assert_eq!(actual, vec![9]);
@@ -913,15 +905,15 @@ mod graph_test {
     fn add_edge_at_time_t1() {
         let mut g = TemporalGraph::default();
 
-        g.add_vertex(9, 1);
-        g.add_vertex(1, 2);
+        g.add_vertex(1, 9);
+        g.add_vertex(2, 1);
 
         // 9 and 1 are not visible at time 3
         let actual: Vec<u64> = g.vertices_window(3..10).map(|v| v.global_id()).collect();
         let expected: Vec<u64> = vec![];
         assert_eq!(actual, expected);
 
-        g.add_edge(9, 1, 3);
+        g.add_edge(3, 9, 1);
 
         // 9 and 1 are now visible at time 3
         let actual: Vec<u64> = g.vertices_window(3..10).map(|v| v.global_id()).collect();
@@ -954,14 +946,14 @@ mod graph_test {
     fn add_edge_at_time_t1_t2_t3() {
         let mut g = TemporalGraph::default();
 
-        g.add_vertex(9, 1);
-        g.add_vertex(1, 2);
+        g.add_vertex(1, 9);
+        g.add_vertex(2, 1);
 
         // 9 and 1 are not visible at time 3
         let actual: Vec<u64> = g.vertices_window(3..10).map(|v| v.global_id()).collect();
         assert_eq!(actual, vec![]);
 
-        g.add_edge(9, 1, 3);
+        g.add_edge(3, 9, 1);
 
         // 9 and 1 are now visible at time 3
         let actual: Vec<u64> = g.vertices_window(3..10).map(|v| v.global_id()).collect();
@@ -994,15 +986,15 @@ mod graph_test {
     fn add_edge_at_time_t1_t2_t3_overwrite() {
         let mut g = TemporalGraph::default();
 
-        g.add_vertex(9, 1);
-        g.add_vertex(1, 2);
+        g.add_vertex(1, 9);
+        g.add_vertex(2, 1);
 
         // 9 and 1 are not visible at time 3
         let actual: Vec<u64> = g.vertices_window(3..10).map(|v| v.global_id()).collect();
         assert_eq!(actual, vec![]);
 
-        g.add_edge(9, 1, 3);
-        g.add_edge(9, 1, 12); // add the same edge again at different time
+        g.add_edge(3, 9, 1);
+        g.add_edge(12, 9, 1); // add the same edge again at different time
 
         // 9 and 1 are now visible at time 3
         let actual: Vec<u64> = g.vertices_window(3..10).map(|v| v.global_id()).collect();
@@ -1054,14 +1046,14 @@ mod graph_test {
     fn add_edges_at_t1t2t3_check_times() {
         let mut g = TemporalGraph::default();
 
-        g.add_vertex(11, 1);
-        g.add_vertex(22, 2);
-        g.add_vertex(33, 3);
-        g.add_vertex(44, 4);
+        g.add_vertex(1, 11);
+        g.add_vertex(2, 22);
+        g.add_vertex(3, 33);
+        g.add_vertex(4, 44);
 
-        g.add_edge(11, 22, 4);
-        g.add_edge(22, 33, 5);
-        g.add_edge(11, 44, 6);
+        g.add_edge(4, 11, 22);
+        g.add_edge(5, 22, 33);
+        g.add_edge(6, 11, 44);
 
         let actual = g
             .vertices_window(1..4)
@@ -1121,11 +1113,11 @@ mod graph_test {
     fn add_the_same_edge_multiple_times() {
         let mut g = TemporalGraph::default();
 
-        g.add_vertex(11, 1);
-        g.add_vertex(22, 2);
+        g.add_vertex(1, 11);
+        g.add_vertex(2, 22);
 
-        g.add_edge(11, 22, 4);
-        g.add_edge(11, 22, 4);
+        g.add_edge(4, 11, 22);
+        g.add_edge(4, 11, 22);
 
         let actual = g
             .neighbours_window(11, &(1..5), Direction::OUT)
@@ -1138,10 +1130,10 @@ mod graph_test {
     fn add_edge_with_1_property() {
         let mut g = TemporalGraph::default();
 
-        g.add_vertex(11, 1);
-        g.add_vertex(22, 2);
+        g.add_vertex(1, 11);
+        g.add_vertex(2, 22);
 
-        g.add_edge_with_props(11, 22, 4, &vec![("weight".into(), Prop::U32(12))]);
+        g.add_edge_with_props(4, 11, 22, &vec![("weight".into(), Prop::U32(12))]);
 
         let edge_weights = g
             .neighbours(11, Direction::OUT)
@@ -1164,13 +1156,13 @@ mod graph_test {
     fn add_edge_with_multiple_properties() {
         let mut g = TemporalGraph::default();
 
-        g.add_vertex(11, 1);
-        g.add_vertex(22, 2);
+        g.add_vertex(1, 11);
+        g.add_vertex(2, 22);
 
         g.add_edge_with_props(
+            4,
             11,
             22,
-            4,
             &vec![
                 ("weight".into(), Prop::U32(12)),
                 ("amount".into(), Prop::F64(12.34)),
@@ -1213,12 +1205,12 @@ mod graph_test {
     fn add_edge_with_1_property_different_times() {
         let mut g = TemporalGraph::default();
 
-        g.add_vertex(11, 1);
-        g.add_vertex(22, 2);
+        g.add_vertex(1, 11);
+        g.add_vertex(2, 22);
 
-        g.add_edge_with_props(11, 22, 4, &vec![("amount".into(), Prop::U32(12))]);
-        g.add_edge_with_props(11, 22, 7, &vec![("amount".into(), Prop::U32(24))]);
-        g.add_edge_with_props(11, 22, 19, &vec![("amount".into(), Prop::U32(48))]);
+        g.add_edge_with_props(4, 11, 22, &vec![("amount".into(), Prop::U32(12))]);
+        g.add_edge_with_props(7, 11, 22, &vec![("amount".into(), Prop::U32(24))]);
+        g.add_edge_with_props(19, 11, 22, &vec![("amount".into(), Prop::U32(48))]);
 
         let edge_weights = g
             .neighbours_window(11, &(4..8), Direction::OUT)
@@ -1257,13 +1249,13 @@ mod graph_test {
     fn add_edges_with_multiple_properties_at_different_times_window() {
         let mut g = TemporalGraph::default();
 
-        g.add_vertex(11, 1);
-        g.add_vertex(22, 2);
+        g.add_vertex(1, 11);
+        g.add_vertex(2, 22);
 
         g.add_edge_with_props(
+            2,
             11,
             22,
-            2,
             &vec![
                 ("amount".into(), Prop::F64(12.34)),
                 ("label".into(), Prop::Str("blerg".into())),
@@ -1271,9 +1263,9 @@ mod graph_test {
         );
 
         g.add_edge_with_props(
+            3,
             11,
             22,
-            3,
             &vec![
                 ("weight".into(), Prop::U32(12)),
                 ("label".into(), Prop::Str("blerg".into())),
@@ -1281,16 +1273,16 @@ mod graph_test {
         );
 
         g.add_edge_with_props(
+            4,
             11,
             22,
-            4,
             &vec![("label".into(), Prop::Str("blerg_again".into()))],
         );
 
         g.add_edge_with_props(
+            5,
             22,
             11,
-            5,
             &vec![
                 ("weight".into(), Prop::U32(12)),
                 ("amount".into(), Prop::F64(12.34)),
@@ -1336,12 +1328,12 @@ mod graph_test {
     fn edge_metadata_id_bug() {
         let mut g = TemporalGraph::default();
 
-        let edges: Vec<(u64, u64, i64)> = vec![(1, 2, 1), (3, 4, 2), (5, 4, 3), (1, 4, 4)];
+        let edges: Vec<(i64, u64, u64)> = vec![(1, 1, 2), (2, 3, 4), (3, 5, 4), (4, 1, 4)];
 
-        for (src, dst, t) in edges {
-            g.add_vertex(src, t);
-            g.add_vertex(dst, t);
-            g.add_edge_with_props(src, dst, t, &vec![("amount".into(), Prop::U64(12))]);
+        for (t, src, dst) in edges {
+            g.add_vertex(t, src);
+            g.add_vertex(t, dst);
+            g.add_edge_with_props(t, src, dst, &vec![("amount".into(), Prop::U64(12))]);
         }
     }
 
@@ -1349,14 +1341,14 @@ mod graph_test {
     fn add_multiple_edges_with_1_property_same_time() {
         let mut g = TemporalGraph::default();
 
-        g.add_vertex(11, 1);
-        g.add_vertex(22, 2);
-        g.add_vertex(33, 3);
-        g.add_vertex(44, 4);
+        g.add_vertex(1, 11);
+        g.add_vertex(2, 22);
+        g.add_vertex(3, 33);
+        g.add_vertex(4, 44);
 
-        g.add_edge_with_props(11, 22, 4, &vec![("weight".into(), Prop::F32(1122.0))]);
-        g.add_edge_with_props(11, 33, 4, &vec![("weight".into(), Prop::F32(1133.0))]);
-        g.add_edge_with_props(44, 11, 4, &vec![("weight".into(), Prop::F32(4411.0))]);
+        g.add_edge_with_props(4, 11, 22, &vec![("weight".into(), Prop::F32(1122.0))]);
+        g.add_edge_with_props(4, 11, 33, &vec![("weight".into(), Prop::F32(1133.0))]);
+        g.add_edge_with_props(4, 44, 11, &vec![("weight".into(), Prop::F32(4411.0))]);
 
         let edge_weights_out_11 = g
             .neighbours(11, Direction::OUT)
@@ -1395,15 +1387,15 @@ mod graph_test {
     fn add_edges_with_multiple_properties_at_different_times() {
         let mut g = TemporalGraph::default();
 
-        g.add_vertex(11, 1);
-        g.add_vertex(22, 2);
-        g.add_vertex(33, 3);
-        g.add_vertex(44, 4);
+        g.add_vertex(1, 11);
+        g.add_vertex(2, 22);
+        g.add_vertex(3, 33);
+        g.add_vertex(4, 44);
 
         g.add_edge_with_props(
+            2,
             11,
             22,
-            2,
             &vec![
                 ("amount".into(), Prop::F64(12.34)),
                 ("label".into(), Prop::Str("blerg".into())),
@@ -1411,9 +1403,9 @@ mod graph_test {
         );
 
         g.add_edge_with_props(
+            3,
             22,
             33,
-            3,
             &vec![
                 ("weight".into(), Prop::U32(12)),
                 ("label".into(), Prop::Str("blerg".into())),
@@ -1421,16 +1413,16 @@ mod graph_test {
         );
 
         g.add_edge_with_props(
+            4,
             33,
             44,
-            4,
             &vec![("label".into(), Prop::Str("blerg".into()))],
         );
 
         g.add_edge_with_props(
+            5,
             44,
             11,
-            5,
             &vec![
                 ("weight".into(), Prop::U32(12)),
                 ("amount".into(), Prop::F64(12.34)),
@@ -1489,16 +1481,16 @@ mod graph_test {
         let mut g = TemporalGraph::default();
 
         let triplets = vec![
-            (1, 2, 1, 1),
-            (1, 2, 2, 2),
-            (1, 2, 3, 2),
-            (1, 2, 4, 1),
-            (1, 3, 5, 1),
-            (3, 1, 6, 1),
+            (1, 1, 2, 1),
+            (2, 1, 2, 2),
+            (2, 1, 2, 3),
+            (1, 1, 2, 4),
+            (1, 1, 3, 5),
+            (1, 3, 1, 6),
         ];
 
-        for (src, dst, t, w) in triplets {
-            g.add_edge_with_props(src, dst, t, &vec![("weight".to_string(), Prop::U32(w))]);
+        for (t, src, dst, w) in triplets {
+            g.add_edge_with_props(t, src, dst, &vec![("weight".to_string(), Prop::U32(w))]);
         }
 
         for i in 1..4 {
@@ -1579,9 +1571,9 @@ mod graph_test {
 
                         let dst_id = utils::calculate_hash(&dst);
 
-                        g.add_vertex(src_id, t);
-                        g.add_vertex(dst_id, t);
-                        g.add_edge_with_props(src_id, dst_id, t, &vec![]);
+                        g.add_vertex(t, src_id);
+                        g.add_vertex(t, dst_id);
+                        g.add_edge_with_props(t, src_id, dst_id, &vec![]);
                     }
                 }
             }
@@ -1681,27 +1673,27 @@ mod graph_test {
             let src_shard = utils::get_shard_id_from_global_vid(src, n_shards);
             let dst_shard = utils::get_shard_id_from_global_vid(src, n_shards);
 
-            shards[src_shard].add_vertex(src.into(), t.try_into().unwrap());
-            shards[dst_shard].add_vertex(dst.into(), t.try_into().unwrap());
+            shards[src_shard].add_vertex(t.try_into().unwrap(), src.into());
+            shards[dst_shard].add_vertex(t.try_into().unwrap(), dst.into());
 
             if src_shard == dst_shard {
                 shards[src_shard].add_edge_with_props(
+                    t.try_into().unwrap(),
                     src.into(),
                     dst.into(),
-                    t.try_into().unwrap(),
                     &some_props,
                 );
             } else {
                 shards[src_shard].add_edge_remote_out(
+                    t.try_into().unwrap(),
                     src.into(),
                     dst.into(),
-                    t.try_into().unwrap(),
                     &some_props,
                 );
                 shards[dst_shard].add_edge_remote_into(
+                    t.try_into().unwrap(),
                     src.into(),
                     dst.into(),
-                    t.try_into().unwrap(),
                     &some_props,
                 );
             }
@@ -1718,9 +1710,9 @@ mod graph_test {
     #[test]
     fn check_edges_after_adding_remote() {
         let mut g1 = TemporalGraph::default();
-        g1.add_vertex(11, 1);
+        g1.add_vertex(1, 11);
 
-        g1.add_edge_remote_out(11, 22, 2, &vec![("bla".to_string(), Prop::U32(1))]);
+        g1.add_edge_remote_out(2, 11, 22, &vec![("bla".to_string(), Prop::U32(1))]);
 
         let actual = g1
             .neighbours_window(11, &(1..3), Direction::OUT)

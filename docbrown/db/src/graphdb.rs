@@ -1,5 +1,4 @@
 use std::{
-    collections::btree_map::Range,
     path::{Path, PathBuf},
     sync::Arc,
 };
@@ -9,7 +8,7 @@ use docbrown_core::{
     utils, Direction, Prop,
 };
 
-use crate::{data, views::WindowedGraph};
+use crate::views::WindowedGraph;
 
 use rayon::prelude::{IntoParallelRefIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};
@@ -107,26 +106,26 @@ impl GraphDB {
     pub fn contains_window(&self, v: u64, t_start: i64, t_end: i64) -> bool {
         self.shards
             .iter()
-            .any(|shard| shard.contains_window(v, t_start, t_end))
+            .any(|shard| shard.contains_window(v, t_start..t_end))
     }
 
     // TODO: Probably add vector reference here like add
-    pub fn add_vertex(&self, v: u64, t: i64, props: &Vec<(String, Prop)>) {
+    pub fn add_vertex(&self, t: i64, v: u64, props: &Vec<(String, Prop)>) {
         let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
-        self.shards[shard_id].add_vertex(v, t, &props);
+        self.shards[shard_id].add_vertex(t, v, &props);
     }
 
-    pub fn add_edge(&self, src: u64, dst: u64, t: i64, props: &Vec<(String, Prop)>) {
+    pub fn add_edge(&self, t: i64, src: u64, dst: u64, props: &Vec<(String, Prop)>) {
         let src_shard_id = utils::get_shard_id_from_global_vid(src, self.nr_shards);
         let dst_shard_id = utils::get_shard_id_from_global_vid(dst, self.nr_shards);
 
         if src_shard_id == dst_shard_id {
-            self.shards[src_shard_id].add_edge(src, dst, t, props)
+            self.shards[src_shard_id].add_edge(t, src, dst, props)
         } else {
             // FIXME these are sort of connected, we need to hold both locks for
             // the src partition and dst partition to add a remote edge between both
-            self.shards[src_shard_id].add_edge_remote_out(src, dst, t, props);
-            self.shards[dst_shard_id].add_edge_remote_into(src, dst, t, props);
+            self.shards[src_shard_id].add_edge_remote_out(t, src, dst, props);
+            self.shards[dst_shard_id].add_edge_remote_into(t, src, dst, props);
         }
     }
 
@@ -138,7 +137,7 @@ impl GraphDB {
 
     pub fn degree_window(&self, v: u64, t_start: i64, t_end: i64, d: Direction) -> usize {
         let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
-        let iter = self.shards[shard_id].degree_window(v, t_start, t_end, d);
+        let iter = self.shards[shard_id].degree_window(v, t_start..t_end, d);
         iter
     }
 
@@ -151,11 +150,32 @@ impl GraphDB {
         &self,
         t_start: i64,
         t_end: i64,
-    ) -> Box<dyn Iterator<Item = TVertex> + '_> {
+    ) -> Box<dyn Iterator<Item = u64> + Send> {
+        let shards = self.shards.clone();
         Box::new(
-            self.shards
-                .iter()
-                .map(move |shard| shard.vertex_ids_window(t_start, t_end))
+            shards
+                .into_iter()
+                .map(move |shard| shard.vertex_ids_window(t_start..t_end))
+                .into_iter()
+                .flatten(),
+        )
+    }
+
+    pub fn vertices(&self) -> Box<dyn Iterator<Item = TVertex> + Send> {
+        let shards = self.shards.clone();
+        Box::new(shards.into_iter().flat_map(|shard| shard.vertices()))
+    }
+
+    pub fn vertices_window(
+        &self,
+        t_start: i64,
+        t_end: i64,
+    ) -> Box<dyn Iterator<Item = TVertex> + Send> {
+        let shards = self.shards.clone();
+        Box::new(
+            shards
+                .into_iter()
+                .map(move |shard| shard.vertices_window(t_start..t_end))
                 .into_iter()
                 .flatten(),
         )
@@ -178,7 +198,7 @@ impl GraphDB {
     ) -> Box<dyn Iterator<Item = TEdge>> {
         let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
 
-        let iter = self.shards[shard_id].neighbours_window(v, t_start, t_end, d);
+        let iter = self.shards[shard_id].neighbours_window(v, t_start..t_end, d);
 
         Box::new(iter)
     }
@@ -192,7 +212,7 @@ impl GraphDB {
     ) -> Box<dyn Iterator<Item = TEdge>> {
         let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
 
-        let iter = self.shards[shard_id].neighbours_window_t(v, t_start, t_end, d);
+        let iter = self.shards[shard_id].neighbours_window_t(v, t_start..t_end, d);
 
         Box::new(iter)
     }
@@ -206,16 +226,10 @@ mod db_tests {
     use quickcheck::{quickcheck, TestResult};
     use rand::Rng;
     use std::fs;
-    use std::{path::PathBuf, sync::Arc};
+    use std::sync::Arc;
     use uuid::Uuid;
 
     use super::*;
-
-    #[test]
-    fn get_view() {
-        let g = GraphDB::new(1);
-        g.window(4, 9).say_hello()
-    }
 
     #[test]
     fn cloning_vec() {
@@ -236,23 +250,23 @@ mod db_tests {
     fn add_vertex_grows_graph_len(vs: Vec<(u8, u8)>) {
         let g = GraphDB::new(2);
 
-        let expected_len = vs.iter().map(|(v, _)| v).sorted().dedup().count();
-        for (v, t) in vs {
-            g.add_vertex(v.into(), t.into(), &vec![]);
+        let expected_len = vs.iter().map(|(_, v)| v).sorted().dedup().count();
+        for (t, v) in vs {
+            g.add_vertex(t.into(), v.into(), &vec![]);
         }
 
         assert_eq!(g.len(), expected_len)
     }
 
     #[quickcheck]
-    fn add_edge_grows_graph_edge_len(edges: Vec<(u64, u64, i64)>) {
+    fn add_edge_grows_graph_edge_len(edges: Vec<(i64, u64, u64)>) {
         let nr_shards: usize = 2;
 
         let g = GraphDB::new(nr_shards);
 
         let unique_vertices_count = edges
             .iter()
-            .map(|(src, dst, _)| vec![src, dst])
+            .map(|(_, src, dst)| vec![src, dst])
             .flat_map(|v| v)
             .sorted()
             .dedup()
@@ -260,12 +274,12 @@ mod db_tests {
 
         let unique_edge_count = edges
             .iter()
-            .map(|(src, dst, _)| (src, dst))
+            .map(|(_, src, dst)| (src, dst))
             .unique()
             .count();
 
-        for (src, dst, t) in edges {
-            g.add_edge(src, dst, t, &vec![]);
+        for (t, src, dst) in edges {
+            g.add_edge(t, src, dst, &vec![]);
         }
 
         assert_eq!(g.len(), unique_vertices_count);
@@ -275,18 +289,18 @@ mod db_tests {
     #[test]
     fn graph_save_to_load_from_file() {
         let vs = vec![
-            (1, 2, 1),
-            (1, 3, 2),
-            (2, 1, -1),
-            (1, 1, 0),
-            (3, 2, 7),
+            (1, 1, 2),
+            (2, 1, 3),
+            (-1, 2, 1),
+            (0, 1, 1),
+            (7, 3, 2),
             (1, 1, 1),
         ];
 
         let g = GraphDB::new(2);
 
-        for (src, dst, t) in &vs {
-            g.add_edge(*src, *dst, *t, &vec![]);
+        for (t, src, dst) in &vs {
+            g.add_edge(*t, *src, *dst, &vec![]);
         }
 
         let rand_dir = Uuid::new_v4();
@@ -330,7 +344,7 @@ mod db_tests {
     }
 
     #[quickcheck]
-    fn graph_contains_vertex(vs: Vec<(u64, i64)>) -> TestResult {
+    fn graph_contains_vertex(vs: Vec<(i64, u64)>) -> TestResult {
         if vs.is_empty() {
             return TestResult::discard();
         }
@@ -338,10 +352,10 @@ mod db_tests {
         let g = GraphDB::new(2);
 
         let rand_index = rand::thread_rng().gen_range(0..vs.len());
-        let rand_vertex = vs.get(rand_index).unwrap().0;
+        let rand_vertex = vs.get(rand_index).unwrap().1;
 
-        for (v, t) in vs {
-            g.add_vertex(v.into(), t.into(), &vec![]);
+        for (t, v) in vs {
+            g.add_vertex(t.into(), v.into(), &vec![]);
         }
 
         TestResult::from_bool(g.contains(rand_vertex))
@@ -356,7 +370,7 @@ mod db_tests {
         let g = GraphDB::new(2);
 
         for (t, v) in &vs {
-            g.add_vertex(*v, *t, &vec![]);
+            g.add_vertex(*t, *v, &vec![]);
         }
 
         vs.sort(); // Sorted by time
@@ -372,7 +386,7 @@ mod db_tests {
         let g = GraphDB::new(2);
 
         for (t, v) in &vs {
-            g.add_vertex(*v, *t, &vec![]);
+            g.add_vertex(*t, *v, &vec![]);
         }
 
         let start = vs.get(rand_start_index).unwrap().0;
@@ -403,18 +417,18 @@ mod db_tests {
     #[test]
     fn graph_degree() {
         let vs = vec![
-            (1, 2, 1),
-            (1, 3, 2),
-            (2, 1, -1),
-            (1, 1, 0),
-            (3, 2, 7),
+            (1, 1, 2),
+            (2, 1, 3),
+            (-1, 2, 1),
+            (0, 1, 1),
+            (7, 3, 2),
             (1, 1, 1),
         ];
 
         let g = GraphDB::new(2);
 
-        for (src, dst, t) in &vs {
-            g.add_edge(*src, *dst, *t, &vec![]);
+        for (t, src, dst) in &vs {
+            g.add_edge(*t, *src, *dst, &vec![]);
         }
 
         let expected = vec![(2, 3, 3), (2, 1, 2), (1, 1, 2)];
@@ -433,8 +447,8 @@ mod db_tests {
         // Check results from multiple graphs with different number of shards
         let g = GraphDB::new(1);
 
-        for (src, dst, t) in &vs {
-            g.add_edge(*src, *dst, *t, &vec![]);
+        for (t, src, dst) in &vs {
+            g.add_edge(*t, *src, *dst, &vec![]);
         }
 
         let expected = (1..=3)
@@ -453,18 +467,18 @@ mod db_tests {
     #[test]
     fn graph_degree_window() {
         let vs = vec![
-            (1, 2, 1),
-            (1, 3, 2),
-            (2, 1, -1),
-            (1, 1, 0),
-            (3, 2, 7),
+            (1, 1, 2),
+            (2, 1, 3),
+            (-1, 2, 1),
+            (0, 1, 1),
+            (7, 3, 2),
             (1, 1, 1),
         ];
 
         let g = GraphDB::new(1);
 
-        for (src, dst, t) in &vs {
-            g.add_edge(*src, *dst, *t, &vec![]);
+        for (t, src, dst) in &vs {
+            g.add_edge(*t, *src, *dst, &vec![]);
         }
 
         let expected = vec![(2, 3, 1), (1, 0, 0), (1, 0, 0)];
@@ -483,8 +497,8 @@ mod db_tests {
         // Check results from multiple graphs with different number of shards
         let g = GraphDB::new(3);
 
-        for (src, dst, t) in &vs {
-            g.add_edge(*src, *dst, *t, &vec![]);
+        for (t, src, dst) in &vs {
+            g.add_edge(*t, *src, *dst, &vec![]);
         }
 
         let expected = (1..=3)
@@ -503,18 +517,18 @@ mod db_tests {
     #[test]
     fn graph_vertices() {
         let vs = vec![
-            (1, 2, 1),
-            (1, 3, 2),
-            (2, 1, -1),
-            (1, 1, 0),
-            (3, 2, 7),
+            (1, 1, 2),
+            (2, 1, 3),
+            (-1, 2, 1),
+            (0, 1, 1),
+            (7, 3, 2),
             (1, 1, 1),
         ];
 
         let g = GraphDB::new(1);
 
-        for (src, dst, t) in &vs {
-            g.add_edge(*src, *dst, *t, &vec![]);
+        for (t, src, dst) in &vs {
+            g.add_edge(*t, *src, *dst, &vec![]);
         }
 
         let actual = g.vertex_ids().collect::<Vec<_>>();
@@ -523,8 +537,8 @@ mod db_tests {
         // Check results from multiple graphs with different number of shards
         let g = GraphDB::new(10);
 
-        for (src, dst, t) in &vs {
-            g.add_edge(*src, *dst, *t, &vec![]);
+        for (t, src, dst) in &vs {
+            g.add_edge(*t, *src, *dst, &vec![]);
         }
 
         let expected = g.vertex_ids().collect::<Vec<_>>();
@@ -534,18 +548,18 @@ mod db_tests {
     #[test]
     fn graph_neighbours() {
         let vs = vec![
-            (1, 2, 1),
-            (1, 3, 2),
-            (2, 1, -1),
-            (1, 1, 0),
-            (3, 2, 7),
+            (1, 1, 2),
+            (2, 1, 3),
+            (-1, 2, 1),
+            (0, 1, 1),
+            (7, 3, 2),
             (1, 1, 1),
         ];
 
         let g = GraphDB::new(12);
 
-        for (src, dst, t) in &vs {
-            g.add_edge(*src, *dst, *t, &vec![]);
+        for (t, src, dst) in &vs {
+            g.add_edge(*t, *src, *dst, &vec![]);
         }
 
         let expected = vec![(2, 3, 5), (2, 1, 3), (1, 1, 2)];
@@ -564,8 +578,8 @@ mod db_tests {
         // Check results from multiple graphs with different number of shards
         let g = GraphDB::new(1);
 
-        for (src, dst, t) in &vs {
-            g.add_edge(*src, *dst, *t, &vec![]);
+        for (t, src, dst) in &vs {
+            g.add_edge(*t, *src, *dst, &vec![]);
         }
 
         let expected = (1..=3)
@@ -584,18 +598,18 @@ mod db_tests {
     #[test]
     fn graph_neighbours_window() {
         let vs = vec![
-            (1, 2, 1),
-            (1, 3, 2),
-            (2, 1, -1),
-            (1, 1, 0),
-            (3, 2, 7),
+            (1, 1, 2),
+            (2, 1, 3),
+            (-1, 2, 1),
+            (0, 1, 1),
+            (7, 3, 2),
             (1, 1, 1),
         ];
 
         let g = GraphDB::new(1);
 
-        for (src, dst, t) in &vs {
-            g.add_edge(*src, *dst, *t, &vec![]);
+        for (t, src, dst) in &vs {
+            g.add_edge(*t, *src, *dst, &vec![]);
         }
 
         let expected = vec![(2, 3, 2), (1, 0, 0), (1, 0, 0)];
@@ -620,8 +634,8 @@ mod db_tests {
         // Check results from multiple graphs with different number of shards
         let g = GraphDB::new(10);
 
-        for (src, dst, t) in &vs {
-            g.add_edge(*src, *dst, *t, &vec![]);
+        for (t, src, dst) in &vs {
+            g.add_edge(*t, *src, *dst, &vec![]);
         }
 
         let expected = (1..=3)
@@ -646,18 +660,18 @@ mod db_tests {
     #[test]
     fn graph_neighbours_window_t() {
         let vs = vec![
-            (1, 2, 1),
-            (1, 3, 2),
-            (2, 1, -1),
-            (1, 1, 0),
-            (3, 2, 7),
+            (1, 1, 2),
+            (2, 1, 3),
+            (-1, 2, 1),
+            (0, 1, 1),
+            (7, 3, 2),
             (1, 1, 1),
         ];
 
         let g = GraphDB::new(1);
 
-        for (src, dst, t) in &vs {
-            g.add_edge(*src, *dst, *t, &vec![]);
+        for (t, src, dst) in &vs {
+            g.add_edge(*t, *src, *dst, &vec![]);
         }
 
         let in_actual = (1..=3)
@@ -733,7 +747,7 @@ mod db_tests {
 
     #[test]
     fn vertices_window() {
-        let vs = vec![(1, 2, 1), (3, 4, 3), (5, 6, 5), (7, 1, 7)];
+        let vs = vec![(1, 1, 2), (3, 3, 4), (5, 5, 6), (7, 7, 1)];
 
         let args = vec![(i64::MIN, 8), (i64::MIN, 2), (i64::MIN, 4), (3, 6)];
 
@@ -746,14 +760,14 @@ mod db_tests {
 
         let g = GraphDB::new(1);
 
-        for (src, dst, t) in &vs {
-            g.add_edge(*src, *dst, *t, &vec![]);
+        for (t, src, dst) in &vs {
+            g.add_edge(*t, *src, *dst, &vec![]);
         }
 
         let res: Vec<_> = (0..=3)
             .map(|i| {
                 let mut e = g
-                    .vertex_ids_window(args[i].0, args[i].1)
+                    .vertices_window(args[i].0, args[i].1)
                     .map(move |v| v.g_id)
                     .collect::<Vec<_>>();
                 e.sort();
@@ -770,7 +784,7 @@ mod db_tests {
         let res: Vec<_> = (0..=3)
             .map(|i| {
                 let mut e = g
-                    .vertex_ids_window(args[i].0, args[i].1)
+                    .vertices_window(args[i].0, args[i].1)
                     .map(move |v| v.g_id)
                     .collect::<Vec<_>>();
                 e.sort();
@@ -784,7 +798,7 @@ mod db_tests {
     fn db_lotr() {
         let g = GraphDB::new(4);
 
-        let data_dir = data::lotr().expect("Failed to get lotr.csv file");
+        let data_dir = crate::data::lotr().expect("Failed to get lotr.csv file");
 
         fn parse_record(rec: &StringRecord) -> Option<(String, String, i64)> {
             let src = rec.get(0).and_then(|s| s.parse::<String>().ok())?;
@@ -801,19 +815,19 @@ mod db_tests {
                         let dst_id = utils::calculate_hash(&dst);
 
                         g.add_vertex(
-                            src_id,
                             t,
+                            src_id,
                             &vec![("name".to_string(), Prop::Str("Character".to_string()))],
                         );
                         g.add_vertex(
-                            dst_id,
                             t,
+                            dst_id,
                             &vec![("name".to_string(), Prop::Str("Character".to_string()))],
                         );
                         g.add_edge(
+                            t,
                             src_id,
                             dst_id,
-                            t,
                             &vec![(
                                 "name".to_string(),
                                 Prop::Str("Character Co-occurrence".to_string()),

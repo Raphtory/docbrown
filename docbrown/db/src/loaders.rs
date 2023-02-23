@@ -216,19 +216,19 @@ mod csv_loader_test {
             let time = lotr.time;
 
             g.add_vertex(
-                src_id,
                 time,
+                src_id,
                 &vec![("name".to_string(), Prop::Str("Character".to_string()))],
             );
             g.add_vertex(
-                dst_id,
                 time,
+                dst_id,
                 &vec![("name".to_string(), Prop::Str("Character".to_string()))],
             );
             g.add_edge(
+                time,
                 src_id,
                 dst_id,
-                time,
                 &vec![(
                     "name".to_string(),
                     Prop::Str("Character Co-occurrence".to_string()),
