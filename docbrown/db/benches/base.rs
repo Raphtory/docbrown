@@ -3,6 +3,8 @@ use csv::StringRecord;
 use csv_sniffer::Type;
 use docbrown_db::data;
 use docbrown_db::graphdb::GraphDB;
+use rand::distributions::Uniform;
+use rand::Rng;
 use std::collections::hash_map::DefaultHasher;
 use std::error::Error;
 use std::fs::File;
@@ -10,8 +12,6 @@ use std::hash::{Hash, Hasher};
 use std::ops::Range;
 use std::path::Path;
 use std::time::Duration;
-use rand::distributions::Uniform;
-use rand::Rng;
 
 fn hash<T: Hash>(t: &T) -> u64 {
     let mut s = DefaultHasher::new();
