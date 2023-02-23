@@ -1,5 +1,5 @@
 use docbrown_core as dbc;
-use docbrown_db::graphdb;
+use docbrown_db::graph;
 use pyo3::exceptions;
 use pyo3::prelude::*;
 use std::collections::HashMap;
@@ -15,7 +15,7 @@ use crate::graph_window::WindowedGraph;
 
 #[pyclass]
 pub struct Graph {
-    pub(crate) graph: graphdb::GraphDB,
+    pub(crate) graph: graph::Graph,
 }
 
 #[pymethods]
@@ -23,7 +23,7 @@ impl Graph {
     #[new]
     pub fn new(nr_shards: usize) -> Self {
         Self {
-            graph: graphdb::GraphDB::new(nr_shards),
+            graph: graph::Graph::new(nr_shards),
         }
     }
 
@@ -35,7 +35,7 @@ impl Graph {
     pub fn load_from_file(path: String) -> PyResult<Self> {
         let file_path: PathBuf = [env!("CARGO_MANIFEST_DIR"), &path].iter().collect();
 
-        match graphdb::GraphDB::load_from_file(file_path) {
+        match graph::Graph::load_from_file(file_path) {
             Ok(g) => Ok(Graph { graph: g }),
             Err(e) => Err(exceptions::PyException::new_err(format!(
                 "Failed to load graph from the files. Reason: {}",

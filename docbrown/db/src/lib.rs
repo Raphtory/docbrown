@@ -3,6 +3,6 @@
 extern crate quickcheck_macros;
 
 pub mod data;
-pub mod graphdb;
+pub mod graph;
 pub mod loaders;
 pub mod graph_window;

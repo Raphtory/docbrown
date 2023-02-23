@@ -1,6 +1,6 @@
 use docbrown_core::utils;
 use docbrown_core::{Direction, Prop};
-use docbrown_db::{graphdb::GraphDB, loaders::csv::CsvLoader};
+use docbrown_db::{graph::Graph, loaders::csv::CsvLoader};
 use serde::Deserialize;
 use std::path::PathBuf;
 use std::{env, path::Path, time::Instant};
@@ -33,7 +33,7 @@ fn main() {
 
     let graph = if encoded_data_dir.exists() {
         let now = Instant::now();
-        let g = GraphDB::load_from_file(encoded_data_dir.as_path())
+        let g = Graph::load_from_file(encoded_data_dir.as_path())
             .expect("Failed to load graph from encoded data files");
 
         println!(
@@ -46,11 +46,11 @@ fn main() {
 
         g
     } else {
-        let g = GraphDB::new(2);
+        let g = Graph::new(2);
         let now = Instant::now();
 
         let _ = CsvLoader::new(data_dir)
-            .load_into_graph(&g, |lotr: Lotr, g: &GraphDB| {
+            .load_into_graph(&g, |lotr: Lotr, g: &Graph| {
                 let src_id = utils::calculate_hash(&lotr.src_id);
                 let dst_id = utils::calculate_hash(&lotr.dst_id);
                 let time = lotr.time;

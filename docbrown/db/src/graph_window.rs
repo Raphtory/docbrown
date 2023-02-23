@@ -1,16 +1,16 @@
-use crate::graphdb::GraphDB;
+use crate::graph::Graph;
 use docbrown_core::tgraph_shard::TVertex;
 
 use std::sync::Arc;
 
 pub struct WindowedGraph {
-    gdb: Arc<GraphDB>,
+    gdb: Arc<Graph>,
     pub t_start: i64,
     pub t_end: i64,
 }
 
 impl WindowedGraph {
-    pub fn new(gdb: Arc<GraphDB>, t_start: i64, t_end: i64) -> Self {
+    pub fn new(gdb: Arc<Graph>, t_start: i64, t_end: i64) -> Self {
         WindowedGraph {
             gdb,
             t_start,
@@ -30,7 +30,7 @@ impl WindowedGraph {
 #[cfg(test)]
 mod views_test {
     use super::WindowedGraph;
-    use crate::graphdb::GraphDB;
+    use crate::graph::Graph;
 
     #[test]
     fn get_vertex_ids() {
@@ -43,7 +43,7 @@ mod views_test {
             (1, 1, 1),
         ];
 
-        let g = GraphDB::new(2);
+        let g = Graph::new(2);
 
         for (t, src, dst) in &vs {
             g.add_edge(*t, *src, *dst, &vec![]);
@@ -67,7 +67,7 @@ mod views_test {
             (1, 1, 1),
         ];
 
-        let g = GraphDB::new(2);
+        let g = Graph::new(2);
 
         for (t, src, dst) in &vs {
             g.add_edge(*t, *src, *dst, &vec![]);

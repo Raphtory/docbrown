@@ -2,7 +2,7 @@ use criterion::{criterion_group, criterion_main, BatchSize, Bencher, Criterion, 
 use csv::StringRecord;
 use csv_sniffer::Type;
 use docbrown_db::data;
-use docbrown_db::graphdb::GraphDB;
+use docbrown_db::graph::Graph;
 use std::collections::hash_map::DefaultHasher;
 use std::error::Error;
 use std::fs::File;
@@ -17,7 +17,7 @@ fn hash<T: Hash>(t: &T) -> u64 {
     s.finish()
 }
 
-fn load_csv(graph: &mut GraphDB, path: &Path, source: usize, target: usize, time: Option<usize>) {
+fn load_csv(graph: &mut Graph, path: &Path, source: usize, target: usize, time: Option<usize>) {
     let mut times: Range<i64> = (0..i64::MAX);
     let mut metadata = csv_sniffer::Sniffer::new().sniff_path(path).unwrap();
     metadata.dialect.header = csv_sniffer::metadata::Header {
@@ -57,7 +57,7 @@ fn load_csv(graph: &mut GraphDB, path: &Path, source: usize, target: usize, time
 }
 
 pub fn additions(c: &mut Criterion) {
-    let mut graph = GraphDB::new(4);
+    let mut graph = Graph::new(4);
     graph.add_vertex(0, 0, &vec![]);
 
     let mut g = c.benchmark_group("additions");
@@ -114,7 +114,7 @@ pub fn ingestion(c: &mut Criterion) {
     let lotr = data::lotr().unwrap();
     g.bench_function("lotr.csv", |b: &mut Bencher| {
         b.iter(|| {
-            let mut graph = GraphDB::new(3);
+            let mut graph = Graph::new(3);
             load_csv(&mut graph, &lotr, 0, 1, Some(2));
         })
     });
@@ -138,7 +138,7 @@ pub fn analysis(c: &mut Criterion) {
     g.warm_up_time(Duration::from_millis(100));
     g.warm_up_time(Duration::from_millis(100));
     let lotr = data::lotr().unwrap();
-    let mut graph = GraphDB::new(3);
+    let mut graph = Graph::new(3);
     load_csv(&mut graph, &lotr, 0, 1, Some(2));
     g.bench_function("n_edges", |b| b.iter(|| graph.edges_len()));
     g.finish();

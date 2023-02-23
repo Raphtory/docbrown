@@ -14,14 +14,14 @@ use rayon::prelude::{IntoParallelRefIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct GraphDB {
+pub struct Graph {
     nr_shards: usize,
     shards: Vec<TGraphShard>,
 }
 
-impl GraphDB {
+impl Graph {
     pub fn new(nr_shards: usize) -> Self {
-        GraphDB {
+        Graph {
             nr_shards,
             shards: (0..nr_shards)
                 .map(|_| TGraphShard::default())
@@ -62,7 +62,7 @@ impl GraphDB {
 
         let shards = shards.into_iter().map(|(_, shard)| shard).collect();
 
-        Ok(GraphDB { nr_shards, shards })
+        Ok(Graph { nr_shards, shards })
     }
 
     pub fn save_to_file<P: AsRef<Path>>(&self, path: P) -> Result<(), Box<bincode::ErrorKind>> {
@@ -248,7 +248,7 @@ mod db_tests {
 
     #[quickcheck]
     fn add_vertex_grows_graph_len(vs: Vec<(u8, u8)>) {
-        let g = GraphDB::new(2);
+        let g = Graph::new(2);
 
         let expected_len = vs.iter().map(|(_, v)| v).sorted().dedup().count();
         for (t, v) in vs {
@@ -262,7 +262,7 @@ mod db_tests {
     fn add_edge_grows_graph_edge_len(edges: Vec<(i64, u64, u64)>) {
         let nr_shards: usize = 2;
 
-        let g = GraphDB::new(nr_shards);
+        let g = Graph::new(nr_shards);
 
         let unique_vertices_count = edges
             .iter()
@@ -297,7 +297,7 @@ mod db_tests {
             (1, 1, 1),
         ];
 
-        let g = GraphDB::new(2);
+        let g = Graph::new(2);
 
         for (t, src, dst) in &vs {
             g.add_edge(*t, *src, *dst, &vec![]);
@@ -331,7 +331,7 @@ mod db_tests {
         }
 
         // Load from files
-        match GraphDB::load_from_file(Path::new(&shards_path)) {
+        match Graph::load_from_file(Path::new(&shards_path)) {
             Ok(g) => {
                 assert!(g.contains(1));
                 assert_eq!(g.nr_shards, 2);
@@ -349,7 +349,7 @@ mod db_tests {
             return TestResult::discard();
         }
 
-        let g = GraphDB::new(2);
+        let g = Graph::new(2);
 
         let rand_index = rand::thread_rng().gen_range(0..vs.len());
         let rand_vertex = vs.get(rand_index).unwrap().1;
@@ -367,7 +367,7 @@ mod db_tests {
             return TestResult::discard();
         }
 
-        let g = GraphDB::new(2);
+        let g = Graph::new(2);
 
         for (t, v) in &vs {
             g.add_vertex(*t, *v, &vec![]);
@@ -383,7 +383,7 @@ mod db_tests {
             return TestResult::discard();
         }
 
-        let g = GraphDB::new(2);
+        let g = Graph::new(2);
 
         for (t, v) in &vs {
             g.add_vertex(*t, *v, &vec![]);
@@ -425,7 +425,7 @@ mod db_tests {
             (1, 1, 1),
         ];
 
-        let g = GraphDB::new(2);
+        let g = Graph::new(2);
 
         for (t, src, dst) in &vs {
             g.add_edge(*t, *src, *dst, &vec![]);
@@ -445,7 +445,7 @@ mod db_tests {
         assert_eq!(actual, expected);
 
         // Check results from multiple graphs with different number of shards
-        let g = GraphDB::new(1);
+        let g = Graph::new(1);
 
         for (t, src, dst) in &vs {
             g.add_edge(*t, *src, *dst, &vec![]);
@@ -475,7 +475,7 @@ mod db_tests {
             (1, 1, 1),
         ];
 
-        let g = GraphDB::new(1);
+        let g = Graph::new(1);
 
         for (t, src, dst) in &vs {
             g.add_edge(*t, *src, *dst, &vec![]);
@@ -495,7 +495,7 @@ mod db_tests {
         assert_eq!(actual, expected);
 
         // Check results from multiple graphs with different number of shards
-        let g = GraphDB::new(3);
+        let g = Graph::new(3);
 
         for (t, src, dst) in &vs {
             g.add_edge(*t, *src, *dst, &vec![]);
@@ -525,7 +525,7 @@ mod db_tests {
             (1, 1, 1),
         ];
 
-        let g = GraphDB::new(1);
+        let g = Graph::new(1);
 
         for (t, src, dst) in &vs {
             g.add_edge(*t, *src, *dst, &vec![]);
@@ -535,7 +535,7 @@ mod db_tests {
         assert_eq!(actual, vec![1, 2, 3]);
 
         // Check results from multiple graphs with different number of shards
-        let g = GraphDB::new(10);
+        let g = Graph::new(10);
 
         for (t, src, dst) in &vs {
             g.add_edge(*t, *src, *dst, &vec![]);
@@ -556,7 +556,7 @@ mod db_tests {
             (1, 1, 1),
         ];
 
-        let g = GraphDB::new(12);
+        let g = Graph::new(12);
 
         for (t, src, dst) in &vs {
             g.add_edge(*t, *src, *dst, &vec![]);
@@ -576,7 +576,7 @@ mod db_tests {
         assert_eq!(actual, expected);
 
         // Check results from multiple graphs with different number of shards
-        let g = GraphDB::new(1);
+        let g = Graph::new(1);
 
         for (t, src, dst) in &vs {
             g.add_edge(*t, *src, *dst, &vec![]);
@@ -606,7 +606,7 @@ mod db_tests {
             (1, 1, 1),
         ];
 
-        let g = GraphDB::new(1);
+        let g = Graph::new(1);
 
         for (t, src, dst) in &vs {
             g.add_edge(*t, *src, *dst, &vec![]);
@@ -632,7 +632,7 @@ mod db_tests {
         assert_eq!(actual, expected);
 
         // Check results from multiple graphs with different number of shards
-        let g = GraphDB::new(10);
+        let g = Graph::new(10);
 
         for (t, src, dst) in &vs {
             g.add_edge(*t, *src, *dst, &vec![]);
@@ -668,7 +668,7 @@ mod db_tests {
             (1, 1, 1),
         ];
 
-        let g = GraphDB::new(1);
+        let g = Graph::new(1);
 
         for (t, src, dst) in &vs {
             g.add_edge(*t, *src, *dst, &vec![]);
@@ -702,7 +702,7 @@ mod db_tests {
         assert_eq!(vec![vec![0, 0], vec![], vec![]], both_actual);
 
         // Check results from multiple graphs with different number of shards
-        let g = GraphDB::new(4);
+        let g = Graph::new(4);
 
         for (src, dst, t) in &vs {
             g.add_edge(*src, *dst, *t, &vec![]);
@@ -758,7 +758,7 @@ mod db_tests {
             vec![3, 4, 5, 6],
         ];
 
-        let g = GraphDB::new(1);
+        let g = Graph::new(1);
 
         for (t, src, dst) in &vs {
             g.add_edge(*t, *src, *dst, &vec![]);
@@ -777,7 +777,7 @@ mod db_tests {
 
         assert_eq!(res, expected);
 
-        let g = GraphDB::new(3);
+        let g = Graph::new(3);
         for (src, dst, t) in &vs {
             g.add_edge(*src, *dst, *t, &vec![]);
         }
@@ -796,7 +796,7 @@ mod db_tests {
 
     #[test]
     fn db_lotr() {
-        let g = GraphDB::new(4);
+        let g = Graph::new(4);
 
         let data_dir = crate::data::lotr().expect("Failed to get lotr.csv file");
 
