@@ -38,35 +38,19 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
-#      - name: Restore benchmark results from main
-#        uses: actions/cache/restore@v3
-#        id: restore-cache
-#        with:
-#          path: target/criterion
-#          key: ${{ runner.os }}-criterion
-#      - name: Run benchmark
-#        run: cargo bench --bench base | tee benchmark-result.txt
-#      - name: Fail on performance regresion
-#        run: ! cat benchmark-result.txt | grep "Performance has regressed" > /dev/null
-#      - name: Save benchmark results from main
-#        uses: actions/cache/save@v3
-#        if: github.ref == 'refs/heads/main'
-#        with:
-#        path: target/criterion
-#        key: ${{ steps.restore-cache.outputs.cache-primary-key }}
       - name: Run benchmark
         run: cargo bench --bench base -- --output-format=bencher | tee benchmark-result.txt
       - name: Download previous benchmark results
         uses: actions/cache@v1
         with:
-         path: ./cache
+         path: ./benchmark-cache
          key: ${{ runner.os }}-benchmark
-      - name: Compare benchmark result
+      - name: Compare benchmark results
         uses: benchmark-action/github-action-benchmark@v1
         with:
           tool: 'cargo'
           output-file-path: benchmark-result.txt
-          external-data-json-path: ./cache/benchmark-result.json
+          external-data-json-path: ./benchmark-cache/benchmark-result.json
           save-data-file: false
           fail-on-alert: true
       - name: Store benchmark results from main branch
@@ -75,5 +59,5 @@ jobs:
         with:
           tool: 'cargo'
           output-file-path: benchmark-result.txt
-          external-data-json-path: ./cache/benchmark-result.json
+          external-data-json-path: ./benchmark-cache/benchmark-result.json
           save-data-file: true
