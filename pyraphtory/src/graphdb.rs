@@ -1,112 +1,15 @@
 use docbrown_core as dbc;
 use docbrown_db::graphdb as gdb;
-use itertools::Itertools;
 use pyo3::exceptions;
-use pyo3::FromPyObject;
-use pyo3::PyRef;
-use pyo3::PyRefMut;
-use pyo3::{pyclass, pymethods, pymodule, types::PyModule, PyResult, Python};
+use pyo3::prelude::*;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 
-#[pyclass]
-#[derive(Copy, Clone, PartialEq, Eq)]
-pub enum Direction {
-    OUT,
-    IN,
-    BOTH,
-}
-
-impl Direction {
-    fn convert(&self) -> dbc::Direction {
-        match self {
-            Direction::OUT => dbc::Direction::OUT,
-            Direction::IN => dbc::Direction::IN,
-            Direction::BOTH => dbc::Direction::BOTH,
-        }
-    }
-}
-
-#[derive(FromPyObject, Debug)]
-pub enum Prop {
-    Str(String),
-    I64(i64),
-    U64(u64),
-    F64(f64),
-    Bool(bool),
-}
-
-impl Prop {
-    fn convert(&self) -> dbc::Prop {
-        match self {
-            Prop::Str(string) => dbc::Prop::Str(string.clone()),
-            Prop::I64(i64) => dbc::Prop::I64(*i64),
-            Prop::U64(u64) => dbc::Prop::U64(*u64),
-            Prop::F64(f64) => dbc::Prop::F64(*f64),
-            Prop::Bool(bool) => dbc::Prop::Bool(*bool),
-        }
-    }
-}
-
-#[pyclass]
-pub struct TEdge {
-    #[pyo3(get)]
-    pub src: u64,
-    #[pyo3(get)]
-    pub dst: u64,
-    #[pyo3(get)]
-    pub t: Option<i64>,
-    #[pyo3(get)]
-    pub is_remote: bool,
-}
-
-impl TEdge {
-    fn convert(edge: dbc::tpartition::TEdge) -> TEdge {
-        let dbc::tpartition::TEdge {
-            src,
-            dst,
-            t,
-            is_remote,
-        } = edge;
-        TEdge {
-            src,
-            dst,
-            t,
-            is_remote,
-        }
-    }
-}
-
-#[pyclass]
-pub struct VertexIterator {
-    iter: Box<dyn Iterator<Item = u64> + Send>,
-}
-
-#[pymethods]
-impl VertexIterator {
-    fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
-        slf
-    }
-    fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<u64> {
-        slf.iter.next()
-    }
-}
-
-#[pyclass]
-pub struct EdgeIterator {
-    iter: std::vec::IntoIter<TEdge>,
-}
-
-#[pymethods]
-impl EdgeIterator {
-    fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
-        slf
-    }
-    fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<TEdge> {
-        slf.iter.next()
-    }
-}
+use crate::wrappers::Direction;
+use crate::wrappers::EdgeIterator;
+use crate::wrappers::Prop;
+use crate::wrappers::TEdge;
+use crate::wrappers::VertexIterator;
 
 #[pyclass]
 pub struct GraphDB {
@@ -242,12 +145,4 @@ impl GraphDB {
                 .into_iter(),
         }
     }
-}
-
-#[pymodule]
-fn pyraphtory(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
-    m.add_class::<Direction>()?;
-    m.add_class::<GraphDB>()?;
-    m.add_class::<TEdge>()?;
-    Ok(())
 }
