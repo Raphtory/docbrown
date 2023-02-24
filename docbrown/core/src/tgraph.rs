@@ -614,15 +614,6 @@ impl<'a> VertexView<'a, TemporalGraph> {
         Some(meta.iter(*prop_id))
     }
 
-    pub fn all_props_tuples(
-        &self,
-    ) -> Option<Box<dyn Iterator<Item = (&'a str, &'a i64, Prop)> + 'a>> {
-        let index = self.g.logical_to_physical.get(&self.g_id)?;
-        let meta = self.g.props.vertex_meta.get(*index)?;
-        // TODO: lift all the props here and make a version that also gives you the history str, Prop, and Time
-        None
-    }
-
     pub fn props_window(
         &self,
         name: &'a str,
@@ -633,6 +624,45 @@ impl<'a> VertexView<'a, TemporalGraph> {
         let prop_id = self.g.props.prop_ids.get(name)?;
         Some(meta.iter_window(*prop_id, r))
     }
+
+    pub fn all_props(&self) -> Option<HashMap<String, Vec<(i64, Prop)>>> {
+        let index = self.g.logical_to_physical.get(&self.g_id)?;
+        let meta = self.g.props.vertex_meta.get(*index)?;
+
+        let mut hm: HashMap<String, Vec<(i64, Prop)>> = HashMap::new();
+
+        self.g.props.prop_ids.iter().for_each(|(k, v)| {
+            if hm.contains_key(k) {
+                let vs = hm.get_mut(k).unwrap();
+                vs.append(
+                    &mut meta
+                        .iter(*v)
+                        .map(|(x, y)| (*x, y))
+                        .collect::<Vec<(i64, Prop)>>(),
+                )
+            } else {
+                let mut vs = vec![];
+                vs.append(
+                    &mut meta
+                        .iter(*v)
+                        .map(|(x, y)| (*x, y))
+                        .collect::<Vec<(i64, Prop)>>(),
+                );
+                hm.insert(k.clone(), vs);
+            }
+        });
+
+        Some(hm)
+    }
+
+    // pub fn all_props_window(
+    //     &self,
+    // ) -> Option<Box<dyn Iterator<Item = HashMap<&'a str, (&'a i64, Prop)>> + 'a>> {
+    //     let index = self.g.logical_to_physical.get(&self.g_id)?;
+    //     let meta = self.g.props.vertex_meta.get(*index)?;
+    //     // TODO: lift all the props here and make a version that also gives you the history str, Prop, and Time
+    //     None
+    // }
 }
 
 pub(crate) struct EdgeView<'a, G: Sized> {
@@ -697,6 +727,15 @@ mod graph_test {
     use crate::utils;
 
     use super::*;
+
+    #[test]
+    fn testhm() {
+        let map = std::collections::HashMap::from([("a", 1), ("b", 2), ("c", 3)]);
+
+        for val in map.values() {
+            println!("sk: {:?}", val);
+        }
+    }
 
     #[test]
     fn add_vertex_at_time_t1() {

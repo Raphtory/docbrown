@@ -34,24 +34,15 @@ impl<'a> From<EdgeView<'a, TemporalGraph>> for TEdge {
 pub struct TVertex {
     pub g_id: u64,
     pub w: Option<Range<i64>>,
-    props: HashMap<String, Prop>,
+    pub props: Option<HashMap<String, Vec<(i64, Prop)>>>,
 }
 
 impl<'a> From<VertexView<'a, TemporalGraph>> for TVertex {
     fn from(v: VertexView<'a, TemporalGraph>) -> Self {
-        let props = HashMap::new();
-
-        let g = v.graph();
-
-        // TODO: for every property lift them all up into TVertex as Vec
-        // loop over every property available
-        // get them from the VertexView as Vec
-        // store them in the HashMap
-
         Self {
             g_id: v.global_id(),
             w: v.window(),
-            props,
+            props: v.all_props(),
         }
     }
 }
