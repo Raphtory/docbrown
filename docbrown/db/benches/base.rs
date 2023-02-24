@@ -65,14 +65,8 @@ pub fn base(c: &mut Criterion) {
     run_ingestion_benchmarks(&mut ingestion_group, || bootstrap_graph(4, 10_000), None);
     ingestion_group.finish();
 
-    fn lotr_graph() -> GraphDB {
-        let lotr = data::lotr().unwrap();
-        let mut graph = GraphDB::new(4);
-        load_csv(&mut graph, &lotr, 0, 1, Some(2));
-        graph
-    }
     let mut analysis_group = c.benchmark_group("analysis");
-    run_analysis_benchmarks(&mut analysis_group, lotr_graph, None);
+    run_analysis_benchmarks(&mut analysis_group, || data::lotr_graph(4), None);
     analysis_group.finish();
 }
 
