@@ -44,8 +44,8 @@ jobs:
         id: restore-benchmark-cache
         uses: actions/cache/restore@v3
         with:
-         path: ./benchmark-cache
-         key: ${{ runner.os }}-benchmark
+          path: ./benchmark-cache
+          key: ${{ runner.os }}-benchmark
       - name: Compare benchmark results
         uses: benchmark-action/github-action-benchmark@v1
         if: github.ref != 'refs/heads/main'
