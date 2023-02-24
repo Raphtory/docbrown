@@ -85,7 +85,6 @@ impl GraphDB {
     }
 
     pub fn len(&self) -> usize {
-        std::thread::sleep(std::time::Duration::from_millis(10));
         self.shards.iter().map(|shard| shard.len()).sum()
     }
 
