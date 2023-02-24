@@ -16,7 +16,7 @@ def create_graph(num_shards):
     ]
 
     for e in edges:
-        g.add_edge(e[0], e[1], e[2], {"type": 5, "test": 9.8, "rest": "tax"})
+        g.add_edge(e[0], e[1], e[2], {"prop1": 1, "prop2": 9.8, "prop3": "test"})
 
     return g
 
@@ -147,3 +147,11 @@ def test_windowed_graph_vertex_ids():
     vs.sort()
 
     assert vs == [1, 2]
+
+def test_graph_vertex_ids():
+    g = create_graph(1)
+
+    vs = [v for v in g.vertex_ids()]
+    vs.sort()
+
+    assert vs == [1, 2, 3]
