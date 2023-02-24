@@ -25,6 +25,22 @@ impl VertexRef {
     }
 }
 
+#[derive(Clone, Copy)]
+pub(crate) struct AccDef<A, F> {
+    pub(crate) acc: A,
+    pub(crate) f: F,
+}
+
+impl<A, F> AccDef<A, F>
+where
+    F: Fn(&mut A, A) + Clone,
+    A: Clone,
+{
+    pub(crate) fn new(acc: A, f: F) -> Self {
+        Self { acc, f }
+    }
+}
+
 struct AccEntry<K: Eq + std::hash::Hash, A, F> {
     parent: Rc<Accumulator<K, A, F>>,
     k: K,
@@ -284,7 +300,6 @@ impl<'a> EvalVertexView<'a, TemporalGraph> {
     {
         let id = self.vv.global_id();
         AccEntry::new(acc, id)
-
     }
 
     fn get<A: Clone, F>(&self, acc: &'a Accumulator<u64, A, F>) -> Option<A>
