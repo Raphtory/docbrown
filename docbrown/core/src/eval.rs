@@ -1,14 +1,12 @@
 use std::{
-    collections::{HashMap, HashSet},
-    hash::Hash,
-    ops::{AddAssign, Deref, Index, IndexMut, Range},
+    collections::{HashSet, HashMap},
+    ops::{AddAssign, Range},
     option::Option,
-    sync::Arc,
 };
 
 use dashmap::mapref::{
     entry::Entry,
-    one::{Ref, RefMut},
+    one::RefMut,
 };
 use replace_with::replace_with_or_abort;
 
@@ -20,7 +18,7 @@ use crate::{
 pub(crate) trait Eval {
     fn eval<'a, FMAP, PRED>(&'a self, window: Range<i64>, f: FMAP, having: PRED)
     where
-        FMAP: Fn(EvalVertexView<'a, Self>) -> Vec<VertexRef>,
+        FMAP: Fn(&mut EvalVertexView<'a, Self>) -> Vec<VertexRef>,
         PRED: Fn(&EvalVertexView<'a, Self>) -> bool,
         Self: Sized + 'a;
 }
@@ -115,6 +113,10 @@ where
     fn prev_value(&self, k: K) -> Option<A> {
         self.state.get(&k).and_then(|e| e.value().clone_prev())
     }
+
+    fn read(&self, k: K) -> Option<A> {
+        self.state.get(&k).map(|e| e.value().current.clone())
+    }
 }
 
 impl<K, A, F> Accumulator<K, A, F>
@@ -124,6 +126,7 @@ where
     A: Clone,
 {
     fn as_hash_map(&self) -> HashMap<K, PairAcc<A>> {
+
         self.state
             .iter()
             .map(|e| (e.key().clone(), e.value().clone()))
@@ -219,7 +222,7 @@ where
 impl Eval for TemporalGraph {
     fn eval<'a, MAP, PRED>(&'a self, window: Range<i64>, f: MAP, having: PRED)
     where
-        MAP: Fn(EvalVertexView<'a, Self>) -> Vec<VertexRef>,
+        MAP: Fn(&mut EvalVertexView<'a, Self>) -> Vec<VertexRef>,
         PRED: Fn(&EvalVertexView<'a, Self>) -> bool,
         Self: Sized + 'a,
     {
@@ -241,8 +244,8 @@ impl Eval for TemporalGraph {
 
             // iterate over the active vertices
             for v_view in iter {
-                let eval_v_view = EvalVertexView { vv: v_view };
-                let next_vertices = f(eval_v_view);
+                let mut eval_v_view = EvalVertexView { vv: v_view };
+                let next_vertices = f(&mut eval_v_view);
                 for next_vertex in next_vertices {
                     next_active_set.insert(next_vertex.pid());
                 }
@@ -293,12 +296,21 @@ impl<'a, A: Clone, F> Drop for PrevAcc<'a, A, F> {
 }
 
 impl<'a> EvalVertexView<'a, TemporalGraph> {
-    fn get<A: Clone, F>(&self, acc: &'a Accumulator<u64, A, F>) -> AccEntry<'a, u64, A, F>
+    fn get_mut<A: Clone, F>(&mut self, acc: &'a Accumulator<u64, A, F>) -> AccEntry<'a, u64, A, F>
     where
         F: Fn(&mut A, A) + Clone,
     {
         let id = self.vv.global_id();
         acc.entry(id)
+    }
+
+
+    fn get<A: Clone, F>(&self, acc: &'a Accumulator<u64, A, F>) -> Option<A>
+    where
+        F: Fn(&mut A, A) + Clone,
+    {
+        let id = self.vv.global_id();
+        acc.read(id)
     }
 
     fn get_prev<A: Clone, F>(&self, acc: &'a Accumulator<u64, A, F>) -> Option<A>
@@ -429,7 +441,7 @@ mod eval_test {
             |vertex| {
                 let gid = vertex.vv.global_id();
 
-                let mut min_acc = vertex.get(&min_cc_id);
+                let mut min_acc = vertex.get_mut(&min_cc_id);
                 min_acc += gid;
                 vec![] // nothing to propagate at this step
             },
@@ -455,9 +467,9 @@ mod eval_test {
             0..3,
             |vertex| {
                 let mut out = vec![];
-                for neighbour in vertex.neighbours(crate::Direction::BOTH) {
+                for mut neighbour in vertex.neighbours(crate::Direction::BOTH) {
 
-                    let mut n_min_acc = neighbour.get(&min_cc_id);
+                    let mut n_min_acc = neighbour.get_mut(&min_cc_id);
 
                     n_min_acc += vertex.get(&min_cc_id);
 
@@ -468,11 +480,10 @@ mod eval_test {
             },
             |v| {
 
-                let prev_min_acc = v.get_prev_acc(&min_cc_id).value();
                 let min_acc = v.get(&min_cc_id); // this line needs to only get an immutable reference otherwise it will block if it's callled before the one above
+                let prev_min_acc = v.get_prev_acc(&min_cc_id).value();
 
-                let value = min_acc.read();
-                value != prev_min_acc
+                min_acc != prev_min_acc
             },
         );
 
