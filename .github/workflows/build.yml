@@ -56,7 +56,7 @@ jobs:
           fail-on-alert: true
       - name: Store benchmark results from main branch
         uses: benchmark-action/github-action-benchmark@v1
-        # if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main'
         with:
           tool: 'cargo'
           output-file-path: benchmark-result.txt
