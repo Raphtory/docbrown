@@ -41,7 +41,8 @@ jobs:
       - name: Run benchmark
         run: cargo bench --bench base -- --output-format=bencher | tee benchmark-result.txt
       - name: Download previous benchmark results
-        uses: actions/cache@v1
+        id: restore-benchmark-cache
+        uses: actions/cache/restore@v3
         with:
          path: ./benchmark-cache
          key: ${{ runner.os }}-benchmark
@@ -52,13 +53,17 @@ jobs:
           tool: 'cargo'
           output-file-path: benchmark-result.txt
           external-data-json-path: ./benchmark-cache/benchmark-result.json
-          save-data-file: false
           fail-on-alert: true
-      - name: Store benchmark results from main branch
-        uses: benchmark-action/github-action-benchmark@v1
-        if: github.ref == 'refs/heads/main'
+      - name:  Is data file present
+        run: ls ./benchmark-cache
+      - name: Save benchmark results from main branch
+        uses: actions/cache/save@v3
+        # if: github.ref == 'refs/heads/main'
         with:
-          tool: 'cargo'
-          output-file-path: benchmark-result.txt
-          external-data-json-path: ./benchmark-cache/benchmark-result.json
-          save-data-file: true
+          path: ./benchmark-cache
+          key: ${{ steps.restore-benchmark-cache.outputs.cache-primary-key }}
+#        with:
+#          tool: 'cargo'
+#          output-file-path: benchmark-result.txt
+#          external-data-json-path: ./benchmark-cache/benchmark-result.json
+#          save-data-file: true
