@@ -49,11 +49,10 @@ impl<'a> From<VertexView<'a, TemporalGraph>> for TVertex {
         // get them from the VertexView as Vec
         // store them in the HashMap
 
-
         Self {
             g_id: v.global_id(),
             w: v.window(),
-            props
+            props,
         }
     }
 }
@@ -162,9 +161,9 @@ impl TGraphShard {
     }
 
     pub fn vertex_ids(&self) -> Box<impl Iterator<Item = u64> + Send> {
-        let tpart = self.rc.clone();
+        let tgshard = self.rc.clone();
         let iter: GenBoxed<u64> = GenBoxed::new_boxed(|co| async move {
-            let g = tpart.blocking_read();
+            let g = tgshard.blocking_read();
             let iter = (*g).vertex_ids();
             for v_id in iter {
                 co.yield_(v_id).await;
@@ -175,9 +174,9 @@ impl TGraphShard {
     }
 
     pub fn vertex_ids_window(&self, r: Range<i64>) -> Box<impl Iterator<Item = u64> + Send> {
-        let tpart = self.rc.clone();
+        let tgshard = self.rc.clone();
         let iter: GenBoxed<u64> = GenBoxed::new_boxed(|co| async move {
-            let g = tpart.blocking_read();
+            let g = tgshard.blocking_read();
             let iter = (*g).vertex_ids_window(r).map(|v| v.into());
             for v_id in iter {
                 co.yield_(v_id).await;
@@ -188,9 +187,9 @@ impl TGraphShard {
     }
 
     pub fn vertices(&self) -> Box<impl Iterator<Item = TVertex> + Send> {
-        let tpart = self.rc.clone();
+        let tgshard = self.rc.clone();
         let iter: GenBoxed<TVertex> = GenBoxed::new_boxed(|co| async move {
-            let g = tpart.blocking_read();
+            let g = tgshard.blocking_read();
             let iter = (*g).vertices();
             for vv in iter {
                 let tv: TVertex = vv.into();
@@ -202,9 +201,9 @@ impl TGraphShard {
     }
 
     pub fn vertices_window(&self, r: Range<i64>) -> Box<impl Iterator<Item = TVertex> + Send> {
-        let tpart = self.rc.clone();
+        let tgshard = self.rc.clone();
         let iter: GenBoxed<TVertex> = GenBoxed::new_boxed(|co| async move {
-            let g = tpart.blocking_read();
+            let g = tgshard.blocking_read();
             let iter = (*g).vertices_window(r);
             for vv in iter {
                 let tv: TVertex = vv.into();
@@ -215,18 +214,18 @@ impl TGraphShard {
         Box::new(iter.into_iter())
     }
 
-    pub fn neighbours(&self, v: u64, d: Direction) -> impl Iterator<Item = TEdge> {
-        let tg = self.clone();
-        let vertices_iter = gen!({
-            let g = tg.rc.blocking_read();
-            let chunks = (*g).neighbours(v, d).map(|e| e.into());
-            let iter = chunks.into_iter();
-            for v_id in iter {
-                yield_!(v_id)
+    pub fn neighbours(&self, v: u64, d: Direction) -> Box<impl Iterator<Item = TEdge> + Send> {
+        let tgshard = self.rc.clone();
+        let iter: GenBoxed<TEdge> = GenBoxed::new_boxed(|co| async move {
+            let g = tgshard.blocking_read();
+            let iter = (*g).neighbours(v, d);
+            for ev in iter {
+                let tv: TEdge = ev.into();
+                co.yield_(tv).await;
             }
         });
 
-        vertices_iter.into_iter()
+        Box::new(iter.into_iter())
     }
 
     pub fn neighbours_window(
@@ -235,9 +234,9 @@ impl TGraphShard {
         r: Range<i64>,
         d: Direction,
     ) -> impl Iterator<Item = TEdge> {
-        let tg = self.clone();
+        let tgshard = self.clone();
         let vertices_iter = gen!({
-            let g = tg.rc.blocking_read();
+            let g = tgshard.rc.blocking_read();
             let chunks = (*g).neighbours_window(v, &r, d).map(|e| e.into());
             let iter = chunks.into_iter();
             for v_id in iter {
@@ -254,9 +253,9 @@ impl TGraphShard {
         r: Range<i64>,
         d: Direction,
     ) -> impl Iterator<Item = TEdge> {
-        let tg = self.clone();
+        let tgshard = self.clone();
         let vertices_iter = gen!({
-            let g = tg.rc.blocking_read();
+            let g = tgshard.rc.blocking_read();
             let chunks = (*g).neighbours_window_t(v, &r, d).map(|e| e.into());
             let iter = chunks.into_iter();
             for v_id in iter {
@@ -271,7 +270,7 @@ impl TGraphShard {
 #[cfg(test)]
 mod temporal_graph_partition_test {
     use super::TGraphShard;
-    use crate::{tgraph::TemporalGraph, Direction};
+    use crate::Direction;
     use itertools::Itertools;
     use quickcheck::{Arbitrary, TestResult};
     use rand::Rng;

@@ -72,6 +72,8 @@ impl TEdge {
     }
 }
 
+unsafe impl Send for TEdge {}
+
 #[pyclass]
 pub struct TVertex {
     #[pyo3(get)]
@@ -102,7 +104,7 @@ impl VertexIterator {
 
 #[pyclass]
 pub struct EdgeIterator {
-    pub(crate) iter: std::vec::IntoIter<TEdge>,
+    pub(crate) iter: Box<dyn Iterator<Item = TEdge> + Send>,
 }
 
 #[pymethods]

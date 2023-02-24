@@ -108,13 +108,13 @@ impl Graph {
     }
 
     pub fn neighbours(&self, v: u64, d: Direction) -> EdgeIterator {
+        let iter = self
+            .graph
+            .neighbours(v, d.convert())
+            .map(|f| TEdge::convert(f));
+        
         EdgeIterator {
-            iter: self
-                .graph
-                .neighbours(v, d.convert())
-                .map(|f| TEdge::convert(f))
-                .collect::<Vec<_>>()
-                .into_iter(),
+            iter: Box::new(iter),
         }
     }
 

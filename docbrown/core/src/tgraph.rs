@@ -287,7 +287,7 @@ impl TemporalGraph {
         &self,
         v: u64,
         d: Direction,
-    ) -> Box<dyn Iterator<Item = EdgeView<'_, Self>> + '_>
+    ) -> Box<dyn Iterator<Item = EdgeView<'_, Self>> + Send + '_>
     where
         Self: Sized,
     {
@@ -330,7 +330,7 @@ impl TemporalGraph {
         v: u64,
         w: &Range<i64>,
         d: Direction,
-    ) -> Box<dyn Iterator<Item = EdgeView<'_, Self>> + '_> {
+    ) -> Box<dyn Iterator<Item = EdgeView<'_, Self>> + Send + '_> {
         let v_pid = self.logical_to_physical[&v];
 
         match d {
@@ -364,7 +364,7 @@ impl TemporalGraph {
         v: u64,
         r: &Range<i64>,
         d: Direction,
-    ) -> Box<dyn Iterator<Item = EdgeView<'_, Self>> + '_> {
+    ) -> Box<dyn Iterator<Item = EdgeView<'_, Self>> + Send + '_> {
         let v_pid = self.logical_to_physical[&v];
 
         match d {
@@ -465,7 +465,7 @@ impl TemporalGraph {
         &self,
         vid: usize,
         d: Direction,
-    ) -> Box<dyn Iterator<Item = (&usize, AdjEdge)> + '_> {
+    ) -> Box<dyn Iterator<Item = (&usize, AdjEdge)> + Send + '_> {
         match &self.adj_lists[vid] {
             Adj::List {
                 out,
@@ -495,7 +495,7 @@ impl TemporalGraph {
         vid: usize,
         r: &Range<i64>,
         d: Direction,
-    ) -> Box<dyn Iterator<Item = (usize, AdjEdge)> + '_> {
+    ) -> Box<dyn Iterator<Item = (usize, AdjEdge)> + Send + '_> {
         match &self.adj_lists[vid] {
             Adj::List {
                 out,
@@ -531,7 +531,7 @@ impl TemporalGraph {
         vid: usize,
         window: &Range<i64>,
         d: Direction,
-    ) -> Box<dyn Iterator<Item = (usize, i64, AdjEdge)> + '_> {
+    ) -> Box<dyn Iterator<Item = (usize, i64, AdjEdge)> + Send + '_> {
         match &self.adj_lists[vid] {
             Adj::List {
                 out,
@@ -571,7 +571,6 @@ pub(crate) struct VertexView<'a, G> {
 }
 
 impl<'a> VertexView<'a, TemporalGraph> {
-
     pub fn graph(&self) -> &TemporalGraph {
         self.g
     }
@@ -615,7 +614,9 @@ impl<'a> VertexView<'a, TemporalGraph> {
         Some(meta.iter(*prop_id))
     }
 
-    pub fn all_props_tuples(&self) -> Option<Box<dyn Iterator<Item = (&'a str, &'a i64, Prop)> + 'a>> {
+    pub fn all_props_tuples(
+        &self,
+    ) -> Option<Box<dyn Iterator<Item = (&'a str, &'a i64, Prop)> + 'a>> {
         let index = self.g.logical_to_physical.get(&self.g_id)?;
         let meta = self.g.props.vertex_meta.get(*index)?;
         // TODO: lift all the props here and make a version that also gives you the history str, Prop, and Time
