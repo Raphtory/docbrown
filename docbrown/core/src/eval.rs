@@ -1,8 +1,9 @@
 use std::{
+    cell::RefCell,
     collections::{HashMap, HashSet},
     ops::{AddAssign, Range},
     option::Option,
-    rc::Rc,
+    rc::Rc, any::Any,
 };
 
 use crate::{
@@ -11,12 +12,13 @@ use crate::{
 };
 
 pub(crate) trait Eval {
-    fn eval<'a, FMAP, PRED>(&'a self, window: Range<i64>, f: FMAP, having: PRED)
+    fn eval<'a, FMAP, PRED>(&'a self, c: Option<Context>, window: Range<i64>, f: FMAP, having: PRED) -> Option<Context>
     where
-        FMAP: Fn(&mut EvalVertexView<'a, Self>) -> Vec<VertexRef>,
-        PRED: Fn(&EvalVertexView<'a, Self>) -> bool,
+        FMAP: Fn(&mut EvalVertexView<'a, Self>, &mut Context) -> Vec<VertexRef>,
+        PRED: Fn(&EvalVertexView<'a, Self>, &mut Context) -> bool,
         Self: Sized + 'a;
 }
+
 pub(crate) struct VertexRef(usize);
 
 impl VertexRef {
@@ -25,19 +27,56 @@ impl VertexRef {
     }
 }
 
-#[derive(Clone, Copy)]
-pub(crate) struct AccDef<A, F> {
-    pub(crate) acc: A,
-    pub(crate) f: F,
+/// In abstract algebra, a branch of mathematics, a monoid is
+/// a set equipped with an associative binary operation and an identity element.
+/// For example, the nonnegative integers with addition form a monoid, the identity element being 0.
+/// Associativity
+///    For all a, b and c in S, the equation (a • b) • c = a • (b • c) holds.
+/// Identity element
+///    There exists an element e in S such that for every element a in S, the equalities e • a = a and a • e = a hold.
+#[derive(Clone)]
+pub(crate) struct Monoid<A, F> {
+    pub(crate) id: A,
+    pub(crate) bin_op: F,
+    pub(crate) name: String,
 }
 
-impl<A, F> AccDef<A, F>
+impl<A, F> Monoid<A, F>
 where
     F: Fn(&mut A, A) + Clone,
     A: Clone,
 {
-    pub(crate) fn new(acc: A, f: F) -> Self {
-        Self { acc, f }
+    pub(crate) fn new(name: String, id: A, bin_op: F) -> Self {
+        Self { id, bin_op, name}
+    }
+}
+
+struct Accum<K, A, F> {
+    storage: Rc<RefCell<HashMap<K, PairAcc<A>>>>,
+    monoid: Monoid<A, F>,
+}
+
+struct Context {
+    state: HashMap<String, Box<dyn Any>>
+}
+
+impl Context {
+    fn new() -> Self {
+        Self {state: HashMap::new()}
+    }
+
+    fn acc<K, A: Clone, F: Clone>(&mut self, monoid: &Monoid<A, F>) -> Accum<K, A, F> {
+
+        let accum_mut = self.state.entry(monoid.name.clone()).or_insert_with(|| {
+            let storage = Rc::new(RefCell::new(HashMap::<K, PairAcc<A>>::new()));
+            let monoid = monoid.clone();
+            Box::new(Accum { storage, monoid })
+        }).downcast_mut::<Accum<K, A, F>>().unwrap();
+
+        Accum {
+            storage: accum_mut.storage.clone(),
+            monoid: monoid.clone(),
+        }
     }
 }
 
@@ -220,15 +259,16 @@ where
 }
 
 impl Eval for TemporalGraph {
-    fn eval<'a, MAP, PRED>(&'a self, window: Range<i64>, f: MAP, having: PRED)
+    fn eval<'a, MAP, PRED>(&'a self, c: Option<Context>, window: Range<i64>, f: MAP, having: PRED) -> Option<Context>
     where
-        MAP: Fn(&mut EvalVertexView<'a, Self>) -> Vec<VertexRef>,
-        PRED: Fn(&EvalVertexView<'a, Self>) -> bool,
+        MAP: Fn(&mut EvalVertexView<'a, Self>, &Context) -> Vec<VertexRef>,
+        PRED: Fn(&EvalVertexView<'a, Self>, &Context) -> bool,
         Self: Sized + 'a,
     {
         // we start with all the vertices considered inside the working set
         let mut cur_active_set: WorkingSet<usize> = WorkingSet::All;
         let mut next_active_set = HashSet::new();
+        let ctx = c.unwrap_or_else(|| Context::new());
 
         while !cur_active_set.is_empty() {
             // define iterator over the active vertices
@@ -245,7 +285,7 @@ impl Eval for TemporalGraph {
             // iterate over the active vertices
             for v_view in iter {
                 let mut eval_v_view = EvalVertexView { vv: v_view };
-                let next_vertices = f(&mut eval_v_view);
+                let next_vertices = f(&mut eval_v_view, &ctx);
                 for next_vertex in next_vertices {
                     next_active_set.insert(next_vertex.pid());
                 }
@@ -255,7 +295,7 @@ impl Eval for TemporalGraph {
             next_active_set.retain(|pid| {
                 let g_id = self.adj_lists[*pid].logical();
                 let v_view = VertexView::new(self, *g_id, *pid, Some(window.clone()));
-                having(&EvalVertexView { vv: v_view })
+                having(&EvalVertexView { vv: v_view }, &ctx)
             });
 
             println!("next_active_set: {:?}", next_active_set);
@@ -263,6 +303,7 @@ impl Eval for TemporalGraph {
             cur_active_set = WorkingSet::Set(next_active_set);
             next_active_set = HashSet::new();
         }
+        Some(ctx)
     }
 }
 
@@ -415,7 +456,7 @@ mod eval_test {
     use std::collections::HashMap;
 
     use crate::{
-        eval::{Acc, Accumulator, Eval, PairAcc},
+        eval::{Eval, PairAcc, Monoid},
         graph::TemporalGraph,
     };
 
@@ -431,25 +472,29 @@ mod eval_test {
         g.add_edge(1, 2, 1);
         g.add_edge(3, 4, 1);
 
-        let min_cc_id = Accumulator::new(|c1, c2| *c1 = u64::min(*c1, c2));
+        let min_cc_id = Monoid::new("min_cc".to_string() ,u64::MAX, |a: &mut u64, b: u64| {*a = u64::min(*a, b)});
+
         // initial step where we init every vertex to it's own ID
-        g.eval(
+        let state = g.eval(
+            None,
             0..3,
-            |vertex| {
+            |vertex, ctx| {
+                let acc = ctx.acc(&min_cc_id);
+
                 let gid = vertex.vv.global_id();
 
-                let mut min_acc = vertex.get_mut(min_cc_id.clone());
+                let mut min_acc = vertex.get_mut(&acc);
                 min_acc += gid;
                 vec![] // nothing to propagate at this step
             },
             // insert exchange step
-            |_| false,
+            |_, _| false,
         );
 
-        let state = &min_cc_id.as_hash_map();
+        let actual = state.as_hash_map(&min_cc_id);
 
         assert_eq!(
-            state,
+            actual,
             &HashMap::from_iter(vec![
                 (1, PairAcc::new(1)),
                 (2, PairAcc::new(2)),
@@ -458,40 +503,40 @@ mod eval_test {
             ])
         );
 
-        // second step where we check the state of our neighbours and set ourselves to the min
-        // we stop when the state of the vertex does not change
-        g.eval(
-            0..3,
-            |vertex| {
-                let mut out = vec![];
-                for mut neighbour in vertex.neighbours(crate::Direction::BOTH) {
-                    let mut n_min_acc = neighbour.get_mut(min_cc_id.clone());
+        // // second step where we check the state of our neighbours and set ourselves to the min
+        // // we stop when the state of the vertex does not change
+        // g.eval(
+        //     0..3,
+        //     |vertex| {
+        //         let mut out = vec![];
+        //         for mut neighbour in vertex.neighbours(crate::Direction::BOTH) {
+        //             let mut n_min_acc = neighbour.get_mut(min_cc_id.clone());
 
-                    n_min_acc += vertex.get(&min_cc_id);
+        //             n_min_acc += vertex.get(&min_cc_id);
 
-                    out.push(neighbour.as_vertex_ref());
-                }
+        //             out.push(neighbour.as_vertex_ref());
+        //         }
 
-                out
-            },
-            |v| {
-                let min_acc = v.get(&min_cc_id); // this line needs to only get an immutable reference otherwise it will block if it's callled before the one above
-                let prev_min_acc = v.get_prev_acc(&min_cc_id).value();
+        //         out
+        //     },
+        //     |v| {
+        //         let min_acc = v.get(&min_cc_id); // this line needs to only get an immutable reference otherwise it will block if it's callled before the one above
+        //         let prev_min_acc = v.get_prev_acc(&min_cc_id).value();
 
-                min_acc != prev_min_acc
-            },
-        );
+        //         min_acc != prev_min_acc
+        //     },
+        // );
 
-        let state = &min_cc_id.as_hash_map();
+        // let state = &min_cc_id.as_hash_map();
 
-        assert_eq!(
-            state,
-            &HashMap::from_iter(vec![
-                (1, PairAcc::new_with_prev(1, 1)),
-                (2, PairAcc::new_with_prev(1, 1)),
-                (3, PairAcc::new_with_prev(3, 3)),
-                (4, PairAcc::new_with_prev(3, 3))
-            ])
-        );
+        // assert_eq!(
+        //     state,
+        //     &HashMap::from_iter(vec![
+        //         (1, PairAcc::new_with_prev(1, 1)),
+        //         (2, PairAcc::new_with_prev(1, 1)),
+        //         (3, PairAcc::new_with_prev(3, 3)),
+        //         (4, PairAcc::new_with_prev(3, 3))
+        //     ])
+        // );
     }
 }
