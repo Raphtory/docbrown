@@ -1,16 +1,16 @@
+use crate::common::bootstrap_graph;
+use common::{run_analysis_benchmarks, run_ingestion_benchmarks};
+use criterion::{criterion_group, criterion_main, Criterion, Throughput};
+use csv::StringRecord;
+use csv_sniffer::Type;
+use docbrown_db::data;
+use docbrown_db::graphdb::GraphDB;
 use std::collections::hash_map::DefaultHasher;
 use std::error::Error;
 use std::fs::File;
 use std::hash::{Hash, Hasher};
 use std::ops::Range;
 use std::path::Path;
-use common::{run_ingestion_benchmarks, run_analysis_benchmarks};
-use criterion::{criterion_group, criterion_main, Criterion, Throughput};
-use csv::StringRecord;
-use csv_sniffer::Type;
-use docbrown_db::data;
-use docbrown_db::graphdb::GraphDB;
-use crate::common::bootstrap_graph;
 
 mod common;
 

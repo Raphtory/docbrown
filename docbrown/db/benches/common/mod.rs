@@ -1,6 +1,6 @@
-use criterion::{BatchSize, Bencher, measurement::WallTime, BenchmarkGroup, BenchmarkId};
+use criterion::{measurement::WallTime, BatchSize, Bencher, BenchmarkGroup, BenchmarkId};
 use docbrown_db::graphdb::GraphDB;
-use rand::{Rng, distributions::Uniform};
+use rand::{distributions::Uniform, Rng};
 
 fn make_index_gen() -> Box<dyn Iterator<Item = u64>> {
     let mut rng = rand::thread_rng();
@@ -33,7 +33,11 @@ where
     F: FnMut(&mut Bencher<'_, WallTime>),
 {
     match parameter {
-        Some(parameter) => group.bench_with_input(BenchmarkId::new(name, parameter), &parameter, |b: &mut Bencher, _| task(b), ),
+        Some(parameter) => group.bench_with_input(
+            BenchmarkId::new(name, parameter),
+            &parameter,
+            |b: &mut Bencher, _| task(b),
+        ),
         None => group.bench_function(name, task),
     };
 }
@@ -41,9 +45,8 @@ where
 pub fn run_ingestion_benchmarks<F>(
     group: &mut BenchmarkGroup<WallTime>,
     mut make_graph: F,
-    parameter: Option<usize>
-)
-where
+    parameter: Option<usize>,
+) where
     F: FnMut() -> GraphDB,
 {
     let mut indexes = make_index_gen();
@@ -51,45 +54,68 @@ where
     let mut index_sample = || indexes.next().unwrap();
     let mut time_sample = || times.next().unwrap();
 
-    bench(group, "existing vertex varying time", parameter, |b: &mut Bencher| {
-        b.iter_batched_ref(
-            || (make_graph(), time_sample()),
-            |(g, t): &mut (GraphDB, i64)| g.add_vertex(0, *t, &vec![]),
-            BatchSize::SmallInput,
-        )
-    });
-    bench(group, "new vertex constant time", parameter, |b: &mut Bencher| {
-        b.iter_batched_ref(
-            || (make_graph(), index_sample()),
-            |(g, v): &mut (GraphDB, u64)| g.add_vertex(*v, 0, &vec![]),
-            BatchSize::SmallInput,
-        )
-    });
-    bench(group, "existing edge varying time", parameter, |b: &mut Bencher| {
-        b.iter_batched_ref(
-            || (make_graph(), time_sample()),
-            |(g, t)| g.add_edge(0, 0, *t, &vec![]),
-            BatchSize::SmallInput,
-        )
-    });
-    bench(group, "new edge constant time", parameter, |b: &mut Bencher| {
-        b.iter_batched_ref(
-            || (make_graph(), index_sample(), index_sample()),
-            |(g, s, d)| g.add_edge(*s, *d, 0, &vec![]),
-            BatchSize::SmallInput,
-        )
-    });
+    bench(
+        group,
+        "existing vertex varying time",
+        parameter,
+        |b: &mut Bencher| {
+            b.iter_batched_ref(
+                || (make_graph(), time_sample()),
+                |(g, t): &mut (GraphDB, i64)| g.add_vertex(0, *t, &vec![]),
+                BatchSize::SmallInput,
+            )
+        },
+    );
+    bench(
+        group,
+        "new vertex constant time",
+        parameter,
+        |b: &mut Bencher| {
+            b.iter_batched_ref(
+                || (make_graph(), index_sample()),
+                |(g, v): &mut (GraphDB, u64)| g.add_vertex(*v, 0, &vec![]),
+                BatchSize::SmallInput,
+            )
+        },
+    );
+    bench(
+        group,
+        "existing edge varying time",
+        parameter,
+        |b: &mut Bencher| {
+            b.iter_batched_ref(
+                || (make_graph(), time_sample()),
+                |(g, t)| g.add_edge(0, 0, *t, &vec![]),
+                BatchSize::SmallInput,
+            )
+        },
+    );
+    bench(
+        group,
+        "new edge constant time",
+        parameter,
+        |b: &mut Bencher| {
+            b.iter_batched_ref(
+                || (make_graph(), index_sample(), index_sample()),
+                |(g, s, d)| g.add_edge(*s, *d, 0, &vec![]),
+                BatchSize::SmallInput,
+            )
+        },
+    );
 }
 
 pub fn run_analysis_benchmarks<F>(
     group: &mut BenchmarkGroup<WallTime>,
     mut make_graph: F,
-    parameter: Option<usize>
-)
-where
+    parameter: Option<usize>,
+) where
     F: FnMut() -> GraphDB,
 {
     let mut graph = make_graph();
-    bench(group,"edges_len", parameter, |b: &mut Bencher| b.iter(|| graph.edges_len()));
-    bench(group, "len", parameter, |b: &mut Bencher| b.iter(|| graph.len()));
+    bench(group, "edges_len", parameter, |b: &mut Bencher| {
+        b.iter(|| graph.edges_len())
+    });
+    bench(group, "len", parameter, |b: &mut Bencher| {
+        b.iter(|| graph.len())
+    });
 }

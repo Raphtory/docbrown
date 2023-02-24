@@ -1,6 +1,8 @@
-use common::{run_ingestion_benchmarks, run_analysis_benchmarks};
-use criterion::{criterion_group, criterion_main, AxisScale, Criterion, PlotConfiguration, Throughput};
 use crate::common::bootstrap_graph;
+use common::{run_analysis_benchmarks, run_ingestion_benchmarks};
+use criterion::{
+    criterion_group, criterion_main, AxisScale, Criterion, PlotConfiguration, Throughput,
+};
 
 mod common;
 
@@ -26,14 +28,14 @@ pub fn parameterized(c: &mut Criterion) {
     analysis_group.finish();
 
     let mut ingestion_group = c.benchmark_group("ingestion-num_shards");
-    for num_shards in shards.clone() { // 1..10
+    for num_shards in shards.clone() {
         let make_graph = || bootstrap_graph(num_shards, 10_000);
         ingestion_group.throughput(Throughput::Elements(num_shards as u64));
         run_ingestion_benchmarks(&mut ingestion_group, make_graph, Some(num_shards));
     }
     ingestion_group.finish();
     let mut analysis_group = c.benchmark_group("analysis-num_shards");
-    for num_shards in shards.clone() { // 1..10
+    for num_shards in shards.clone() {
         let make_graph = || bootstrap_graph(num_shards, 10_000);
         run_analysis_benchmarks(&mut analysis_group, make_graph, Some(num_shards))
     }
