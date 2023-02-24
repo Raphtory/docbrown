@@ -1,4 +1,6 @@
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::hash::Hash;
 use std::ops::Range;
 use std::path::Path;
 use std::sync::Arc;
@@ -6,7 +8,7 @@ use std::sync::Arc;
 use genawaiter::sync::{gen, GenBoxed};
 use genawaiter::yield_;
 
-use crate::tgraph::{EdgeView, TGraph, VertexView};
+use crate::tgraph::{EdgeView, TemporalGraph, VertexView};
 use crate::{Direction, Prop};
 
 #[derive(Debug)]
@@ -18,8 +20,8 @@ pub struct TEdge {
     pub is_remote: bool,
 }
 
-impl<'a> From<EdgeView<'a, TGraph>> for TEdge {
-    fn from(e: EdgeView<'a, TGraph>) -> Self {
+impl<'a> From<EdgeView<'a, TemporalGraph>> for TEdge {
+    fn from(e: EdgeView<'a, TemporalGraph>) -> Self {
         Self {
             src: e.global_src(),
             dst: e.global_dst(),
@@ -33,13 +35,25 @@ impl<'a> From<EdgeView<'a, TGraph>> for TEdge {
 pub struct TVertex {
     pub g_id: u64,
     pub w: Option<Range<i64>>,
+    props: HashMap<String, Prop>,
 }
 
-impl<'a> From<VertexView<'a, TGraph>> for TVertex {
-    fn from(v: VertexView<'a, TGraph>) -> Self {
+impl<'a> From<VertexView<'a, TemporalGraph>> for TVertex {
+    fn from(v: VertexView<'a, TemporalGraph>) -> Self {
+        let props = HashMap::new();
+
+        let g = v.graph();
+
+        // TODO: for every property lift them all up into TVertex as Vec
+        // loop over every property available
+        // get them from the VertexView as Vec
+        // store them in the HashMap
+
+
         Self {
             g_id: v.global_id(),
             w: v.window(),
+            props
         }
     }
 }
@@ -48,7 +62,7 @@ impl<'a> From<VertexView<'a, TGraph>> for TVertex {
 #[repr(transparent)]
 pub struct TGraphShard {
     #[serde(with = "arc_rwlock_serde")]
-    rc: Arc<tokio::sync::RwLock<TGraph>>,
+    rc: Arc<tokio::sync::RwLock<TemporalGraph>>,
 }
 
 mod arc_rwlock_serde {
@@ -92,7 +106,7 @@ impl TGraphShard {
     #[inline(always)]
     fn write_shard<A, F>(&self, f: F) -> A
     where
-        F: Fn(&mut TGraph) -> A,
+        F: Fn(&mut TemporalGraph) -> A,
     {
         let mut shard = self.rc.blocking_write();
         f(&mut shard)
@@ -101,7 +115,7 @@ impl TGraphShard {
     #[inline(always)]
     fn read_shard<A, F>(&self, f: F) -> A
     where
-        F: Fn(&TGraph) -> A,
+        F: Fn(&TemporalGraph) -> A,
     {
         let shard = self.rc.blocking_read();
         f(&shard)
@@ -140,11 +154,11 @@ impl TGraphShard {
     }
 
     pub fn degree(&self, v: u64, d: Direction) -> usize {
-        self.read_shard(|tg: &TGraph| tg.degree(v, d))
+        self.read_shard(|tg: &TemporalGraph| tg.degree(v, d))
     }
 
     pub fn degree_window(&self, v: u64, r: Range<i64>, d: Direction) -> usize {
-        self.read_shard(|tg: &TGraph| tg.degree_window(v, &r, d))
+        self.read_shard(|tg: &TemporalGraph| tg.degree_window(v, &r, d))
     }
 
     pub fn vertex_ids(&self) -> Box<impl Iterator<Item = u64> + Send> {
@@ -257,7 +271,7 @@ impl TGraphShard {
 #[cfg(test)]
 mod temporal_graph_partition_test {
     use super::TGraphShard;
-    use crate::{tgraph::TGraph, Direction};
+    use crate::{tgraph::TemporalGraph, Direction};
     use itertools::Itertools;
     use quickcheck::{Arbitrary, TestResult};
     use rand::Rng;
