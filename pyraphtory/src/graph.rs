@@ -9,7 +9,7 @@ use crate::wrappers::Direction;
 use crate::wrappers::EdgeIterator;
 use crate::wrappers::Prop;
 use crate::wrappers::TEdge;
-use crate::wrappers::VertexIterator;
+use crate::wrappers::VertexIdsIterator;
 
 use crate::graph_window::WindowedGraph;
 
@@ -101,8 +101,8 @@ impl Graph {
         self.graph.degree_window(v, t_start, t_end, d.convert())
     }
 
-    pub fn vertex_ids(&self) -> VertexIterator {
-        VertexIterator {
+    pub fn vertex_ids(&self) -> VertexIdsIterator {
+        VertexIdsIterator {
             iter: self.graph.vertex_ids(),
         }
     }
@@ -146,7 +146,7 @@ impl Graph {
             .graph
             .neighbours_window_t(v, t_start, t_end, d.convert())
             .map(|f| TEdge::convert(f));
-        
+
         EdgeIterator {
             iter: Box::new(iter),
         }

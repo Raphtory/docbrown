@@ -86,12 +86,12 @@ impl TVertex {
 }
 
 #[pyclass]
-pub struct VertexIterator {
+pub struct VertexIdsIterator {
     pub(crate) iter: Box<dyn Iterator<Item = u64> + Send>,
 }
 
 #[pymethods]
-impl VertexIterator {
+impl VertexIdsIterator {
     fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
         slf
     }

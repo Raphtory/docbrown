@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::{graph::Graph, wrappers::VertexIterator};
+use crate::{graph::Graph, wrappers::VertexIdsIterator};
 use docbrown_db::graph_window;
 use pyo3::prelude::*;
 
@@ -22,8 +22,8 @@ impl WindowedGraph {
         }
     }
 
-    pub fn vertex_ids(&self) -> VertexIterator {
-        VertexIterator {
+    pub fn vertex_ids(&self) -> VertexIdsIterator {
+        VertexIdsIterator {
             iter: self.windowed_graph.vertex_ids(),
         }
     }
