@@ -5,3 +5,5 @@ extern crate quickcheck_macros;
 pub mod graphdb;
 pub mod loaders;
 pub mod data;
+pub mod graphgen;
+
