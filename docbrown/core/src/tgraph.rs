@@ -641,14 +641,14 @@ impl<'a> VertexView<'a, TemporalGraph> {
                         .collect::<Vec<(i64, Prop)>>(),
                 )
             } else {
-                let mut vs = vec![];
-                vs.append(
-                    &mut meta
-                        .iter(*v)
-                        .map(|(x, y)| (*x, y))
-                        .collect::<Vec<(i64, Prop)>>(),
-                );
-                hm.insert(k.clone(), vs);
+                let value = meta
+                    .iter(*v)
+                    .map(|(x, y)| (*x, y))
+                    .collect::<Vec<(i64, Prop)>>();
+                if !value.is_empty() {
+                    // self.g.props.prop_ids returns all prop ids, including edge property ids
+                    hm.insert(k.clone(), Vec::from(value));
+                }
             }
         });
 

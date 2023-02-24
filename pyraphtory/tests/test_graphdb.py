@@ -7,13 +7,17 @@ def create_graph(num_shards):
     g = Graph(num_shards)
 
     edges = [
-        (1, 2, 1),
-        (1, 3, 2),
-        (2, 1, -1),
-        (1, 1, 0),
-        (3, 2, 7),
+        (1, 1, 2),
+        (2, 1, 3),
+        (-1, 2, 1),
+        (0, 1, 1),
+        (7, 3, 2),
         (1, 1, 1)
     ]
+
+    g.add_vertex(0, 1, {"type": "wallet", "cost": 99.5})
+    g.add_vertex(-1, 2, {"type": "wallet", "cost": 10.0})
+    g.add_vertex(6, 3, {"type": "wallet", "cost": 76.2})
 
     for e in edges:
         g.add_edge(e[0], e[1], e[2], {"prop1": 1, "prop2": 9.8, "prop3": "test"})
@@ -155,3 +159,11 @@ def test_graph_vertex_ids():
     vs.sort()
 
     assert vs == [1, 2, 3]
+
+def test_graph_vertices():
+    g = create_graph(1)
+
+    vertices = []
+    for v in g.vertices():
+        vertices.append([v.g_id, v.props])
+    assert vertices == [[1, {}], [2, {}], [3, {}]]

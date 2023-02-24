@@ -4,7 +4,7 @@ use std::{
 };
 
 use docbrown_core::{
-    tgraph_shard::{TEdge, TVertex, TGraphShard},
+    tgraph_shard::{TEdge, TGraphShard, TVertex},
     utils, Direction, Prop,
 };
 
@@ -23,9 +23,7 @@ impl Graph {
     pub fn new(nr_shards: usize) -> Self {
         Graph {
             nr_shards,
-            shards: (0..nr_shards)
-                .map(|_| TGraphShard::default())
-                .collect(),
+            shards: (0..nr_shards).map(|_| TGraphShard::default()).collect(),
         }
     }
 
@@ -225,6 +223,7 @@ mod db_tests {
     use itertools::Itertools;
     use quickcheck::{quickcheck, TestResult};
     use rand::Rng;
+    use std::collections::HashMap;
     use std::fs;
     use std::sync::Arc;
     use uuid::Uuid;
@@ -515,7 +514,7 @@ mod db_tests {
     }
 
     #[test]
-    fn graph_vertices() {
+    fn graph_vertex_ids() {
         let vs = vec![
             (1, 1, 2),
             (2, 1, 3),
@@ -542,6 +541,177 @@ mod db_tests {
         }
 
         let expected = g.vertex_ids().collect::<Vec<_>>();
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn graph_vertex_ids_window() {
+        let vs = vec![(1, 1, 2), (3, 3, 4), (5, 5, 6), (7, 7, 1)];
+
+        let args = vec![(i64::MIN, 8), (i64::MIN, 2), (i64::MIN, 4), (3, 6)];
+
+        let expected = vec![
+            vec![1, 2, 3, 4, 5, 6, 7],
+            vec![1, 2],
+            vec![1, 2, 3, 4],
+            vec![3, 4, 5, 6],
+        ];
+
+        let g = Graph::new(1);
+
+        for (t, src, dst) in &vs {
+            g.add_edge(*t, *src, *dst, &vec![]);
+        }
+
+        let res: Vec<_> = (0..=3)
+            .map(|i| {
+                let mut e = g
+                    .vertices_window(args[i].0, args[i].1)
+                    .map(move |v| v.g_id)
+                    .collect::<Vec<_>>();
+                e.sort();
+                e
+            })
+            .collect_vec();
+
+        assert_eq!(res, expected);
+
+        let g = Graph::new(3);
+        for (src, dst, t) in &vs {
+            g.add_edge(*src, *dst, *t, &vec![]);
+        }
+        let res: Vec<_> = (0..=3)
+            .map(|i| {
+                let mut e = g
+                    .vertices_window(args[i].0, args[i].1)
+                    .map(move |v| v.g_id)
+                    .collect::<Vec<_>>();
+                e.sort();
+                e
+            })
+            .collect_vec();
+        assert_eq!(res, expected);
+    }
+
+    #[test]
+    fn graph_vertices() {
+        let vs = vec![
+            (1, 1, 2),
+            (2, 1, 3),
+            (-1, 2, 1),
+            (0, 1, 1),
+            (7, 3, 2),
+            (1, 1, 1),
+        ];
+
+        let g = Graph::new(1);
+
+        g.add_vertex(
+            0,
+            1,
+            &vec![
+                ("type".into(), Prop::Str("wallet".into())),
+                ("cost".into(), Prop::F32(99.5)),
+            ],
+        );
+
+        g.add_vertex(
+            0,
+            2,
+            &vec![
+                ("type".into(), Prop::Str("wallet".into())),
+                ("cost".into(), Prop::F32(10.0)),
+            ],
+        );
+
+        g.add_vertex(
+            0,
+            3,
+            &vec![
+                ("type".into(), Prop::Str("wallet".into())),
+                ("cost".into(), Prop::F32(76.2)),
+            ],
+        );
+
+        for (t, src, dst) in &vs {
+            g.add_edge(
+                *t,
+                *src,
+                *dst,
+                &vec![("eprop".into(), Prop::Str("commons".into()))],
+            );
+        }
+
+        let actual = g
+            .vertices()
+            .map(|tv| (tv.g_id, tv.props))
+            .collect::<Vec<_>>();
+
+        let expected = vec![
+            (
+                1u64,
+                Some(HashMap::from([
+                    ("type".into(), vec![(0i64, Prop::Str("wallet".into()))]),
+                    ("cost".into(), vec![(0i64, Prop::F32(99.5))]),
+                ])),
+            ),
+            (
+                2u64,
+                Some(HashMap::from([
+                    ("type".into(), vec![(0i64, Prop::Str("wallet".into()))]),
+                    ("cost".into(), vec![(0i64, Prop::F32(10.0))]),
+                ])),
+            ),
+            (
+                3u64,
+                Some(HashMap::from([
+                    ("type".into(), vec![(0i64, Prop::Str("wallet".into()))]),
+                    ("cost".into(), vec![(0i64, Prop::F32(76.2))]),
+                ])),
+            ),
+        ];
+
+        assert_eq!(actual, expected);
+
+        // Check results from multiple graphs with different number of shards
+        let g = Graph::new(10);
+
+        g.add_vertex(
+            0,
+            1,
+            &vec![
+                ("type".into(), Prop::Str("wallet".into())),
+                ("cost".into(), Prop::F32(99.5)),
+            ],
+        );
+
+        g.add_vertex(
+            0,
+            2,
+            &vec![
+                ("type".into(), Prop::Str("wallet".into())),
+                ("cost".into(), Prop::F32(10.0)),
+            ],
+        );
+
+        g.add_vertex(
+            0,
+            3,
+            &vec![
+                ("type".into(), Prop::Str("wallet".into())),
+                ("cost".into(), Prop::F32(76.2)),
+            ],
+        );
+
+        for (t, src, dst) in &vs {
+            g.add_edge(*t, *src, *dst, &vec![]);
+        }
+
+        let expected = g
+            .vertices()
+            .map(|tv| (tv.g_id, tv.props))
+            .collect::<Vec<_>>();
+
         assert_eq!(actual, expected);
     }
 
@@ -743,55 +913,6 @@ mod db_tests {
             })
             .collect::<Vec<_>>();
         assert_eq!(both_expected, both_actual);
-    }
-
-    #[test]
-    fn vertices_window() {
-        let vs = vec![(1, 1, 2), (3, 3, 4), (5, 5, 6), (7, 7, 1)];
-
-        let args = vec![(i64::MIN, 8), (i64::MIN, 2), (i64::MIN, 4), (3, 6)];
-
-        let expected = vec![
-            vec![1, 2, 3, 4, 5, 6, 7],
-            vec![1, 2],
-            vec![1, 2, 3, 4],
-            vec![3, 4, 5, 6],
-        ];
-
-        let g = Graph::new(1);
-
-        for (t, src, dst) in &vs {
-            g.add_edge(*t, *src, *dst, &vec![]);
-        }
-
-        let res: Vec<_> = (0..=3)
-            .map(|i| {
-                let mut e = g
-                    .vertices_window(args[i].0, args[i].1)
-                    .map(move |v| v.g_id)
-                    .collect::<Vec<_>>();
-                e.sort();
-                e
-            })
-            .collect_vec();
-
-        assert_eq!(res, expected);
-
-        let g = Graph::new(3);
-        for (src, dst, t) in &vs {
-            g.add_edge(*src, *dst, *t, &vec![]);
-        }
-        let res: Vec<_> = (0..=3)
-            .map(|i| {
-                let mut e = g
-                    .vertices_window(args[i].0, args[i].1)
-                    .map(move |v| v.g_id)
-                    .collect::<Vec<_>>();
-                e.sort();
-                e
-            })
-            .collect_vec();
-        assert_eq!(res, expected);
     }
 
     #[test]

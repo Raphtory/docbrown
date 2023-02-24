@@ -127,7 +127,7 @@ impl TGraphShard {
     }
 
     pub fn add_vertex(&self, t: i64, v: u64, props: &Vec<(String, Prop)>) {
-        self.write_shard(|tg| tg.add_vertex(t, v))
+        self.write_shard(|tg| tg.add_vertex_with_props(t, v, props))
     }
 
     pub fn add_edge(&self, t: i64, src: u64, dst: u64, props: &Vec<(String, Prop)>) {

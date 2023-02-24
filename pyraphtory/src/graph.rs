@@ -9,6 +9,7 @@ use crate::wrappers::Direction;
 use crate::wrappers::EdgeIterator;
 use crate::wrappers::Prop;
 use crate::wrappers::VertexIdsIterator;
+use crate::wrappers::VertexIterator;
 
 use crate::graph_window::WindowedGraph;
 
@@ -69,7 +70,7 @@ impl Graph {
         self.graph.contains_window(v, t_start, t_end)
     }
 
-    pub fn add_vertex(&self, v: u64, t: i64, props: HashMap<String, Prop>) {
+    pub fn add_vertex(&self, t: i64, v: u64, props: HashMap<String, Prop>) {
         self.graph.add_vertex(
             t,
             v,
@@ -80,7 +81,7 @@ impl Graph {
         )
     }
 
-    pub fn add_edge(&self, src: u64, dst: u64, t: i64, props: HashMap<String, Prop>) {
+    pub fn add_edge(&self, t: i64, src: u64, dst: u64, props: HashMap<String, Prop>) {
         self.graph.add_edge(
             t,
             src,
@@ -103,6 +104,14 @@ impl Graph {
     pub fn vertex_ids(&self) -> VertexIdsIterator {
         VertexIdsIterator {
             iter: self.graph.vertex_ids(),
+        }
+    }
+
+    pub fn vertices(&self) -> VertexIterator {
+        let iter = self.graph.vertices().map(|tv| tv.into());
+
+        VertexIterator {
+            iter: Box::new(iter),
         }
     }
 
