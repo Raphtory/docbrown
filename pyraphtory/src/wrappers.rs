@@ -23,9 +23,13 @@ impl From<Direction> for dbc::Direction {
     }
 }
 
+#[pyclass]
+#[derive(Clone, Debug)]
+pub struct PyStr(String);
+
 #[derive(FromPyObject, Debug, Clone)]
 pub enum Prop {
-    Str(String),
+    Str(PyStr),
     I32(i32),
     I64(i64),
     U32(u32),
@@ -33,6 +37,21 @@ pub enum Prop {
     F32(f32),
     F64(f64),
     Bool(bool),
+}
+
+impl IntoPy<PyObject> for Prop {
+    fn into_py(self, py: Python<'_>) -> PyObject {
+        match self {
+            Prop::Str(s) => s.into_py(py),
+            Prop::I32(_) => todo!(),
+            Prop::I64(_) => todo!(),
+            Prop::U32(_) => todo!(),
+            Prop::U64(_) => todo!(),
+            Prop::F32(_) => todo!(),
+            Prop::F64(_) => todo!(),
+            Prop::Bool(_) => todo!(),
+        }
+    }
 }
 
 // impl IntoPy<PyObject> for Prop {
@@ -44,7 +63,7 @@ pub enum Prop {
 impl From<Prop> for dbc::Prop {
     fn from(prop: Prop) -> dbc::Prop {
         match prop {
-            Prop::Str(string) => dbc::Prop::Str(string.clone()),
+            Prop::Str(PyStr(string)) => dbc::Prop::Str(string.clone()),
             Prop::I32(i32) => dbc::Prop::I32(i32),
             Prop::I64(i64) => dbc::Prop::I64(i64),
             Prop::U32(u32) => dbc::Prop::U32(u32),
@@ -59,7 +78,7 @@ impl From<Prop> for dbc::Prop {
 impl From<dbc::Prop> for Prop {
     fn from(prop: dbc::Prop) -> Prop {
         match prop {
-            dbc::Prop::Str(string) => Prop::Str(string.clone()),
+            dbc::Prop::Str(string) => Prop::Str(PyStr(string.clone())),
             dbc::Prop::I32(i32) => Prop::I32(i32),
             dbc::Prop::I64(i64) => Prop::I64(i64),
             dbc::Prop::U32(u32) => Prop::U32(u32),
@@ -101,46 +120,75 @@ impl From<tgraph_shard::TEdge> for TEdge {
 }
 
 // #[pyclass]
+// #[derive(Clone)]
+// struct PyStr(String);
+
+// #[derive(FromPyObject, Clone)]
+// enum Propy{
+//     Str(MyString)
+// }
+
+// #[pyclass]
 // pub struct TVertex2 {
 //     #[pyo3(get)]
 //     pub g_id: u64,
 //     #[pyo3(get)]
-//     pub props: Option<HashMap<String, Vec<Prop>>>,
+//     pub props: Option<HashMap<String, Vec<Propy>>>,
 // }
 
-// #[pyclass]
-// pub struct TVertex {
-//     #[pyo3(get)]
-//     pub g_id: u64,
-//     #[pyo3(get)]
-//     pub props: Option<HashMap<String, Vec<(i64, Prop)>>>,
-// }
+#[pyclass]
+pub struct TVertex {
+    #[pyo3(get)]
+    pub g_id: u64,
+    #[pyo3(get)]
+    pub props: Option<HashMap<String, Vec<(i64, Prop)>>>,
+}
 
-// impl From<tgraph_shard::TVertex> for TVertex {
-//     fn from(value: tgraph_shard::TVertex) -> TVertex {
-//         let tgraph_shard::TVertex { g_id, props, .. } = value;
-//         if let Some(props1) = props {
-//             let vs = props
-//                 .unwrap()
-//                 .iter()
-//                 .map(|(k, v)| {
-//                     (
-//                         *k,
-//                         v.iter()
-//                             .map(|(t, p)| (*t, (*p).into()))
-//                             .collect::<Vec<(i64, Prop)>>(),
-//                     )
-//                 })
-//                 .collect::<HashMap<String, Vec<(i64, Prop)>>>();
-//             TVertex {
-//                 g_id,
-//                 props: Some(vs),
-//             }
-//         } else {
-//             TVertex { g_id, props: None }
-//         }
-//     }
-// }
+impl From<tgraph_shard::TVertex> for TVertex {
+    fn from(value: tgraph_shard::TVertex) -> TVertex {
+
+        let tgraph_shard::TVertex { g_id, props , ..} = value;
+
+        match props {
+            Some(propsx) => {
+                for (k, v) in propsx {
+                    println!("{}: {:?}", k, v);
+                }
+            }
+            None => {}
+        }
+
+        todo!()
+        // match props {
+        //     Some(propsx) => {
+        //         for (k, v) in props {
+        //             println!("{}: {:?}", k, v);
+        //         }
+        //     }
+        //     None => {}
+        // }
+
+        // if let Some(props1) = props {
+        //     let vs = props1
+        //         .iter()
+        //         .map(|(k, v)| {
+        //             (
+        //                 *k,
+        //                 v.iter()
+        //                     .map(|(t, p)| (*t, (*p).into()))
+        //                     .collect::<Vec<(i64, Prop)>>(),
+        //             )
+        //         })
+        //         .collect::<HashMap<String, Vec<(i64, Prop)>>>();
+        //     TVertex {
+        //         g_id,
+        //         props: Some(vs),
+        //     }
+        // } else {
+        //     TVertex { g_id, props: None }
+        // }
+    }
+}
 
 #[pyclass]
 pub struct VertexIdsIterator {
