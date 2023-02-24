@@ -17,7 +17,7 @@ def create_graph(num_shards):
 
     g.add_vertex(0, 1, {"type": "wallet", "cost": 99.5})
     g.add_vertex(-1, 2, {"type": "wallet", "cost": 10.0})
-    g.add_vertex(6, 3, {"type": "wallet", "cost": 76.2})
+    g.add_vertex(6, 3, {"type": "wallet", "cost": 76})
 
     for e in edges:
         g.add_edge(e[0], e[1], e[2], {"prop1": 1, "prop2": 9.8, "prop3": "test"})
@@ -166,4 +166,8 @@ def test_graph_vertices():
     vertices = []
     for v in g.vertices():
         vertices.append([v.g_id, v.props])
-    assert vertices == [[1, {}], [2, {}], [3, {}]]
+    assert vertices == [
+            [1, {"type": [(0, "wallet")], "cost": [(0, 99.5)]}], 
+            [2, {"type": [(-1, "wallet")], "cost": [(-1, 10.0)]}], 
+            [3, {"type": [(6, "wallet")], "cost": [(6, 76)]}]
+        ]
