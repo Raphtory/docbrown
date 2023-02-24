@@ -35,3 +35,7 @@ criterion = "0.3"
 [[bench]]
 name = "base"
 harness = false
+
+[[bench]]
+name = "parameterized"
+harness = false
