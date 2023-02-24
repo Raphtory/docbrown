@@ -5,8 +5,8 @@ use docbrown_core::{
     utils, Direction, Prop,
 };
 
-use crate::data::lotr_graph::{lotr_graph, lotr_file};
-use crate::data::twitter_graph::twitter_graph;
+use crate::graph_loader::lotr_graph::{lotr_graph, lotr_file};
+use crate::graph_loader::twitter_graph::twitter_graph;
 
 use rayon::prelude::{IntoParallelRefIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};

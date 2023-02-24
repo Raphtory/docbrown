@@ -1,8 +1,5 @@
 use crate::{graphdb::GraphDB, loaders::csv::CsvLoader};
-use docbrown_core::utils;
-use docbrown_core::Prop;
 use fetch_data::{fetch, FetchDataError};
-use serde::Deserialize;
 use std::path::PathBuf;
 use std::env;
 
