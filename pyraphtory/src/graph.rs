@@ -115,6 +115,17 @@ impl Graph {
         }
     }
 
+    pub fn vertices_window(&self, t_start: i64, t_end: i64) -> VertexIterator {
+        let iter = self
+            .graph
+            .vertices_window(t_start, t_end)
+            .map(|tv| tv.into());
+
+        VertexIterator {
+            iter: Box::new(iter),
+        }
+    }
+
     pub fn neighbours(&self, v: u64, d: Direction) -> EdgeIterator {
         let iter = self.graph.neighbours(v, d.into()).map(|te| te.into());
 

@@ -152,6 +152,7 @@ def test_windowed_graph_vertex_ids():
 
     assert vs == [1, 2]
 
+
 def test_graph_vertex_ids():
     g = create_graph(1)
 
@@ -159,6 +160,7 @@ def test_graph_vertex_ids():
     vs.sort()
 
     assert vs == [1, 2, 3]
+
 
 def test_graph_vertices():
     g = create_graph(1)
@@ -170,4 +172,16 @@ def test_graph_vertices():
             [1, {"type": [(0, "wallet")], "cost": [(0, 99.5)]}], 
             [2, {"type": [(-1, "wallet")], "cost": [(-1, 10.0)]}], 
             [3, {"type": [(6, "wallet")], "cost": [(6, 76)]}]
+        ]
+
+
+def test_graph_vertices_window():
+    g = create_graph(1)
+
+    vertices = []
+    for v in g.vertices_window(-1, 0):
+        vertices.append([v.g_id, v.props])
+    assert vertices == [
+            [1, {}], 
+            [2, {"type": [(-1, "wallet")], "cost": [(-1, 10.0)]}], 
         ]

@@ -39,10 +39,16 @@ pub struct TVertex {
 
 impl<'a> From<VertexView<'a, TemporalGraph>> for TVertex {
     fn from(v: VertexView<'a, TemporalGraph>) -> Self {
+        let props = if v.window().is_none() {
+            v.all_props()
+        } else {
+            v.all_props_window(v.window().unwrap())
+        };
+        
         Self {
             g_id: v.global_id(),
             w: v.window(),
-            props: v.all_props(),
+            props,
         }
     }
 }
@@ -58,7 +64,7 @@ mod arc_rwlock_serde {
     use serde::de::Deserializer;
     use serde::ser::Serializer;
     use serde::{Deserialize, Serialize};
-    use std::sync::{Arc, RwLock};
+    use std::sync::Arc;
 
     pub fn serialize<S, T>(val: &Arc<tokio::sync::RwLock<T>>, s: S) -> Result<S::Ok, S::Error>
     where

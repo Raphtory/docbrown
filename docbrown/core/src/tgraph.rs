@@ -652,17 +652,38 @@ impl<'a> VertexView<'a, TemporalGraph> {
             }
         });
 
-        Some(hm)
+        Some(hm) // Don't return "None" if hm.is_empty for Some({}) gets translated as {} in python
     }
 
-    // pub fn all_props_window(
-    //     &self,
-    // ) -> Option<Box<dyn Iterator<Item = HashMap<&'a str, (&'a i64, Prop)>> + 'a>> {
-    //     let index = self.g.logical_to_physical.get(&self.g_id)?;
-    //     let meta = self.g.props.vertex_meta.get(*index)?;
-    //     // TODO: lift all the props here and make a version that also gives you the history str, Prop, and Time
-    //     None
-    // }
+    pub fn all_props_window(&self, r: Range<i64>) -> Option<HashMap<String, Vec<(i64, Prop)>>> {
+        let index = self.g.logical_to_physical.get(&self.g_id)?;
+        let meta = self.g.props.vertex_meta.get(*index)?;
+
+        let mut hm: HashMap<String, Vec<(i64, Prop)>> = HashMap::new();
+
+        self.g.props.prop_ids.iter().for_each(|(k, v)| {
+            if hm.contains_key(k) {
+                let vs = hm.get_mut(k).unwrap();
+                vs.append(
+                    &mut meta
+                        .iter_window(*v, r.clone())
+                        .map(|(x, y)| (*x, y))
+                        .collect::<Vec<(i64, Prop)>>(),
+                )
+            } else {
+                let value = meta
+                    .iter_window(*v, r.clone())
+                    .map(|(x, y)| (*x, y))
+                    .collect::<Vec<(i64, Prop)>>();
+                if !value.is_empty() {
+                    // self.g.props.prop_ids returns all prop ids, including edge property ids
+                    hm.insert(k.clone(), Vec::from(value));
+                }
+            }
+        });
+
+        Some(hm) // Don't return "None" if hm.is_empty for Some({}) gets translated as {} in python
+    }
 }
 
 pub(crate) struct EdgeView<'a, G: Sized> {

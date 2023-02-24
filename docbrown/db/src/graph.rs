@@ -716,6 +716,116 @@ mod db_tests {
     }
 
     #[test]
+    fn graph_vertices_window() {
+        let vs = vec![
+            (1, 1, 2),
+            (2, 1, 3),
+            (-1, 2, 1),
+            (0, 1, 1),
+            (7, 3, 2),
+            (1, 1, 1),
+        ];
+
+        let g = Graph::new(1);
+
+        g.add_vertex(
+            0,
+            1,
+            &vec![
+                ("type".into(), Prop::Str("wallet".into())),
+                ("cost".into(), Prop::F32(99.5)),
+            ],
+        );
+
+        g.add_vertex(
+            -1,
+            2,
+            &vec![
+                ("type".into(), Prop::Str("wallet".into())),
+                ("cost".into(), Prop::F32(10.0)),
+            ],
+        );
+
+        g.add_vertex(
+            6,
+            3,
+            &vec![
+                ("type".into(), Prop::Str("wallet".into())),
+                ("cost".into(), Prop::F32(76.2)),
+            ],
+        );
+
+        for (t, src, dst) in &vs {
+            g.add_edge(
+                *t,
+                *src,
+                *dst,
+                &vec![("eprop".into(), Prop::Str("commons".into()))],
+            );
+        }
+
+        let actual = g
+            .vertices_window(-2, 0)
+            .map(|tv| (tv.g_id, tv.props))
+            .collect::<Vec<_>>();
+
+        let hm: HashMap<String, Vec<(i64, Prop)>> = HashMap::new();
+        let expected = vec![
+            (1u64, Some(hm)),
+            (
+                2u64,
+                Some(HashMap::from([
+                    ("type".into(), vec![(-1i64, Prop::Str("wallet".into()))]),
+                    ("cost".into(), vec![(-1i64, Prop::F32(10.0))]),
+                ])),
+            ),
+        ];
+
+        assert_eq!(actual, expected);
+
+        // Check results from multiple graphs with different number of shards
+        let g = Graph::new(10);
+
+        g.add_vertex(
+            0,
+            1,
+            &vec![
+                ("type".into(), Prop::Str("wallet".into())),
+                ("cost".into(), Prop::F32(99.5)),
+            ],
+        );
+
+        g.add_vertex(
+            -1,
+            2,
+            &vec![
+                ("type".into(), Prop::Str("wallet".into())),
+                ("cost".into(), Prop::F32(10.0)),
+            ],
+        );
+
+        g.add_vertex(
+            6,
+            3,
+            &vec![
+                ("type".into(), Prop::Str("wallet".into())),
+                ("cost".into(), Prop::F32(76.2)),
+            ],
+        );
+
+        for (t, src, dst) in &vs {
+            g.add_edge(*t, *src, *dst, &vec![]);
+        }
+
+        let expected = g
+            .vertices_window(-2, 0)
+            .map(|tv| (tv.g_id, tv.props))
+            .collect::<Vec<_>>();
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
     fn graph_neighbours() {
         let vs = vec![
             (1, 1, 2),
