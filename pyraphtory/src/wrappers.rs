@@ -72,8 +72,6 @@ impl TEdge {
     }
 }
 
-unsafe impl Send for TEdge {}
-
 #[pyclass]
 pub struct TVertex {
     #[pyo3(get)]
