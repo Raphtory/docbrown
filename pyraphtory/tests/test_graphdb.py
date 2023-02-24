@@ -1,5 +1,4 @@
 import sys
-import pyraphtory
 from pyraphtory import Graph
 from pyraphtory import Direction
 
@@ -38,9 +37,9 @@ def test_graph_contains():
 def test_graph_degree():
     g = create_graph(3)
 
-    indegree = g.degree(1, pyraphtory.Direction.IN)
-    outdegree = g.degree(2, pyraphtory.Direction.OUT)
-    degree = g.degree(3, pyraphtory.Direction.BOTH)
+    indegree = g.degree(1, Direction.IN)
+    outdegree = g.degree(2, Direction.OUT)
+    degree = g.degree(3, Direction.BOTH)
 
     assert indegree == 2
     assert outdegree == 1
@@ -50,12 +49,9 @@ def test_graph_degree():
 def test_graph_degree_window():
     g = create_graph(3)
 
-    indegree_w = g.degree_window(
-        1, 0, sys.maxsize, pyraphtory.Direction.IN)
-    outdegree_w = g.degree_window(
-        2, 0, sys.maxsize, pyraphtory.Direction.OUT)
-    degree_w = g.degree_window(
-        3, 0, sys.maxsize, pyraphtory.Direction.BOTH)
+    indegree_w = g.degree_window(1, 0, sys.maxsize, Direction.IN)
+    outdegree_w = g.degree_window(2, 0, sys.maxsize, Direction.OUT)
+    degree_w = g.degree_window(3, 0, sys.maxsize, Direction.BOTH)
 
     assert indegree_w == 1
     assert outdegree_w == 0
@@ -66,7 +62,7 @@ def test_graph_neighbours():
     g = create_graph(1)
 
     in_neighbours = []
-    for e in g.neighbours(1, pyraphtory.Direction.IN):
+    for e in g.neighbours(1, Direction.IN):
         in_neighbours.append([e.src, e.dst, e.t, e.is_remote])
     assert in_neighbours == [
         [1, 1, None, False],
@@ -74,14 +70,14 @@ def test_graph_neighbours():
     ]
 
     out_neighbours = []
-    for e in g.neighbours(2, pyraphtory.Direction.OUT):
+    for e in g.neighbours(2, Direction.OUT):
         out_neighbours.append([e.src, e.dst, e.t, e.is_remote])
     assert out_neighbours == [
         [2, 1, None, False]
     ]
 
     neighbours = []
-    for e in g.neighbours(3, pyraphtory.Direction.BOTH):
+    for e in g.neighbours(3, Direction.BOTH):
         neighbours.append([e.src, e.dst, e.t, e.is_remote])
     assert neighbours == [
         [1, 3, None, False],

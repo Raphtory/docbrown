@@ -1,5 +1,4 @@
 use pyo3::prelude::*;
-use std::ops::Range;
 
 use dbc::tgraph_shard;
 use docbrown_core as dbc;
@@ -12,9 +11,9 @@ pub enum Direction {
     BOTH,
 }
 
-impl Direction {
-    pub(crate) fn convert(&self) -> dbc::Direction {
-        match self {
+impl From<Direction> for dbc::Direction {
+    fn from(d: Direction) -> dbc::Direction {
+        match d {
             Direction::OUT => dbc::Direction::OUT,
             Direction::IN => dbc::Direction::IN,
             Direction::BOTH => dbc::Direction::BOTH,
@@ -31,14 +30,14 @@ pub enum Prop {
     Bool(bool),
 }
 
-impl Prop {
-    pub(crate) fn convert(&self) -> dbc::Prop {
-        match self {
+impl From<Prop> for dbc::Prop {
+    fn from(prop: Prop) -> dbc::Prop {
+        match prop {
             Prop::Str(string) => dbc::Prop::Str(string.clone()),
-            Prop::I64(i64) => dbc::Prop::I64(*i64),
-            Prop::U64(u64) => dbc::Prop::U64(*u64),
-            Prop::F64(f64) => dbc::Prop::F64(*f64),
-            Prop::Bool(bool) => dbc::Prop::Bool(*bool),
+            Prop::I64(i64) => dbc::Prop::I64(i64),
+            Prop::U64(u64) => dbc::Prop::U64(u64),
+            Prop::F64(f64) => dbc::Prop::F64(f64),
+            Prop::Bool(bool) => dbc::Prop::Bool(bool),
         }
     }
 }
@@ -55,14 +54,14 @@ pub struct TEdge {
     pub is_remote: bool,
 }
 
-impl TEdge {
-    pub(crate) fn convert(edge: tgraph_shard::TEdge) -> TEdge {
+impl From<tgraph_shard::TEdge> for TEdge {
+    fn from(value: tgraph_shard::TEdge) -> Self {
         let tgraph_shard::TEdge {
             src,
             dst,
             t,
             is_remote,
-        } = edge;
+        } = value;
         TEdge {
             src,
             dst,
@@ -78,9 +77,9 @@ pub struct TVertex {
     pub g_id: u64,
 }
 
-impl TVertex {
-    pub(crate) fn convert(vertex: tgraph_shard::TVertex) -> TVertex {
-        let tgraph_shard::TVertex { g_id, .. } = vertex;
+impl From<tgraph_shard::TVertex> for TVertex {
+    fn from(value: tgraph_shard::TVertex) -> TVertex {
+        let tgraph_shard::TVertex { g_id, .. } = value;
         TVertex { g_id }
     }
 }

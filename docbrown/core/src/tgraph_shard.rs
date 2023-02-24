@@ -1,6 +1,5 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::hash::Hash;
 use std::ops::Range;
 use std::path::Path;
 use std::sync::Arc;

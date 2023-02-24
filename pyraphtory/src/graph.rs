@@ -8,7 +8,6 @@ use std::path::{Path, PathBuf};
 use crate::wrappers::Direction;
 use crate::wrappers::EdgeIterator;
 use crate::wrappers::Prop;
-use crate::wrappers::TEdge;
 use crate::wrappers::VertexIdsIterator;
 
 use crate::graph_window::WindowedGraph;
@@ -76,7 +75,7 @@ impl Graph {
             v,
             &props
                 .into_iter()
-                .map(|(key, value)| (key, value.convert()))
+                .map(|(key, value)| (key, value.into()))
                 .collect::<Vec<(String, dbc::Prop)>>(),
         )
     }
@@ -88,17 +87,17 @@ impl Graph {
             dst,
             &props
                 .into_iter()
-                .map(|f| (f.0.clone(), f.1.convert()))
+                .map(|f| (f.0.clone(), f.1.into()))
                 .collect::<Vec<(String, dbc::Prop)>>(),
         )
     }
 
     pub fn degree(&self, v: u64, d: Direction) -> usize {
-        self.graph.degree(v, d.convert())
+        self.graph.degree(v, d.into())
     }
 
     pub fn degree_window(&self, v: u64, t_start: i64, t_end: i64, d: Direction) -> usize {
-        self.graph.degree_window(v, t_start, t_end, d.convert())
+        self.graph.degree_window(v, t_start, t_end, d.into())
     }
 
     pub fn vertex_ids(&self) -> VertexIdsIterator {
@@ -108,10 +107,7 @@ impl Graph {
     }
 
     pub fn neighbours(&self, v: u64, d: Direction) -> EdgeIterator {
-        let iter = self
-            .graph
-            .neighbours(v, d.convert())
-            .map(|f| TEdge::convert(f));
+        let iter = self.graph.neighbours(v, d.into()).map(|te| te.into());
 
         EdgeIterator {
             iter: Box::new(iter),
@@ -127,8 +123,8 @@ impl Graph {
     ) -> EdgeIterator {
         let iter = self
             .graph
-            .neighbours_window(v, t_start, t_end, d.convert())
-            .map(|f| TEdge::convert(f));
+            .neighbours_window(v, t_start, t_end, d.into())
+            .map(|te| te.into());
 
         EdgeIterator {
             iter: Box::new(iter),
@@ -144,8 +140,8 @@ impl Graph {
     ) -> EdgeIterator {
         let iter = self
             .graph
-            .neighbours_window_t(v, t_start, t_end, d.convert())
-            .map(|f| TEdge::convert(f));
+            .neighbours_window_t(v, t_start, t_end, d.into())
+            .map(|te| te.into());
 
         EdgeIterator {
             iter: Box::new(iter),
