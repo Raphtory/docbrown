@@ -54,11 +54,11 @@ jobs:
           output-file-path: benchmark-result.txt
           external-data-json-path: ./benchmark-cache/benchmark-result.json
           fail-on-alert: true
-      - name:  Is data file present
-        run: ls ./benchmark-cache
+#      - name:  Is data file present
+#        run: ls ./benchmark-cache
       - name: Save benchmark results from main branch
         uses: actions/cache/save@v3
-        # if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main'
         with:
           path: ./benchmark-cache
           key: ${{ steps.restore-benchmark-cache.outputs.cache-primary-key }}
