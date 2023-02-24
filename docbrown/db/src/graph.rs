@@ -181,7 +181,7 @@ impl Graph {
         )
     }
 
-    pub fn neighbours(&self, v: u64, d: Direction) -> Box<dyn Iterator<Item = TEdge>> {
+    pub fn neighbours(&self, v: u64, d: Direction) -> Box<dyn Iterator<Item = TEdge> + Send> {
         let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
 
         let iter = self.shards[shard_id].neighbours(v, d);
@@ -195,7 +195,7 @@ impl Graph {
         t_start: i64,
         t_end: i64,
         d: Direction,
-    ) -> Box<dyn Iterator<Item = TEdge>> {
+    ) -> Box<dyn Iterator<Item = TEdge> + Send> {
         let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
 
         let iter = self.shards[shard_id].neighbours_window(v, t_start..t_end, d);
@@ -209,7 +209,7 @@ impl Graph {
         t_start: i64,
         t_end: i64,
         d: Direction,
-    ) -> Box<dyn Iterator<Item = TEdge>> {
+    ) -> Box<dyn Iterator<Item = TEdge> + Send> {
         let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
 
         let iter = self.shards[shard_id].neighbours_window_t(v, t_start..t_end, d);

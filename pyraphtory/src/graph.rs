@@ -112,7 +112,7 @@ impl Graph {
             .graph
             .neighbours(v, d.convert())
             .map(|f| TEdge::convert(f));
-        
+
         EdgeIterator {
             iter: Box::new(iter),
         }
@@ -125,13 +125,13 @@ impl Graph {
         t_end: i64,
         d: Direction,
     ) -> EdgeIterator {
+        let iter = self
+            .graph
+            .neighbours_window(v, t_start, t_end, d.convert())
+            .map(|f| TEdge::convert(f));
+
         EdgeIterator {
-            iter: self
-                .graph
-                .neighbours_window(v, t_start, t_end, d.convert())
-                .map(|f| TEdge::convert(f))
-                .collect::<Vec<_>>()
-                .into_iter(),
+            iter: Box::new(iter),
         }
     }
 
@@ -142,13 +142,13 @@ impl Graph {
         t_end: i64,
         d: Direction,
     ) -> EdgeIterator {
+        let iter = self
+            .graph
+            .neighbours_window_t(v, t_start, t_end, d.convert())
+            .map(|f| TEdge::convert(f));
+        
         EdgeIterator {
-            iter: self
-                .graph
-                .neighbours_window_t(v, t_start, t_end, d.convert())
-                .map(|f| TEdge::convert(f))
-                .collect::<Vec<_>>()
-                .into_iter(),
+            iter: Box::new(iter),
         }
     }
 }
