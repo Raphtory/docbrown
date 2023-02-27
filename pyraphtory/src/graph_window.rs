@@ -24,7 +24,6 @@ impl WindowedGraph {
             ),
         }
     }
-
     pub fn contains(&self, v: u64) -> bool {
         self.windowed_graph.contains(v)
     }
