@@ -3,7 +3,7 @@ use crate::{graphdb::GraphDB};
 pub fn random_graph(graph:GraphDB,edges:u64) -> GraphDB {
     use rand::seq::IteratorRandom;
     let mut rng = rand::thread_rng();
-    graph.add_edge(1,2,1,&vec![]); //kick things off
+    graph.add_edge(1,2,1,&vec![]); //kick things off }
     for i in 2..edges+1 {
         let prev_node = graph.vertices().choose(&mut rng).unwrap();
         graph.add_edge(i,prev_node,1,&vec![]);
