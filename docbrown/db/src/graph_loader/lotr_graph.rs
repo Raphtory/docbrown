@@ -4,8 +4,6 @@ use std::path::PathBuf;
 use crate::graph_loader::{fetch_file, GraphDB, CsvLoader};
 use docbrown_core::{Prop, utils};
 
-// In order to add new files to this module, obtain the hash using bin/hash_for_url.rs
-
 #[derive(Deserialize, std::fmt::Debug)]
 pub struct Lotr {
     src_id: String,
