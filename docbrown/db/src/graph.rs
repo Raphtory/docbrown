@@ -1029,7 +1029,7 @@ mod db_tests {
     fn db_lotr() {
         let g = Graph::new(4);
 
-        let data_dir = crate::data::lotr().expect("Failed to get lotr.csv file");
+        let data_dir = crate::data::lotr_file().expect("Failed to get lotr.csv file");
 
         fn parse_record(rec: &StringRecord) -> Option<(String, String, i64)> {
             let src = rec.get(0).and_then(|s| s.parse::<String>().ok())?;
@@ -1071,5 +1071,20 @@ mod db_tests {
 
         let gandalf = utils::calculate_hash(&"Gandalf");
         assert!(g.contains(gandalf));
+    }
+
+    #[test]
+    fn test_lotr_load_graph() {
+        let g = crate::data::lotr_graph(4);
+        assert_eq!(g.edges_len(), 701);
+    }
+
+    //TODO: move this to integration tests or speed it up
+    #[ignore]
+    #[test]
+    fn test_twitter_load_graph() {
+        let g = crate::data::twitter_graph(4);
+        assert_eq!(g.edges_len(), 1089147);
+        assert_eq!(g.len(), 49467);
     }
 }
