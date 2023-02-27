@@ -3,7 +3,6 @@
 extern crate quickcheck_macros;
 
 mod adj;
-mod anymap;
 mod bitset;
 pub mod tgraph;
 pub mod lsm;

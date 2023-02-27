@@ -120,11 +120,11 @@ impl<A> PairAcc<A> {
 }
 
 impl<A> PairAcc<A> {
-    fn as_mut(&mut self, ss: u64) -> Option<&mut A> {
+    fn as_mut(&mut self, ss: u64) -> &mut Option<A> {
         if ss % 2 == 0 {
-            self.even.as_mut()
+            &mut self.even
         } else {
-            self.odd.as_mut()
+            &mut self.odd
         }
     }
 
@@ -198,12 +198,9 @@ where
                 } else {
                     // clone the previous step into current
                     e.copy_from_prev(self.ss);
-                    let acc2 = e.as_mut(self.ss);
-                    if let Some(acc2) = acc2 {
-                        (self.acc.bin_op)(acc2, value.clone());
-                    } else {
-                         = Some(value);
-                    }
+                    let acc2 = e.as_mut(self.ss).get_or_insert(self.acc.id.clone());
+                    (self.acc.bin_op)(acc2, value.clone());
+
                 }
             })
             .or_insert_with(|| PairAcc::new(value, self.ss));
