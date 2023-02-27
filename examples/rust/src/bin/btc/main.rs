@@ -117,9 +117,9 @@ fn main() {
     assert_eq!(graph.len(), 9132396);
     assert_eq!(graph.edges_len(), 5087223);
 
-    assert!(graph.contains(test_v));
-
     let windowed_graph = graph.window(0, i64::MAX);
+
+    assert!(windowed_graph.contains(test_v));
 
     let deg_out = windowed_graph.neighbours(test_v, Direction::OUT).count();
     let deg_in = windowed_graph.neighbours(test_v, Direction::IN).count();

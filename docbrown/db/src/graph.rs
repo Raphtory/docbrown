@@ -89,24 +89,6 @@ impl Graph {
         Ok(())
     }
 
-    pub fn len(&self) -> usize {
-        self.shards.iter().map(|shard| shard.len()).sum()
-    }
-
-    pub fn edges_len(&self) -> usize {
-        self.shards.iter().map(|shard| shard.out_edges_len()).sum()
-    }
-
-    pub fn contains(&self, v: u64) -> bool {
-        self.shards.iter().any(|shard| shard.contains(v))
-    }
-
-    pub(crate) fn contains_window(&self, v: u64, t_start: i64, t_end: i64) -> bool {
-        self.shards
-            .iter()
-            .any(|shard| shard.contains_window(v, t_start..t_end))
-    }
-
     // TODO: Probably add vector reference here like add
     pub fn add_vertex(&self, t: i64, v: u64, props: &Vec<(String, Prop)>) {
         let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
@@ -127,10 +109,22 @@ impl Graph {
         }
     }
 
-    pub fn degree(&self, v: u64, d: Direction) -> usize {
-        let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
-        let iter = self.shards[shard_id].degree(v, d);
-        iter
+    pub fn len(&self) -> usize {
+        self.shards.iter().map(|shard| shard.len()).sum()
+    }
+
+    pub fn edges_len(&self) -> usize {
+        self.shards.iter().map(|shard| shard.out_edges_len()).sum()
+    }
+
+    pub fn contains(&self, v: u64) -> bool {
+        self.shards.iter().any(|shard| shard.contains(v))
+    }
+
+    pub(crate) fn contains_window(&self, v: u64, t_start: i64, t_end: i64) -> bool {
+        self.shards
+            .iter()
+            .any(|shard| shard.contains_window(v, t_start..t_end))
     }
 
     pub(crate) fn degree_window(&self, v: u64, t_start: i64, t_end: i64, d: Direction) -> usize {
@@ -139,12 +133,7 @@ impl Graph {
         iter
     }
 
-    pub fn vertex_ids(&self) -> Box<dyn Iterator<Item = u64> + Send> {
-        let shards = self.shards.clone();
-        Box::new(shards.into_iter().flat_map(|shard| shard.vertex_ids()))
-    }
-
-    pub fn vertex_ids_window(
+    pub(crate) fn vertex_ids_window(
         &self,
         t_start: i64,
         t_end: i64,
@@ -159,12 +148,7 @@ impl Graph {
         )
     }
 
-    pub fn vertices(&self) -> Box<dyn Iterator<Item = TVertex> + Send> {
-        let shards = self.shards.clone();
-        Box::new(shards.into_iter().flat_map(|shard| shard.vertices()))
-    }
-
-    pub fn vertices_window(
+    pub(crate) fn vertices_window(
         &self,
         t_start: i64,
         t_end: i64,
@@ -177,14 +161,6 @@ impl Graph {
                 .into_iter()
                 .flatten(),
         )
-    }
-
-    pub fn neighbours(&self, v: u64, d: Direction) -> Box<dyn Iterator<Item = TEdge> + Send> {
-        let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
-
-        let iter = self.shards[shard_id].neighbours(v, d);
-
-        Box::new(iter)
     }
 
     pub(crate) fn neighbours_window(
@@ -343,24 +319,6 @@ mod db_tests {
     }
 
     #[quickcheck]
-    fn graph_contains_vertex(vs: Vec<(i64, u64)>) -> TestResult {
-        if vs.is_empty() {
-            return TestResult::discard();
-        }
-
-        let g = Graph::new(2);
-
-        let rand_index = rand::thread_rng().gen_range(0..vs.len());
-        let rand_vertex = vs.get(rand_index).unwrap().1;
-
-        for (t, v) in vs {
-            g.add_vertex(t.into(), v.into(), &vec![]);
-        }
-
-        TestResult::from_bool(g.contains(rand_vertex))
-    }
-
-    #[quickcheck]
     fn graph_contains_vertex_window(mut vs: Vec<(i64, u64)>) -> TestResult {
         if vs.is_empty() {
             return TestResult::discard();
@@ -414,56 +372,6 @@ mod db_tests {
     }
 
     #[test]
-    fn graph_degree() {
-        let vs = vec![
-            (1, 1, 2),
-            (2, 1, 3),
-            (-1, 2, 1),
-            (0, 1, 1),
-            (7, 3, 2),
-            (1, 1, 1),
-        ];
-
-        let g = Graph::new(2);
-
-        for (t, src, dst) in &vs {
-            g.add_edge(*t, *src, *dst, &vec![]);
-        }
-
-        let expected = vec![(2, 3, 3), (2, 1, 2), (1, 1, 2)];
-        let actual = (1..=3)
-            .map(|i| {
-                (
-                    g.degree(i, Direction::IN),
-                    g.degree(i, Direction::OUT),
-                    g.degree(i, Direction::BOTH),
-                )
-            })
-            .collect::<Vec<_>>();
-
-        assert_eq!(actual, expected);
-
-        // Check results from multiple graphs with different number of shards
-        let g = Graph::new(1);
-
-        for (t, src, dst) in &vs {
-            g.add_edge(*t, *src, *dst, &vec![]);
-        }
-
-        let expected = (1..=3)
-            .map(|i| {
-                (
-                    g.degree(i, Direction::IN),
-                    g.degree(i, Direction::OUT),
-                    g.degree(i, Direction::BOTH),
-                )
-            })
-            .collect::<Vec<_>>();
-
-        assert_eq!(actual, expected);
-    }
-
-    #[test]
     fn graph_degree_window() {
         let vs = vec![
             (1, 1, 2),
@@ -514,37 +422,6 @@ mod db_tests {
     }
 
     #[test]
-    fn graph_vertex_ids() {
-        let vs = vec![
-            (1, 1, 2),
-            (2, 1, 3),
-            (-1, 2, 1),
-            (0, 1, 1),
-            (7, 3, 2),
-            (1, 1, 1),
-        ];
-
-        let g = Graph::new(1);
-
-        for (t, src, dst) in &vs {
-            g.add_edge(*t, *src, *dst, &vec![]);
-        }
-
-        let actual = g.vertex_ids().collect::<Vec<_>>();
-        assert_eq!(actual, vec![1, 2, 3]);
-
-        // Check results from multiple graphs with different number of shards
-        let g = Graph::new(10);
-
-        for (t, src, dst) in &vs {
-            g.add_edge(*t, *src, *dst, &vec![]);
-        }
-
-        let expected = g.vertex_ids().collect::<Vec<_>>();
-        assert_eq!(actual, expected);
-    }
-
-    #[test]
     fn graph_vertex_ids_window() {
         let vs = vec![(1, 1, 2), (3, 3, 4), (5, 5, 6), (7, 7, 1)];
 
@@ -591,128 +468,6 @@ mod db_tests {
             })
             .collect_vec();
         assert_eq!(res, expected);
-    }
-
-    #[test]
-    fn graph_vertices() {
-        let vs = vec![
-            (1, 1, 2),
-            (2, 1, 3),
-            (-1, 2, 1),
-            (0, 1, 1),
-            (7, 3, 2),
-            (1, 1, 1),
-        ];
-
-        let g = Graph::new(1);
-
-        g.add_vertex(
-            0,
-            1,
-            &vec![
-                ("type".into(), Prop::Str("wallet".into())),
-                ("cost".into(), Prop::F32(99.5)),
-            ],
-        );
-
-        g.add_vertex(
-            0,
-            2,
-            &vec![
-                ("type".into(), Prop::Str("wallet".into())),
-                ("cost".into(), Prop::F32(10.0)),
-            ],
-        );
-
-        g.add_vertex(
-            0,
-            3,
-            &vec![
-                ("type".into(), Prop::Str("wallet".into())),
-                ("cost".into(), Prop::F32(76.2)),
-            ],
-        );
-
-        for (t, src, dst) in &vs {
-            g.add_edge(
-                *t,
-                *src,
-                *dst,
-                &vec![("eprop".into(), Prop::Str("commons".into()))],
-            );
-        }
-
-        let actual = g
-            .vertices()
-            .map(|tv| (tv.g_id, tv.props))
-            .collect::<Vec<_>>();
-
-        let expected = vec![
-            (
-                1u64,
-                Some(HashMap::from([
-                    ("type".into(), vec![(0i64, Prop::Str("wallet".into()))]),
-                    ("cost".into(), vec![(0i64, Prop::F32(99.5))]),
-                ])),
-            ),
-            (
-                2u64,
-                Some(HashMap::from([
-                    ("type".into(), vec![(0i64, Prop::Str("wallet".into()))]),
-                    ("cost".into(), vec![(0i64, Prop::F32(10.0))]),
-                ])),
-            ),
-            (
-                3u64,
-                Some(HashMap::from([
-                    ("type".into(), vec![(0i64, Prop::Str("wallet".into()))]),
-                    ("cost".into(), vec![(0i64, Prop::F32(76.2))]),
-                ])),
-            ),
-        ];
-
-        assert_eq!(actual, expected);
-
-        // Check results from multiple graphs with different number of shards
-        let g = Graph::new(10);
-
-        g.add_vertex(
-            0,
-            1,
-            &vec![
-                ("type".into(), Prop::Str("wallet".into())),
-                ("cost".into(), Prop::F32(99.5)),
-            ],
-        );
-
-        g.add_vertex(
-            0,
-            2,
-            &vec![
-                ("type".into(), Prop::Str("wallet".into())),
-                ("cost".into(), Prop::F32(10.0)),
-            ],
-        );
-
-        g.add_vertex(
-            0,
-            3,
-            &vec![
-                ("type".into(), Prop::Str("wallet".into())),
-                ("cost".into(), Prop::F32(76.2)),
-            ],
-        );
-
-        for (t, src, dst) in &vs {
-            g.add_edge(*t, *src, *dst, &vec![]);
-        }
-
-        let expected = g
-            .vertices()
-            .map(|tv| (tv.g_id, tv.props))
-            .collect::<Vec<_>>();
-
-        assert_eq!(actual, expected);
     }
 
     #[test]
@@ -820,56 +575,6 @@ mod db_tests {
         let expected = g
             .vertices_window(-2, 0)
             .map(|tv| (tv.g_id, tv.props))
-            .collect::<Vec<_>>();
-
-        assert_eq!(actual, expected);
-    }
-
-    #[test]
-    fn graph_neighbours() {
-        let vs = vec![
-            (1, 1, 2),
-            (2, 1, 3),
-            (-1, 2, 1),
-            (0, 1, 1),
-            (7, 3, 2),
-            (1, 1, 1),
-        ];
-
-        let g = Graph::new(12);
-
-        for (t, src, dst) in &vs {
-            g.add_edge(*t, *src, *dst, &vec![]);
-        }
-
-        let expected = vec![(2, 3, 5), (2, 1, 3), (1, 1, 2)];
-        let actual = (1..=3)
-            .map(|i| {
-                (
-                    g.neighbours(i, Direction::IN).collect::<Vec<_>>().len(),
-                    g.neighbours(i, Direction::OUT).collect::<Vec<_>>().len(),
-                    g.neighbours(i, Direction::BOTH).collect::<Vec<_>>().len(),
-                )
-            })
-            .collect::<Vec<_>>();
-
-        assert_eq!(actual, expected);
-
-        // Check results from multiple graphs with different number of shards
-        let g = Graph::new(1);
-
-        for (t, src, dst) in &vs {
-            g.add_edge(*t, *src, *dst, &vec![]);
-        }
-
-        let expected = (1..=3)
-            .map(|i| {
-                (
-                    g.neighbours(i, Direction::IN).collect::<Vec<_>>().len(),
-                    g.neighbours(i, Direction::OUT).collect::<Vec<_>>().len(),
-                    g.neighbours(i, Direction::BOTH).collect::<Vec<_>>().len(),
-                )
-            })
             .collect::<Vec<_>>();
 
         assert_eq!(actual, expected);
@@ -1070,7 +775,7 @@ mod db_tests {
         }
 
         let gandalf = utils::calculate_hash(&"Gandalf");
-        assert!(g.contains(gandalf));
+        assert!(g.contains_window(gandalf, i64::MIN, i64::MAX));
     }
 
     #[test]
