@@ -217,10 +217,7 @@ impl TemporalGraph {
     }
 
     pub(crate) fn vertex_ids(&self) -> Box<dyn Iterator<Item = u64> + Send + '_> {
-        Box::new(self.adj_lists.iter().map(|adj| match *adj {
-            Adj::Solo(lid) => lid,
-            Adj::List { logical, .. } => logical,
-        }))
+        Box::new(self.adj_lists.iter().map(|adj| *adj.logical()))
     }
 
     pub(crate) fn vertex_ids_window(
