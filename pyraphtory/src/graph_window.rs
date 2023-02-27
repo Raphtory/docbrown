@@ -1,6 +1,9 @@
 use std::sync::Arc;
 
-use crate::{graph::Graph, wrappers::VertexIdsIterator};
+use crate::{
+    graph::Graph,
+    wrappers::{Direction, EdgeIterator, VertexIdsIterator, VertexIterator},
+};
 use docbrown_db::graph_window;
 use pyo3::prelude::*;
 
@@ -22,9 +25,32 @@ impl WindowedGraph {
         }
     }
 
+    pub fn degree(&self, v: u64, d: Direction) -> usize {
+        self.windowed_graph.degree(v, d.into())
+    }
+
     pub fn vertex_ids(&self) -> VertexIdsIterator {
         VertexIdsIterator {
             iter: self.windowed_graph.vertex_ids(),
+        }
+    }
+
+    pub fn vertices(&self) -> VertexIterator {
+        let iter = self.windowed_graph.vertices().map(|tv| tv.into());
+
+        VertexIterator {
+            iter: Box::new(iter),
+        }
+    }
+
+    pub fn neighbours(&self, v: u64, d: Direction) -> EdgeIterator {
+        let iter = self
+            .windowed_graph
+            .neighbours(v, d.into())
+            .map(|te| te.into());
+
+        EdgeIterator {
+            iter: Box::new(iter),
         }
     }
 }
