@@ -4,26 +4,26 @@ use docbrown_core::tgraph_shard::TVertex;
 use std::sync::Arc;
 
 pub struct WindowedGraph {
-    gdb: Arc<Graph>,
+    graph: Arc<Graph>,
     pub t_start: i64,
     pub t_end: i64,
 }
 
 impl WindowedGraph {
-    pub fn new(gdb: Arc<Graph>, t_start: i64, t_end: i64) -> Self {
+    pub fn new(graph: Arc<Graph>, t_start: i64, t_end: i64) -> Self {
         WindowedGraph {
-            gdb,
+            graph,
             t_start,
             t_end,
         }
     }
 
     pub fn vertex_ids(&self) -> Box<dyn Iterator<Item = u64> + Send> {
-        self.gdb.vertex_ids_window(self.t_start, self.t_end)
+        self.graph.vertex_ids_window(self.t_start, self.t_end)
     }
 
     pub fn vertices(&self) -> Box<dyn Iterator<Item = TVertex> + Send> {
-        self.gdb.vertices_window(self.t_start, self.t_end)
+        self.graph.vertices_window(self.t_start, self.t_end)
     }
 }
 
