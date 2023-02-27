@@ -625,11 +625,11 @@ impl<'a> VertexView<'a, TemporalGraph> {
         Some(meta.iter_window(*prop_id, r))
     }
 
-    pub fn all_props(&self) -> Option<HashMap<String, Vec<(i64, Prop)>>> {
+    pub fn all_props<T: From<Prop>>(&self) -> Option<HashMap<String, Vec<(i64, T)>>> {
         let index = self.g.logical_to_physical.get(&self.g_id)?;
         let meta = self.g.props.vertex_meta.get(*index)?;
 
-        let mut hm: HashMap<String, Vec<(i64, Prop)>> = HashMap::new();
+        let mut hm: HashMap<String, Vec<(i64, T)>> = HashMap::new();
 
         self.g.props.prop_ids.iter().for_each(|(k, v)| {
             if hm.contains_key(k) {
@@ -637,14 +637,14 @@ impl<'a> VertexView<'a, TemporalGraph> {
                 vs.append(
                     &mut meta
                         .iter(*v)
-                        .map(|(x, y)| (*x, y))
-                        .collect::<Vec<(i64, Prop)>>(),
+                        .map(|(x, y)| (*x, y.into()))
+                        .collect::<Vec<(i64, T)>>(),
                 )
             } else {
                 let value = meta
                     .iter(*v)
-                    .map(|(x, y)| (*x, y))
-                    .collect::<Vec<(i64, Prop)>>();
+                    .map(|(x, y)| (*x, y.into()))
+                    .collect::<Vec<(i64, T)>>();
                 if !value.is_empty() {
                     // self.g.props.prop_ids returns all prop ids, including edge property ids
                     hm.insert(k.clone(), Vec::from(value));
@@ -655,11 +655,11 @@ impl<'a> VertexView<'a, TemporalGraph> {
         Some(hm) // Don't return "None" if hm.is_empty for Some({}) gets translated as {} in python
     }
 
-    pub fn all_props_window(&self, r: Range<i64>) -> Option<HashMap<String, Vec<(i64, Prop)>>> {
+    pub fn all_props_window<T: From<Prop>>(&self, r: Range<i64>) -> Option<HashMap<String, Vec<(i64, T)>>> {
         let index = self.g.logical_to_physical.get(&self.g_id)?;
         let meta = self.g.props.vertex_meta.get(*index)?;
 
-        let mut hm: HashMap<String, Vec<(i64, Prop)>> = HashMap::new();
+        let mut hm: HashMap<String, Vec<(i64, T)>> = HashMap::new();
 
         self.g.props.prop_ids.iter().for_each(|(k, v)| {
             if hm.contains_key(k) {
@@ -667,14 +667,14 @@ impl<'a> VertexView<'a, TemporalGraph> {
                 vs.append(
                     &mut meta
                         .iter_window(*v, r.clone())
-                        .map(|(x, y)| (*x, y))
-                        .collect::<Vec<(i64, Prop)>>(),
+                        .map(|(x, y)| (*x, y.into()))
+                        .collect::<Vec<(i64, T)>>(),
                 )
             } else {
                 let value = meta
                     .iter_window(*v, r.clone())
-                    .map(|(x, y)| (*x, y))
-                    .collect::<Vec<(i64, Prop)>>();
+                    .map(|(x, y)| (*x, y.into()))
+                    .collect::<Vec<(i64, T)>>();
                 if !value.is_empty() {
                     // self.g.props.prop_ids returns all prop ids, including edge property ids
                     hm.insert(k.clone(), Vec::from(value));
