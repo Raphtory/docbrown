@@ -169,7 +169,7 @@ pub mod csv {
 #[cfg(test)]
 mod csv_loader_test {
     use crate::graph::Graph;
-    use crate::loaders::csv::CsvLoader;
+    use crate::csv_loader::csv::CsvLoader;
     use docbrown_core::utils::calculate_hash;
     use docbrown_core::Prop;
     use regex::Regex;
