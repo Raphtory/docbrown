@@ -101,7 +101,7 @@ impl Graph {
         self.shards.iter().any(|shard| shard.contains(v))
     }
 
-    pub fn contains_window(&self, v: u64, t_start: i64, t_end: i64) -> bool {
+    pub(crate) fn contains_window(&self, v: u64, t_start: i64, t_end: i64) -> bool {
         self.shards
             .iter()
             .any(|shard| shard.contains_window(v, t_start..t_end))
@@ -133,7 +133,7 @@ impl Graph {
         iter
     }
 
-    pub fn degree_window(&self, v: u64, t_start: i64, t_end: i64, d: Direction) -> usize {
+    pub(crate) fn degree_window(&self, v: u64, t_start: i64, t_end: i64, d: Direction) -> usize {
         let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
         let iter = self.shards[shard_id].degree_window(v, t_start..t_end, d);
         iter
@@ -187,7 +187,7 @@ impl Graph {
         Box::new(iter)
     }
 
-    pub fn neighbours_window(
+    pub(crate) fn neighbours_window(
         &self,
         v: u64,
         t_start: i64,
@@ -201,7 +201,7 @@ impl Graph {
         Box::new(iter)
     }
 
-    pub fn neighbours_window_t(
+    pub(crate) fn neighbours_window_t(
         &self,
         v: u64,
         t_start: i64,

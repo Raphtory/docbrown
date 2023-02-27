@@ -1,5 +1,8 @@
 use crate::graph::Graph;
-use docbrown_core::tgraph_shard::TVertex;
+use docbrown_core::{
+    tgraph_shard::{TEdge, TVertex},
+    Direction,
+};
 
 use std::sync::Arc;
 
@@ -18,12 +21,24 @@ impl WindowedGraph {
         }
     }
 
+    pub fn contains(&self, v: u64) -> bool {
+        self.graph.contains_window(v, self.t_start, self.t_end)
+    }
+
+    pub fn degree(&self, v: u64, d: Direction) -> usize {
+        self.graph.degree_window(v, self.t_start, self.t_end, d)
+    }
+
     pub fn vertex_ids(&self) -> Box<dyn Iterator<Item = u64> + Send> {
         self.graph.vertex_ids_window(self.t_start, self.t_end)
     }
 
     pub fn vertices(&self) -> Box<dyn Iterator<Item = TVertex> + Send> {
         self.graph.vertices_window(self.t_start, self.t_end)
+    }
+
+    pub fn neighbours(&self, v: u64, d: Direction) -> Box<dyn Iterator<Item = TEdge> + Send> {
+        self.graph.neighbours_window(v, self.t_start, self.t_end, d)
     }
 }
 
