@@ -20,8 +20,8 @@ pub(crate) trait Eval {
         having: PRED,
     ) -> Context
     where
-        FMAP: Fn(&mut EvalVertexView<'a, Self>, &mut Context) -> Vec<VertexRef>,
-        PRED: Fn(&EvalVertexView<'a, Self>, &mut Context) -> bool,
+        FMAP: Fn(&mut EvalVertexView<'a, Self>, &Context) -> Vec<VertexRef>,
+        PRED: Fn(&EvalVertexView<'a, Self>, &Context) -> bool,
         Self: Sized + 'a;
 }
 
@@ -68,8 +68,12 @@ impl Context {
         }
     }
 
+    fn inc(&mut self) {
+        self.ss += 1;
+    }
+
     fn acc<'a, 'b, A, F>(
-        &'a mut self,
+        &'a self,
         monoid: &'b Monoid<u64, A, F>,
     ) -> Accumulator<u64, A, F>
     where
@@ -79,8 +83,8 @@ impl Context {
         Accumulator::new(monoid, self.ss)
     }
 
-    fn as_hash_map<A, F>(&self, m: &Monoid<u64, A, F>) -> Option<HashMap<u64, PairAcc<A>>>{
-        todo!()
+    fn as_hash_map<A: Clone, F>(&self, m: &Monoid<u64, A, F>) -> Option<HashMap<u64, PairAcc<A>>>{
+        m.state.try_borrow().ok().map(|s| s.clone())
     }
 }
 
@@ -163,14 +167,6 @@ struct Accumulator<K: std::cmp::Eq + std::hash::Hash, A, F> {
     acc: Monoid<K, A, F>,
     ss: u64
 }
-
-// impl<K: std::cmp::Eq + std::hash::Hash, A: std::clone::Clone, F> Accumulator<K, A, F> {
-//     fn flip(&self, id: K) {
-//         self.state
-//             .get_mut(&id)
-//             .map(|mut e| e.value_mut().update_prev());
-//     }
-// }
 
 impl<K, A, F> Accumulator<K, A, F>
 where
@@ -294,52 +290,6 @@ trait Filp {
 }
 
 impl Eval for TemporalGraph {
-    // fn eval2<'a, MAP, PRED>(&'a self, c: Option<Context>, window: Range<i64>, f: MAP, having: PRED) -> Option<Context>
-    // where
-    //     MAP: Fn(&mut EvalVertexView<'a, Self>, &Context) -> Vec<VertexRef>,
-    //     PRED: Fn(&EvalVertexView<'a, Self>, &Context) -> bool,
-    //     Self: Sized + 'a,
-    // {
-    //     // we start with all the vertices considered inside the working set
-    //     let mut cur_active_set: WorkingSet<usize> = WorkingSet::All;
-    //     let mut next_active_set = HashSet::new();
-    //     let ctx = c.unwrap_or_else(|| Context::new());
-
-    //     while !cur_active_set.is_empty() {
-    //         // define iterator over the active vertices
-    //         let iter = if !cur_active_set.is_all() {
-    //             let active_vertices_iter = cur_active_set.iter().map(|pid| {
-    //                 let g_id = self.adj_lists[*pid].logical();
-    //                 VertexView::new(self, *g_id, *pid, Some(window.clone()))
-    //             });
-    //             Box::new(active_vertices_iter)
-    //         } else {
-    //             self.vertices_window(window.clone())
-    //         };
-
-    //         // iterate over the active vertices
-    //         for v_view in iter {
-    //             let mut eval_v_view = EvalVertexView { vv: v_view };
-    //             let next_vertices = f(&mut eval_v_view, &ctx);
-    //             for next_vertex in next_vertices {
-    //                 next_active_set.insert(next_vertex.pid());
-    //             }
-    //         }
-
-    //         // from the next_active_set we apply the PRED
-    //         next_active_set.retain(|pid| {
-    //             let g_id = self.adj_lists[*pid].logical();
-    //             let v_view = VertexView::new(self, *g_id, *pid, Some(window.clone()));
-    //             having(&EvalVertexView { vv: v_view }, &ctx)
-    //         });
-
-    //         println!("next_active_set: {:?}", next_active_set);
-
-    //         cur_active_set = WorkingSet::Set(next_active_set);
-    //         next_active_set = HashSet::new();
-    //     }
-    //     Some(ctx)
-    // }
 
     fn eval<'a, FMAP, PRED>(
         &'a self,
@@ -349,11 +299,51 @@ impl Eval for TemporalGraph {
         having: PRED,
     ) -> Context
     where
-        FMAP: Fn(&mut EvalVertexView<'a, Self>, &mut Context) -> Vec<VertexRef>,
-        PRED: Fn(&EvalVertexView<'a, Self>, &mut Context) -> bool,
+        FMAP: Fn(&mut EvalVertexView<'a, Self>, &Context) -> Vec<VertexRef>,
+        PRED: Fn(&EvalVertexView<'a, Self>, &Context) -> bool,
         Self: Sized + 'a,
     {
-        todo!()
+
+        // we start with all the vertices considered inside the working set
+        let mut cur_active_set: WorkingSet<usize> = WorkingSet::All;
+        let mut next_active_set = HashSet::new();
+        let mut ctx = c.unwrap_or_else(|| Context::new());
+
+        while !cur_active_set.is_empty() {
+            // define iterator over the active vertices
+            let iter = if !cur_active_set.is_all() {
+                let active_vertices_iter = cur_active_set.iter().map(|pid| {
+                    let g_id = self.adj_lists[*pid].logical();
+                    VertexView::new(self, *g_id, *pid, Some(window.clone()))
+                });
+                Box::new(active_vertices_iter)
+            } else {
+                self.vertices_window(window.clone())
+            };
+
+            // iterate over the active vertices
+            for v_view in iter {
+                let mut eval_v_view = EvalVertexView { vv: v_view };
+                let next_vertices = f(&mut eval_v_view, &ctx);
+                for next_vertex in next_vertices {
+                    next_active_set.insert(next_vertex.pid());
+                }
+            }
+
+            // from the next_active_set we apply the PRED
+            next_active_set.retain(|pid| {
+                let g_id = self.adj_lists[*pid].logical();
+                let v_view = VertexView::new(self, *g_id, *pid, Some(window.clone()));
+                having(&EvalVertexView { vv: v_view }, &ctx)
+            });
+
+            println!("next_active_set: {:?}", next_active_set);
+
+            cur_active_set = WorkingSet::Set(next_active_set);
+            next_active_set = HashSet::new();
+            ctx.inc();
+        }
+        ctx
     }
 }
 
@@ -377,12 +367,6 @@ impl<'a, A: Clone, F> PrevAcc<'a, A, F> {
     }
 }
 
-// when dropped the PrevAcc will trigger a flip (meaning: the current value will become the previous value)
-impl<'a, A: Clone, F> Drop for PrevAcc<'a, A, F> {
-    fn drop(&mut self) {
-        // self.acc.flip(self.id);
-    }
-}
 
 impl<'a> EvalVertexView<'a, TemporalGraph> {
     fn get<'b, A: Clone, F>(&self, acc: &'b Accumulator<u64, A, F>) -> AccEntry<'b, u64, A, F>
@@ -392,14 +376,6 @@ impl<'a> EvalVertexView<'a, TemporalGraph> {
         let id = self.vv.global_id();
         AccEntry::new(acc, id)
     }
-
-    // fn get<A: Clone, F>(&self, acc: &'a Accumulator<u64, A, F>) -> Option<A>
-    // where
-    //     F: Fn(&mut A, A) + Clone,
-    // {
-    //     let id = self.vv.global_id();
-    //     acc.read(&id)
-    // }
 
     fn get_prev<A: Clone, F>(&self, acc: &'a Accumulator<u64, A, F>) -> Option<A>
     where
@@ -451,14 +427,6 @@ where
         }
     }
 
-    fn remove(&mut self, a: A) {
-        match self {
-            WorkingSet::All => {}
-            WorkingSet::Set(s) => {
-                s.remove(&a);
-            }
-        }
-    }
 
     fn is_all(&self) -> bool {
         match self {
@@ -474,17 +442,6 @@ where
         }
     }
 
-    fn insert(&mut self, a: A) {
-        match self {
-            WorkingSet::All => {
-                *self = WorkingSet::Set(HashSet::new());
-                self.insert(a)
-            }
-            WorkingSet::Set(s) => {
-                s.insert(a);
-            }
-        }
-    }
 }
 
 // there are 4 possible states for
@@ -556,40 +513,45 @@ mod eval_test {
             ])
         );
 
-        // // second step where we check the state of our neighbours and set ourselves to the min
-        // // we stop when the state of the vertex does not change
-        // g.eval(
-        //     0..3,
-        //     |vertex| {
-        //         let mut out = vec![];
-        //         for mut neighbour in vertex.neighbours(crate::Direction::BOTH) {
-        //             let mut n_min_acc = neighbour.get_mut(min_cc_id.clone());
+        // second step where we check the state of our neighbours and set ourselves to the min
+        // we stop when the state of the vertex does not change
+        let state = g.eval(
+            Some(state),
+            0..3,
+            |vertex, ctx| {
+                let min_cc_id = ctx.acc(&min); // get the accumulator for the min_cc_id
 
-        //             n_min_acc += vertex.get(&min_cc_id);
+                let mut out = vec![];
+                for neighbour in vertex.neighbours(crate::Direction::BOTH) {
+                    let mut n_min_acc = neighbour.get(&min_cc_id);
 
-        //             out.push(neighbour.as_vertex_ref());
-        //         }
+                    n_min_acc += vertex.get(&min_cc_id);
 
-        //         out
-        //     },
-        //     |v| {
-        //         let min_acc = v.get(&min_cc_id); // this line needs to only get an immutable reference otherwise it will block if it's callled before the one above
-        //         let prev_min_acc = v.get_prev_acc(&min_cc_id).value();
+                    out.push(neighbour.as_vertex_ref());
+                }
 
-        //         min_acc != prev_min_acc
-        //     },
-        // );
+                out
+            },
+            |v, ctx| {
+                let min_cc_id = ctx.acc(&min); // get the accumulator for the min_cc_id
 
-        // let state = &min_cc_id.as_hash_map();
+                let min_acc = v.get(&min_cc_id).read();
+                let prev_min_acc = v.get_prev(&min_cc_id);
 
-        // assert_eq!(
-        //     state,
-        //     &HashMap::from_iter(vec![
-        //         (1, PairAcc::new_with_prev(1, 1)),
-        //         (2, PairAcc::new_with_prev(1, 1)),
-        //         (3, PairAcc::new_with_prev(3, 3)),
-        //         (4, PairAcc::new_with_prev(3, 3))
-        //     ])
-        // );
+                min_acc != prev_min_acc
+            },
+        );
+
+        let state = state.as_hash_map(&min).unwrap();
+
+        assert_eq!(
+            state,
+            HashMap::from_iter(vec![
+                (1, PairAcc::new_with_prev(1, 1, 2)),
+                (2, PairAcc::new_with_prev(1, 1, 2)),
+                (3, PairAcc::new_with_prev(3, 3, 2)),
+                (4, PairAcc::new_with_prev(3, 3, 2))
+            ])
+        );
     }
 }
