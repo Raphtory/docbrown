@@ -25,6 +25,10 @@ impl WindowedGraph {
         }
     }
 
+    pub fn contains(&self, v: u64) -> bool {
+        self.windowed_graph.contains(v)
+    }
+
     pub fn degree(&self, v: u64, d: Direction) -> usize {
         self.windowed_graph.degree(v, d.into())
     }
