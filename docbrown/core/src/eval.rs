@@ -3,7 +3,7 @@ use std::{
     collections::{HashMap, HashSet},
     ops::{AddAssign, Range},
     option::Option,
-    rc::Rc, any::Any,
+    rc::Rc,
 };
 
 use crate::{
@@ -12,7 +12,13 @@ use crate::{
 };
 
 pub(crate) trait Eval {
-    fn eval<'a, FMAP, PRED>(&'a self, c: Option<Context>, window: Range<i64>, f: FMAP, having: PRED) -> Option<Context>
+    fn eval<'a, FMAP, PRED>(
+        &'a self,
+        c: Option<Context>,
+        window: Range<i64>,
+        f: FMAP,
+        having: PRED,
+    ) -> Context
     where
         FMAP: Fn(&mut EvalVertexView<'a, Self>, &mut Context) -> Vec<VertexRef>,
         PRED: Fn(&EvalVertexView<'a, Self>, &mut Context) -> bool,
@@ -35,54 +41,47 @@ impl VertexRef {
 /// Identity element
 ///    There exists an element e in S such that for every element a in S, the equalities e • a = a and a • e = a hold.
 #[derive(Clone)]
-pub(crate) struct Monoid<A, F> {
+pub(crate) struct Monoid<K, A, F> {
     pub(crate) id: A,
     pub(crate) bin_op: F,
-    pub(crate) name: String,
+    pub(crate) state: Rc<RefCell<HashMap<K, PairAcc<A>>>>,
 }
 
-impl<A, F> Monoid<A, F>
+impl<K, A, F> Monoid<K, A, F>
 where
     F: Fn(&mut A, A) + Clone,
     A: Clone,
 {
     pub(crate) fn new(name: String, id: A, bin_op: F) -> Self {
-        Self { id, bin_op, name}
+        Self { id, bin_op, state: Rc::new(RefCell::new(HashMap::new())) }
     }
 }
 
-struct Accum<K, A, F> {
-    storage: Rc<RefCell<HashMap<K, PairAcc<A>>>>,
-    monoid: Monoid<A, F>,
-}
-
-struct Context {
-    state: HashMap<String, Box<dyn Any>>
+pub(crate) struct Context {
+ ss: u64 // the superstep decides which state do we use from the accuumulators, we start at 0 and we flip flop between odd and even
 }
 
 impl Context {
     fn new() -> Self {
-        Self {state: HashMap::new()}
-    }
-
-    fn acc<K, A: Clone, F: Clone>(&mut self, monoid: &Monoid<A, F>) -> Accum<K, A, F> {
-
-        let accum_mut = self.state.entry(monoid.name.clone()).or_insert_with(|| {
-            let storage = Rc::new(RefCell::new(HashMap::<K, PairAcc<A>>::new()));
-            let monoid = monoid.clone();
-            Box::new(Accum { storage, monoid })
-        }).downcast_mut::<Accum<K, A, F>>().unwrap();
-
-        Accum {
-            storage: accum_mut.storage.clone(),
-            monoid: monoid.clone(),
+        Self {
+            ss: 0
         }
     }
-}
 
-struct AccEntry<K: Eq + std::hash::Hash, A, F> {
-    parent: Rc<Accumulator<K, A, F>>,
-    k: K,
+    fn acc<'a, 'b, A, F>(
+        &'a mut self,
+        monoid: &'b Monoid<u64, A, F>,
+    ) -> Accumulator<u64, A, F>
+    where
+        A: Clone,
+        F: Fn(&mut A, A) + Clone,
+    {
+        Accumulator::new(monoid, self.ss)
+    }
+
+    fn as_hash_map<A, F>(&self, m: &Monoid<u64, A, F>) -> Option<HashMap<u64, PairAcc<A>>>{
+        todo!()
+    }
 }
 
 // this always updates the current value so get_mut returns mutable reference to current
@@ -91,89 +90,87 @@ struct AccEntry<K: Eq + std::hash::Hash, A, F> {
 // TODO we should be to copy current into prev then reset
 // A has to be Clone
 #[derive(Clone, PartialEq, Debug)]
-struct PairAcc<A> {
-    current: A,
-    prev: Option<A>,
+pub(crate) struct PairAcc<A> {
+    even: Option<A>,
+    odd: Option<A>,
 }
 
 impl<A> PairAcc<A> {
-    fn new(current: A) -> Self {
+    fn new(current: A, ss: u64) -> Self {
+        let (odd, even) = if ss % 2 == 0 {
+            (Some(current), None)
+        } else {
+            (None, Some(current))
+        };
         Self {
-            current,
-            prev: None,
+            even, odd
         }
     }
 
-    fn new_with_prev(current: A, prev: A) -> Self {
+    fn new_with_prev(current: A, prev: A, ss: u64) -> Self {
+        let (odd, even) = if ss % 2 == 0 {
+            (Some(current), Some(prev))
+        } else {
+            (Some(prev), Some(current))
+        };
         Self {
-            current,
-            prev: Some(prev),
+            even, odd
         }
-    }
-}
-
-impl<A> PairAcc<A>
-where
-    A: Clone,
-{
-    fn update_prev(&mut self) {
-        self.prev = Some(self.current.clone());
-    }
-
-    fn clone_prev(&self) -> Option<A> {
-        self.prev.clone()
     }
 }
 
 impl<A> PairAcc<A> {
-    fn as_mut(&mut self) -> &mut A {
-        &mut self.current
+    fn as_mut(&mut self, ss: u64) -> Option<&mut A> {
+        if ss % 2 == 0 {
+            self.even.as_mut()
+        } else {
+            self.odd.as_mut()
+        }
+    }
+
+    fn current(&self, ss: u64) -> Option<&A> {
+        if ss % 2 == 0 {
+            self.even.as_ref()
+        } else {
+            self.odd.as_ref()
+        }
+    }
+
+    fn prev(&self, ss: u64) -> Option<&A> {
+        if ss % 2 == 0 {
+            self.odd.as_ref()
+        } else {
+            self.even.as_ref()
+        }
+    }
+
+}
+
+impl <A:Clone> PairAcc<A> {
+
+    fn copy_from_prev(&mut self, ss: u64) {
+        if ss % 2 == 0 {
+            self.even = self.odd.clone();
+        } else {
+            self.odd = self.even.clone();
+        }
     }
 }
 
+#[derive(Clone)]
 struct Accumulator<K: std::cmp::Eq + std::hash::Hash, A, F> {
-    state: dashmap::DashMap<K, PairAcc<A>>,
-    acc: F,
+    state: Rc<RefCell<HashMap<K, PairAcc<A>>>>,
+    acc: Monoid<K, A, F>,
+    ss: u64
 }
 
-impl<K: std::cmp::Eq + std::hash::Hash, A: std::clone::Clone, F> Accumulator<K, A, F> {
-    fn flip(&self, id: K) {
-        self.state
-            .get_mut(&id)
-            .map(|mut e| e.value_mut().update_prev());
-    }
-}
-
-impl<K, A, F> Accumulator<K, A, F>
-where
-    F: Fn(&mut A, A),
-    K: std::hash::Hash + std::cmp::Eq,
-    A: Clone,
-{
-    fn new(acc: F) -> Rc<Self> {
-        Rc::new(Self {
-            state: dashmap::DashMap::new(),
-            acc,
-        })
-    }
-
-    fn accumulate(&self, id: K, value: A) {
-        self.state
-            .entry(id)
-            .and_modify(|e| {
-                (self.acc)(e.as_mut(), value.clone());
-            })
-            .or_insert_with(|| PairAcc::new(value));
-    }
-
-    fn prev_value(&self, k: &K) -> Option<A> {
-        self.state.get(&k).and_then(|e| e.value().clone_prev())
-    }
-
-    fn read(&self, k: &K) -> Option<A> {
-        self.state.get(&k).map(|e| e.value().current.clone())
-    }
-}
+// impl<K: std::cmp::Eq + std::hash::Hash, A: std::clone::Clone, F> Accumulator<K, A, F> {
+//     fn flip(&self, id: K) {
+//         self.state
+//             .get_mut(&id)
+//             .map(|mut e| e.value_mut().update_prev());
+//     }
+// }
 
 impl<K, A, F> Accumulator<K, A, F>
 where
@@ -181,21 +178,58 @@ where
     K: std::hash::Hash + std::cmp::Eq + Clone,
     A: Clone,
 {
-    fn as_hash_map(&self) -> HashMap<K, PairAcc<A>> {
-        self.state
-            .iter()
-            .map(|e| (e.key().clone(), e.value().clone()))
-            .collect()
+    fn new(acc: &Monoid<K, A, F>, ss: u64) -> Self {
+        Self {
+            state: acc.state.clone(),
+            acc: acc.clone(),
+            ss
+        }
     }
+
+    fn accumulate(&self, id: K, value: A) {
+        let mut state = self.state.borrow_mut();
+        state
+            .entry(id)
+            .and_modify(|e| {
+                let acc = e.as_mut(self.ss);
+
+                if let Some(acc) = acc {
+                    (self.acc.bin_op)(acc, value.clone());
+                } else {
+                    // clone the previous step into current
+                    e.copy_from_prev(self.ss);
+                    let acc2 = e.as_mut(self.ss);
+                    if let Some(acc2) = acc2 {
+                        (self.acc.bin_op)(acc2, value.clone());
+                    } else {
+                         = Some(value);
+                    }
+                }
+            })
+            .or_insert_with(|| PairAcc::new(value, self.ss));
+    }
+
+    fn read_prev(&self, k: &K) -> Option<A> {
+        self.state.borrow().get(k).and_then(|e| e.prev(self.ss).cloned())
+    }
+
+    fn read(&self, k: &K) -> Option<A> {
+        self.state.borrow().get(k).and_then(|e| e.current(self.ss).cloned())
+    }
+}
+
+struct AccEntry<'a, K: std::cmp::Eq + std::hash::Hash, A, F> {
+    parent: &'a Accumulator<K, A, F>,
+    k: K,
 }
 
 // impl of AccEntry contains 2 functions
 // read to extract a clone of the value A
 // read_ref to extract a reference to the value A
 
-impl<K, A, F> AccEntry<K, A, F>
+impl<'a, K, A, F> AccEntry<'a, K, A, F>
 where
-    F: Fn(&mut A, A),
+    F: Fn(&mut A, A) + Clone,
     K: std::hash::Hash + std::cmp::Eq + Clone,
     A: Clone,
 {
@@ -207,20 +241,20 @@ where
 // new method for AccEntry
 // this will create a new AccEntry
 
-impl<K, A, F> AccEntry<K, A, F>
+impl<'a, K, A, F> AccEntry<'a, K, A, F>
 where
     F: Fn(&mut A, A) + Clone,
     K: std::hash::Hash + std::cmp::Eq + Clone,
     A: Clone,
 {
-    fn new(parent: Rc<Accumulator<K, A, F>>, k: K) -> Self {
-        Self { parent, k }
+    fn new(parent: &'a Accumulator<K, A, F>, k: K) -> AccEntry<'a, K, A, F> {
+        AccEntry { parent, k }
     }
 }
 
-impl<K, A, F> AddAssign<A> for AccEntry<K, A, F>
+impl<'a, K, A, F> AddAssign<A> for AccEntry<'a, K, A, F>
 where
-    F: Fn(&mut A, A),
+    F: Fn(&mut A, A) + Clone,
     K: std::hash::Hash + std::cmp::Eq + Clone,
     A: Clone,
 {
@@ -229,7 +263,7 @@ where
     }
 }
 
-impl<K, A, F> AddAssign<Option<A>> for AccEntry<K, A, F>
+impl<'a, K, A, F> AddAssign<Option<A>> for AccEntry<'a, K, A, F>
 where
     F: Fn(&mut A, A),
     K: std::hash::Hash + std::cmp::Eq + Clone,
@@ -246,9 +280,9 @@ where
     }
 }
 
-impl<K, A, F> AddAssign<AccEntry<K, A, F>> for AccEntry<K, A, F>
+impl<'a, K, A, F> AddAssign<AccEntry<'a, K, A, F>> for AccEntry<'a, K, A, F>
 where
-    F: Fn(&mut A, A),
+    F: Fn(&mut A, A) + Clone,
     K: std::hash::Hash + std::cmp::Eq + Clone,
     A: Clone,
     Self: AddAssign<Option<A>>,
@@ -258,52 +292,71 @@ where
     }
 }
 
+trait Filp {
+    fn flip(&self);
+}
+
 impl Eval for TemporalGraph {
-    fn eval<'a, MAP, PRED>(&'a self, c: Option<Context>, window: Range<i64>, f: MAP, having: PRED) -> Option<Context>
+    // fn eval2<'a, MAP, PRED>(&'a self, c: Option<Context>, window: Range<i64>, f: MAP, having: PRED) -> Option<Context>
+    // where
+    //     MAP: Fn(&mut EvalVertexView<'a, Self>, &Context) -> Vec<VertexRef>,
+    //     PRED: Fn(&EvalVertexView<'a, Self>, &Context) -> bool,
+    //     Self: Sized + 'a,
+    // {
+    //     // we start with all the vertices considered inside the working set
+    //     let mut cur_active_set: WorkingSet<usize> = WorkingSet::All;
+    //     let mut next_active_set = HashSet::new();
+    //     let ctx = c.unwrap_or_else(|| Context::new());
+
+    //     while !cur_active_set.is_empty() {
+    //         // define iterator over the active vertices
+    //         let iter = if !cur_active_set.is_all() {
+    //             let active_vertices_iter = cur_active_set.iter().map(|pid| {
+    //                 let g_id = self.adj_lists[*pid].logical();
+    //                 VertexView::new(self, *g_id, *pid, Some(window.clone()))
+    //             });
+    //             Box::new(active_vertices_iter)
+    //         } else {
+    //             self.vertices_window(window.clone())
+    //         };
+
+    //         // iterate over the active vertices
+    //         for v_view in iter {
+    //             let mut eval_v_view = EvalVertexView { vv: v_view };
+    //             let next_vertices = f(&mut eval_v_view, &ctx);
+    //             for next_vertex in next_vertices {
+    //                 next_active_set.insert(next_vertex.pid());
+    //             }
+    //         }
+
+    //         // from the next_active_set we apply the PRED
+    //         next_active_set.retain(|pid| {
+    //             let g_id = self.adj_lists[*pid].logical();
+    //             let v_view = VertexView::new(self, *g_id, *pid, Some(window.clone()));
+    //             having(&EvalVertexView { vv: v_view }, &ctx)
+    //         });
+
+    //         println!("next_active_set: {:?}", next_active_set);
+
+    //         cur_active_set = WorkingSet::Set(next_active_set);
+    //         next_active_set = HashSet::new();
+    //     }
+    //     Some(ctx)
+    // }
+
+    fn eval<'a, FMAP, PRED>(
+        &'a self,
+        c: Option<Context>,
+        window: Range<i64>,
+        f: FMAP,
+        having: PRED,
+    ) -> Context
     where
-        MAP: Fn(&mut EvalVertexView<'a, Self>, &Context) -> Vec<VertexRef>,
-        PRED: Fn(&EvalVertexView<'a, Self>, &Context) -> bool,
+        FMAP: Fn(&mut EvalVertexView<'a, Self>, &mut Context) -> Vec<VertexRef>,
+        PRED: Fn(&EvalVertexView<'a, Self>, &mut Context) -> bool,
         Self: Sized + 'a,
     {
-        // we start with all the vertices considered inside the working set
-        let mut cur_active_set: WorkingSet<usize> = WorkingSet::All;
-        let mut next_active_set = HashSet::new();
-        let ctx = c.unwrap_or_else(|| Context::new());
-
-        while !cur_active_set.is_empty() {
-            // define iterator over the active vertices
-            let iter = if !cur_active_set.is_all() {
-                let active_vertices_iter = cur_active_set.iter().map(|pid| {
-                    let g_id = self.adj_lists[*pid].logical();
-                    VertexView::new(self, *g_id, *pid, Some(window.clone()))
-                });
-                Box::new(active_vertices_iter)
-            } else {
-                self.vertices_window(window.clone())
-            };
-
-            // iterate over the active vertices
-            for v_view in iter {
-                let mut eval_v_view = EvalVertexView { vv: v_view };
-                let next_vertices = f(&mut eval_v_view, &ctx);
-                for next_vertex in next_vertices {
-                    next_active_set.insert(next_vertex.pid());
-                }
-            }
-
-            // from the next_active_set we apply the PRED
-            next_active_set.retain(|pid| {
-                let g_id = self.adj_lists[*pid].logical();
-                let v_view = VertexView::new(self, *g_id, *pid, Some(window.clone()));
-                having(&EvalVertexView { vv: v_view }, &ctx)
-            });
-
-            println!("next_active_set: {:?}", next_active_set);
-
-            cur_active_set = WorkingSet::Set(next_active_set);
-            next_active_set = HashSet::new();
-        }
-        Some(ctx)
+        todo!()
     }
 }
 
@@ -330,12 +383,12 @@ impl<'a, A: Clone, F> PrevAcc<'a, A, F> {
 // when dropped the PrevAcc will trigger a flip (meaning: the current value will become the previous value)
 impl<'a, A: Clone, F> Drop for PrevAcc<'a, A, F> {
     fn drop(&mut self) {
-        self.acc.flip(self.id);
+        // self.acc.flip(self.id);
     }
 }
 
 impl<'a> EvalVertexView<'a, TemporalGraph> {
-    fn get_mut<A: Clone, F>(&mut self, acc: Rc<Accumulator<u64, A, F>>) -> AccEntry<u64, A, F>
+    fn get<'b, A: Clone, F>(&self, acc: &'b Accumulator<u64, A, F>) -> AccEntry<'b, u64, A, F>
     where
         F: Fn(&mut A, A) + Clone,
     {
@@ -343,20 +396,20 @@ impl<'a> EvalVertexView<'a, TemporalGraph> {
         AccEntry::new(acc, id)
     }
 
-    fn get<A: Clone, F>(&self, acc: &'a Accumulator<u64, A, F>) -> Option<A>
-    where
-        F: Fn(&mut A, A) + Clone,
-    {
-        let id = self.vv.global_id();
-        acc.read(&id)
-    }
+    // fn get<A: Clone, F>(&self, acc: &'a Accumulator<u64, A, F>) -> Option<A>
+    // where
+    //     F: Fn(&mut A, A) + Clone,
+    // {
+    //     let id = self.vv.global_id();
+    //     acc.read(&id)
+    // }
 
     fn get_prev<A: Clone, F>(&self, acc: &'a Accumulator<u64, A, F>) -> Option<A>
     where
         F: Fn(&mut A, A) + Clone,
     {
         let id = self.vv.global_id();
-        acc.prev_value(&id)
+        acc.read_prev(&id)
     }
 
     fn get_prev_acc<A: Clone, F>(&self, acc: &'a Accumulator<u64, A, F>) -> PrevAcc<'a, A, F>
@@ -367,7 +420,7 @@ impl<'a> EvalVertexView<'a, TemporalGraph> {
         PrevAcc {
             id,
             acc,
-            value: acc.prev_value(&id),
+            value: acc.read_prev(&id),
         }
     }
 
@@ -456,7 +509,7 @@ mod eval_test {
     use std::collections::HashMap;
 
     use crate::{
-        eval::{Eval, PairAcc, Monoid},
+        eval::{Eval, Monoid, PairAcc},
         graph::TemporalGraph,
     };
 
@@ -472,34 +525,37 @@ mod eval_test {
         g.add_edge(1, 2, 1);
         g.add_edge(3, 4, 1);
 
-        let min_cc_id = Monoid::new("min_cc".to_string() ,u64::MAX, |a: &mut u64, b: u64| {*a = u64::min(*a, b)});
+        let min = Monoid::new("min_cc".to_string(), u64::MAX, |a: &mut u64, b: u64| {
+            *a = u64::min(*a, b)
+        });
 
         // initial step where we init every vertex to it's own ID
         let state = g.eval(
             None,
             0..3,
             |vertex, ctx| {
-                let acc = ctx.acc(&min_cc_id);
+                let min_cc_id = ctx.acc(&min); // get the accumulator for the min_cc_id
 
                 let gid = vertex.vv.global_id();
 
-                let mut min_acc = vertex.get_mut(&acc);
-                min_acc += gid;
+                let mut min_acc = vertex.get(&min_cc_id); // get the entry for this vertex in the min_cc_id accumulator
+                min_acc += gid; // set the value to the global id of the vertex
+
                 vec![] // nothing to propagate at this step
             },
             // insert exchange step
             |_, _| false,
         );
 
-        let actual = state.as_hash_map(&min_cc_id);
+        let actual = state.as_hash_map(&min).unwrap();
 
         assert_eq!(
             actual,
-            &HashMap::from_iter(vec![
-                (1, PairAcc::new(1)),
-                (2, PairAcc::new(2)),
-                (3, PairAcc::new(3)),
-                (4, PairAcc::new(4))
+            HashMap::from_iter(vec![
+                (1, PairAcc::new(1, 0)),
+                (2, PairAcc::new(2, 0)),
+                (3, PairAcc::new(3, 0)),
+                (4, PairAcc::new(4, 0))
             ])
         );
 
