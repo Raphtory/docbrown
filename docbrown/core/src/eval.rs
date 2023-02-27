@@ -524,6 +524,17 @@ mod eval_test {
 
     use super::{AccEntry, Context};
 
+    // test PairAcc
+    #[test]
+    fn test_pair_acc() {
+        let mut acc = PairAcc::new(0, 0);
+        acc.as_mut(0).as_mut().map(|v| *v +=1) ;
+        acc.as_mut(0).as_mut().map(|v| *v +=2) ;
+        acc.as_mut(0).as_mut().map(|v| *v +=3) ;
+
+        
+    }
+
     // test that monoids are correctly applied
     #[test]
     fn test_simple_sum_2_steps() {
@@ -553,7 +564,7 @@ mod eval_test {
 
         entry += 1;
         entry += 2;
-        
+
         let actual = ctx.as_hash_map(&sum);
 
         assert_eq!(
