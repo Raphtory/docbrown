@@ -1,0 +1,12 @@
+[package]
+name = "algorithms"
+version.workspace = true
+edition = "2021"
+keywords = ["graph", "temporal-graph", "temporal", "algorithms"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+docbrown-core = {path = "../docbrown/core"}
+docbrown-db = {path = "../docbrown/db"}
+itertools = "0.10.5"
