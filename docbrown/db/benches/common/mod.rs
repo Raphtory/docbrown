@@ -112,6 +112,7 @@ fn times(n: usize) -> impl Iterator {
 pub fn run_large_ingestion_benchmarks<F>(
     group: &mut BenchmarkGroup<WallTime>,
     mut make_graph: F,
+    parameter: Option<usize>,
 ) where
     F: FnMut() -> Graph,
 {
@@ -123,7 +124,7 @@ pub fn run_large_ingestion_benchmarks<F>(
     bench (
         group,
         "1k fixed edge updates with varying time",
-        Option::None,
+        Option::parameter,
         |b: &mut Bencher| {
             b.iter_batched_ref(
                 || (make_graph(), time_sample()),
@@ -139,7 +140,7 @@ pub fn run_large_ingestion_benchmarks<F>(
     bench (
         group,
         "1k random edge additions to a graph with 10k nodes",
-        Option::None,
+        Option::parameter,
         |b: &mut Bencher| {
             b.iter_batched_ref(
                 || (make_graph(), make_index_gen(), make_index_gen(), time_sample()),
