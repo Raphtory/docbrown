@@ -50,6 +50,16 @@ pub struct Monoid<K, A, F> {
     pub(crate) state: Rc<RefCell<StateStore<K, A>>>,
 }
 
+trait Merge{
+    fn merge(&mut self, other: Box<dyn Merge>);
+}
+
+impl <K, A, F> Merge for Monoid<K, A, F> {
+    fn merge(&mut self, other: Box<dyn Merge>) {
+        todo!()
+    }
+}
+
 impl<K, A, F> Monoid<K, A, F>
 where
     F: Fn(&mut A, A) + Clone,
@@ -74,11 +84,12 @@ where
 
 pub struct Context {
     ss: u64, // the superstep decides which state do we use from the accuumulators, we start at 0 and we flip flop between odd and even
+    monoids: HashMap<String, Box<dyn Merge>>
 }
 
 impl Context {
     fn new() -> Self {
-        Self { ss: 0 }
+        Self { ss: 0, monoids: HashMap::new() }
     }
 
     fn inc(&mut self) {
