@@ -6,10 +6,10 @@ use std::{
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
-use crate::{props::Props, tadjset::TAdjSet};
 use crate::Prop;
 use crate::{adj::Adj, tadjset::Edge};
 use crate::{bitset::BitSet, tadjset::AdjEdge, Direction};
+use crate::{props::Props, tadjset::TAdjSet};
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct TemporalGraph {
@@ -52,22 +52,24 @@ impl TemporalGraph {
 
     pub(crate) fn has_edge(&self, src: u64, dst: u64) -> bool {
         let v_pid = self.logical_to_physical[&src];
-        
-                match &self.adj_lists[v_pid] {
-                    Adj::Solo(_) => {
-                        false
-                    }
-                    Adj::List {
-                        remote_into, out, remote_out, ..
-                    } =>
-                    if !self.contains_vertex(dst) {
-                        remote_out.find(dst as usize).is_some() || remote_into.find(dst as usize).is_some()
-                    } else {
-                        out.find(self.logical_to_physical[&dst]).is_some()
-                    }
+
+        match &self.adj_lists[v_pid] {
+            Adj::Solo(_) => false,
+            Adj::List {
+                remote_into,
+                out,
+                remote_out,
+                ..
+            } => {
+                if !self.contains_vertex(dst) {
+                    remote_out.find(dst as usize).is_some()
+                        || remote_into.find(dst as usize).is_some()
+                } else {
+                    out.find(self.logical_to_physical[&dst]).is_some()
                 }
             }
-        
+        }
+    }
 
     pub(crate) fn contains_vertex(&self, v: u64) -> bool {
         self.logical_to_physical.contains_key(&v)
@@ -671,7 +673,10 @@ impl<'a> VertexView<'a, TemporalGraph> {
         Some(hm) // Don't return "None" if hm.is_empty for Some({}) gets translated as {} in python
     }
 
-    pub fn all_props_window<T: From<Prop>>(&self, r: Range<i64>) -> Option<HashMap<String, Vec<(i64, T)>>> {
+    pub fn all_props_window<T: From<Prop>>(
+        &self,
+        r: Range<i64>,
+    ) -> Option<HashMap<String, Vec<(i64, T)>>> {
         let index = self.g.logical_to_physical.get(&self.g_id)?;
         let meta = self.g.props.vertex_meta.get(*index)?;
 
@@ -1047,7 +1052,7 @@ mod graph_test {
         g.add_edge(11, 9, 3);
 
         let actual: bool = g.has_edge(9, 11);
-   
+
         assert_eq!(actual, false);
     }
 
@@ -1059,7 +1064,7 @@ mod graph_test {
         g.add_edge(9, 11, 3);
 
         let actual: bool = g.has_edge(9, 11);
-      
+
         assert_eq!(actual, true);
     }
 
@@ -1073,7 +1078,7 @@ mod graph_test {
 
         let actual: bool = g.has_edge(9, 11);
         let actual2: bool = g.has_edge(11, 9);
-      
+
         assert_eq!(actual, true);
         assert_eq!(actual2, true);
     }
