@@ -1,22 +1,19 @@
+use crate::graph_window::WindowedGraph;
+use docbrown_core::{
+    tgraph_shard::{TEdge, TGraphShard},
+    utils, Direction, Prop,
+};
+use rayon::prelude::{IntoParallelRefIterator, ParallelIterator};
+use serde::{Deserialize, Serialize};
 use std::{
     path::{Path, PathBuf},
     sync::Arc,
 };
 
-use docbrown_core::{
-    tgraph_shard::{TEdge, TGraphShard, TVertex},
-    utils, Direction, Prop,
-};
-
-use crate::graph_window::WindowedGraph;
-
-use rayon::prelude::{IntoParallelRefIterator, ParallelIterator};
-use serde::{Deserialize, Serialize};
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Graph {
     nr_shards: usize,
-    shards: Vec<TGraphShard>,
+    pub(crate) shards: Vec<TGraphShard>,
 }
 
 impl Graph {
@@ -121,46 +118,10 @@ impl Graph {
         self.shards.iter().any(|shard| shard.contains(v))
     }
 
-    pub(crate) fn contains_window(&self, v: u64, t_start: i64, t_end: i64) -> bool {
-        self.shards
-            .iter()
-            .any(|shard| shard.contains_window(v, t_start..t_end))
-    }
-
     pub(crate) fn degree_window(&self, v: u64, t_start: i64, t_end: i64, d: Direction) -> usize {
         let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
         let iter = self.shards[shard_id].degree_window(v, t_start..t_end, d);
         iter
-    }
-
-    pub(crate) fn vertex_ids_window(
-        &self,
-        t_start: i64,
-        t_end: i64,
-    ) -> Box<dyn Iterator<Item = u64> + Send> {
-        let shards = self.shards.clone();
-        Box::new(
-            shards
-                .into_iter()
-                .map(move |shard| shard.vertex_ids_window(t_start..t_end))
-                .into_iter()
-                .flatten(),
-        )
-    }
-
-    pub(crate) fn vertices_window(
-        &self,
-        t_start: i64,
-        t_end: i64,
-    ) -> Box<dyn Iterator<Item = TVertex> + Send> {
-        let shards = self.shards.clone();
-        Box::new(
-            shards
-                .into_iter()
-                .map(move |shard| shard.vertices_window(t_start..t_end))
-                .into_iter()
-                .flatten(),
-        )
     }
 
     pub(crate) fn neighbours_window(
@@ -197,9 +158,7 @@ mod db_tests {
     use csv::StringRecord;
     use docbrown_core::utils;
     use itertools::Itertools;
-    use quickcheck::{quickcheck, TestResult};
-    use rand::Rng;
-    use std::collections::HashMap;
+    use quickcheck::quickcheck;
     use std::fs;
     use std::sync::Arc;
     use uuid::Uuid;
@@ -318,59 +277,6 @@ mod db_tests {
         fs::remove_dir_all(tmp_docbrown_path).unwrap();
     }
 
-    #[quickcheck]
-    fn graph_contains_vertex_window(mut vs: Vec<(i64, u64)>) -> TestResult {
-        if vs.is_empty() {
-            return TestResult::discard();
-        }
-
-        let g = Graph::new(2);
-
-        for (t, v) in &vs {
-            g.add_vertex(*t, *v, &vec![]);
-        }
-
-        vs.sort(); // Sorted by time
-        vs.dedup();
-
-        let rand_start_index = rand::thread_rng().gen_range(0..vs.len());
-        let rand_end_index = rand::thread_rng().gen_range(0..vs.len());
-
-        if rand_end_index < rand_start_index {
-            return TestResult::discard();
-        }
-
-        let g = Graph::new(2);
-
-        for (t, v) in &vs {
-            g.add_vertex(*t, *v, &vec![]);
-        }
-
-        let start = vs.get(rand_start_index).unwrap().0;
-        let end = vs.get(rand_end_index).unwrap().0;
-
-        if start == end {
-            let v = vs.get(rand_start_index).unwrap().1;
-            return TestResult::from_bool(!g.contains_window(v, start, end));
-        }
-
-        if rand_start_index == rand_end_index {
-            let v = vs.get(rand_start_index).unwrap().1;
-            return TestResult::from_bool(!g.contains_window(v, start, end));
-        }
-
-        let rand_index_within_rand_start_end: usize =
-            rand::thread_rng().gen_range(rand_start_index..rand_end_index);
-
-        let (i, v) = vs.get(rand_index_within_rand_start_end).unwrap();
-
-        if *i == end {
-            return TestResult::from_bool(!g.contains_window(*v, start, end));
-        } else {
-            return TestResult::from_bool(g.contains_window(*v, start, end));
-        }
-    }
-
     #[test]
     fn graph_degree_window() {
         let vs = vec![
@@ -416,165 +322,6 @@ mod db_tests {
                     g.degree_window(i, 0, 1, Direction::BOTH),
                 )
             })
-            .collect::<Vec<_>>();
-
-        assert_eq!(actual, expected);
-    }
-
-    #[test]
-    fn graph_vertex_ids_window() {
-        let vs = vec![(1, 1, 2), (3, 3, 4), (5, 5, 6), (7, 7, 1)];
-
-        let args = vec![(i64::MIN, 8), (i64::MIN, 2), (i64::MIN, 4), (3, 6)];
-
-        let expected = vec![
-            vec![1, 2, 3, 4, 5, 6, 7],
-            vec![1, 2],
-            vec![1, 2, 3, 4],
-            vec![3, 4, 5, 6],
-        ];
-
-        let g = Graph::new(1);
-
-        for (t, src, dst) in &vs {
-            g.add_edge(*t, *src, *dst, &vec![]);
-        }
-
-        let res: Vec<_> = (0..=3)
-            .map(|i| {
-                let mut e = g
-                    .vertices_window(args[i].0, args[i].1)
-                    .map(move |v| v.g_id)
-                    .collect::<Vec<_>>();
-                e.sort();
-                e
-            })
-            .collect_vec();
-
-        assert_eq!(res, expected);
-
-        let g = Graph::new(3);
-        for (src, dst, t) in &vs {
-            g.add_edge(*src, *dst, *t, &vec![]);
-        }
-        let res: Vec<_> = (0..=3)
-            .map(|i| {
-                let mut e = g
-                    .vertices_window(args[i].0, args[i].1)
-                    .map(move |v| v.g_id)
-                    .collect::<Vec<_>>();
-                e.sort();
-                e
-            })
-            .collect_vec();
-        assert_eq!(res, expected);
-    }
-
-    #[test]
-    fn graph_vertices_window() {
-        let vs = vec![
-            (1, 1, 2),
-            (2, 1, 3),
-            (-1, 2, 1),
-            (0, 1, 1),
-            (7, 3, 2),
-            (1, 1, 1),
-        ];
-
-        let g = Graph::new(1);
-
-        g.add_vertex(
-            0,
-            1,
-            &vec![
-                ("type".into(), Prop::Str("wallet".into())),
-                ("cost".into(), Prop::F32(99.5)),
-            ],
-        );
-
-        g.add_vertex(
-            -1,
-            2,
-            &vec![
-                ("type".into(), Prop::Str("wallet".into())),
-                ("cost".into(), Prop::F32(10.0)),
-            ],
-        );
-
-        g.add_vertex(
-            6,
-            3,
-            &vec![
-                ("type".into(), Prop::Str("wallet".into())),
-                ("cost".into(), Prop::F32(76.2)),
-            ],
-        );
-
-        for (t, src, dst) in &vs {
-            g.add_edge(
-                *t,
-                *src,
-                *dst,
-                &vec![("eprop".into(), Prop::Str("commons".into()))],
-            );
-        }
-
-        let actual = g
-            .vertices_window(-2, 0)
-            .map(|tv| (tv.g_id, tv.props))
-            .collect::<Vec<_>>();
-
-        let hm: HashMap<String, Vec<(i64, Prop)>> = HashMap::new();
-        let expected = vec![
-            (1u64, Some(hm)),
-            (
-                2u64,
-                Some(HashMap::from([
-                    ("type".into(), vec![(-1i64, Prop::Str("wallet".into()))]),
-                    ("cost".into(), vec![(-1i64, Prop::F32(10.0))]),
-                ])),
-            ),
-        ];
-
-        assert_eq!(actual, expected);
-
-        // Check results from multiple graphs with different number of shards
-        let g = Graph::new(10);
-
-        g.add_vertex(
-            0,
-            1,
-            &vec![
-                ("type".into(), Prop::Str("wallet".into())),
-                ("cost".into(), Prop::F32(99.5)),
-            ],
-        );
-
-        g.add_vertex(
-            -1,
-            2,
-            &vec![
-                ("type".into(), Prop::Str("wallet".into())),
-                ("cost".into(), Prop::F32(10.0)),
-            ],
-        );
-
-        g.add_vertex(
-            6,
-            3,
-            &vec![
-                ("type".into(), Prop::Str("wallet".into())),
-                ("cost".into(), Prop::F32(76.2)),
-            ],
-        );
-
-        for (t, src, dst) in &vs {
-            g.add_edge(*t, *src, *dst, &vec![]);
-        }
-
-        let expected = g
-            .vertices_window(-2, 0)
-            .map(|tv| (tv.g_id, tv.props))
             .collect::<Vec<_>>();
 
         assert_eq!(actual, expected);
@@ -775,7 +522,7 @@ mod db_tests {
         }
 
         let gandalf = utils::calculate_hash(&"Gandalf");
-        assert!(g.contains_window(gandalf, i64::MIN, i64::MAX));
+        assert!(g.contains(gandalf));
     }
 
     #[test]
