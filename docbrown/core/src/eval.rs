@@ -1,14 +1,16 @@
 use std::{
     cell::RefCell,
-    collections::{hash_map::Entry, HashMap, HashSet},
+    collections::{hash_map::Entry, HashMap},
     hash::Hash,
     ops::{AddAssign, Range},
     option::Option,
     rc::Rc,
 };
 
+use rustc_hash::FxHashSet;
+
 use crate::{
-    graph::{TemporalGraph, VertexView},
+    tgraph::{TemporalGraph, VertexView},
     Direction,
 };
 
@@ -41,7 +43,7 @@ impl VertexRef {
 ///    For all a, b and c in S, the equation (a • b) • c = a • (b • c) holds.
 /// Identity element
 ///    There exists an element e in S such that for every element a in S, the equalities e • a = a and a • e = a hold.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Monoid<K, A, F> {
     pub(crate) id: A,
     pub(crate) bin_op: F,
@@ -54,7 +56,7 @@ where
     A: Clone,
     K: std::cmp::Eq + Hash + Clone,
 {
-    pub(crate) fn new(name: String, id: A, bin_op: F) -> Self {
+    pub(crate) fn new(id: A, bin_op: F) -> Self {
         Self {
             id,
             bin_op,
@@ -85,7 +87,7 @@ impl Context {
     }
 
     fn as_hash_map<A: Clone, F>(&self, m: &Monoid<u64, A, F>) -> Option<HashMap<u64, PairAcc<A>>> {
-        m.state.try_borrow().ok().map(|s| s.copy_hash_map())
+        m.state.try_borrow().ok().map(|s| s.copy_hash_map(self.ss))
     }
 }
 
@@ -156,9 +158,10 @@ impl<A: Clone> PairAcc<A> {
     }
 }
 
+#[derive(Debug)]
 pub(crate) struct StateStore<K, A> {
     state: HashMap<K, PairAcc<A>>,
-    ss: Option<u64>,
+    pub(crate) ss: Option<u64>,
 }
 
 impl<K: std::cmp::Eq + Hash + Clone, A> StateStore<K, A> {
@@ -171,33 +174,36 @@ impl<K: std::cmp::Eq + Hash + Clone, A> StateStore<K, A> {
 }
 
 impl<K: std::cmp::Eq + Hash + Clone, A: Clone> StateStore<K, A> {
-
-    fn update_state_from_ss(&mut self, ss: u64, k: K) {
+    fn update_state_from_ss(&mut self, ss: u64) {
         // if our current ss is different than the argument we copy all the values from prev to current
 
         if self.ss.is_none() {
             self.ss = Some(ss);
-        } else if self.ss != Some(ss) {
-            self.state.entry(k).and_modify(|v| v.copy_from_prev(ss));
+        } else if self.ss < Some(ss) {
+            // TODO: this could possibly be optimised but in our case we just flip all the entries in the state store
+            // perhaps we could pass the active set here and only flip those?
+            for (_, pair) in self.state.iter_mut() {
+                pair.copy_from_prev(ss);
+            }
+
             self.ss = Some(ss);
         }
     }
 
-
     fn entry(&mut self, ss: u64, k: K) -> Entry<K, PairAcc<A>> {
         // if our current ss is different than the argument we copy all the values from prev to current
-        self.update_state_from_ss(ss, k.clone());
+        self.update_state_from_ss(ss);
         self.state.entry(k)
     }
 
-    fn get(&mut self, ss:u64, k: &K) -> Option<&PairAcc<A>> {
-        self.update_state_from_ss(ss, k.clone());
+    fn get(&mut self, ss: u64, k: &K) -> Option<&PairAcc<A>> {
+        self.update_state_from_ss(ss);
         self.state.get(k)
     }
 }
 
 impl<K: Clone, A: Clone> StateStore<K, A> {
-    fn copy_hash_map(&self) -> HashMap<K, PairAcc<A>> {
+    fn copy_hash_map(&self, ss: u64) -> HashMap<K, PairAcc<A>> {
         self.state.clone()
     }
 }
@@ -348,7 +354,7 @@ impl Eval for TemporalGraph {
     {
         // we start with all the vertices considered inside the working set
         let mut cur_active_set: WorkingSet<usize> = WorkingSet::All;
-        let mut next_active_set = HashSet::new();
+        let mut next_active_set = FxHashSet::default();
         let mut ctx = c.unwrap_or_else(|| Context::new());
 
         while !cur_active_set.is_empty() {
@@ -379,10 +385,8 @@ impl Eval for TemporalGraph {
                 having(&EvalVertexView { vv: v_view }, &ctx)
             });
 
-            println!("next_active_set: {:?}", next_active_set);
-
             cur_active_set = WorkingSet::Set(next_active_set);
-            next_active_set = HashSet::new();
+            next_active_set = FxHashSet::default();
             ctx.inc();
         }
         ctx
@@ -396,18 +400,6 @@ pub struct EvalVertexView<'a, G> {
 }
 
 // here we implement the Fn trait for the EvalVertexView to return Option<AccumulatorEntry>
-
-struct PrevAcc<'a, A: Clone, F> {
-    id: u64,
-    acc: &'a Accumulator<u64, A, F>,
-    value: Option<A>,
-}
-
-impl<'a, A: Clone, F> PrevAcc<'a, A, F> {
-    fn value(&self) -> Option<A> {
-        self.value.clone()
-    }
-}
 
 impl<'a> EvalVertexView<'a, TemporalGraph> {
     fn get<'b, A: Clone, F>(&self, acc: &'b Accumulator<u64, A, F>) -> AccEntry<'b, u64, A, F>
@@ -426,18 +418,6 @@ impl<'a> EvalVertexView<'a, TemporalGraph> {
         acc.read_prev(&id)
     }
 
-    fn get_prev_acc<A: Clone, F>(&self, acc: &'a Accumulator<u64, A, F>) -> PrevAcc<'a, A, F>
-    where
-        F: Fn(&mut A, A) + Clone,
-    {
-        let id = self.vv.global_id();
-        PrevAcc {
-            id,
-            acc,
-            value: acc.read_prev(&id),
-        }
-    }
-
     fn as_vertex_ref(&self) -> VertexRef {
         VertexRef(self.vv.pid)
     }
@@ -454,7 +434,7 @@ impl<'a> EvalVertexView<'a, TemporalGraph> {
 
 enum WorkingSet<A> {
     All,
-    Set(HashSet<A>),
+    Set(FxHashSet<A>),
 }
 
 impl<A> WorkingSet<A>
@@ -503,24 +483,24 @@ mod eval_test {
 
     use crate::{
         eval::{Eval, Monoid, PairAcc},
-        graph::TemporalGraph,
+        tgraph::TemporalGraph,
     };
 
-    use super::{AccEntry, Context, StateStore};
+    use super::{AccEntry, Context};
 
-    // test PairAcc
+    use pretty_assertions::assert_eq;
+
     #[test]
     fn test_pair_acc() {
         let mut acc = PairAcc::new(0, 0);
-        acc.as_mut(0).as_mut().map(|v| *v +=1) ;
-        acc.as_mut(0).as_mut().map(|v| *v +=2) ;
-        acc.as_mut(0).as_mut().map(|v| *v +=3) ;
-        
+        acc.as_mut(0).as_mut().map(|v| *v += 1);
+        acc.as_mut(0).as_mut().map(|v| *v += 2);
+        acc.as_mut(0).as_mut().map(|v| *v += 3);
     }
 
     #[test]
     fn storage_on_different_super_steps() {
-        let sum = Monoid::new("sum".to_string(), 0, |a: &mut u64, b: u64| *a += b);
+        let sum = Monoid::new(0, |a: &mut u64, b: u64| *a += b);
 
         let mut ctx = Context::new();
 
@@ -529,7 +509,6 @@ mod eval_test {
 
         entry += 1;
         entry += 2;
-
 
         assert_eq!(acc.read(&0), Some(3));
 
@@ -549,7 +528,7 @@ mod eval_test {
     // test that monoids are correctly applied
     #[test]
     fn test_simple_sum_2_steps() {
-        let sum = Monoid::new("sum".to_string(), 0, |a: &mut u64, b: u64| *a += b);
+        let sum = Monoid::new(0, |a: &mut u64, b: u64| *a += b);
 
         let mut ctx = Context::new();
 
@@ -561,7 +540,6 @@ mod eval_test {
 
         ctx.inc();
 
-
         assert_eq!(acc.read(&0), Some(3));
         assert_eq!(acc.read_prev(&0), None);
 
@@ -572,13 +550,11 @@ mod eval_test {
             Some(vec![(0, PairAcc::new(3, 0))].into_iter().collect())
         );
 
-
         let acc = ctx.acc(&sum);
         let mut entry = AccEntry::new(&acc, 0);
 
         entry += 1;
         entry += 2;
-
 
         assert_eq!(acc.read(&0), Some(6));
         assert_eq!(acc.read_prev(&0), Some(3));
@@ -587,10 +563,12 @@ mod eval_test {
 
         assert_eq!(
             actual,
-            Some(vec![(0, PairAcc::new_with_prev(6, 3, 1))].into_iter().collect())
+            Some(
+                vec![(0, PairAcc::new_with_prev(6, 3, 1))]
+                    .into_iter()
+                    .collect()
+            )
         );
-
-
     }
 
     #[test]
@@ -598,16 +576,14 @@ mod eval_test {
         let mut g = TemporalGraph::default();
 
         g.add_vertex(1, 1);
-        g.add_vertex(2, 1);
-        g.add_vertex(3, 1);
-        g.add_vertex(4, 1);
+        g.add_vertex(1, 2);
+        g.add_vertex(1, 3);
+        g.add_vertex(1, 4);
 
-        g.add_edge(1, 2, 1);
-        g.add_edge(3, 4, 1);
+        g.add_edge(1, 1, 2);
+        g.add_edge(1, 3, 4);
 
-        let min = Monoid::new("min_cc".to_string(), u64::MAX, |a: &mut u64, b: u64| {
-            *a = u64::min(*a, b)
-        });
+        let min = Monoid::new(u64::MAX, |a: &mut u64, b: u64| *a = u64::min(*a, b));
 
         // initial step where we init every vertex to it's own ID
         let state = g.eval(
@@ -627,6 +603,7 @@ mod eval_test {
             |_, _| false,
         );
 
+        assert_eq!(state.ss, 1);
         let actual = state.as_hash_map(&min).unwrap();
 
         assert_eq!(
@@ -668,6 +645,7 @@ mod eval_test {
             },
         );
 
+        assert_eq!(state.ss, 3);
         let state = state.as_hash_map(&min).unwrap();
 
         assert_eq!(
