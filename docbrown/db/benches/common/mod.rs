@@ -124,7 +124,7 @@ pub fn run_large_ingestion_benchmarks<F>(
     bench (
         group,
         "1k fixed edge updates with varying time",
-        Option::parameter,
+        parameter,
         |b: &mut Bencher| {
             b.iter_batched_ref(
                 || (make_graph(), time_sample()),
@@ -140,7 +140,7 @@ pub fn run_large_ingestion_benchmarks<F>(
     bench (
         group,
         "1k random edge additions to a graph with 10k nodes",
-        Option::parameter,
+        parameter,
         |b: &mut Bencher| {
             b.iter_batched_ref(
                 || (make_graph(), make_index_gen(), make_index_gen(), time_sample()),
