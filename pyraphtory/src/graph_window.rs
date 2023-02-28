@@ -1,15 +1,12 @@
 use std::sync::Arc;
 
-use crate::{
-    graph::Graph,
-    wrappers::{Direction, EdgeIterator, VertexIdsIterator, VertexIterator},
-};
+use crate::{graph::Graph, wrappers::*};
 use docbrown_db::graph_window;
 use pyo3::prelude::*;
 
 #[pyclass]
 pub struct WindowedGraph {
-    pub(crate) windowed_graph: graph_window::WindowedGraph,
+    pub(crate) graph_w: graph_window::WindowedGraph,
 }
 
 #[pymethods]
@@ -17,7 +14,7 @@ impl WindowedGraph {
     #[new]
     pub fn new(graph: &Graph, t_start: i64, t_end: i64) -> Self {
         Self {
-            windowed_graph: graph_window::WindowedGraph::new(
+            graph_w: graph_window::WindowedGraph::new(
                 Arc::new(graph.graph.clone()),
                 t_start,
                 t_end,
@@ -26,35 +23,67 @@ impl WindowedGraph {
     }
 
     pub fn contains(&self, v: u64) -> bool {
-        self.windowed_graph.contains(v)
-    }
-
-    pub fn degree(&self, v: u64, d: Direction) -> usize {
-        self.windowed_graph.degree(v, d.into())
+        self.graph_w.contains(v)
     }
 
     pub fn vertex_ids(&self) -> VertexIdsIterator {
         VertexIdsIterator {
-            iter: self.windowed_graph.vertex_ids(),
+            iter: self.graph_w.vertex_ids(),
         }
     }
 
-    pub fn vertices(&self) -> VertexIterator {
-        let iter = self.windowed_graph.vertices().map(|tv| tv.into());
-
-        VertexIterator {
-            iter: Box::new(iter),
+    pub fn vertices(&self) -> WindowedVertexIterator {
+        WindowedVertexIterator {
+            iter: Box::new(self.graph_w.vertices().map(|wv| wv.into())),
         }
     }
+}
 
-    pub fn neighbours(&self, v: u64, d: Direction) -> EdgeIterator {
-        let iter = self
-            .windowed_graph
-            .neighbours(v, d.into())
-            .map(|te| te.into());
+#[pyclass]
+pub struct WindowedVertex {
+    #[pyo3(get)]
+    pub g_id: u64,
+    pub(crate) vertex_w: graph_window::WindowedVertex,
+}
 
+impl From<graph_window::WindowedVertex> for WindowedVertex {
+    fn from(value: graph_window::WindowedVertex) -> WindowedVertex {
+        WindowedVertex {
+            g_id: value.g_id,
+            vertex_w: value,
+        }
+    }
+}
+
+#[pymethods]
+impl WindowedVertex {
+    pub fn degree(&self) -> usize {
+        self.vertex_w.degree()
+    }
+
+    pub fn in_degree(&self) -> usize {
+        self.vertex_w.in_degree()
+    }
+
+    pub fn out_degree(&self) -> usize {
+        self.vertex_w.out_degree()
+    }
+
+    pub fn neighbours(&self) -> EdgeIterator {
         EdgeIterator {
-            iter: Box::new(iter),
+            iter: Box::new(self.vertex_w.neighbours().map(|te| te.into())),
+        }
+    }
+
+    pub fn in_neighbours(&self) -> EdgeIterator {
+        EdgeIterator {
+            iter: Box::new(self.vertex_w.in_neighbours().map(|te| te.into())),
+        }
+    }
+
+    pub fn out_neighbours(&self) -> EdgeIterator {
+        EdgeIterator {
+            iter: Box::new(self.vertex_w.out_neighbours().map(|te| te.into())),
         }
     }
 }

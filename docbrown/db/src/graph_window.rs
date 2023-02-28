@@ -41,8 +41,8 @@ impl WindowedGraph {
 }
 
 pub struct WindowedVertex {
-    g_id: u64,
-    graph_w: Arc<WindowedGraph>,
+    pub g_id: u64,
+    pub graph_w: Arc<WindowedGraph>,
 }
 
 impl WindowedVertex {
@@ -55,22 +55,63 @@ impl WindowedVertex {
 }
 
 impl WindowedVertex {
-    pub fn degree(&self, d: Direction) -> usize {
-        self.graph_w
-            .graph
-            .degree_window(self.g_id, self.graph_w.t_start, self.graph_w.t_end, d)
+    pub fn degree(&self) -> usize {
+        self.graph_w.graph.degree_window(
+            self.g_id,
+            self.graph_w.t_start,
+            self.graph_w.t_end,
+            Direction::BOTH,
+        )
     }
 
-    pub fn neighbours(&self, d: Direction) -> Box<dyn Iterator<Item = TEdge> + Send> {
-        self.graph_w
-            .graph
-            .neighbours_window(self.g_id, self.graph_w.t_start, self.graph_w.t_end, d)
+    pub fn in_degree(&self) -> usize {
+        self.graph_w.graph.degree_window(
+            self.g_id,
+            self.graph_w.t_start,
+            self.graph_w.t_end,
+            Direction::IN,
+        )
+    }
+
+    pub fn out_degree(&self) -> usize {
+        self.graph_w.graph.degree_window(
+            self.g_id,
+            self.graph_w.t_start,
+            self.graph_w.t_end,
+            Direction::OUT,
+        )
+    }
+
+    pub fn neighbours(&self) -> Box<dyn Iterator<Item = TEdge> + Send> {
+        self.graph_w.graph.neighbours_window(
+            self.g_id,
+            self.graph_w.t_start,
+            self.graph_w.t_end,
+            Direction::BOTH,
+        )
+    }
+
+    pub fn in_neighbours(&self) -> Box<dyn Iterator<Item = TEdge> + Send> {
+        self.graph_w.graph.neighbours_window(
+            self.g_id,
+            self.graph_w.t_start,
+            self.graph_w.t_end,
+            Direction::IN,
+        )
+    }
+
+    pub fn out_neighbours(&self) -> Box<dyn Iterator<Item = TEdge> + Send> {
+        self.graph_w.graph.neighbours_window(
+            self.g_id,
+            self.graph_w.t_start,
+            self.graph_w.t_end,
+            Direction::OUT,
+        )
     }
 }
 
 #[cfg(test)]
 mod views_test {
-    use docbrown_core::Direction;
 
     use super::WindowedGraph;
     use crate::graph::Graph;
@@ -144,7 +185,7 @@ mod views_test {
 
         let actual = wg
             .vertices()
-            .map(|v| (v.g_id, v.degree(Direction::BOTH)))
+            .map(|v| (v.g_id, v.degree()))
             .collect::<Vec<_>>();
 
         let expected = vec![(2, 1), (1, 2)];
