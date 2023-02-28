@@ -8,7 +8,6 @@ keywords = ["graph", "temporal-graph", "temporal"]
 
 [dependencies]
 roaring={ version = "0.10", features = ["serde"] }
-dashmap = "5"
 itertools="0.10"
 # csv = "1.1.6"
 replace_with = "0.1"
