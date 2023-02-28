@@ -56,12 +56,19 @@ where
     A: Clone,
     K: std::cmp::Eq + Hash + Clone,
 {
-    pub(crate) fn new(id: A, bin_op: F) -> Self {
+    pub fn new(id: A, bin_op: F) -> Self {
         Self {
             id,
             bin_op,
             state: Rc::new(RefCell::new(StateStore::new())),
         }
+    }
+
+    pub fn consume(self) -> StateStore<K, A> {
+        Rc::try_unwrap(self.state)
+            .ok()
+            .expect("Monoid is still in use")
+            .into_inner()
     }
 }
 
@@ -78,7 +85,7 @@ impl Context {
         self.ss += 1;
     }
 
-    fn acc<'a, 'b, A, F>(&'a self, monoid: &'b Monoid<u64, A, F>) -> Accumulator<u64, A, F>
+    pub fn acc<'a, 'b, A, F>(&'a self, monoid: &'b Monoid<u64, A, F>) -> Accumulator<u64, A, F>
     where
         A: Clone,
         F: Fn(&mut A, A) + Clone,
@@ -86,16 +93,12 @@ impl Context {
         Accumulator::new(monoid, self.ss)
     }
 
-    fn as_hash_map<A: Clone, F>(&self, m: &Monoid<u64, A, F>) -> Option<HashMap<u64, PairAcc<A>>> {
-        m.state.try_borrow().ok().map(|s| s.copy_hash_map(self.ss))
+    #[cfg(test)]
+    fn as_hash_map<A: Clone, F>(&self, m: &Monoid<u64, A, F>) -> Option<HashMap<u64, A>> {
+        m.state.try_borrow_mut().ok().map(|mut s| s.copy_hash_map(self.ss))
     }
 }
 
-// this always updates the current value so get_mut returns mutable reference to current
-// when calling update_prev it will copy the current value to prev
-// prev is NEVER updated only copied from current
-// TODO we should be to copy current into prev then reset
-// A has to be Clone
 #[derive(Clone, PartialEq, Debug)]
 pub(crate) struct PairAcc<A> {
     even: Option<A>,
@@ -112,14 +115,6 @@ impl<A> PairAcc<A> {
         Self { even, odd }
     }
 
-    fn new_with_prev(current: A, prev: A, ss: u64) -> Self {
-        let (even, odd) = if ss % 2 == 0 {
-            (Some(current), Some(prev))
-        } else {
-            (Some(prev), Some(current))
-        };
-        Self { even, odd }
-    }
 }
 
 impl<A> PairAcc<A> {
@@ -159,7 +154,7 @@ impl<A: Clone> PairAcc<A> {
 }
 
 #[derive(Debug)]
-pub(crate) struct StateStore<K, A> {
+pub struct StateStore<K, A> {
     state: HashMap<K, PairAcc<A>>,
     pub(crate) ss: Option<u64>,
 }
@@ -202,14 +197,19 @@ impl<K: std::cmp::Eq + Hash + Clone, A: Clone> StateStore<K, A> {
     }
 }
 
-impl<K: Clone, A: Clone> StateStore<K, A> {
-    fn copy_hash_map(&self, ss: u64) -> HashMap<K, PairAcc<A>> {
-        self.state.clone()
+impl<K: Clone + std::cmp::Eq + std::hash::Hash, A: Clone> StateStore<K, A> {
+    #[cfg(test)]
+    fn copy_hash_map(&mut self, ss: u64) -> HashMap<K, A> {
+        self.update_state_from_ss(ss);
+        self.state
+            .iter()
+            .flat_map(|(k, v)| v.current(ss).map(|v| (k.clone(), v.clone())))
+            .collect()
     }
 }
 
 #[derive(Clone)]
-struct Accumulator<K: std::cmp::Eq + std::hash::Hash, A: Clone, F> {
+pub struct Accumulator<K: std::cmp::Eq + std::hash::Hash, A: Clone, F> {
     state: Rc<RefCell<StateStore<K, A>>>,
     acc: Monoid<K, A, F>,
     ss: u64,
@@ -264,7 +264,7 @@ where
     }
 }
 
-struct AccEntry<'a, K: std::cmp::Eq + std::hash::Hash, A: std::clone::Clone, F> {
+pub struct AccEntry<'a, K: std::cmp::Eq + std::hash::Hash, A: std::clone::Clone, F> {
     parent: &'a Accumulator<K, A, F>,
     k: K,
 }
@@ -275,11 +275,11 @@ where
     K: std::hash::Hash + std::cmp::Eq + Clone,
     A: Clone,
 {
-    fn read(&self) -> Option<A> {
+    pub fn read(&self) -> Option<A> {
         self.parent.read(&self.k)
     }
 
-    fn read_prev(&self) -> Option<A> {
+    pub fn read_prev(&self) -> Option<A> {
         self.parent.read_prev(&self.k)
     }
 }
@@ -402,7 +402,7 @@ pub struct EvalVertexView<'a, G> {
 // here we implement the Fn trait for the EvalVertexView to return Option<AccumulatorEntry>
 
 impl<'a> EvalVertexView<'a, TemporalGraph> {
-    fn get<'b, A: Clone, F>(&self, acc: &'b Accumulator<u64, A, F>) -> AccEntry<'b, u64, A, F>
+    pub fn get<'b, A: Clone, F>(&self, acc: &'b Accumulator<u64, A, F>) -> AccEntry<'b, u64, A, F>
     where
         F: Fn(&mut A, A) + Clone,
     {
@@ -410,7 +410,7 @@ impl<'a> EvalVertexView<'a, TemporalGraph> {
         AccEntry::new(acc, id)
     }
 
-    fn get_prev<A: Clone, F>(&self, acc: &'a Accumulator<u64, A, F>) -> Option<A>
+    pub fn get_prev<A: Clone, F>(&self, acc: &'a Accumulator<u64, A, F>) -> Option<A>
     where
         F: Fn(&mut A, A) + Clone,
     {
@@ -418,13 +418,13 @@ impl<'a> EvalVertexView<'a, TemporalGraph> {
         acc.read_prev(&id)
     }
 
-    fn as_vertex_ref(&self) -> VertexRef {
+    pub fn as_vertex_ref(&self) -> VertexRef {
         VertexRef(self.vv.pid)
     }
 }
 
 impl<'a> EvalVertexView<'a, TemporalGraph> {
-    fn neighbours(
+    pub fn neighbours(
         &'a self,
         d: Direction,
     ) -> impl Iterator<Item = EvalVertexView<'a, TemporalGraph>> {
@@ -461,20 +461,6 @@ where
             WorkingSet::Set(s) => s.iter(),
         }
     }
-}
-
-// there are 4 possible states for
-// an accumulated value out of the
-// mapping function
-// 0 no value and remove vertex from the next working set
-// 1 no value and keep vertex in the next working set
-// 2 value and remove vertex from the next working set
-// 3 value and keep vertex in the next working set
-pub(crate) enum Acc<K, A> {
-    Done(K),         // 0
-    Keep(K),         // 1
-    Value(K, A),     // 2
-    ValueKeep(K, A), // 3
 }
 
 #[cfg(test)]
@@ -545,10 +531,7 @@ mod eval_test {
 
         let actual = ctx.as_hash_map(&sum);
 
-        assert_eq!(
-            actual,
-            Some(vec![(0, PairAcc::new(3, 0))].into_iter().collect())
-        );
+        assert_eq!(actual, Some(vec![(0, 3)].into_iter().collect()));
 
         let acc = ctx.acc(&sum);
         let mut entry = AccEntry::new(&acc, 0);
@@ -561,34 +544,33 @@ mod eval_test {
 
         let actual = ctx.as_hash_map(&sum);
 
-        assert_eq!(
-            actual,
-            Some(
-                vec![(0, PairAcc::new_with_prev(6, 3, 1))]
-                    .into_iter()
-                    .collect()
-            )
-        );
+        assert_eq!(actual, Some(vec![(0, 6)].into_iter().collect()));
     }
 
     #[test]
-    fn eval_2_connected_components_same_time() {
+    fn eval_2_simple_connected_components() {
         let mut g = TemporalGraph::default();
 
-        g.add_vertex(1, 1);
-        g.add_vertex(1, 2);
-        g.add_vertex(1, 3);
-        g.add_vertex(1, 4);
+        let edges = vec![
+            (1, 2, 1),
+            (2, 3, 2),
+            (3, 4, 3),
+            (3, 5, 4),
+            (6, 5, 5),
+            (7, 8, 6),
+            (8, 7, 7),
+        ];
 
-        g.add_edge(1, 1, 2);
-        g.add_edge(1, 3, 4);
+        for (src, dst, ts) in edges {
+            g.add_edge(ts, src, dst);
+        }
 
         let min = Monoid::new(u64::MAX, |a: &mut u64, b: u64| *a = u64::min(*a, b));
 
         // initial step where we init every vertex to it's own ID
         let state = g.eval(
             None,
-            0..3,
+            0..9,
             |vertex, ctx| {
                 let min_cc_id = ctx.acc(&min); // get the accumulator for the min_cc_id
 
@@ -609,10 +591,14 @@ mod eval_test {
         assert_eq!(
             actual,
             HashMap::from_iter(vec![
-                (1, PairAcc::new(1, 0)),
-                (2, PairAcc::new(2, 0)),
-                (3, PairAcc::new(3, 0)),
-                (4, PairAcc::new(4, 0))
+                (1, 1),
+                (2, 2),
+                (3, 3),
+                (4, 4),
+                (5, 5),
+                (6, 6),
+                (7, 7),
+                (8, 8),
             ])
         );
 
@@ -620,7 +606,7 @@ mod eval_test {
         // we stop when the state of the vertex does not change
         let state = g.eval(
             Some(state),
-            0..3,
+            0..9,
             |vertex, ctx| {
                 let min_cc_id = ctx.acc(&min); // get the accumulator for the min_cc_id
 
@@ -648,13 +634,18 @@ mod eval_test {
         assert_eq!(state.ss, 3);
         let state = state.as_hash_map(&min).unwrap();
 
+
         assert_eq!(
             state,
             HashMap::from_iter(vec![
-                (1, PairAcc::new_with_prev(1, 1, 2)),
-                (2, PairAcc::new_with_prev(1, 1, 2)),
-                (3, PairAcc::new_with_prev(3, 3, 2)),
-                (4, PairAcc::new_with_prev(3, 3, 2))
+                (1, 1),
+                (2, 1),
+                (3, 1),
+                (4, 1),
+                (5, 1),
+                (6, 1),
+                (7, 7),
+                (8, 7),
             ])
         );
     }
