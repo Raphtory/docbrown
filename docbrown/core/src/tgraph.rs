@@ -6,9 +6,9 @@ use std::{
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
-use crate::adj::Adj;
-use crate::props::Props;
+use crate::{props::Props, tadjset::TAdjSet};
 use crate::Prop;
+use crate::{adj::Adj, tadjset::Edge};
 use crate::{bitset::BitSet, tadjset::AdjEdge, Direction};
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
@@ -49,6 +49,25 @@ impl TemporalGraph {
             .reduce(|s1, s2| s1 + s2)
             .unwrap_or(0)
     }
+
+    pub(crate) fn has_edge(&self, src: u64, dst: u64) -> bool {
+        let v_pid = self.logical_to_physical[&src];
+        
+                match &self.adj_lists[v_pid] {
+                    Adj::Solo(_) => {
+                        false
+                    }
+                    Adj::List {
+                        remote_into, out, remote_out, ..
+                    } =>
+                    if !self.contains_vertex(dst) {
+                        remote_out.find(dst as usize).is_some() || remote_into.find(dst as usize).is_some()
+                    } else {
+                        out.find(self.logical_to_physical[&dst]).is_some()
+                    }
+                }
+            }
+        
 
     pub(crate) fn contains_vertex(&self, v: u64) -> bool {
         self.logical_to_physical.contains_key(&v)
@@ -708,6 +727,14 @@ impl<'a> EdgeView<'a, TemporalGraph> {
         }
     }
 
+    pub fn src_id(&self) -> i64 {
+        self.src_id()
+    }
+
+    pub fn dst_id(&self) -> i64 {
+        self.dst_id()
+    }
+
     pub fn time(&self) -> Option<i64> {
         self.t
     }
@@ -1010,6 +1037,66 @@ mod graph_test {
             .map(|e| e.global_src())
             .collect();
         assert_eq!(actual, vec![9]);
+    }
+
+    #[test]
+    fn does_not_have_edge() {
+        let mut g = TemporalGraph::default();
+        g.add_vertex(9, 1);
+        g.add_vertex(11, 2);
+        g.add_edge(11, 9, 3);
+
+        let actual: bool = g.has_edge(9, 11);
+   
+        assert_eq!(actual, false);
+    }
+
+    #[test]
+    fn has_edge() {
+        let mut g = TemporalGraph::default();
+        g.add_vertex(9, 1);
+        g.add_vertex(11, 2);
+        g.add_edge(9, 11, 3);
+
+        let actual: bool = g.has_edge(9, 11);
+      
+        assert_eq!(actual, true);
+    }
+
+    #[test]
+    fn has_double_edge() {
+        let mut g = TemporalGraph::default();
+        g.add_vertex(9, 1);
+        g.add_vertex(1, 2);
+        g.add_edge(9, 11, 3);
+        g.add_edge(11, 9, 4);
+
+        let actual: bool = g.has_edge(9, 11);
+        let actual2: bool = g.has_edge(11, 9);
+      
+        assert_eq!(actual, true);
+        assert_eq!(actual2, true);
+    }
+
+    #[test]
+    fn has_remote_out_edge() {
+        let mut g = TemporalGraph::default();
+        g.add_vertex(9, 1);
+        g.add_edge_remote_out(9, 7, 3, &vec![("bla".to_string(), Prop::U32(1))]);
+
+        let actual: bool = g.has_edge(9, 7);
+        assert_eq!(actual, true);
+    }
+
+    #[test]
+    fn has_remote_in_edge() {
+        let mut g = TemporalGraph::default();
+
+        g.add_vertex(9, 1);
+        g.add_edge_remote_into(7, 9, 3, &vec![("bla".to_string(), Prop::U32(1))]);
+
+        let actual: bool = g.has_edge(9, 7);
+        assert_eq!(actual, true);
     }
 
     #[test]
@@ -1741,7 +1828,7 @@ mod graph_test {
         let n_shards = shards.len();
         for (t, (src, dst)) in vs.into_iter().enumerate() {
             let src_shard = utils::get_shard_id_from_global_vid(src, n_shards);
-            let dst_shard = utils::get_shard_id_from_global_vid(src, n_shards);
+            let dst_shard = utils::get_shard_id_from_global_vid(dst, n_shards);
 
             shards[src_shard].add_vertex(t.try_into().unwrap(), src.into());
             shards[dst_shard].add_vertex(t.try_into().unwrap(), dst.into());
