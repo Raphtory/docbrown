@@ -158,7 +158,6 @@ impl<A: Clone> PairAcc<A> {
 
 pub(crate) struct StateStore<K, A> {
     state: HashMap<K, PairAcc<A>>,
-    modified: HashSet<K>,
     ss: Option<u64>,
 }
 
@@ -166,52 +165,33 @@ impl<K: std::cmp::Eq + Hash + Clone, A> StateStore<K, A> {
     fn new() -> Self {
         Self {
             state: HashMap::new(),
-            modified: HashSet::new(),
             ss: None,
         }
     }
 }
 
 impl<K: std::cmp::Eq + Hash + Clone, A: Clone> StateStore<K, A> {
-    // fn upsert<F>(&mut self, ss: u64, k: K, default: A, f: F)
-    // where
-    //     F: FnOnce(&mut PairAcc<A>),
-    // {
-    //     match self.state.entry(k) {
-    //         Entry::Occupied(mut entry) => {
-    //             f(entry.get_mut());
-    //             self.modified.insert(entry.key().clone());
-    //         }
-    //         Entry::Vacant(entry) => {
-    //             let mut pair = PairAcc::new(default, ss);
-    //             f(&mut pair);
-    //             entry.insert(pair);
-    //             self.modified.insert(entry.key().clone());
-    //         }
-    //     }
-    // }
 
-    fn entry(&mut self, ss: u64, k: K) -> Entry<K, PairAcc<A>> {
+    fn update_state_from_ss(&mut self, ss: u64, k: K) {
         // if our current ss is different than the argument we copy all the values from prev to current
 
         if self.ss.is_none() {
             self.ss = Some(ss);
         } else if self.ss != Some(ss) {
-            for (k, v) in self.state.iter_mut() {
-                if self.modified.contains(k) {
-                    v.copy_from_prev(ss);
-                }
-            }
-            self.modified.clear();
+            self.state.entry(k).and_modify(|v| v.copy_from_prev(ss));
             self.ss = Some(ss);
         }
+    }
 
-        // we're going to assume k is modified here
-        self.modified.insert(k.clone());
+
+    fn entry(&mut self, ss: u64, k: K) -> Entry<K, PairAcc<A>> {
+        // if our current ss is different than the argument we copy all the values from prev to current
+        self.update_state_from_ss(ss, k.clone());
         self.state.entry(k)
     }
 
-    fn get(&self, k: &K) -> Option<&PairAcc<A>> {
+    fn get(&mut self, ss:u64, k: &K) -> Option<&PairAcc<A>> {
+        self.update_state_from_ss(ss, k.clone());
         self.state.get(k)
     }
 }
@@ -265,15 +245,15 @@ where
 
     fn read_prev(&self, k: &K) -> Option<A> {
         self.state
-            .borrow()
-            .get(k)
+            .borrow_mut()
+            .get(self.ss, k)
             .and_then(|e| e.prev(self.ss).cloned())
     }
 
     fn read(&self, k: &K) -> Option<A> {
         self.state
-            .borrow()
-            .get(k)
+            .borrow_mut()
+            .get(self.ss, k)
             .and_then(|e| e.current(self.ss).cloned())
     }
 }
@@ -291,6 +271,10 @@ where
 {
     fn read(&self) -> Option<A> {
         self.parent.read(&self.k)
+    }
+
+    fn read_prev(&self) -> Option<A> {
+        self.parent.read_prev(&self.k)
     }
 }
 
@@ -522,7 +506,7 @@ mod eval_test {
         graph::TemporalGraph,
     };
 
-    use super::{AccEntry, Context};
+    use super::{AccEntry, Context, StateStore};
 
     // test PairAcc
     #[test]
@@ -531,8 +515,35 @@ mod eval_test {
         acc.as_mut(0).as_mut().map(|v| *v +=1) ;
         acc.as_mut(0).as_mut().map(|v| *v +=2) ;
         acc.as_mut(0).as_mut().map(|v| *v +=3) ;
-
         
+    }
+
+    #[test]
+    fn storage_on_different_super_steps() {
+        let sum = Monoid::new("sum".to_string(), 0, |a: &mut u64, b: u64| *a += b);
+
+        let mut ctx = Context::new();
+
+        let acc = ctx.acc(&sum);
+        let mut entry = AccEntry::new(&acc, 0);
+
+        entry += 1;
+        entry += 2;
+
+
+        assert_eq!(acc.read(&0), Some(3));
+
+        ctx.inc();
+
+        let acc = ctx.acc(&sum);
+        let entry = AccEntry::new(&acc, 0);
+
+        // read current value must be copied from last time on first read
+        assert_eq!(entry.read(), Some(3));
+        assert_eq!(entry.read_prev(), Some(3));
+
+        assert_eq!(acc.read(&0), Some(3));
+        assert_eq!(acc.read_prev(&0), Some(3));
     }
 
     // test that monoids are correctly applied
@@ -551,6 +562,9 @@ mod eval_test {
         ctx.inc();
 
 
+        assert_eq!(acc.read(&0), Some(3));
+        assert_eq!(acc.read_prev(&0), None);
+
         let actual = ctx.as_hash_map(&sum);
 
         assert_eq!(
@@ -565,6 +579,10 @@ mod eval_test {
         entry += 1;
         entry += 2;
 
+
+        assert_eq!(acc.read(&0), Some(6));
+        assert_eq!(acc.read_prev(&0), Some(3));
+
         let actual = ctx.as_hash_map(&sum);
 
         assert_eq!(
@@ -576,7 +594,6 @@ mod eval_test {
     }
 
     #[test]
-    #[ignore = "not ready yet"]
     fn eval_2_connected_components_same_time() {
         let mut g = TemporalGraph::default();
 
