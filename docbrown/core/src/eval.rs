@@ -23,8 +23,8 @@ pub trait Eval {
         having: PRED,
     ) -> Context
     where
-        FMAP: Fn(&mut EvalVertexView<'a, Self>, &Context) -> Vec<VertexRef>,
-        PRED: Fn(&EvalVertexView<'a, Self>, &Context) -> bool,
+        FMAP: Fn(&mut EvalVertexView<'a, Self>, &mut Context) -> Vec<VertexRef>,
+        PRED: Fn(&EvalVertexView<'a, Self>, &mut Context) -> bool,
         Self: Sized + 'a;
 }
 
@@ -85,7 +85,7 @@ impl Context {
         self.ss += 1;
     }
 
-    pub fn acc<'a, 'b, A, F>(&'a self, monoid: &'b Monoid<u64, A, F>) -> Accumulator<u64, A, F>
+    pub fn acc<'a, 'b, A, F>(&'a mut self, monoid: &'b Monoid<u64, A, F>) -> Accumulator<u64, A, F>
     where
         A: Clone,
         F: Fn(&mut A, A) + Clone,
@@ -241,12 +241,15 @@ where
                     (self.acc.bin_op)(acc, value.clone());
                 } else {
                     // clone the previous step into current
-                    e.copy_from_prev(self.ss);
                     let acc2 = e.as_mut(self.ss).get_or_insert(self.acc.id.clone());
                     (self.acc.bin_op)(acc2, value.clone());
                 }
             })
-            .or_insert_with(|| PairAcc::new(value, self.ss));
+            .or_insert_with(|| { 
+                let mut v = self.acc.id.clone();
+                (self.acc.bin_op)(&mut v, value.clone());
+                PairAcc::new(v, self.ss)
+            });
     }
 
     fn read_prev(&self, k: &K) -> Option<A> {
@@ -335,10 +338,6 @@ where
     }
 }
 
-trait Filp {
-    fn flip(&self);
-}
-
 impl Eval for TemporalGraph {
     fn eval<'a, FMAP, PRED>(
         &'a self,
@@ -348,8 +347,8 @@ impl Eval for TemporalGraph {
         having: PRED,
     ) -> Context
     where
-        FMAP: Fn(&mut EvalVertexView<'a, Self>, &Context) -> Vec<VertexRef>,
-        PRED: Fn(&EvalVertexView<'a, Self>, &Context) -> bool,
+        FMAP: Fn(&mut EvalVertexView<'a, Self>, &mut Context) -> Vec<VertexRef>,
+        PRED: Fn(&EvalVertexView<'a, Self>, &mut Context) -> bool,
         Self: Sized + 'a,
     {
         // we start with all the vertices considered inside the working set
@@ -372,7 +371,7 @@ impl Eval for TemporalGraph {
             // iterate over the active vertices
             for v_view in iter {
                 let mut eval_v_view = EvalVertexView { vv: v_view };
-                let next_vertices = f(&mut eval_v_view, &ctx);
+                let next_vertices = f(&mut eval_v_view, &mut ctx);
                 for next_vertex in next_vertices {
                     next_active_set.insert(next_vertex.pid());
                 }
@@ -382,7 +381,7 @@ impl Eval for TemporalGraph {
             next_active_set.retain(|pid| {
                 let g_id = self.adj_lists[*pid].logical();
                 let v_view = VertexView::new(self, *g_id, *pid, Some(window.clone()));
-                having(&EvalVertexView { vv: v_view }, &ctx)
+                having(&EvalVertexView { vv: v_view }, &mut ctx)
             });
 
             cur_active_set = WorkingSet::Set(next_active_set);
