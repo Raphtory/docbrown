@@ -98,6 +98,7 @@ pub fn run_ingestion_benchmarks<F>(
             b.iter_batched_ref(
                 || (make_graph(), index_sample(), index_sample()),
                 |(g, s, d)| g.add_edge(0, *s, *d, &vec![]),
+<<<<<<< HEAD
                 BatchSize::SmallInput,
             )
         },
@@ -144,6 +145,8 @@ pub fn run_large_ingestion_benchmarks<F>(
                     for _ in times(100000) {
                         g.add_edge(src_gen.next().unwrap(), dst_gen.next().unwrap(), *t, &vec![])
                     },
+=======
+>>>>>>> 392bcc0 (init windowed graph view (#49))
                 BatchSize::SmallInput,
             )
         },

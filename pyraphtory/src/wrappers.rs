@@ -7,6 +7,12 @@ use docbrown_core as db_c;
 use docbrown_db as db_db;
 
 use crate::graph_window::WindowedVertex;
+use std::collections::HashMap;
+
+use pyo3::prelude::*;
+
+use dbc::tgraph_shard;
+use docbrown_core as dbc;
 
 #[pyclass]
 #[derive(Copy, Clone, PartialEq, Eq)]
