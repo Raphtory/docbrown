@@ -8,7 +8,7 @@ use std::sync::Arc;
 
 #[derive(Debug, Clone)]
 pub struct WindowedGraph {
-    graph: Arc<Graph>,
+    pub(crate) graph: Arc<Graph>,
     pub t_start: i64,
     pub t_end: i64,
 }
@@ -26,10 +26,6 @@ impl WindowedGraph {
         self.graph.contains_window(v, self.t_start, self.t_end)
     }
 
-    pub fn degree(&self, v: u64, d: Direction) -> usize {
-        self.graph.degree_window(v, self.t_start, self.t_end, d)
-    }
-
     pub fn vertex_ids(&self) -> Box<dyn Iterator<Item = u64> + Send> {
         self.graph.vertex_ids_window(self.t_start, self.t_end)
     }
@@ -41,10 +37,6 @@ impl WindowedGraph {
                 .vertices_window(self.t_start, self.t_end)
                 .map(move |tv| WindowedVertex::from(tv, Arc::new(graph_w.clone()))),
         )
-    }
-
-    pub fn neighbours(&self, v: u64, d: Direction) -> Box<dyn Iterator<Item = TEdge> + Send> {
-        self.graph.neighbours_window(v, self.t_start, self.t_end, d)
     }
 }
 
@@ -64,11 +56,15 @@ impl WindowedVertex {
 
 impl WindowedVertex {
     pub fn degree(&self, d: Direction) -> usize {
-        self.graph_w.degree(self.g_id, d)
+        self.graph_w
+            .graph
+            .degree_window(self.g_id, self.graph_w.t_start, self.graph_w.t_end, d)
     }
 
     pub fn neighbours(&self, d: Direction) -> Box<dyn Iterator<Item = TEdge> + Send> {
-        self.graph_w.neighbours(self.g_id, d)
+        self.graph_w
+            .graph
+            .neighbours_window(self.g_id, self.graph_w.t_start, self.graph_w.t_end, d)
     }
 }
 
@@ -146,9 +142,13 @@ mod views_test {
 
         let wg = WindowedGraph::new(g.into(), -1, 1);
 
-        let vw = wg.vertices();
-        for v in vw {
-            println!("vid = {}, degree = {}", v.g_id, v.degree(Direction::BOTH))
-        }
+        let actual = wg
+            .vertices()
+            .map(|v| (v.g_id, v.degree(Direction::BOTH)))
+            .collect::<Vec<_>>();
+
+        let expected = vec![(2, 1), (1, 2)];
+
+        assert_eq!(actual, expected);
     }
 }
