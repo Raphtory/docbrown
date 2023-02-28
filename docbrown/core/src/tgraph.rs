@@ -1047,9 +1047,9 @@ mod graph_test {
     #[test]
     fn does_not_have_edge() {
         let mut g = TemporalGraph::default();
-        g.add_vertex(9, 1);
-        g.add_vertex(11, 2);
-        g.add_edge(11, 9, 3);
+        g.add_vertex(1, 9);
+        g.add_vertex(2, 11);
+        g.add_edge(3, 11, 9);
 
         let actual: bool = g.has_edge(9, 11);
 
@@ -1059,9 +1059,9 @@ mod graph_test {
     #[test]
     fn has_edge() {
         let mut g = TemporalGraph::default();
-        g.add_vertex(9, 1);
-        g.add_vertex(11, 2);
-        g.add_edge(9, 11, 3);
+        g.add_vertex(1, 9);
+        g.add_vertex(2, 11);
+        g.add_edge(3, 9, 11);
 
         let actual: bool = g.has_edge(9, 11);
 
@@ -1071,10 +1071,10 @@ mod graph_test {
     #[test]
     fn has_double_edge() {
         let mut g = TemporalGraph::default();
-        g.add_vertex(9, 1);
-        g.add_vertex(1, 2);
-        g.add_edge(9, 11, 3);
-        g.add_edge(11, 9, 4);
+        g.add_vertex(1, 9);
+        g.add_vertex(2, 11);
+        g.add_edge(3, 9, 11);
+        g.add_edge(4, 11, 9);
 
         let actual: bool = g.has_edge(9, 11);
         let actual2: bool = g.has_edge(11, 9);
@@ -1086,8 +1086,8 @@ mod graph_test {
     #[test]
     fn has_remote_out_edge() {
         let mut g = TemporalGraph::default();
-        g.add_vertex(9, 1);
-        g.add_edge_remote_out(9, 7, 3, &vec![("bla".to_string(), Prop::U32(1))]);
+        g.add_vertex(1, 9);
+        g.add_edge_remote_out(2, 9, 7, &vec![("bla".to_string(), Prop::U32(1))]);
 
         let actual: bool = g.has_edge(9, 7);
         assert_eq!(actual, true);
@@ -1097,8 +1097,8 @@ mod graph_test {
     fn has_remote_in_edge() {
         let mut g = TemporalGraph::default();
 
-        g.add_vertex(9, 1);
-        g.add_edge_remote_into(7, 9, 3, &vec![("bla".to_string(), Prop::U32(1))]);
+        g.add_vertex(1, 9);
+        g.add_edge_remote_into(2, 7, 9, &vec![("bla".to_string(), Prop::U32(1))]);
 
         let actual: bool = g.has_edge(9, 7);
         assert_eq!(actual, true);
