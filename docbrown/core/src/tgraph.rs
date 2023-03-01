@@ -51,6 +51,7 @@ impl TemporalGraph {
     }
 
     pub(crate) fn has_edge(&self, src: u64, dst: u64) -> bool {
+        dbg!(&src);
         let v_pid = self.logical_to_physical[&src];
 
         match &self.adj_lists[v_pid] {
@@ -732,14 +733,6 @@ impl<'a> EdgeView<'a, TemporalGraph> {
         }
     }
 
-    pub fn src_id(&self) -> i64 {
-        self.src_id()
-    }
-
-    pub fn dst_id(&self) -> i64 {
-        self.dst_id()
-    }
-
     pub fn time(&self) -> Option<i64> {
         self.t
     }
@@ -770,7 +763,7 @@ extern crate quickcheck;
 
 #[cfg(test)]
 mod graph_test {
-    use std::path::PathBuf;
+    use std::{path::PathBuf, vec};
 
     use csv::StringRecord;
 
@@ -1102,6 +1095,37 @@ mod graph_test {
 
         let actual: bool = g.has_edge(9, 7);
         assert_eq!(actual, true);
+    }
+
+    #[test]
+    fn edge_exists_inside_window() {
+        let mut g = TemporalGraph::default();
+        g.add_vertex(1, 5);
+        g.add_vertex(2, 7);
+        g.add_edge(3, 5, 7);
+
+        let actual: Vec<bool> = g
+            .neighbours_window(5, &(0..4), Direction::OUT)
+            .map(|e| g.has_edge(e.global_src(), e.global_dst()))
+            .collect();
+
+        assert_eq!(actual, vec![true]);
+    }
+
+    #[test]
+    fn edge_does_not_exists_outside_window() {
+        let mut g = TemporalGraph::default();
+        g.add_vertex(5, 9);
+        g.add_vertex(7, 10);
+        g.add_edge(8, 9, 10);
+
+        let actual: Vec<bool> = g
+            .neighbours_window(9, &(0..4), Direction::OUT)
+            .map(|e| g.has_edge(e.global_src(), e.global_dst()))
+            .collect();
+
+        //return empty as no edges in this window
+        assert_eq!(actual, vec![]);
     }
 
     #[test]
