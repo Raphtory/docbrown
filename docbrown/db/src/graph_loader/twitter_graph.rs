@@ -1,4 +1,3 @@
-use fetch_data::FetchDataError;
 use serde::Deserialize;
 use std::path::PathBuf;
 use crate::{graph_loader::{fetch_file, CsvLoader}, graph::Graph};
@@ -10,7 +9,7 @@ pub struct Twitter {
     dst_id: String,
 }
 
-pub fn twitter_file() -> Result<PathBuf, FetchDataError> {
+pub fn twitter_file() -> Result<PathBuf, Box<dyn std::error::Error>> {
     fetch_file(
         "twitter.csv",
         "https://raw.githubusercontent.com/Raphtory/Data/main/snap-twitter.csv",
