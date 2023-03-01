@@ -1,6 +1,6 @@
 use crate::graph_window::WindowedGraph;
 use docbrown_core::{
-    tgraph_shard::{TEdge, TGraphShard},
+    tgraph_shard::{TEdge, TGraphShard, TVertex},
     utils, Direction, Prop,
 };
 use rayon::prelude::{IntoParallelRefIterator, ParallelIterator};
@@ -118,10 +118,45 @@ impl Graph {
         self.shards.iter().any(|shard| shard.contains(v))
     }
 
+    pub(crate) fn contains_window(&self, v: u64, t_start: i64, t_end: i64) -> bool {
+        self.shards
+            .iter()
+            .any(|shard| shard.contains_window(v, t_start..t_end))
+    }
+
     pub(crate) fn degree_window(&self, v: u64, t_start: i64, t_end: i64, d: Direction) -> usize {
         let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
         let iter = self.shards[shard_id].degree_window(v, t_start..t_end, d);
         iter
+    }
+
+    pub(crate) fn vertex_ids_window(
+        &self,
+        t_start: i64,
+        t_end: i64,
+    ) -> Box<dyn Iterator<Item = u64> + Send> {
+        let shards = self.shards.clone();
+        Box::new(
+            shards
+                .into_iter()
+                .map(move |shard| shard.vertex_ids_window(t_start..t_end))
+                .into_iter()
+                .flatten(),
+        )
+    }
+
+    pub(crate) fn vertices_window(
+        &self,
+        t_start: i64,
+        t_end: i64,
+    ) -> Box<dyn Iterator<Item = TVertex> + Send> {
+        let shards = self.shards.clone();
+        Box::new(
+            shards
+                .into_iter()
+                .map(move |shard| shard.vertices_window(t_start..t_end))
+                .flatten(),
+        )
     }
 
     pub(crate) fn neighbours_window(

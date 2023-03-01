@@ -652,7 +652,10 @@ impl<'a> VertexView<'a, TemporalGraph> {
         Some(hm) // Don't return "None" if hm.is_empty for Some({}) gets translated as {} in python
     }
 
-    pub fn all_props_window<T: From<Prop>>(&self, r: Range<i64>) -> Option<HashMap<String, Vec<(i64, T)>>> {
+    pub fn all_props_window<T: From<Prop>>(
+        &self,
+        r: Range<i64>,
+    ) -> Option<HashMap<String, Vec<(i64, T)>>> {
         let index = self.g.logical_to_physical.get(&self.g_id)?;
         let meta = self.g.props.vertex_meta.get(*index)?;
 

@@ -23,32 +23,18 @@ impl WindowedGraph {
     }
 
     pub fn contains(&self, v: u64) -> bool {
-        self.graph
-            .shards
-            .iter()
-            .any(|shard| shard.contains_window(v, self.t_start..self.t_end))
+        self.graph.contains_window(v, self.t_start, self.t_end)
     }
 
     pub fn vertex_ids(&self) -> Box<dyn Iterator<Item = u64> + Send> {
-        let shards = self.graph.shards.clone();
-        let graph_w = self.clone();
-        Box::new(
-            shards
-                .into_iter()
-                .map(move |shard| shard.vertex_ids_window(graph_w.t_start..graph_w.t_end))
-                .into_iter()
-                .flatten(),
-        )
+        self.graph.vertex_ids_window(self.t_start, self.t_end)
     }
 
     pub fn vertices(&self) -> Box<dyn Iterator<Item = WindowedVertex> + Send> {
         let graph_w = self.clone();
-        let shards = self.graph.shards.clone();
         Box::new(
-            shards
-                .into_iter()
-                .map(move |shard| shard.vertices_window(graph_w.t_start..graph_w.t_end))
-                .flatten()
+            self.graph
+                .vertices_window(self.t_start, self.t_end)
                 .map(move |tv| WindowedVertex::from(tv, Arc::new(graph_w.clone()))),
         )
     }
