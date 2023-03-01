@@ -62,49 +62,6 @@ impl TemporalGraph {
         }
     }
 
-    pub(crate) fn find(&self, v: u64) -> Option<VertexView<'_, Self>> {
-        let pid = self.logical_to_physical.get(&v)?;
-        let r = i64::MIN..i64::MAX;
-        Some(match self.adj_lists[*pid] {
-            Adj::Solo(lid) => VertexView {
-                g_id: lid,
-                pid: *pid,
-                g: self,
-                w: Some(r.clone()),
-            },
-            Adj::List { logical, .. } => VertexView {
-                g_id: logical,
-                pid: *pid,
-                g: self,
-                w: Some(r.clone()),
-            },
-        })
-    }
-
-    pub(crate) fn find_window(&self, v: u64, r: &Range<i64>) -> Option<VertexView<'_, Self>> {
-        let pid = self.logical_to_physical.get(&v)?;
-        let w = r.clone();
-        let mut vs = self.index.range(w.clone()).flat_map(|(_, vs)| vs.iter());
-
-        match vs.contains(&pid) {
-            true => Some(match self.adj_lists[*pid] {
-                Adj::Solo(lid) => VertexView {
-                    g_id: lid,
-                    pid: *pid,
-                    g: self,
-                    w: Some(w),
-                },
-                Adj::List { logical, .. } => VertexView {
-                    g_id: logical,
-                    pid: *pid,
-                    g: self,
-                    w: Some(w),
-                },
-            }),
-            false => None,
-        }
-    }
-
     pub(crate) fn add_vertex(&mut self, t: i64, v: u64) {
         self.add_vertex_with_props(t, v, &vec![])
     }
@@ -256,6 +213,49 @@ impl TemporalGraph {
                 .count(),
             },
             _ => 0,
+        }
+    }
+
+    pub(crate) fn vertex(&self, v: u64) -> Option<VertexView<'_, Self>> {
+        let pid = self.logical_to_physical.get(&v)?;
+        let r = i64::MIN..i64::MAX;
+        Some(match self.adj_lists[*pid] {
+            Adj::Solo(lid) => VertexView {
+                g_id: lid,
+                pid: *pid,
+                g: self,
+                w: Some(r.clone()),
+            },
+            Adj::List { logical, .. } => VertexView {
+                g_id: logical,
+                pid: *pid,
+                g: self,
+                w: Some(r.clone()),
+            },
+        })
+    }
+
+    pub(crate) fn vertex_window(&self, v: u64, r: &Range<i64>) -> Option<VertexView<'_, Self>> {
+        let pid = self.logical_to_physical.get(&v)?;
+        let w = r.clone();
+        let mut vs = self.index.range(w.clone()).flat_map(|(_, vs)| vs.iter());
+
+        match vs.contains(&pid) {
+            true => Some(match self.adj_lists[*pid] {
+                Adj::Solo(lid) => VertexView {
+                    g_id: lid,
+                    pid: *pid,
+                    g: self,
+                    w: Some(w),
+                },
+                Adj::List { logical, .. } => VertexView {
+                    g_id: logical,
+                    pid: *pid,
+                    g: self,
+                    w: Some(w),
+                },
+            }),
+            false => None,
         }
     }
 
@@ -1795,7 +1795,7 @@ mod graph_test {
 
         let pid = *(g.logical_to_physical.get(&1).unwrap());
 
-        let actual = g.find(1);
+        let actual = g.vertex(1);
         let expected = Some(VertexView {
             g_id: 1,
             pid,
@@ -1805,12 +1805,12 @@ mod graph_test {
 
         assert_eq!(actual, expected);
 
-        let actual = g.find(10);
+        let actual = g.vertex(10);
         let expected = None;
 
         assert_eq!(actual, expected);
 
-        let actual = g.find_window(1, &(0..3));
+        let actual = g.vertex_window(1, &(0..3));
         let expected = Some(VertexView {
             g_id: 1,
             pid,
@@ -1820,12 +1820,12 @@ mod graph_test {
 
         assert_eq!(actual, expected);
 
-        let actual = g.find_window(10, &(0..3));
+        let actual = g.vertex_window(10, &(0..3));
         let expected = None;
 
         assert_eq!(actual, expected);
 
-        let actual = g.find_window(1, &(0..1));
+        let actual = g.vertex_window(1, &(0..1));
         let expected = None;
 
         assert_eq!(actual, expected);

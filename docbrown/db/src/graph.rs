@@ -118,6 +118,16 @@ impl Graph {
         self.shards.iter().any(|shard| shard.contains(v))
     }
 
+    pub(crate) fn vertex(&self, v: u64) -> Option<TVertex> {
+        let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
+        self.shards[shard_id].vertex(v)
+    }
+
+    pub(crate) fn vertex_window(&self, v: u64, t_start: i64, t_end: i64) -> Option<TVertex> {
+        let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
+        self.shards[shard_id].vertex_window(v, t_start..t_end)
+    }
+
     pub(crate) fn contains_window(&self, v: u64, t_start: i64, t_end: i64) -> bool {
         self.shards
             .iter()

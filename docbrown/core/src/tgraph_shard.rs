@@ -44,7 +44,7 @@ impl<'a> From<VertexView<'a, TemporalGraph>> for TVertex {
         } else {
             v.all_props_window(v.window().unwrap())
         };
-        
+
         Self {
             g_id: v.global_id(),
             w: v.window(),
@@ -154,6 +154,14 @@ impl TGraphShard {
 
     pub fn degree_window(&self, v: u64, r: Range<i64>, d: Direction) -> usize {
         self.read_shard(|tg: &TemporalGraph| tg.degree_window(v, &r, d))
+    }
+
+    pub fn vertex(&self, v: u64) -> Option<TVertex> {
+        self.read_shard(|tg| tg.vertex(v).map(|vv| vv.into()))
+    }
+
+    pub fn vertex_window(&self, v: u64, r: Range<i64>) -> Option<TVertex> {
+        self.read_shard(|tg| tg.vertex_window(v, &r).map(|vv| vv.into()))
     }
 
     pub fn vertex_ids(&self) -> Box<impl Iterator<Item = u64> + Send> {

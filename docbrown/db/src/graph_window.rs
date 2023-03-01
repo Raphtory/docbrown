@@ -26,6 +26,13 @@ impl WindowedGraph {
         self.graph.contains_window(v, self.t_start, self.t_end)
     }
 
+    pub fn vertex(&self, v: u64) -> Option<WindowedVertex> {
+        let graph_w = self.clone();
+        self.graph
+            .vertex_window(v, self.t_start, self.t_end)
+            .map(|tv| WindowedVertex::from(tv, Arc::new(graph_w.clone())))
+    }
+
     pub fn vertex_ids(&self) -> Box<dyn Iterator<Item = u64> + Send> {
         self.graph.vertex_ids_window(self.t_start, self.t_end)
     }
