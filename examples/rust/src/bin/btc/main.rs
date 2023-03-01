@@ -119,7 +119,7 @@ fn main() {
 
     let windowed_graph = graph.window(0, i64::MAX);
 
-    assert!(windowed_graph.contains(test_v));
+    assert!(windowed_graph.has_vertex(test_v));
 
     let deg_out = windowed_graph.neighbours(test_v, Direction::OUT).count();
     let deg_in = windowed_graph.neighbours(test_v, Direction::IN).count();

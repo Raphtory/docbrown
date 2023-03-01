@@ -22,8 +22,8 @@ impl WindowedGraph {
         }
     }
 
-    pub fn contains(&self, v: u64) -> bool {
-        self.graph_w.contains(v)
+    pub fn has_vertex(&self, v: u64) -> bool {
+        self.graph_w.has_vertex(v)
     }
 
     pub fn vertex(&self, v: u64) -> Option<WindowedVertex> {

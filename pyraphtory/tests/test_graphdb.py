@@ -1,7 +1,5 @@
 import sys
 from pyraphtory import Graph
-from pyraphtory import Direction
-
 
 def create_graph(num_shards):
     g = Graph(num_shards)
@@ -32,16 +30,16 @@ def test_graph_len_edge_len():
     assert g.edges_len() == 5
 
 
-def test_graph_contains():
+def test_graph_has_vertex():
     g = create_graph(2)
 
-    assert g.contains(3)
+    assert g.has_vertex(3)
 
 
-def test_windowed_graph_contains():
+def test_windowed_graph_has_vertex():
     g = create_graph(2)
     
-    assert g.window(-1, 1).contains(1)
+    assert g.window(-1, 1).has_vertex(1)
 
 
 def test_windowed_graph_get_vertex():
@@ -141,4 +139,5 @@ def test_windowed_graph_vertices():
     vertices = []
     for v in view.vertices():
         vertices.append(v.g_id)
+
     assert vertices == [1, 2]

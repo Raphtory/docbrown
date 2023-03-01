@@ -124,12 +124,12 @@ impl TGraphShard {
         self.read_shard(|tg| tg.out_edges_len())
     }
 
-    pub fn contains(&self, v: u64) -> bool {
-        self.read_shard(|tg| tg.contains_vertex(v))
+    pub fn has_vertex(&self, v: u64) -> bool {
+        self.read_shard(|tg| tg.has_vertex(v))
     }
 
-    pub fn contains_window(&self, v: u64, r: Range<i64>) -> bool {
-        self.read_shard(|tg| tg.contains_vertex_window(&r, v))
+    pub fn has_vertex_window(&self, v: u64, r: Range<i64>) -> bool {
+        self.read_shard(|tg| tg.has_vertex_window(&r, v))
     }
 
     pub fn add_vertex(&self, t: i64, v: u64, props: &Vec<(String, Prop)>) {
@@ -311,7 +311,7 @@ mod temporal_graph_partition_test {
             g.add_vertex(t.into(), v.into(), &vec![]);
         }
 
-        TestResult::from_bool(g.contains(rand_vertex))
+        TestResult::from_bool(g.has_vertex(rand_vertex))
     }
 
     #[test]
@@ -331,9 +331,9 @@ mod temporal_graph_partition_test {
             g.add_edge(*t, *src, *dst, &vec![]);
         }
 
-        assert!(g.contains_window(1, -1..7));
-        assert!(!g.contains_window(2, 0..1));
-        assert!(g.contains_window(3, 0..8));
+        assert!(g.has_vertex_window(1, -1..7));
+        assert!(!g.has_vertex_window(2, 0..1));
+        assert!(g.has_vertex_window(3, 0..8));
     }
 
     #[quickcheck]

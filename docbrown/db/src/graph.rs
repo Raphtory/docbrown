@@ -114,8 +114,14 @@ impl Graph {
         self.shards.iter().map(|shard| shard.out_edges_len()).sum()
     }
 
-    pub fn contains(&self, v: u64) -> bool {
-        self.shards.iter().any(|shard| shard.contains(v))
+    pub fn has_vertex(&self, v: u64) -> bool {
+        self.shards.iter().any(|shard| shard.has_vertex(v))
+    }
+
+    pub(crate) fn has_vertex_window(&self, v: u64, t_start: i64, t_end: i64) -> bool {
+        self.shards
+            .iter()
+            .any(|shard| shard.has_vertex_window(v, t_start..t_end))
     }
 
     pub(crate) fn vertex(&self, v: u64) -> Option<TVertex> {
@@ -126,12 +132,6 @@ impl Graph {
     pub(crate) fn vertex_window(&self, v: u64, t_start: i64, t_end: i64) -> Option<TVertex> {
         let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
         self.shards[shard_id].vertex_window(v, t_start..t_end)
-    }
-
-    pub(crate) fn contains_window(&self, v: u64, t_start: i64, t_end: i64) -> bool {
-        self.shards
-            .iter()
-            .any(|shard| shard.contains_window(v, t_start..t_end))
     }
 
     pub(crate) fn degree_window(&self, v: u64, t_start: i64, t_end: i64, d: Direction) -> usize {
@@ -312,7 +312,7 @@ mod db_tests {
         // Load from files
         match Graph::load_from_file(Path::new(&shards_path)) {
             Ok(g) => {
-                assert!(g.contains(1));
+                assert!(g.has_vertex(1));
                 assert_eq!(g.nr_shards, 2);
             }
             Err(e) => panic!("{e}"),
@@ -567,7 +567,7 @@ mod db_tests {
         }
 
         let gandalf = utils::calculate_hash(&"Gandalf");
-        assert!(g.contains(gandalf));
+        assert!(g.has_vertex(gandalf));
     }
 
     #[test]

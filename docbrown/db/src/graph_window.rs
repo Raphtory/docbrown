@@ -22,8 +22,8 @@ impl WindowedGraph {
         }
     }
 
-    pub fn contains(&self, v: u64) -> bool {
-        self.graph.contains_window(v, self.t_start, self.t_end)
+    pub fn has_vertex(&self, v: u64) -> bool {
+        self.graph.has_vertex_window(v, self.t_start, self.t_end)
     }
 
     pub fn vertex(&self, v: u64) -> Option<WindowedVertex> {
@@ -193,12 +193,12 @@ mod views_test {
         let wg = WindowedGraph::new(g.into(), start, end);
         if start == end {
             let v = vs.get(rand_start_index).unwrap().1;
-            return TestResult::from_bool(!wg.contains(v));
+            return TestResult::from_bool(!wg.has_vertex(v));
         }
 
         if rand_start_index == rand_end_index {
             let v = vs.get(rand_start_index).unwrap().1;
-            return TestResult::from_bool(!wg.contains(v));
+            return TestResult::from_bool(!wg.has_vertex(v));
         }
 
         let rand_index_within_rand_start_end: usize =
@@ -207,9 +207,9 @@ mod views_test {
         let (i, v) = vs.get(rand_index_within_rand_start_end).unwrap();
 
         if *i == end {
-            return TestResult::from_bool(!wg.contains(*v));
+            return TestResult::from_bool(!wg.has_vertex(*v));
         } else {
-            return TestResult::from_bool(wg.contains(*v));
+            return TestResult::from_bool(wg.has_vertex(*v));
         }
     }
 

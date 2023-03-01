@@ -50,11 +50,11 @@ impl TemporalGraph {
             .unwrap_or(0)
     }
 
-    pub(crate) fn contains_vertex(&self, v: u64) -> bool {
+    pub(crate) fn has_vertex(&self, v: u64) -> bool {
         self.logical_to_physical.contains_key(&v)
     }
 
-    pub(crate) fn contains_vertex_window(&self, r: &Range<i64>, v: u64) -> bool {
+    pub(crate) fn has_vertex_window(&self, r: &Range<i64>, v: u64) -> bool {
         if let Some(v_id) = self.logical_to_physical.get(&v) {
             self.index.range(r.clone()).any(|(_, bs)| bs.contains(v_id))
         } else {
@@ -808,8 +808,8 @@ mod graph_test {
 
         g.add_vertex(1, 9);
 
-        assert!(g.contains_vertex(9));
-        assert!(g.contains_vertex_window(&(1..15), 9));
+        assert!(g.has_vertex(9));
+        assert!(g.has_vertex_window(&(1..15), 9));
         assert_eq!(
             g.vertices().map(|v| v.global_id()).collect::<Vec<u64>>(),
             vec![9]
@@ -825,8 +825,8 @@ mod graph_test {
         let ts = 1;
         g.add_vertex_with_props(ts, v_id, &vec![("type".into(), Prop::Str("wallet".into()))]);
 
-        assert!(g.contains_vertex(v_id));
-        assert!(g.contains_vertex_window(&(1..15), v_id));
+        assert!(g.has_vertex(v_id));
+        assert!(g.has_vertex_window(&(1..15), v_id));
         assert_eq!(
             g.vertices().map(|v| v.global_id()).collect::<Vec<u64>>(),
             vec![v_id]
@@ -998,9 +998,9 @@ mod graph_test {
 
         g.add_vertex(9, 1);
 
-        assert!(g.contains_vertex(9));
-        assert!(g.contains_vertex_window(&(1..15), 9));
-        assert!(g.contains_vertex_window(&(5..15), 9)); // FIXME: this is wrong and we might need a different kind of window here
+        assert!(g.has_vertex(9));
+        assert!(g.has_vertex_window(&(1..15), 9));
+        assert!(g.has_vertex_window(&(5..15), 9)); // FIXME: this is wrong and we might need a different kind of window here
     }
 
     #[test]

@@ -57,8 +57,8 @@ impl Graph {
         self.graph.edges_len()
     }
 
-    pub fn contains(&self, v: u64) -> bool {
-        self.graph.contains(v)
+    pub fn has_vertex(&self, v: u64) -> bool {
+        self.graph.has_vertex(v)
     }
 
     pub fn add_vertex(&self, t: i64, v: u64, props: HashMap<String, Prop>) {

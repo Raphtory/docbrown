@@ -97,7 +97,7 @@ fn main() {
     let gandalf = utils::calculate_hash(&"Gandalf");
 
     assert_eq!(gandalf, 13840129630991083248);
-    assert!(graph.contains(gandalf));
+    assert!(graph.has_vertex(gandalf));
 
     let windowed_graph = graph.window(i64::MIN, i64::MAX);
 
