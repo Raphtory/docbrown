@@ -1,4 +1,5 @@
 use std::{
+    any::Any,
     cell::RefCell,
     collections::{hash_map::Entry, HashMap},
     hash::Hash,
@@ -50,16 +51,6 @@ pub struct Monoid<K, A, F> {
     pub(crate) state: Rc<RefCell<StateStore<K, A>>>,
 }
 
-trait Merge{
-    fn merge(&mut self, other: Box<dyn Merge>);
-}
-
-impl <K, A, F> Merge for Monoid<K, A, F> {
-    fn merge(&mut self, other: Box<dyn Merge>) {
-        todo!()
-    }
-}
-
 impl<K, A, F> Monoid<K, A, F>
 where
     F: Fn(&mut A, A) + Clone,
@@ -84,12 +75,11 @@ where
 
 pub struct Context {
     ss: u64, // the superstep decides which state do we use from the accuumulators, we start at 0 and we flip flop between odd and even
-    monoids: HashMap<String, Box<dyn Merge>>
 }
 
 impl Context {
     fn new() -> Self {
-        Self { ss: 0, monoids: HashMap::new() }
+        Self { ss: 0 }
     }
 
     fn inc(&mut self) {
@@ -106,7 +96,10 @@ impl Context {
 
     #[cfg(test)]
     fn as_hash_map<A: Clone, F>(&self, m: &Monoid<u64, A, F>) -> Option<HashMap<u64, A>> {
-        m.state.try_borrow_mut().ok().map(|mut s| s.copy_hash_map(self.ss))
+        m.state
+            .try_borrow_mut()
+            .ok()
+            .map(|mut s| s.copy_hash_map(self.ss))
     }
 }
 
@@ -125,7 +118,6 @@ impl<A> PairAcc<A> {
         };
         Self { even, odd }
     }
-
 }
 
 impl<A> PairAcc<A> {
@@ -256,7 +248,7 @@ where
                     (self.acc.bin_op)(acc2, value.clone());
                 }
             })
-            .or_insert_with(|| { 
+            .or_insert_with(|| {
                 let mut v = self.acc.id.clone();
                 (self.acc.bin_op)(&mut v, value.clone());
                 PairAcc::new(v, self.ss)
@@ -475,15 +467,21 @@ where
 
 #[cfg(test)]
 mod eval_test {
-    use std::collections::HashMap;
+    use std::{any::Any, cell::RefCell, collections::HashMap, marker::PhantomData, sync::Arc};
 
     use crate::{
         eval::{Eval, Monoid, PairAcc},
         tgraph::TemporalGraph,
+        tgraph_shard::TGraphShard,
     };
 
     use super::{AccEntry, Context};
 
+    use arrow2::{
+        array::{Array, MutableArray, MutablePrimitiveArray},
+        types::NativeType,
+    };
+    use parking_lot::RwLock;
     use pretty_assertions::assert_eq;
 
     #[test]
@@ -584,10 +582,9 @@ mod eval_test {
             |vertex, ctx| {
                 let min_cc_id = ctx.acc(&min); // get the accumulator for the min_cc_id
 
-                let gid = vertex.vv.global_id();
-
                 let mut min_acc = vertex.get(&min_cc_id); // get the entry for this vertex in the min_cc_id accumulator
-                min_acc += gid; // set the value to the global id of the vertex
+
+                min_acc += vertex.vv.global_id(); // set the value to the global id of the vertex
 
                 vec![] // nothing to propagate at this step
             },
@@ -644,7 +641,6 @@ mod eval_test {
         assert_eq!(state.ss, 3);
         let state = state.as_hash_map(&min).unwrap();
 
-
         assert_eq!(
             state,
             HashMap::from_iter(vec![
@@ -659,4 +655,196 @@ mod eval_test {
             ])
         );
     }
+
+    // take two monoids in 2 vectors, zip them with 2 graphs
+    // merge the monoids in parallel
+
+    use rayon::prelude::*;
+    use rustc_hash::FxHashMap;
+
+    #[derive(Clone)]
+    struct AggDef<K, A, OUT, ACC, FIN>
+    where
+        K: Eq + std::hash::Hash + Clone + 'static,
+        OUT: Send + Clone + 'static,
+        ACC: Fn(&mut A, A) + Send + Clone + 'static,
+        FIN: Fn(&A) -> OUT + Send + Clone + 'static,
+    {
+        id: u32,
+        zero: OUT,
+        acc: ACC,
+        fin: FIN,
+        _a: PhantomData<K>,
+        _b: PhantomData<A>,
+    }
+
+    impl<K, A, OUT, ACC, FIN> AggDef<K, A, OUT, ACC, FIN>
+    where
+        K: Eq + std::hash::Hash + Clone + 'static,
+        A: Send + Clone + 'static,
+        OUT: Send + Clone + 'static,
+        ACC: Fn(&mut A, A) + Send + Clone + 'static,
+        FIN: Fn(&A) -> OUT + Send + Clone + 'static,
+    {
+        fn new(id: u32, zero: OUT, acc: ACC, fin: FIN) -> Self {
+            Self {
+                id,
+                zero,
+                acc,
+                fin,
+                _a: PhantomData,
+                _b: PhantomData,
+            }
+        }
+    }
+
+    mod agg_def {
+        use num_traits::Bounded;
+
+        use super::AggDef;
+
+        fn num<K, A, F>(id: u32, zero: A, acc: F) -> AggDef<K, A, A, F, fn(&A) -> A>
+        where
+            K: Eq + std::hash::Hash + Clone + 'static,
+            A: Send + Clone + 'static,
+            F: Fn(&mut A, A) + Send + Clone + 'static,
+        {
+            AggDef::new(id, zero, acc, |a| a.clone())
+        }
+
+        fn min<K, A>(id: u32) -> AggDef<K, A, A, fn(&mut A, A) -> (), fn(&A) -> A>
+        where
+            K: Eq + std::hash::Hash + Clone + 'static,
+            A: Send + Clone + 'static,
+            A: Bounded + PartialOrd + PartialEq + Ord + PartialOrd + Copy,
+        {
+            AggDef::new(id, A::max_value(), |a, b| *a = A::min(*a, b), |a| a.clone())
+        }
+
+        fn max<K, A>(id: u32) -> AggDef<K, A, A, fn(&mut A, A) -> (), fn(&A) -> A>
+        where
+            K: Eq + std::hash::Hash + Clone + 'static,
+            A: Send + Clone + 'static,
+            A: Bounded + PartialOrd + PartialEq + Ord + PartialOrd + Copy,
+        {
+            AggDef::new(id, A::min_value(), |a, b| *a = A::max(*a, b), |a| a.clone())
+        }
+
+        // fn avg<K, A>() -> AggDef<K, (A, usize), A, fn(&mut A, A) -> (), fn(&(A, usize)) -> A>
+        // where
+        //     K: Eq + std::hash::Hash + Clone + 'static,
+        //     A: Send + Clone + 'static,
+        //     A: Bounded + PartialOrd + PartialEq + Ord + PartialOrd + Copy,
+        // {
+        //     AggDef::new(A::min_value(), |a, b| *a = A::max(*a, b), |a| a.clone())
+        // }
+    }
+
+    // state local to the shard
+    // this is the state state
+    struct ComputeState {
+        left: Box<dyn MutableArray>,
+        right: Box<dyn MutableArray>,
+    }
+
+    impl ComputeState {
+        fn new_mutable_primitive<T>() -> Self
+        where
+            T: NativeType + Send + Sync + 'static,
+        {
+            Self {
+                left: Box::new(MutablePrimitiveArray::<T>::new()),
+                right: Box::new(MutablePrimitiveArray::<T>::new()),
+            }
+        }
+
+        fn current_mut(&mut self, ss: usize) -> &mut dyn MutableArray {
+            if ss % 2 == 0 {
+                self.left.as_mut()
+            } else {
+                self.right.as_mut()
+            }
+        }
+
+        fn current(&self, ss: usize) -> &dyn MutableArray {
+            if ss % 2 == 0 {
+                self.left.as_ref()
+            } else {
+                self.right.as_ref()
+            }
+        }
+
+        fn set<A: NativeType>(&mut self, ss: usize, i: usize, a: Option<A>) {
+            self.current_mut(ss)
+                .as_mut_any()
+                .downcast_mut::<MutablePrimitiveArray<A>>()
+                .unwrap()
+                .set(i, a);
+        }
+
+        fn append_null_if_empty(&mut self, ss: usize, i: usize) {
+            if !self.current(ss).is_valid(i) && i < self.current(ss).len(){
+                self.current_mut(ss).push_null()
+            }
+        }
+    }
+
+    struct ShardComputeState<K> {
+        index: Vec<usize>,                    // sorted index for all the vertices
+        ks: Vec<K>,                           // the keys for the accumulators
+        states: FxHashMap<u32, ComputeState>, // any accumulators we need to compute
+    }
+
+    impl<K> ShardComputeState<K> {
+        fn new() -> Self {
+            Self {
+                index: vec![],
+                states: FxHashMap::default(),
+                ks: vec![],
+            }
+        }
+
+        fn accumulate_into<A, ACC, FIN>(
+            &mut self,
+            ss: usize,
+            into: &K,
+            a: A,
+            agg_def: &AggDef<K, A, A, ACC, FIN>,
+        ) where
+            K: Eq + std::hash::Hash + Clone + Ord + 'static,
+            A: Send + Clone + NativeType + 'static,
+            ACC: Fn(&mut A, A) + Send + Clone + 'static,
+            FIN: Fn(&A) -> A + Send + Clone + 'static,
+        {
+            // find if K is already in the vec
+
+            match self.index.binary_search_by(|i| (&self.ks[*i]).cmp(into)) {
+                Err(i) => {
+                    // insert into the vec
+                    let ki = self.ks.len();
+                    self.index.insert(i, ki);
+                    self.ks.push(into.clone());
+                    // get the aggregator and apply the accum function onto the current value o zero
+                    let agg_state = self.states.entry(agg_def.id).or_insert_with(|| {
+                        let mut cs = ComputeState::new_mutable_primitive::<A>();
+                        cs.set(ss, ki, Some(agg_def.zero.clone()));
+                        cs
+                    });
+                    // go through all the other states an append on the aggregator values
+                    for (id, cs) in self.states.iter_mut() {
+                        if *id != agg_def.id {
+                            cs.append_null_if_empty(ss, i);
+                        }
+                    }
+                    // accumulate the new value into agg_state
+                    agg_state
+                }
+                _ => todo!(),
+            }
+
+            todo!()
+        }
+    }
+
+    fn parallel_monoid_test() {}
 }
