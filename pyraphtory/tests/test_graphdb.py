@@ -44,6 +44,16 @@ def test_windowed_graph_contains():
     assert g.window(-1, 1).contains(1)
 
 
+def test_windowed_graph_get_vertex():
+    g = create_graph(2)
+    
+    view = g.window(0, sys.maxsize)
+
+    assert view.vertex(1).g_id == 1
+    assert view.vertex(10) == None
+    assert view.vertex(1).degree() == 3
+
+
 def test_windowed_graph_degree():
     g = create_graph(3)
 

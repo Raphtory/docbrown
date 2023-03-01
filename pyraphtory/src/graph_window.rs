@@ -26,6 +26,10 @@ impl WindowedGraph {
         self.graph_w.contains(v)
     }
 
+    pub fn vertex(&self, v: u64) -> Option<WindowedVertex> {
+        self.graph_w.vertex(v).map(|wv| wv.into())
+    }
+
     pub fn vertex_ids(&self) -> VertexIdsIterator {
         VertexIdsIterator {
             iter: self.graph_w.vertex_ids(),
