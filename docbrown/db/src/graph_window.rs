@@ -159,8 +159,30 @@ mod views_test {
         assert_eq!(actual, expected);
     }
 
+    #[test]
+    fn windowed_graph_vertex_edges() {
+        let vs = vec![
+            (1, 1, 2),
+            (2, 1, 3),
+            (-1, 2, 1),
+            (0, 1, 1),
+            (7, 3, 2),
+            (1, 1, 1),
+        ];
+
+        let g = Graph::new(2);
+
+        for (t, src, dst) in &vs {
+            g.add_edge(*t, *src, *dst, &vec![]);
+        }
+
+        let wg = WindowedGraph::new(g.into(), -1, 1);
+
+        let v = wg.vertex(1).unwrap();
+    }
+
     #[quickcheck]
-    fn windowed_graph_contains_vertex(mut vs: Vec<(i64, u64)>) -> TestResult {
+    fn windowed_graph_has_vertex(mut vs: Vec<(i64, u64)>) -> TestResult {
         if vs.is_empty() {
             return TestResult::discard();
         }

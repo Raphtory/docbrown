@@ -605,37 +605,13 @@ impl TemporalGraph {
 
 #[derive(Debug, PartialEq)]
 pub(crate) struct VertexView<'a, G> {
-    g_id: u64,
+    pub(crate) g_id: u64,
     pid: usize,
     g: &'a G,
-    w: Option<Range<i64>>,
+    pub(crate) w: Option<Range<i64>>,
 }
 
 impl<'a> VertexView<'a, TemporalGraph> {
-    pub fn graph(&self) -> &TemporalGraph {
-        self.g
-    }
-
-    pub fn global_id(&self) -> u64 {
-        self.g_id
-    }
-
-    pub fn partition_id(&self) -> usize {
-        self.pid
-    }
-
-    pub fn window(&self) -> Option<Range<i64>> {
-        self.w.clone()
-    }
-
-    pub fn degree(&self, d: Direction) -> usize {
-        if let Some(w) = &self.w {
-            self.g.degree_window(self.g_id, w, d)
-        } else {
-            self.g.degree(self.g_id, d)
-        }
-    }
-
     // FIXME: all the functions using global ID need to be changed to use the physical ID instead
     pub fn edges(
         &'a self,
@@ -734,7 +710,7 @@ pub(crate) struct EdgeView<'a, G: Sized> {
     src_id: usize,
     dst_id: usize,
     g: &'a G,
-    t: Option<i64>,
+    pub(crate) t: Option<i64>,
     e_meta: AdjEdge,
 }
 
@@ -753,10 +729,6 @@ impl<'a> EdgeView<'a, TemporalGraph> {
         } else {
             self.dst_id.try_into().unwrap()
         }
-    }
-
-    pub fn time(&self) -> Option<i64> {
-        self.t
     }
 
     pub fn is_remote(&self) -> bool {
@@ -810,10 +782,7 @@ mod graph_test {
 
         assert!(g.has_vertex(9));
         assert!(g.has_vertex_window(&(1..15), 9));
-        assert_eq!(
-            g.vertices().map(|v| v.global_id()).collect::<Vec<u64>>(),
-            vec![9]
-        );
+        assert_eq!(g.vertices().map(|v| v.g_id).collect::<Vec<u64>>(), vec![9]);
         assert_eq!(g.props.vertex_meta.get(2), None);
     }
 
@@ -828,7 +797,7 @@ mod graph_test {
         assert!(g.has_vertex(v_id));
         assert!(g.has_vertex_window(&(1..15), v_id));
         assert_eq!(
-            g.vertices().map(|v| v.global_id()).collect::<Vec<u64>>(),
+            g.vertices().map(|v| v.g_id).collect::<Vec<u64>>(),
             vec![v_id]
         );
 
@@ -1010,11 +979,11 @@ mod graph_test {
         g.add_vertex(1, 9);
         g.add_vertex(2, 1);
 
-        let actual: Vec<u64> = g.vertices_window(0..2).map(|v| v.global_id()).collect();
+        let actual: Vec<u64> = g.vertices_window(0..2).map(|v| v.g_id).collect();
         assert_eq!(actual, vec![9]);
-        let actual: Vec<u64> = g.vertices_window(2..10).map(|v| v.global_id()).collect();
+        let actual: Vec<u64> = g.vertices_window(2..10).map(|v| v.g_id).collect();
         assert_eq!(actual, vec![1]);
-        let actual: Vec<u64> = g.vertices_window(0..10).map(|v| v.global_id()).collect();
+        let actual: Vec<u64> = g.vertices_window(0..10).map(|v| v.g_id).collect();
         assert_eq!(actual, vec![9, 1]);
     }
 
@@ -1026,14 +995,14 @@ mod graph_test {
         g.add_vertex(2, 1);
 
         // 9 and 1 are not visible at time 3
-        let actual: Vec<u64> = g.vertices_window(3..10).map(|v| v.global_id()).collect();
+        let actual: Vec<u64> = g.vertices_window(3..10).map(|v| v.g_id).collect();
         let expected: Vec<u64> = vec![];
         assert_eq!(actual, expected);
 
         g.add_edge(3, 9, 1);
 
         // 9 and 1 are now visible at time 3
-        let actual: Vec<u64> = g.vertices_window(3..10).map(|v| v.global_id()).collect();
+        let actual: Vec<u64> = g.vertices_window(3..10).map(|v| v.g_id).collect();
         assert_eq!(actual, vec![9, 1]);
 
         // the outbound neighbours of 9 at time 0..2 is the empty set
@@ -1067,13 +1036,13 @@ mod graph_test {
         g.add_vertex(2, 1);
 
         // 9 and 1 are not visible at time 3
-        let actual: Vec<u64> = g.vertices_window(3..10).map(|v| v.global_id()).collect();
+        let actual: Vec<u64> = g.vertices_window(3..10).map(|v| v.g_id).collect();
         assert_eq!(actual, vec![]);
 
         g.add_edge(3, 9, 1);
 
         // 9 and 1 are now visible at time 3
-        let actual: Vec<u64> = g.vertices_window(3..10).map(|v| v.global_id()).collect();
+        let actual: Vec<u64> = g.vertices_window(3..10).map(|v| v.g_id).collect();
         assert_eq!(actual, vec![9, 1]);
 
         // the outbound neighbours of 9 at time 0..2 is the empty set
@@ -1107,14 +1076,14 @@ mod graph_test {
         g.add_vertex(2, 1);
 
         // 9 and 1 are not visible at time 3
-        let actual: Vec<u64> = g.vertices_window(3..10).map(|v| v.global_id()).collect();
+        let actual: Vec<u64> = g.vertices_window(3..10).map(|v| v.g_id).collect();
         assert_eq!(actual, vec![]);
 
         g.add_edge(3, 9, 1);
         g.add_edge(12, 9, 1); // add the same edge again at different time
 
         // 9 and 1 are now visible at time 3
-        let actual: Vec<u64> = g.vertices_window(3..10).map(|v| v.global_id()).collect();
+        let actual: Vec<u64> = g.vertices_window(3..10).map(|v| v.g_id).collect();
         assert_eq!(actual, vec![9, 1]);
 
         // the outbound neighbours of 9 at time 0..2 is the empty set
@@ -1148,13 +1117,13 @@ mod graph_test {
         // when we look for time we see both variants
         let actual: Vec<(i64, u64)> = g
             .neighbours_window_t(9, &(0..13), Direction::OUT)
-            .map(|e| (e.time().unwrap(), e.global_dst()))
+            .map(|e| (e.t.unwrap(), e.global_dst()))
             .collect();
         assert_eq!(actual, vec![(3, 1), (12, 1)]);
 
         let actual: Vec<(i64, u64)> = g
             .neighbours_window_t(1, &(0..13), Direction::IN)
-            .map(|e| (e.time().unwrap(), e.global_src()))
+            .map(|e| (e.t.unwrap(), e.global_src()))
             .collect();
         assert_eq!(actual, vec![(3, 9), (12, 9)]);
     }
@@ -1172,17 +1141,11 @@ mod graph_test {
         g.add_edge(5, 22, 33);
         g.add_edge(6, 11, 44);
 
-        let actual = g
-            .vertices_window(1..4)
-            .map(|v| v.global_id())
-            .collect::<Vec<_>>();
+        let actual = g.vertices_window(1..4).map(|v| v.g_id).collect::<Vec<_>>();
 
         assert_eq!(actual, vec![11, 22, 33]);
 
-        let actual = g
-            .vertices_window(1..6)
-            .map(|v| v.global_id())
-            .collect::<Vec<_>>();
+        let actual = g.vertices_window(1..6).map(|v| v.g_id).collect::<Vec<_>>();
 
         assert_eq!(actual, vec![11, 22, 33, 44]);
 
@@ -1194,13 +1157,13 @@ mod graph_test {
 
         let actual = g
             .neighbours_window_t(11, &(1..5), Direction::OUT)
-            .map(|e| (e.time().unwrap(), e.global_dst()))
+            .map(|e| (e.t.unwrap(), e.global_dst()))
             .collect::<Vec<_>>();
         assert_eq!(actual, vec![(4, 22)]);
 
         let actual = g
             .neighbours_window_t(44, &(1..17), Direction::IN)
-            .map(|e| (e.time().unwrap(), e.global_src()))
+            .map(|e| (e.t.unwrap(), e.global_src()))
             .collect::<Vec<_>>();
         assert_eq!(actual, vec![(6, 11)]);
 
@@ -1547,10 +1510,7 @@ mod graph_test {
         );
 
         // betwen t:2 and t:4 (excluded) only 11, 22 and 33 are visible, 11 is visible because it has an edge at time 2
-        let vs = g
-            .vertices_window(2..4)
-            .map(|v| v.global_id())
-            .collect::<Vec<_>>();
+        let vs = g.vertices_window(2..4).map(|v| v.g_id).collect::<Vec<_>>();
 
         assert_eq!(vs, vec![11, 22, 33]);
 
@@ -1619,8 +1579,8 @@ mod graph_test {
                 .neighbours_window(i, &(1..7), Direction::OUT)
                 .map(|e| e.global_dst())
                 .collect_vec();
-            assert_eq!(out1, out2);
 
+            assert_eq!(out1, out2);
             assert_eq!(
                 g.degree(i, Direction::OUT),
                 g.degree_window(i, &(1..7), Direction::OUT)
@@ -1635,10 +1595,10 @@ mod graph_test {
             .vertices()
             .map(|v| {
                 (
-                    v.global_id(),
-                    v.degree(Direction::IN),
-                    v.degree(Direction::OUT),
-                    v.degree(Direction::BOTH),
+                    v.g_id,
+                    g.degree(v.g_id, Direction::IN),
+                    g.degree(v.g_id, Direction::OUT),
+                    g.degree(v.g_id, Direction::BOTH),
                 )
             })
             .collect_vec();
@@ -1647,10 +1607,10 @@ mod graph_test {
             .vertices_window(1..7)
             .map(|v| {
                 (
-                    v.global_id(),
-                    v.degree(Direction::IN),
-                    v.degree(Direction::OUT),
-                    v.degree(Direction::BOTH),
+                    v.g_id,
+                    g.degree(v.g_id, Direction::IN),
+                    g.degree(v.g_id, Direction::OUT),
+                    g.degree(v.g_id, Direction::BOTH),
                 )
             })
             .collect_vec();
@@ -1699,14 +1659,15 @@ mod graph_test {
         // query the various graph windows
         // 9501 .. 10001
 
+        let w = 9501..10001;
         let mut degrees_w1 = g
-            .vertices_window(9501..10001)
+            .vertices_window(w.clone())
             .map(|v| {
                 (
-                    v.global_id(),
-                    v.degree(Direction::IN),
-                    v.degree(Direction::OUT),
-                    v.degree(Direction::BOTH),
+                    v.g_id,
+                    g.degree_window(v.g_id, &w, Direction::IN),
+                    g.degree_window(v.g_id, &w, Direction::OUT),
+                    g.degree_window(v.g_id, &w, Direction::BOTH),
                 )
             })
             .collect_vec();
@@ -1758,14 +1719,15 @@ mod graph_test {
         .map(|(name, indeg, outdeg, deg)| (utils::calculate_hash(&name), indeg, outdeg, deg))
         .collect_vec();
 
+        let w = 19001..20001;
         let mut degrees_w2 = g
-            .vertices_window(19001..20001)
+            .vertices_window(w.clone())
             .map(|v| {
                 (
-                    v.global_id(),
-                    v.degree(Direction::IN),
-                    v.degree(Direction::OUT),
-                    v.degree(Direction::BOTH),
+                    v.g_id,
+                    g.degree_window(v.g_id, &w, Direction::IN),
+                    g.degree_window(v.g_id, &w, Direction::OUT),
+                    g.degree_window(v.g_id, &w, Direction::BOTH),
                 )
             })
             .collect_vec();

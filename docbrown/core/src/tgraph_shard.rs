@@ -24,7 +24,7 @@ impl<'a> From<EdgeView<'a, TemporalGraph>> for TEdge {
         Self {
             src: e.global_src(),
             dst: e.global_dst(),
-            t: e.time(),
+            t: e.t,
             is_remote: e.is_remote(),
         }
     }
@@ -39,15 +39,16 @@ pub struct TVertex {
 
 impl<'a> From<VertexView<'a, TemporalGraph>> for TVertex {
     fn from(v: VertexView<'a, TemporalGraph>) -> Self {
-        let props = if v.window().is_none() {
+        let w = v.w.clone();
+        let props = if w.is_none() {
             v.all_props()
         } else {
-            v.all_props_window(v.window().unwrap())
+            v.all_props_window(w.clone().unwrap())
         };
 
         Self {
-            g_id: v.global_id(),
-            w: v.window(),
+            g_id: v.g_id,
+            w: w.clone(),
             props,
         }
     }
