@@ -120,9 +120,10 @@ fn main() {
     let windowed_graph = graph.window(0, i64::MAX);
 
     assert!(windowed_graph.has_vertex(test_v));
+    let v = windowed_graph.vertex(test_v).unwrap();
 
-    let deg_out = windowed_graph.neighbours(test_v, Direction::OUT).count();
-    let deg_in = windowed_graph.neighbours(test_v, Direction::IN).count();
+    let deg_out = v.out_neighbours().count();
+    let deg_in = v.in_neighbours().count();
 
     assert_eq!(deg_out, 22);
     assert_eq!(deg_in, 1);

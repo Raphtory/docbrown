@@ -100,21 +100,24 @@ fn main() {
     assert!(graph.has_vertex(gandalf));
 
     let windowed_graph = graph.window(i64::MIN, i64::MAX);
+    let v = windowed_graph.vertex(gandalf).unwrap();
 
-    assert_eq!(windowed_graph.degree(gandalf, Direction::IN), 24);
-    assert_eq!(windowed_graph.degree(gandalf, Direction::OUT), 35);
-    assert_eq!(windowed_graph.degree(gandalf, Direction::BOTH), 49);
+    assert_eq!(v.in_degree(), 24);
+    assert_eq!(v.out_degree(), 35);
+    assert_eq!(v.degree(), 49);
 
     let windowed_graph = graph.window(0, i64::MAX);
+    let v = windowed_graph.vertex(gandalf).unwrap();
 
-    assert_eq!(windowed_graph.degree(gandalf, Direction::IN), 24);
-    assert_eq!(windowed_graph.degree(gandalf, Direction::OUT), 35);
-    assert_eq!(windowed_graph.degree(gandalf, Direction::BOTH), 49);
+    assert_eq!(v.in_degree(), 24);
+    assert_eq!(v.out_degree(), 35);
+    assert_eq!(v.degree(), 49);
 
     let windowed_graph = graph.window(100, 9000);
+    let v = windowed_graph.vertex(gandalf).unwrap();
 
-    let actual = windowed_graph
-        .neighbours(gandalf, Direction::OUT)
+    let actual = v
+        .out_neighbours()
         .map(|e| (e.src, e.dst, e.t, e.is_remote))
         .collect::<Vec<_>>();
 
@@ -136,8 +139,9 @@ fn main() {
     assert_eq!(actual, expected);
 
     let windowed_graph = graph.window(i64::MIN, i64::MAX);
-    let actual = windowed_graph
-        .neighbours(gandalf, Direction::OUT)
+    let v = windowed_graph.vertex(gandalf).unwrap();
+    let actual = v
+        .out_neighbours()
         .take(10)
         .map(|e| (e.src, e.dst, e.t, e.is_remote))
         .collect::<Vec<_>>();
