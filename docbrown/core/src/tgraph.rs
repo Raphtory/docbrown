@@ -14,7 +14,7 @@ use crate::{bitset::BitSet, tadjset::AdjEdge, Direction};
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct TemporalGraph {
     // Maps global (logical) id to the local (physical) id which is an index to the adjacency list vector
-    logical_to_physical: HashMap<u64, usize>,
+    pub(crate) logical_to_physical: HashMap<u64, usize>,
 
     // Vector of adjacency lists
     pub(crate) adj_lists: Vec<Adj>,
@@ -59,6 +59,49 @@ impl TemporalGraph {
             self.index.range(r.clone()).any(|(_, bs)| bs.contains(v_id))
         } else {
             false
+        }
+    }
+
+    pub(crate) fn find(&self, v: u64) -> Option<VertexView<'_, Self>> {
+        let pid = self.logical_to_physical.get(&v)?;
+        let r = i64::MIN..i64::MAX;
+        Some(match self.adj_lists[*pid] {
+            Adj::Solo(lid) => VertexView {
+                g_id: lid,
+                pid: *pid,
+                g: self,
+                w: Some(r.clone()),
+            },
+            Adj::List { logical, .. } => VertexView {
+                g_id: logical,
+                pid: *pid,
+                g: self,
+                w: Some(r.clone()),
+            },
+        })
+    }
+
+    pub(crate) fn find_window(&self, v: u64, r: &Range<i64>) -> Option<VertexView<'_, Self>> {
+        let pid = self.logical_to_physical.get(&v)?;
+        let w = r.clone();
+        let mut vs = self.index.range(w.clone()).flat_map(|(_, vs)| vs.iter());
+
+        match vs.contains(&pid) {
+            true => Some(match self.adj_lists[*pid] {
+                Adj::Solo(lid) => VertexView {
+                    g_id: lid,
+                    pid: *pid,
+                    g: self,
+                    w: Some(w),
+                },
+                Adj::List { logical, .. } => VertexView {
+                    g_id: logical,
+                    pid: *pid,
+                    g: self,
+                    w: Some(w),
+                },
+            }),
+            false => None,
         }
     }
 
@@ -560,6 +603,7 @@ impl TemporalGraph {
     }
 }
 
+#[derive(Debug, PartialEq)]
 pub(crate) struct VertexView<'a, G> {
     g_id: u64,
     pid: usize,
@@ -1730,6 +1774,61 @@ mod graph_test {
         degrees_w2.sort();
 
         assert_eq!(degrees_w2, expected_degrees_w2);
+    }
+
+    #[test]
+    fn find_vertex() {
+        let mut g = TemporalGraph::default();
+
+        let triplets = vec![
+            (1, 1, 2, 1),
+            (2, 1, 2, 2),
+            (2, 1, 2, 3),
+            (1, 1, 2, 4),
+            (1, 1, 3, 5),
+            (1, 3, 1, 6),
+        ];
+
+        for (t, src, dst, w) in triplets {
+            g.add_edge_with_props(t, src, dst, &vec![("weight".to_string(), Prop::U32(w))]);
+        }
+
+        let pid = *(g.logical_to_physical.get(&1).unwrap());
+
+        let actual = g.find(1);
+        let expected = Some(VertexView {
+            g_id: 1,
+            pid,
+            g: &g,
+            w: Some(i64::MIN..i64::MAX),
+        });
+
+        assert_eq!(actual, expected);
+
+        let actual = g.find(10);
+        let expected = None;
+
+        assert_eq!(actual, expected);
+
+        let actual = g.find_window(1, &(0..3));
+        let expected = Some(VertexView {
+            g_id: 1,
+            pid,
+            g: &g,
+            w: Some(0..3),
+        });
+
+        assert_eq!(actual, expected);
+
+        let actual = g.find_window(10, &(0..3));
+        let expected = None;
+
+        assert_eq!(actual, expected);
+
+        let actual = g.find_window(1, &(0..1));
+        let expected = None;
+
+        assert_eq!(actual, expected);
     }
 
     #[quickcheck]
