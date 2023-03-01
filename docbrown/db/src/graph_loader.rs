@@ -8,7 +8,7 @@ use std::io::{copy, Cursor};
 pub mod lotr_graph;
 pub mod twitter_graph;
 
-pub fn fetch_file(name: &str, url: &str, hash: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
+pub fn fetch_file(name: &str, url: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
     let tmp_dir = env::temp_dir();
     let filepath = tmp_dir.join(name);
     if !filepath.exists() {

@@ -13,7 +13,6 @@ pub fn twitter_file() -> Result<PathBuf, Box<dyn std::error::Error>> {
     fetch_file(
         "twitter.csv",
         "https://raw.githubusercontent.com/Raphtory/Data/main/snap-twitter.csv",
-        "b9cbdf68086c0c6b1501efa2e5ac6b1b0d9e069ad9215cebeba244e6e623c1bb",
     )
 }
 

@@ -14,7 +14,6 @@ pub fn lotr_file() -> Result<PathBuf, Box<dyn std::error::Error>> {
     fetch_file(
         "lotr.csv",
         "https://raw.githubusercontent.com/Raphtory/Data/main/lotr.csv",
-        "c37083a5018827d06de3b884bea8275301d5ef6137dfae6256b793bffb05d033",
     )
 }
 
