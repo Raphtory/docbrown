@@ -466,11 +466,15 @@ where
 
 #[cfg(test)]
 mod eval_test {
-    use std::{collections::HashMap, marker::PhantomData};
+    use std::{
+        collections::{hash_map, HashMap},
+        marker::PhantomData,
+    };
 
     use crate::{
         eval::{Eval, Monoid, PairAcc},
         tgraph::TemporalGraph,
+        utils::get_shard_id_from_global_vid,
     };
 
     use super::{AccEntry, Context};
@@ -745,6 +749,54 @@ mod eval_test {
         right: Box<dyn MutableArray + Send + Sync + 'static>,
     }
 
+    struct PartComputeState {
+        parts: FxHashMap<usize, ComputeState>,
+    }
+    impl PartComputeState {
+        fn new() -> Self {
+            Self {
+                parts: FxHashMap::default(),
+            }
+        }
+
+        fn into_iter(self) -> hash_map::IntoIter<usize, ComputeState> {
+            self.parts.into_iter()
+        }
+
+        fn append_null_if_empty(&mut self, ss: usize, i: usize, part_id: usize) {
+            let comp_state = self
+                .parts
+                .entry(part_id)
+                .or_insert_with(|| ComputeState::new_mutable_primitive::<i32>());
+            comp_state.append_null_if_empty(ss, i);
+        }
+
+        fn set<A: NativeType>(&mut self, part_id: usize, ss: usize, i: usize, val: A) {
+            let comp_state = self
+                .parts
+                .entry(part_id)
+                .or_insert_with(|| ComputeState::new_mutable_primitive::<A>());
+            comp_state.set(ss, i, Some(val));
+        }
+
+        fn agg<A: NativeType, ACC>(
+            &mut self,
+            part_id: usize,
+            ss: usize,
+            a: A,
+            ki: usize,
+            zero: A,
+            acc: ACC,
+        ) where
+            ACC: Fn(&mut A, A),
+        {
+            self.parts
+                .get_mut(&part_id)
+                .unwrap()
+                .agg(ss, a, ki, zero, acc);
+        }
+    }
+
     impl ComputeState {
         fn new_mutable_primitive<T>() -> Self
         where
@@ -836,15 +888,20 @@ mod eval_test {
         }
     }
 
+    type AccId = u32;
+    type PartId = usize;
+
     struct ShardComputeState<K> {
-        index: Vec<usize>,                    // sorted index for all the vertices
-        ks: Vec<K>,                           // the keys for the accumulators
-        states: FxHashMap<u32, ComputeState>, // any accumulators we need to compute
+        n_parts: usize,                             // number of partitions
+        index: Vec<usize>,                          // sorted index for all the vertices
+        ks: Vec<K>,                                 // the keys for the accumulators
+        states: FxHashMap<AccId, PartComputeState>, // any accumulators we need to compute
     }
 
-    impl<K> ShardComputeState<K> {
-        fn new() -> Self {
+    impl<K: std::hash::Hash> ShardComputeState<K> {
+        fn new(n_parts: usize) -> Self {
             Self {
+                n_parts,
                 index: vec![],
                 states: FxHashMap::default(),
                 ks: vec![],
@@ -855,7 +912,7 @@ mod eval_test {
             &mut self,
             ss: usize,
             agg_def: &AggDef<K, A, OUT, ACC, FIN>,
-        ) -> Option<PrimitiveArray<OUT>>
+        ) -> Option<HashMap<usize, PrimitiveArray<OUT>>>
         where
             K: Eq + std::hash::Hash + Clone + Ord + 'static,
             A: Send + Clone + NativeType + 'static,
@@ -865,25 +922,33 @@ mod eval_test {
         {
             // finalize the accumulator
             let state = self.states.remove(&agg_def.id)?;
-            Some(state.finalize(ss, agg_def.fin.clone()))
+            // run the finalizer for
+            Some(
+                state
+                    .into_iter()
+                    .map(|(k, v)| {
+                        let arr = v.finalize(ss, agg_def.fin.clone());
+                        (k, arr)
+                    })
+                    .collect(),
+            )
         }
 
-
-        fn finalize_direct<A, ACC, FIN>(
-            &mut self,
-            ss: usize,
-            agg_def: &AggDef<K, A, A, ACC, FIN>,
-        ) -> Option<PrimitiveArray<A>>
-        where
-            K: Eq + std::hash::Hash + Clone + Ord + 'static,
-            A: Send + Clone + NativeType + 'static,
-            ACC: Fn(&mut A, A) + Send + Clone + 'static,
-            FIN: Fn(&A) -> A + Send + Clone + 'static,
-        {
-            // finalize the accumulator
-            let state = self.states.remove(&agg_def.id)?;
-            Some(state.finalize(ss, agg_def.fin.clone()))
-        }
+        // fn finalize_direct<A, ACC, FIN>(
+        //     &mut self,
+        //     ss: usize,
+        //     agg_def: &AggDef<K, A, A, ACC, FIN>,
+        // ) -> Option<PrimitiveArray<A>>
+        // where
+        //     K: Eq + std::hash::Hash + Clone + Ord + 'static,
+        //     A: Send + Clone + NativeType + 'static,
+        //     ACC: Fn(&mut A, A) + Send + Clone + 'static,
+        //     FIN: Fn(&A) -> A + Send + Clone + 'static,
+        // {
+        //     // finalize the accumulator
+        //     let state = self.states.remove(&agg_def.id)?;
+        //     Some(state.finalize(ss, agg_def.fin.clone()))
+        // }
 
         fn accumulate_into<A, ACC, FIN>(
             &mut self,
@@ -907,35 +972,41 @@ mod eval_test {
                     let key_id = self.ks.len();
                     self.index.insert(i, key_id);
                     self.ks.push(into.clone());
+
+                    // figure out the partition id
+                    let part_id = get_shard_id_from_global_vid(key_id, self.n_parts);
+
                     // go through all the other states an append null on the aggregator values if they are not already ocupied (it shouldn't be)
                     for (id, cs) in self.states.iter_mut() {
                         if *id != agg_def.id {
-                            cs.append_null_if_empty(ss, i);
+                            cs.append_null_if_empty(ss, i, part_id);
                         }
                     }
                     // get the aggregator and apply the accum function onto the current value o zero
                     let agg_state = self.states.entry(agg_def.id).or_insert_with(|| {
-                        let mut cs = ComputeState::new_mutable_primitive::<A>();
-                        cs.set(ss, key_id, Some(agg_def.zero.clone()));
-                        cs
+                        let mut part = PartComputeState::new();
+                        part.set(part_id, ss, key_id, agg_def.zero.clone());
+                        part
                     });
                     // accumulate the new value into agg_state
-                    agg_state.agg(ss, a, key_id, agg_def.zero, agg_def.acc.clone())
+                    agg_state.agg(part_id, ss, a, key_id, agg_def.zero, agg_def.acc.clone())
                 }
                 Ok(i) => {
-                    let ki = self.index[i];
+                    let key_id = self.index[i];
+                    // figure out the partition id
+                    let part_id = get_shard_id_from_global_vid(key_id, self.n_parts);
                     let agg_state = self.states.get_mut(&agg_def.id).unwrap();
-                    agg_state.agg(ss, a, ki, agg_def.zero, agg_def.acc.clone())
+                    agg_state.agg(part_id, ss, a, key_id, agg_def.zero, agg_def.acc.clone())
                 }
             }
         }
     }
 
     #[test]
-    fn min_aggregates_for_2_keys() {
+    fn min_aggregates_for_3_keys_one_part() {
         let min = agg_def::min(0);
 
-        let mut state: ShardComputeState<u32> = ShardComputeState::new();
+        let mut state: ShardComputeState<u32> = ShardComputeState::new(1);
 
         // create random vec of numbers
         let mut rng = rand::thread_rng();
@@ -953,8 +1024,15 @@ mod eval_test {
             state.accumulate_into(0, &3, a, &min);
         }
 
-        let actual = state.finalize(0, &min);
+        let actual = state.finalize(0, &min).unwrap().remove(&0);
 
-        assert_eq!(actual, Some(vec![Some(actual_min), Some(actual_min), Some(actual_min)].into_iter().collect()));
+        assert_eq!(
+            actual,
+            Some(
+                vec![Some(actual_min), Some(actual_min), Some(actual_min)]
+                    .into_iter()
+                    .collect()
+            )
+        );
     }
 }
