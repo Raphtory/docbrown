@@ -126,5 +126,5 @@ jobs:
       - name: Run doc compile check
         run: |
           export PATH=$(pwd)/sbt/bin:$PATH
-          apt update
+          sudo apt update && sudo apt install -y pandoc make python3-sphinx
           cd docs && python -m pip install -q -r requirements.txt && make html
