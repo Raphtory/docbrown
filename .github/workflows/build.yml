@@ -4,7 +4,7 @@ name: CI
 
 jobs:
   test:
-    name: Testing on multiple platforms
+    name: Testing
     runs-on: '${{ matrix.os }}'
     strategy:
       matrix:
@@ -39,7 +39,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: -q
+          args: -q --no-default-features
       - name: Run Tests
         uses: actions-rs/cargo@v1
         with:
