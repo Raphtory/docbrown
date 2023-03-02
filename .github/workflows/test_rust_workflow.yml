@@ -53,14 +53,14 @@ jobs:
         with:
           command: test
           args: --no-default-features
-      - name: Run benchmark
+      - name: Run benchmark (windows)
+        if: "contains($RUNNER_OS, 'Windows')"
+        run: cargo bench --bench base -- --output-format=bencher | tee benchmark-result.txt
+      - name: Run benchmark (Unix)
+        if: "!contains($RUNNER_OS, 'Windows')"
         run: |
-          if [ "$RUNNER_OS" == "Windows" ]; then
-            cargo bench --bench base -- --output-format=bencher | tee benchmark-result.txt
-          else
-            set -o pipefail
-            cargo bench --bench base -- --output-format=bencher | tee benchmark-result.txt
-          fi
+          set -o pipefail
+          cargo bench --bench base -- --output-format=bencher | tee benchmark-result.txt
       - name: Download previous benchmark results
         id: restore-benchmark-cache
         uses: actions/cache/restore@v3
