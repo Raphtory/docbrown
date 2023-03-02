@@ -1683,13 +1683,13 @@ mod graph_test {
         let vs = g
             .vertices_window(3..6)
             .flat_map(|v| {
-                g.edges(v.g_id, Direction::OUT)
+                g.edges_window(v.g_id, &(3..6), Direction::OUT)
                     .map(|e| e.global_dst())
                     .collect::<Vec<_>>() // FIXME: we can't just return v.outbound().map(|e| e.global_dst()) here we might need to do so check lifetimes
             })
             .collect::<Vec<_>>();
 
-        assert_eq!(vs, vec![22, 33, 44, 11]);
+        assert_eq!(vs, vec![33, 44, 11]);
 
         let edge_weights = g
             .edges(11, Direction::OUT)
