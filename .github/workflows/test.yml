@@ -1,0 +1,13 @@
+name: Run all tests
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  call-test-rust-workflow-in-local-repo:
+    uses: ./.github/workflows/test_rust_workflow.yml
+    secrets: inherit
