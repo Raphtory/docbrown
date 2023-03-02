@@ -656,6 +656,7 @@ mod eval_test {
     // take two monoids in 2 vectors, zip them with 2 graphs
     // merge the monoids in parallel
 
+    use rand::Rng;
     use rayon::prelude::*;
     use rustc_hash::FxHashMap;
 
@@ -936,13 +937,24 @@ mod eval_test {
 
         let mut state: ShardComputeState<u32> = ShardComputeState::new();
 
-        for a in 3..10 {
+        // create random vec of numbers
+        let mut rng = rand::thread_rng();
+        let mut vec = vec![];
+        let mut actual_min = i32::MAX;
+        for _ in 0..100 {
+            let i = rng.gen_range(0..100);
+            actual_min = actual_min.min(i);
+            vec.push(i);
+        }
+
+        for a in vec {
             state.accumulate_into(0, &1, a, &min);
             state.accumulate_into(0, &2, a, &min);
+            state.accumulate_into(0, &3, a, &min);
         }
 
         let actual = state.finalize(0, &min);
 
-        assert_eq!(actual, Some(vec![Some(3), Some(3)].into_iter().collect()));
+        assert_eq!(actual, Some(vec![Some(actual_min), Some(actual_min), Some(actual_min)].into_iter().collect()));
     }
 }
