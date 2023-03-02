@@ -358,7 +358,7 @@ impl TemporalGraph {
         match d {
             Direction::OUT => {
                 Box::new(
-                    self.neighbours_iter(v_pid, d)
+                    self.edges_iter(v_pid, d)
                         .map(move |(dst, e_meta)| EdgeView {
                             src_id: v_pid,
                             dst_id: *dst,
@@ -370,7 +370,7 @@ impl TemporalGraph {
             }
             Direction::IN => {
                 Box::new(
-                    self.neighbours_iter(v_pid, d)
+                    self.edges_iter(v_pid, d)
                         .map(move |(dst, e_meta)| EdgeView {
                             src_id: *dst,
                             dst_id: v_pid,
@@ -399,7 +399,7 @@ impl TemporalGraph {
         let v_pid = self.logical_to_physical[&v];
 
         match d {
-            Direction::OUT => Box::new(self.neighbours_iter_window(v_pid, w, d).map(
+            Direction::OUT => Box::new(self.edges_iter_window(v_pid, w, d).map(
                 move |(dst, e_meta)| EdgeView {
                     src_id: v_pid,
                     dst_id: dst,
@@ -408,7 +408,7 @@ impl TemporalGraph {
                     e_meta,
                 },
             )),
-            Direction::IN => Box::new(self.neighbours_iter_window(v_pid, w, d).map(
+            Direction::IN => Box::new(self.edges_iter_window(v_pid, w, d).map(
                 move |(dst, e_meta)| EdgeView {
                     src_id: dst,
                     dst_id: v_pid,
@@ -424,6 +424,40 @@ impl TemporalGraph {
         }
     }
 
+    pub(crate) fn edges_window_t(
+        &self,
+        v: u64,
+        r: &Range<i64>,
+        d: Direction,
+    ) -> Box<dyn Iterator<Item = EdgeView<'_, Self>> + Send + '_> {
+        let v_pid = self.logical_to_physical[&v];
+
+        match d {
+            Direction::OUT => Box::new(self.edges_iter_window_t(v_pid, r, d).map(
+                move |(v, t, e_meta)| EdgeView {
+                    src_id: v_pid,
+                    dst_id: v,
+                    t: Some(t),
+                    g: self,
+                    e_meta,
+                },
+            )),
+            Direction::IN => Box::new(self.edges_iter_window_t(v_pid, r, d).map(
+                move |(v, t, e_meta)| EdgeView {
+                    src_id: v,
+                    dst_id: v_pid,
+                    t: Some(t),
+                    g: self,
+                    e_meta,
+                },
+            )),
+            Direction::BOTH => Box::new(itertools::chain!(
+                self.edges_window_t(v, r, Direction::IN),
+                self.edges_window_t(v, r, Direction::OUT)
+            )),
+        }
+    }
+
     pub(crate) fn neighbours(
         &self,
         v: u64,
@@ -432,9 +466,9 @@ impl TemporalGraph {
     where
         Self: Sized,
     {
-        let edges_iter = self.edges(v, d);
+        let edges = self.edges(v, d);
 
-        Box::new(edges_iter.map(move |edge| {
+        Box::new(edges.map(move |edge| {
             let EdgeView { src_id, dst_id, .. } = edge;
 
             let src_g_id = edge.global_src();
@@ -458,9 +492,9 @@ impl TemporalGraph {
         Self: Sized,
     {
         let w_clone = (*w).clone();
-        let edges_iter = self.edges_window(v, w, d);
+        let edges = self.edges_window(v, w, d);
 
-        Box::new(edges_iter.map(move |edge| {
+        Box::new(edges.map(move |edge| {
             let EdgeView { src_id, dst_id, .. } = edge;
 
             let src_g_id = edge.global_src();
@@ -472,40 +506,6 @@ impl TemporalGraph {
                 VertexView::new(self, src_g_id, src_id, Some(w_clone.clone()))
             }
         }))
-    }
-
-    pub(crate) fn edges_window_t(
-        &self,
-        v: u64,
-        r: &Range<i64>,
-        d: Direction,
-    ) -> Box<dyn Iterator<Item = EdgeView<'_, Self>> + Send + '_> {
-        let v_pid = self.logical_to_physical[&v];
-
-        match d {
-            Direction::OUT => Box::new(self.neighbours_iter_window_t(v_pid, r, d).map(
-                move |(v, t, e_meta)| EdgeView {
-                    src_id: v_pid,
-                    dst_id: v,
-                    t: Some(t),
-                    g: self,
-                    e_meta,
-                },
-            )),
-            Direction::IN => Box::new(self.neighbours_iter_window_t(v_pid, r, d).map(
-                move |(v, t, e_meta)| EdgeView {
-                    src_id: v,
-                    dst_id: v_pid,
-                    t: Some(t),
-                    g: self,
-                    e_meta,
-                },
-            )),
-            Direction::BOTH => Box::new(itertools::chain!(
-                self.edges_window_t(v, r, Direction::IN),
-                self.edges_window_t(v, r, Direction::OUT)
-            )),
-        }
     }
 }
 
@@ -576,7 +576,7 @@ impl TemporalGraph {
         }
     }
 
-    fn neighbours_iter(
+    fn edges_iter(
         &self,
         vid: usize,
         d: Direction,
@@ -605,7 +605,7 @@ impl TemporalGraph {
         }
     }
 
-    fn neighbours_iter_window(
+    fn edges_iter_window(
         &self,
         vid: usize,
         r: &Range<i64>,
@@ -641,7 +641,7 @@ impl TemporalGraph {
         }
     }
 
-    fn neighbours_iter_window_t(
+    fn edges_iter_window_t(
         &self,
         vid: usize,
         window: &Range<i64>,
@@ -2020,7 +2020,7 @@ mod graph_test {
         assert_eq!(actual, vec![22]);
 
         let actual = g1
-            .neighbours_iter_window(0, &(1..3), Direction::OUT)
+            .edges_iter_window(0, &(1..3), Direction::OUT)
             .map(|(id, edge)| (id, edge.is_local()))
             .collect_vec();
         assert_eq!(actual, vec![(22, false)])
