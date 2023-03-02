@@ -723,6 +723,14 @@ mod eval_test {
             AggDef::new(id, A::max_value(), |a, b| *a = A::min(*a, b), |a| a.clone())
         }
 
+        pub(crate) fn sum<K, A>(id: u32) -> AggDef<K, A, A, fn(&mut A, A) -> (), fn(&A) -> A>
+        where
+            K: Eq + std::hash::Hash + Clone + 'static,
+            A: Send + Clone + 'static + num_traits::Zero + std::ops::AddAssign,
+        {
+            AggDef::new(id, A::zero(), |a, b| *a += b, |a| a.clone())
+        }
+
         fn max<K, A>(id: u32) -> AggDef<K, A, A, fn(&mut A, A) -> (), fn(&A) -> A>
         where
             K: Eq + std::hash::Hash + Clone + 'static,
@@ -790,10 +798,14 @@ mod eval_test {
         ) where
             ACC: Fn(&mut A, A),
         {
-            self.parts
-                .get_mut(&part_id)
-                .unwrap()
-                .agg(ss, a, ki, zero, acc);
+            let cs = self.parts
+                .entry(part_id)
+                .or_insert_with(||{
+                    let mut cs = ComputeState::new_mutable_primitive::<A>();
+                    cs.set(ss, ki, Some(zero));
+                    cs
+                });
+            cs.agg(ss,a , ki, zero, acc);
         }
     }
 
@@ -878,6 +890,9 @@ mod eval_test {
                 .as_mut_any()
                 .downcast_mut::<MutablePrimitiveArray<A>>()
                 .unwrap();
+
+            println!("pushing val:{a} index:{ki} super_step:{ss} {:?}", mut_arr);
+
             if ki == mut_arr.len() {
                 mut_arr.push(Some(zero))
             }
@@ -1035,4 +1050,73 @@ mod eval_test {
             )
         );
     }
+
+    #[test]
+    fn sum_aggregates_for_3_keys_one_part() {
+        let sum = agg_def::sum(0);
+
+        let mut state: ShardComputeState<u32> = ShardComputeState::new(1);
+
+        // create random vec of numbers
+        let mut rng = rand::thread_rng();
+        let mut vec = vec![];
+        let mut actual_sum = 0;
+        for _ in 0..100 {
+            let i = rng.gen_range(0..100);
+            actual_sum += i;
+            vec.push(i);
+        }
+
+        for a in vec {
+            state.accumulate_into(0, &1, a, &sum);
+            state.accumulate_into(0, &2, a, &sum);
+            state.accumulate_into(0, &3, a, &sum);
+        }
+
+        let actual = state.finalize(0, &sum).unwrap().remove(&0);
+
+        assert_eq!(
+            actual,
+            Some(
+                vec![Some(actual_sum), Some(actual_sum), Some(actual_sum)]
+                    .into_iter()
+                    .collect()
+            )
+        );
+    }
+
+    #[test]
+    fn sum_aggregates_for_3_keys_2_part() {
+        let sum = agg_def::sum(0);
+
+        let mut state: ShardComputeState<u32> = ShardComputeState::new(2);
+
+        // create random vec of numbers
+        let mut rng = rand::thread_rng();
+        let mut vec = vec![];
+        let mut actual_sum = 0;
+        for _ in 0..100 {
+            let i = rng.gen_range(0..100);
+            actual_sum += i;
+            vec.push(i);
+        }
+
+        for a in vec {
+            state.accumulate_into(0, &1, a, &sum);
+            state.accumulate_into(0, &2, a, &sum);
+            state.accumulate_into(0, &3, a, &sum);
+        }
+
+        let actual = state.finalize(0, &sum).unwrap().remove(&0);
+
+        assert_eq!(
+            actual,
+            Some(
+                vec![Some(actual_sum), Some(actual_sum), Some(actual_sum)]
+                    .into_iter()
+                    .collect()
+            )
+        );
+    }
+
 }
