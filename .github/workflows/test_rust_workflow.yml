@@ -55,8 +55,12 @@ jobs:
           args: --no-default-features
       - name: Run benchmark
         run: |
-          set -o pipefail
-          cargo bench --bench base -- --output-format=bencher | tee benchmark-result.txt
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            cargo bench --bench base -- --output-format=bencher | tee benchmark-result.txt
+          else
+            set -o pipefail
+            cargo bench --bench base -- --output-format=bencher | tee benchmark-result.txt
+          fi
       - name: Download previous benchmark results
         id: restore-benchmark-cache
         uses: actions/cache/restore@v3

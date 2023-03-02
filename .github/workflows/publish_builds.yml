@@ -1,0 +1,12 @@
+name: Publish Rust/PyRaphtory to Github, crates.io and PyPi
+on:
+  workflow_call:
+    inputs:
+      config-path:
+        required: false
+        type: string
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+jobs:
