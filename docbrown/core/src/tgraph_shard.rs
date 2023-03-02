@@ -227,7 +227,7 @@ impl TGraphShard {
         let tgshard = self.rc.clone();
         let iter: GenBoxed<TEdge> = GenBoxed::new_boxed(|co| async move {
             let g = tgshard.blocking_read();
-            let iter = (*g).neighbours(v, d);
+            let iter = (*g).edges(v, d);
             for ev in iter {
                 let tv: TEdge = ev.into();
                 co.yield_(tv).await;
@@ -246,7 +246,7 @@ impl TGraphShard {
         let tgshard = self.clone();
         let vertices_iter = gen!({
             let g = tgshard.rc.blocking_read();
-            let chunks = (*g).neighbours_window(v, &r, d).map(|e| e.into());
+            let chunks = (*g).edges_window(v, &r, d).map(|e| e.into());
             let iter = chunks.into_iter();
             for v_id in iter {
                 yield_!(v_id)
@@ -265,7 +265,7 @@ impl TGraphShard {
         let tgshard = self.clone();
         let vertices_iter = gen!({
             let g = tgshard.rc.blocking_read();
-            let chunks = (*g).neighbours_window_t(v, &r, d).map(|e| e.into());
+            let chunks = (*g).edges_window_t(v, &r, d).map(|e| e.into());
             let iter = chunks.into_iter();
             for v_id in iter {
                 yield_!(v_id)

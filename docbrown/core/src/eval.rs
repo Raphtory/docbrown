@@ -95,7 +95,10 @@ impl Context {
 
     #[cfg(test)]
     fn as_hash_map<A: Clone, F>(&self, m: &Monoid<u64, A, F>) -> Option<HashMap<u64, A>> {
-        m.state.try_borrow_mut().ok().map(|mut s| s.copy_hash_map(self.ss))
+        m.state
+            .try_borrow_mut()
+            .ok()
+            .map(|mut s| s.copy_hash_map(self.ss))
     }
 }
 
@@ -114,7 +117,6 @@ impl<A> PairAcc<A> {
         };
         Self { even, odd }
     }
-
 }
 
 impl<A> PairAcc<A> {
@@ -245,7 +247,7 @@ where
                     (self.acc.bin_op)(acc2, value.clone());
                 }
             })
-            .or_insert_with(|| { 
+            .or_insert_with(|| {
                 let mut v = self.acc.id.clone();
                 (self.acc.bin_op)(&mut v, value.clone());
                 PairAcc::new(v, self.ss)
@@ -427,7 +429,10 @@ impl<'a> EvalVertexView<'a, TemporalGraph> {
         &'a self,
         d: Direction,
     ) -> impl Iterator<Item = EvalVertexView<'a, TemporalGraph>> {
-        self.vv.neighbours(d).map(move |vv| EvalVertexView { vv })
+        self.vv
+            .g
+            .neighbours(self.vv.g_id, d)
+            .map(move |vv| EvalVertexView { vv })
     }
 }
 
@@ -632,7 +637,6 @@ mod eval_test {
 
         assert_eq!(state.ss, 3);
         let state = state.as_hash_map(&min).unwrap();
-
 
         assert_eq!(
             state,
