@@ -1,6 +1,7 @@
 use std::{
     path::{Path, PathBuf},
     sync::Arc,
+
 };
 
 use docbrown_core::{
@@ -9,6 +10,7 @@ use docbrown_core::{
 };
 
 use crate::graph_window::WindowedGraph;
+use tempdir::TempDir;
 
 use rayon::prelude::{IntoParallelRefIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};
@@ -308,11 +310,10 @@ mod db_tests {
         }
 
         let rand_dir = Uuid::new_v4();
-        let tmp_docbrown_path = std::env::temp_dir();
-        let shards_path = format!("{}{}", tmp_docbrown_path.clone()
-            .into_os_string()
-            .into_string()
-            .unwrap(), rand_dir);
+        let tmp_docbrown_path: TempDir = TempDir::new("docbrown").unwrap();
+        let shards_path = format!("{:?}/{}", tmp_docbrown_path.path().to_str().unwrap(), rand_dir);
+
+        println!("shards_path: {}", shards_path);
 
         // Save to files
         let mut expected = vec![
@@ -346,10 +347,7 @@ mod db_tests {
             Err(e) => panic!("{e}"),
         }
 
-        // Delete all files
-        expected.iter().for_each(|f| {
-            fs::remove_file(f).expect("File not deleted ");
-        });
+        tmp_docbrown_path.close();
     }
 
     #[quickcheck]
