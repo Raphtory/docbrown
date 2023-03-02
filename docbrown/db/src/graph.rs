@@ -1,14 +1,18 @@
 use crate::graph_window::WindowedGraph;
-use docbrown_core::{
-    tgraph_shard::{TEdge, TGraphShard, TVertex},
-    utils, Direction, Prop,
-};
-use rayon::prelude::{IntoParallelRefIterator, ParallelIterator};
-use serde::{Deserialize, Serialize};
 use std::{
     path::{Path, PathBuf},
     sync::Arc,
 };
+
+use docbrown_core::{
+    tgraph_shard::{TEdge, TGraphShard, TVertex},
+    utils, Direction, Prop,
+};
+
+use crate::graph_window::WindowedGraph;
+
+use rayon::prelude::{IntoParallelRefIterator, ParallelIterator};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Graph {
@@ -207,6 +211,11 @@ mod db_tests {
     use std::fs;
     use std::sync::Arc;
     use uuid::Uuid;
+
+    use crate::graph_loader::{
+        lotr_graph::{lotr_file, lotr_graph},
+        twitter_graph::twitter_graph,
+    };
 
     use super::*;
 

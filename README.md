@@ -63,6 +63,12 @@ Build Doc Brown by running this command to make sure it compiles and builds:
 ```
 cargo build
 ```
+
+If you have any linker errors please build with the following command:
+```bash
+cargo build --no-default-features
+```
+
 Next run the main function in `main.rs` which creates a graph from the LOTR csv file, showing the different character interactions throughout the book. To do this, you will need to be in the `lotr` folder, the file path to this from root is `./examples/src/bin/lotr`. Once you are here run this command to run the LOTR example:
 
 ```
@@ -127,6 +133,15 @@ let degree = graph.degree_window(gandalf, 0, i64::MAX, Direction::BOTH);
 
 DocBrown has Documentation with tutorials, explanations and rust docs. 
 It can be found here on [ReadTheDocs](https://docbrown.readthedocs.io)
+
+# Contributing
+
+- Install Rust from [install guide](https://www.rust-lang.org/tools/install)
+- Install Python 3.10 (virtual/conda environment is recommended).
+- Install pip packages needed to build/test
+```
+pip install maturin pytest
+```
 
 # Community  
 Join the growing community of open-source enthusiasts using Raphtory to power their graph analysis projects!
