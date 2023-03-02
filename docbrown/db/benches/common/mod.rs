@@ -98,7 +98,6 @@ pub fn run_ingestion_benchmarks<F>(
             b.iter_batched_ref(
                 || (make_graph(), index_sample(), index_sample()),
                 |(g, s, d)| g.add_edge(0, *s, *d, &vec![]),
-                |(g, s, d)| g.add_edge(0, *s, *d, &vec![]),
                 BatchSize::SmallInput,
             )
         },

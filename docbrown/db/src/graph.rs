@@ -116,6 +116,10 @@ impl Graph {
         self.shards.iter().map(|shard| shard.out_edges_len()).sum()
     }
 
+    pub fn has_edge(&self, src: u64, dst: u64) -> bool {
+        self.shards.iter().any(|shard| shard.has_edge(src, dst))
+    }
+
     pub fn has_vertex(&self, v: u64) -> bool {
         self.shards.iter().any(|shard| shard.has_vertex(v))
     }

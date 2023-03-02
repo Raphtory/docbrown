@@ -51,7 +51,6 @@ impl TemporalGraph {
     }
 
     pub(crate) fn has_edge(&self, src: u64, dst: u64) -> bool {
-        dbg!(&src);
         let v_pid = self.logical_to_physical[&src];
 
         match &self.adj_lists[v_pid] {
@@ -62,7 +61,7 @@ impl TemporalGraph {
                 remote_out,
                 ..
             } => {
-                if !self.contains_vertex(dst) {
+                if !self.has_vertex(dst) {
                     remote_out.find(dst as usize).is_some()
                         || remote_into.find(dst as usize).is_some()
                 } else {
