@@ -347,7 +347,9 @@ mod db_tests {
         }
 
         // Delete all files
-        fs::remove_dir_all(tmp_docbrown_path);
+        expected.iter().for_each(|f| {
+            fs::remove_file(f).expect("File not deleted ");
+        });
     }
 
     #[quickcheck]
