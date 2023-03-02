@@ -1,5 +1,4 @@
 use std::{
-    any::Any,
     cell::RefCell,
     collections::{hash_map::Entry, HashMap},
     hash::Hash,
@@ -467,21 +466,19 @@ where
 
 #[cfg(test)]
 mod eval_test {
-    use std::{any::Any, cell::RefCell, collections::HashMap, marker::PhantomData, sync::Arc};
+    use std::{collections::HashMap, marker::PhantomData};
 
     use crate::{
         eval::{Eval, Monoid, PairAcc},
         tgraph::TemporalGraph,
-        tgraph_shard::TGraphShard,
     };
 
     use super::{AccEntry, Context};
 
     use arrow2::{
-        array::{Array, MutableArray, MutablePrimitiveArray},
+        array::{MutableArray, MutablePrimitiveArray, PrimitiveArray},
         types::NativeType,
     };
-    use parking_lot::RwLock;
     use pretty_assertions::assert_eq;
 
     #[test]
@@ -743,8 +740,8 @@ mod eval_test {
     // state local to the shard
     // this is the state state
     struct ComputeState {
-        left: Box<dyn MutableArray + Send>,
-        right: Box<dyn MutableArray + Send>,
+        left: Box<dyn MutableArray + Send + Sync + 'static>,
+        right: Box<dyn MutableArray + Send + Sync + 'static>,
     }
 
     impl ComputeState {
@@ -774,29 +771,67 @@ mod eval_test {
             }
         }
 
+        fn finalize<F, A, OUT>(&self, ss: usize, fin: F) -> PrimitiveArray<OUT>
+        where
+            F: Fn(&A) -> OUT,
+            A: NativeType,
+            OUT: NativeType,
+        {
+            let arr = self
+                .current(ss)
+                .as_any()
+                .downcast_ref::<MutablePrimitiveArray<A>>()
+                .unwrap();
+
+            let arr_out: PrimitiveArray<OUT> = arr.iter().map(|v| v.map(|v| fin(v))).collect();
+            arr_out
+        }
+
+        fn into_inner(self, ss: usize) -> Box<dyn MutableArray + Send> {
+            if ss % 2 == 0 {
+                self.left
+            } else {
+                self.right
+            }
+        }
+
         fn set<A: NativeType>(&mut self, ss: usize, i: usize, a: Option<A>) {
-            self.current_mut(ss)
+            let arr = self
+                .current_mut(ss)
                 .as_mut_any()
                 .downcast_mut::<MutablePrimitiveArray<A>>()
-                .unwrap()
-                .set(i, a);
+                .unwrap();
+            // if i is smaller than len, we are updating
+            // else we're appending
+            if i < arr.len() {
+                arr.set(i, a)
+            } else {
+                arr.push(a)
+            }
         }
 
         fn append_null_if_empty(&mut self, ss: usize, i: usize) {
-            if !self.current(ss).is_valid(i) && i < self.current(ss).len(){
+            if !self.current(ss).is_valid(i) && i < self.current(ss).len() {
                 self.current_mut(ss).push_null()
             }
         }
 
-        fn agg<A:NativeType, ACC>(&mut self, ss:usize, a: A, ki: usize, acc: ACC) 
-        where ACC: Fn(&mut A, A)
+        fn agg<A: NativeType, ACC>(&mut self, ss: usize, a: A, ki: usize, zero: A, acc: ACC)
+        where
+            ACC: Fn(&mut A, A),
         {
-            let mut_arr = self.current_mut(ss).as_mut_any()
+            let mut_arr = self
+                .current_mut(ss)
+                .as_mut_any()
                 .downcast_mut::<MutablePrimitiveArray<A>>()
-                .unwrap().values_mut_slice();
+                .unwrap();
+            if ki == mut_arr.len() {
+                mut_arr.push(Some(zero))
+            }
 
-            acc(&mut mut_arr[ki], a)
-            
+            let mut_arr_slice = mut_arr.values_mut_slice();
+
+            acc(&mut mut_arr_slice[ki], a)
         }
     }
 
@@ -813,6 +848,40 @@ mod eval_test {
                 states: FxHashMap::default(),
                 ks: vec![],
             }
+        }
+
+        fn finalize<A, OUT, ACC, FIN>(
+            &mut self,
+            ss: usize,
+            agg_def: &AggDef<K, A, OUT, ACC, FIN>,
+        ) -> Option<PrimitiveArray<OUT>>
+        where
+            K: Eq + std::hash::Hash + Clone + Ord + 'static,
+            A: Send + Clone + NativeType + 'static,
+            ACC: Fn(&mut A, A) + Send + Clone + 'static,
+            FIN: Fn(&A) -> OUT + Send + Clone + 'static,
+            OUT: Send + Clone + NativeType,
+        {
+            // finalize the accumulator
+            let state = self.states.remove(&agg_def.id)?;
+            Some(state.finalize(ss, agg_def.fin.clone()))
+        }
+
+
+        fn finalize_direct<A, ACC, FIN>(
+            &mut self,
+            ss: usize,
+            agg_def: &AggDef<K, A, A, ACC, FIN>,
+        ) -> Option<PrimitiveArray<A>>
+        where
+            K: Eq + std::hash::Hash + Clone + Ord + 'static,
+            A: Send + Clone + NativeType + 'static,
+            ACC: Fn(&mut A, A) + Send + Clone + 'static,
+            FIN: Fn(&A) -> A + Send + Clone + 'static,
+        {
+            // finalize the accumulator
+            let state = self.states.remove(&agg_def.id)?;
+            Some(state.finalize(ss, agg_def.fin.clone()))
         }
 
         fn accumulate_into<A, ACC, FIN>(
@@ -834,8 +903,8 @@ mod eval_test {
             match self.index.binary_search_by(|i| (&self.ks[*i]).cmp(into)) {
                 Err(i) => {
                     // insert into the vec
-                    let ki = self.ks.len();
-                    self.index.insert(i, ki);
+                    let key_id = self.ks.len();
+                    self.index.insert(i, key_id);
                     self.ks.push(into.clone());
                     // go through all the other states an append null on the aggregator values if they are not already ocupied (it shouldn't be)
                     for (id, cs) in self.states.iter_mut() {
@@ -846,36 +915,34 @@ mod eval_test {
                     // get the aggregator and apply the accum function onto the current value o zero
                     let agg_state = self.states.entry(agg_def.id).or_insert_with(|| {
                         let mut cs = ComputeState::new_mutable_primitive::<A>();
-                        cs.set(ss, ki, Some(agg_def.zero.clone()));
+                        cs.set(ss, key_id, Some(agg_def.zero.clone()));
                         cs
                     });
                     // accumulate the new value into agg_state
-                    agg_state.agg(ss, a, ki, agg_def.acc.clone())
+                    agg_state.agg(ss, a, key_id, agg_def.zero, agg_def.acc.clone())
                 }
                 Ok(i) => {
                     let ki = self.index[i];
                     let agg_state = self.states.get_mut(&agg_def.id).unwrap();
-                    agg_state.agg(ss, a, ki, agg_def.acc.clone())
+                    agg_state.agg(ss, a, ki, agg_def.zero, agg_def.acc.clone())
                 }
             }
-
-            todo!()
         }
     }
 
-
     #[test]
-    fn min_aggregates_for_2_keys(){
-
+    fn min_aggregates_for_2_keys() {
         let min = agg_def::min(0);
 
         let mut state: ShardComputeState<u32> = ShardComputeState::new();
 
-        for a in 0 .. 10 {
-
+        for a in 3..10 {
             state.accumulate_into(0, &1, a, &min);
             state.accumulate_into(0, &2, a, &min);
         }
-        
+
+        let actual = state.finalize(0, &min);
+
+        assert_eq!(actual, Some(vec![Some(3), Some(3)].into_iter().collect()));
     }
 }
