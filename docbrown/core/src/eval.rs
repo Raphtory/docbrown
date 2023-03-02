@@ -663,7 +663,7 @@ mod eval_test {
     use rustc_hash::FxHashMap;
 
     #[derive(Clone)]
-    struct AggDef<K, A, OUT, ACC, FIN>
+    pub(crate) struct AggDef<K, A, OUT, ACC, FIN>
     where
         K: Eq + std::hash::Hash + Clone + 'static,
         OUT: Send + Clone + 'static,
@@ -712,7 +712,7 @@ mod eval_test {
             AggDef::new(id, zero, acc, |a| a.clone())
         }
 
-        fn min<K, A>(id: u32) -> AggDef<K, A, A, fn(&mut A, A) -> (), fn(&A) -> A>
+        pub(crate) fn min<K, A>(id: u32) -> AggDef<K, A, A, fn(&mut A, A) -> (), fn(&A) -> A>
         where
             K: Eq + std::hash::Hash + Clone + 'static,
             A: Send + Clone + 'static,
@@ -743,8 +743,8 @@ mod eval_test {
     // state local to the shard
     // this is the state state
     struct ComputeState {
-        left: Box<dyn MutableArray>,
-        right: Box<dyn MutableArray>,
+        left: Box<dyn MutableArray + Send>,
+        right: Box<dyn MutableArray + Send>,
     }
 
     impl ComputeState {
@@ -787,6 +787,17 @@ mod eval_test {
                 self.current_mut(ss).push_null()
             }
         }
+
+        fn agg<A:NativeType, ACC>(&mut self, ss:usize, a: A, ki: usize, acc: ACC) 
+        where ACC: Fn(&mut A, A)
+        {
+            let mut_arr = self.current_mut(ss).as_mut_any()
+                .downcast_mut::<MutablePrimitiveArray<A>>()
+                .unwrap().values_mut_slice();
+
+            acc(&mut mut_arr[ki], a)
+            
+        }
     }
 
     struct ShardComputeState<K> {
@@ -818,33 +829,53 @@ mod eval_test {
         {
             // find if K is already in the vec
 
+            // FIXME: this has issues if we add several aggregates after we added keys
+            // so we need to add all aggregates per vertex then add keys
             match self.index.binary_search_by(|i| (&self.ks[*i]).cmp(into)) {
                 Err(i) => {
                     // insert into the vec
                     let ki = self.ks.len();
                     self.index.insert(i, ki);
                     self.ks.push(into.clone());
+                    // go through all the other states an append null on the aggregator values if they are not already ocupied (it shouldn't be)
+                    for (id, cs) in self.states.iter_mut() {
+                        if *id != agg_def.id {
+                            cs.append_null_if_empty(ss, i);
+                        }
+                    }
                     // get the aggregator and apply the accum function onto the current value o zero
                     let agg_state = self.states.entry(agg_def.id).or_insert_with(|| {
                         let mut cs = ComputeState::new_mutable_primitive::<A>();
                         cs.set(ss, ki, Some(agg_def.zero.clone()));
                         cs
                     });
-                    // go through all the other states an append on the aggregator values
-                    for (id, cs) in self.states.iter_mut() {
-                        if *id != agg_def.id {
-                            cs.append_null_if_empty(ss, i);
-                        }
-                    }
                     // accumulate the new value into agg_state
-                    agg_state
+                    agg_state.agg(ss, a, ki, agg_def.acc.clone())
                 }
-                _ => todo!(),
+                Ok(i) => {
+                    let ki = self.index[i];
+                    let agg_state = self.states.get_mut(&agg_def.id).unwrap();
+                    agg_state.agg(ss, a, ki, agg_def.acc.clone())
+                }
             }
 
             todo!()
         }
     }
 
-    fn parallel_monoid_test() {}
+
+    #[test]
+    fn min_aggregates_for_2_keys(){
+
+        let min = agg_def::min(0);
+
+        let mut state: ShardComputeState<u32> = ShardComputeState::new();
+
+        for a in 0 .. 10 {
+
+            state.accumulate_into(0, &1, a, &min);
+            state.accumulate_into(0, &2, a, &min);
+        }
+        
+    }
 }
