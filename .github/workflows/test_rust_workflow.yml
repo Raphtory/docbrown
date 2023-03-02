@@ -123,7 +123,7 @@ jobs:
         with:
           command: doc
           args: --no-deps --all -q
-      - name: Run doc compile check
+      - name: Build sphinx (readthedocs) docs
         run: |
           export PATH=$(pwd)/sbt/bin:$PATH
           sudo apt update && sudo apt install -y pandoc make python3-sphinx
