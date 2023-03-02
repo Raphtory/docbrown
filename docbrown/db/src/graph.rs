@@ -10,9 +10,7 @@ use docbrown_core::{
     utils, Direction, Prop,
 };
 
-use crate::graph_window::WindowedGraph;
 use tempdir::TempDir;
-
 use rayon::prelude::{IntoParallelRefIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};
 
