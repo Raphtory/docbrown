@@ -4,14 +4,15 @@ use docbrown_db::graph;
 use pyo3::prelude::*;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
+use pyo3::types::PyIterator;
 
-use crate::graph_window::WindowedGraph;
+use crate::graph_window::{GraphWindowSet, WindowedGraph};
 use crate::wrappers::Prop;
-use crate::wrappers::Direction;
+use crate::wrappers::{Direction, PerspectiveSet};
 use crate::wrappers::EdgeIterator;
 use crate::wrappers::VertexIdsIterator;
 use crate::wrappers::VertexIterator;
-
 
 #[pyclass]
 pub struct Graph {
@@ -29,6 +30,19 @@ impl Graph {
 
     pub fn window(&self, t_start: i64, t_end: i64) -> WindowedGraph {
         WindowedGraph::new(self, t_start, t_end)
+    }
+
+    #[pyo3(name = "through")]
+    fn py_through(&self, perspectives: &PyAny) -> PyResult<GraphWindowSet> { // is this exposed even if private
+        let test = perspectives.extract::<PerspectiveSet>();
+        match test {
+            Ok(set) => println!("PerspectiveSet"),
+            Err(e) => println!("error"),
+        }
+        let iter = perspectives.iter()?;
+        let graph = Arc::new(self.graph.clone());
+        let gws = GraphWindowSet::new(graph, Py::from(iter));
+        Ok(gws)
     }
 
     #[staticmethod]

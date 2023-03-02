@@ -38,13 +38,13 @@ def test_graph_has_vertex():
 
 def test_windowed_graph_has_vertex():
     g = create_graph(2)
-    
+
     assert g.window(-1, 1).has_vertex(1)
 
 
 def test_windowed_graph_get_vertex():
     g = create_graph(2)
-    
+
     view = g.window(0, sys.maxsize)
 
     assert view.vertex(1).g_id == 1
@@ -85,13 +85,13 @@ def test_windowed_graph_neighbours():
             neighbours.append([e.src, e.dst, e.t, e.is_remote])
 
     assert neighbours == [
-            [1, 1, None, False], 
-            [1, 1, None, False], 
-            [1, 2, None, False], 
-            [1, 3, None, False], 
-            [1, 2, None, False], 
-            [3, 2, None, False], 
-            [1, 3, None, False], 
+            [1, 1, None, False],
+            [1, 1, None, False],
+            [1, 2, None, False],
+            [1, 3, None, False],
+            [1, 2, None, False],
+            [3, 2, None, False],
+            [1, 3, None, False],
             [3, 2, None, False]
         ]
 
@@ -102,12 +102,12 @@ def test_windowed_graph_neighbours():
             in_neighbours.append([e.src, e.dst, e.t, e.is_remote])
 
     assert in_neighbours == [
-            [1, 1, None, False], 
-            [1, 2, None, False], 
-            [3, 2, None, False], 
+            [1, 1, None, False],
+            [1, 2, None, False],
+            [3, 2, None, False],
             [1, 3, None, False]
         ]
-    
+
     tedges = [v.out_neighbours() for v in view.vertices()]
     out_neighbours = []
     for e_iter in tedges:
@@ -115,9 +115,9 @@ def test_windowed_graph_neighbours():
             out_neighbours.append([e.src, e.dst, e.t, e.is_remote])
 
     assert out_neighbours == [
-            [1, 1, None, False], 
-            [1, 2, None, False], 
-            [1, 3, None, False], 
+            [1, 1, None, False],
+            [1, 2, None, False],
+            [1, 3, None, False],
             [3, 2, None, False]
         ]
 
@@ -125,10 +125,13 @@ def test_windowed_graph_neighbours():
 def test_windowed_graph_vertex_ids():
     g = create_graph(3)
 
-    vs = [v for v in g.window(-1, 1).vertex_ids()]
+    vs = [v for v in g.window(-1, 2).vertex_ids()]
     vs.sort()
+    assert vs == [1, 2] # this makes clear that the end of the range is exclusive
 
-    assert vs == [1, 2]
+    vs = [v for v in g.window(-5, 3).vertex_ids()]
+    vs.sort()
+    assert vs == [1, 2, 3]
 
 
 def test_windowed_graph_vertices():
@@ -141,3 +144,38 @@ def test_windowed_graph_vertices():
         vertices.append(v.g_id)
 
     assert vertices == [1, 2]
+
+def test_perspective_set():
+    g = create_graph(1)
+
+    from pyraphtory import Perspective
+
+    windows = [Perspective(0, 2), Perspective(2, 4), Perspective(4, 6)]
+
+    for wg in g.through(windows):
+        vertices = (wg.vertex_ids())
+        print(vertices)
+
+
+
+    # I want to create a set of windowed graphs and apply an algo over all of them:
+
+    # 0:
+    times = [2, 4, 6]
+    windowed_graphs = [g.window(t - 2, t) for t in times]
+    results = [wg.vertex_ids() for wg in windowed_graphs]
+
+    # # 1:
+    # windows = [Perspective(0, 2), Perspective(2, 4), Perspective(4, 6)]
+    # results = [g.window(window).apply_algo(algo) for window in windows]
+
+    # # 2:
+    # windows = [Perspective(0, 2), Perspective(2, 4), Perspective(4, 6)]
+    # windowed_graphs = g.through(windows)
+    # results = windowed_graphs.apply_algo(algo)  # <-- ???
+
+    # 3:
+    windows = Perspective.range(start=2, end=6, increment=2)
+    windows.back_windows(2)
+    windowed_graphs = g.through(windows)
+    results = [wg.vertex_ids() for wg in windowed_graphs]

@@ -1,10 +1,37 @@
 use crate::graph::Graph;
+use crate::perspective::{Perspective, PerspectiveSet};
 use docbrown_core::{
     tgraph_shard::{TEdge, TVertex},
     Direction,
 };
 
 use std::sync::Arc;
+
+pub struct GraphWindowSet {
+    graph: Arc<Graph>,
+    perspectives: Box<dyn Iterator<Item=Perspective> + Send>,
+}
+
+impl GraphWindowSet {
+    pub fn new(graph: Arc<Graph>, perspectives: Box<dyn Iterator<Item=Perspective> + Send>) -> GraphWindowSet {
+        GraphWindowSet {
+            graph,
+            perspectives,
+        }
+    }
+}
+
+impl Iterator for GraphWindowSet {
+    type Item = WindowedGraph;
+    fn next(&mut self) -> Option<Self::Item> {
+        let perspective = self.perspectives.next()?;
+        Some(WindowedGraph {
+            graph: self.graph.clone(),
+            t_start: perspective.start,
+            t_end: perspective.end,
+        })
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct WindowedGraph {

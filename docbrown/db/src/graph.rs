@@ -1,4 +1,5 @@
-use crate::graph_window::WindowedGraph;
+use crate::graph_window::{GraphWindowSet, WindowedGraph};
+use crate::perspective::{Perspective, PerspectiveSet};
 use std::{
     path::{Path, PathBuf},
     sync::Arc,
@@ -28,6 +29,10 @@ impl Graph {
 
     pub fn window(&self, t_start: i64, t_end: i64) -> WindowedGraph {
         WindowedGraph::new(Arc::new(self.clone()), t_start, t_end)
+    }
+
+    pub fn through(&self, perspectives: Box<dyn Iterator<Item=Perspective> + Send>) -> GraphWindowSet {
+        GraphWindowSet::new(Arc::new(self.clone()), perspectives)
     }
 
     pub fn load_from_file<P: AsRef<Path>>(path: P) -> Result<Self, Box<bincode::ErrorKind>> {

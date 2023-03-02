@@ -3,6 +3,39 @@ use std::sync::Arc;
 use crate::{graph::Graph, wrappers::*};
 use docbrown_db::graph_window;
 use pyo3::prelude::*;
+use pyo3::types::PyIterator;
+use crate::wrappers::Perspective;
+
+#[pyclass]
+pub struct GraphWindowSet {
+    graph: Arc<docbrown_db::graph::Graph>,
+    perspectives: Py<PyIterator>,
+}
+
+impl GraphWindowSet {
+    pub fn new(graph: Arc<docbrown_db::graph::Graph>, perspectives: Py<PyIterator>) -> GraphWindowSet {
+        GraphWindowSet {
+            graph,
+            perspectives,
+        }
+    }
+}
+
+#[pymethods]
+impl GraphWindowSet {
+    fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
+        slf
+    }
+    fn __next__(mut slf: PyRefMut<'_, Self>, py: Python) -> Option<WindowedGraph> {
+        let py_perspective = slf.perspectives.call_method0(py, "next");
+        let perspective = py_perspective.ok()?.extract::<Perspective>(py).ok()?;
+        let wg = slf.graph.window(perspective.start, perspective.end);
+        Some(WindowedGraph {
+            graph_w: wg,
+        })
+    }
+}
+
 
 #[pyclass]
 pub struct WindowedGraph {
