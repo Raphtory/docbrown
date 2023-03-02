@@ -54,10 +54,10 @@ jobs:
           command: test
           args: --no-default-features
       - name: Run benchmark (windows)
-        if: "contains(RUNNER_OS, 'Windows')"
+        if: "contains(matrix.os, 'Windows')"
         run: cargo bench --bench base -- --output-format=bencher | tee benchmark-result.txt
       - name: Run benchmark (Unix)
-        if: "!contains(RUNNER_OS, 'Windows')"
+        if: "!contains(matrix.os, 'Windows')"
         run: |
           set -o pipefail
           cargo bench --bench base -- --output-format=bencher | tee benchmark-result.txt
