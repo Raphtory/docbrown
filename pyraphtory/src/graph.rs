@@ -7,15 +7,11 @@ use std::path::{Path, PathBuf};
 
 use crate::graph_window::WindowedGraph;
 use crate::wrappers::Prop;
-use docbrown_core as dbc;
-use docbrown_db::graph;
 use crate::wrappers::Direction;
 use crate::wrappers::EdgeIterator;
-use crate::wrappers::Prop;
 use crate::wrappers::VertexIdsIterator;
 use crate::wrappers::VertexIterator;
 
-use crate::graph_window::WindowedGraph;
 
 #[pyclass]
 pub struct Graph {
