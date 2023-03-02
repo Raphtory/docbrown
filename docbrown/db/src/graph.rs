@@ -175,7 +175,7 @@ impl Graph {
         )
     }
 
-    pub(crate) fn neighbours_window(
+    pub(crate) fn edges_window(
         &self,
         v: u64,
         t_start: i64,
@@ -184,12 +184,12 @@ impl Graph {
     ) -> Box<dyn Iterator<Item = TEdge> + Send> {
         let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
 
-        let iter = self.shards[shard_id].neighbours_window(v, t_start..t_end, d);
+        let iter = self.shards[shard_id].edges_window(v, t_start..t_end, d);
 
         Box::new(iter)
     }
 
-    pub(crate) fn neighbours_window_t(
+    pub(crate) fn edges_window_t(
         &self,
         v: u64,
         t_start: i64,
@@ -198,7 +198,7 @@ impl Graph {
     ) -> Box<dyn Iterator<Item = TEdge> + Send> {
         let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
 
-        let iter = self.shards[shard_id].neighbours_window_t(v, t_start..t_end, d);
+        let iter = self.shards[shard_id].edges_window_t(v, t_start..t_end, d);
 
         Box::new(iter)
     }
@@ -213,11 +213,6 @@ mod db_tests {
     use std::fs;
     use std::sync::Arc;
     use uuid::Uuid;
-
-    use crate::graph_loader::{
-        lotr_graph::{lotr_file, lotr_graph},
-        twitter_graph::twitter_graph,
-    };
 
     use super::*;
 
@@ -404,13 +399,13 @@ mod db_tests {
         let actual = (1..=3)
             .map(|i| {
                 (
-                    g.neighbours_window(i, -1, 7, Direction::IN)
+                    g.edges_window(i, -1, 7, Direction::IN)
                         .collect::<Vec<_>>()
                         .len(),
-                    g.neighbours_window(i, 1, 7, Direction::OUT)
+                    g.edges_window(i, 1, 7, Direction::OUT)
                         .collect::<Vec<_>>()
                         .len(),
-                    g.neighbours_window(i, 0, 1, Direction::BOTH)
+                    g.edges_window(i, 0, 1, Direction::BOTH)
                         .collect::<Vec<_>>()
                         .len(),
                 )
@@ -429,13 +424,13 @@ mod db_tests {
         let expected = (1..=3)
             .map(|i| {
                 (
-                    g.neighbours_window(i, -1, 7, Direction::IN)
+                    g.edges_window(i, -1, 7, Direction::IN)
                         .collect::<Vec<_>>()
                         .len(),
-                    g.neighbours_window(i, 1, 7, Direction::OUT)
+                    g.edges_window(i, 1, 7, Direction::OUT)
                         .collect::<Vec<_>>()
                         .len(),
-                    g.neighbours_window(i, 0, 1, Direction::BOTH)
+                    g.edges_window(i, 0, 1, Direction::BOTH)
                         .collect::<Vec<_>>()
                         .len(),
                 )
@@ -464,7 +459,7 @@ mod db_tests {
 
         let in_actual = (1..=3)
             .map(|i| {
-                g.neighbours_window_t(i, -1, 7, Direction::IN)
+                g.edges_window_t(i, -1, 7, Direction::IN)
                     .map(|e| e.t.unwrap())
                     .collect::<Vec<_>>()
             })
@@ -473,7 +468,7 @@ mod db_tests {
 
         let out_actual = (1..=3)
             .map(|i| {
-                g.neighbours_window_t(i, 1, 7, Direction::OUT)
+                g.edges_window_t(i, 1, 7, Direction::OUT)
                     .map(|e| e.t.unwrap())
                     .collect::<Vec<_>>()
             })
@@ -482,7 +477,7 @@ mod db_tests {
 
         let both_actual = (1..=3)
             .map(|i| {
-                g.neighbours_window_t(i, 0, 1, Direction::BOTH)
+                g.edges_window_t(i, 0, 1, Direction::BOTH)
                     .map(|e| e.t.unwrap())
                     .collect::<Vec<_>>()
             })
@@ -499,7 +494,7 @@ mod db_tests {
         let in_expected = (1..=3)
             .map(|i| {
                 let mut e = g
-                    .neighbours_window_t(i, -1, 7, Direction::IN)
+                    .edges_window_t(i, -1, 7, Direction::IN)
                     .map(|e| e.t.unwrap())
                     .collect::<Vec<_>>();
                 e.sort();
@@ -511,7 +506,7 @@ mod db_tests {
         let out_expected = (1..=3)
             .map(|i| {
                 let mut e = g
-                    .neighbours_window_t(i, 1, 7, Direction::OUT)
+                    .edges_window_t(i, 1, 7, Direction::OUT)
                     .map(|e| e.t.unwrap())
                     .collect::<Vec<_>>();
                 e.sort();
@@ -523,7 +518,7 @@ mod db_tests {
         let both_expected = (1..=3)
             .map(|i| {
                 let mut e = g
-                    .neighbours_window_t(i, 0, 1, Direction::BOTH)
+                    .edges_window_t(i, 0, 1, Direction::BOTH)
                     .map(|e| e.t.unwrap())
                     .collect::<Vec<_>>();
                 e.sort();
@@ -537,7 +532,8 @@ mod db_tests {
     fn db_lotr() {
         let g = Graph::new(4);
 
-        let data_dir = crate::graph_loader::lotr_graph::lotr_file().expect("Failed to get lotr.csv file");
+        let data_dir =
+            crate::graph_loader::lotr_graph::lotr_file().expect("Failed to get lotr.csv file");
 
         fn parse_record(rec: &StringRecord) -> Option<(String, String, i64)> {
             let src = rec.get(0).and_then(|s| s.parse::<String>().ok())?;

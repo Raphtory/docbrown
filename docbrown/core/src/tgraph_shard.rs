@@ -223,7 +223,7 @@ impl TGraphShard {
         Box::new(iter.into_iter())
     }
 
-    pub fn neighbours(&self, v: u64, d: Direction) -> Box<impl Iterator<Item = TEdge> + Send> {
+    pub fn edges(&self, v: u64, d: Direction) -> Box<impl Iterator<Item = TEdge> + Send> {
         let tgshard = self.rc.clone();
         let iter: GenBoxed<TEdge> = GenBoxed::new_boxed(|co| async move {
             let g = tgshard.blocking_read();
@@ -237,7 +237,7 @@ impl TGraphShard {
         Box::new(iter.into_iter())
     }
 
-    pub fn neighbours_window(
+    pub fn edges_window(
         &self,
         v: u64,
         r: Range<i64>,
@@ -256,7 +256,7 @@ impl TGraphShard {
         vertices_iter.into_iter()
     }
 
-    pub fn neighbours_window_t(
+    pub fn edges_window_t(
         &self,
         v: u64,
         r: Range<i64>,
@@ -486,9 +486,9 @@ mod temporal_graph_partition_test {
         let actual = (1..=3)
             .map(|i| {
                 (
-                    g.neighbours(i, Direction::IN).collect::<Vec<_>>().len(),
-                    g.neighbours(i, Direction::OUT).collect::<Vec<_>>().len(),
-                    g.neighbours(i, Direction::BOTH).collect::<Vec<_>>().len(),
+                    g.edges(i, Direction::IN).collect::<Vec<_>>().len(),
+                    g.edges(i, Direction::OUT).collect::<Vec<_>>().len(),
+                    g.edges(i, Direction::BOTH).collect::<Vec<_>>().len(),
                 )
             })
             .collect::<Vec<_>>();
@@ -517,13 +517,13 @@ mod temporal_graph_partition_test {
         let actual = (1..=3)
             .map(|i| {
                 (
-                    g.neighbours_window(i, -1..7, Direction::IN)
+                    g.edges_window(i, -1..7, Direction::IN)
                         .collect::<Vec<_>>()
                         .len(),
-                    g.neighbours_window(i, 1..7, Direction::OUT)
+                    g.edges_window(i, 1..7, Direction::OUT)
                         .collect::<Vec<_>>()
                         .len(),
-                    g.neighbours_window(i, 0..1, Direction::BOTH)
+                    g.edges_window(i, 0..1, Direction::BOTH)
                         .collect::<Vec<_>>()
                         .len(),
                 )
@@ -552,7 +552,7 @@ mod temporal_graph_partition_test {
 
         let in_actual = (1..=3)
             .map(|i| {
-                g.neighbours_window_t(i, -1..7, Direction::IN)
+                g.edges_window_t(i, -1..7, Direction::IN)
                     .map(|e| e.t.unwrap())
                     .collect::<Vec<_>>()
             })
@@ -561,7 +561,7 @@ mod temporal_graph_partition_test {
 
         let out_actual = (1..=3)
             .map(|i| {
-                g.neighbours_window_t(i, 1..7, Direction::OUT)
+                g.edges_window_t(i, 1..7, Direction::OUT)
                     .map(|e| e.t.unwrap())
                     .collect::<Vec<_>>()
             })
@@ -570,7 +570,7 @@ mod temporal_graph_partition_test {
 
         let both_actual = (1..=3)
             .map(|i| {
-                g.neighbours_window_t(i, 0..1, Direction::BOTH)
+                g.edges_window_t(i, 0..1, Direction::BOTH)
                     .map(|e| e.t.unwrap())
                     .collect::<Vec<_>>()
             })

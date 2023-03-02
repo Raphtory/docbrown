@@ -73,18 +73,18 @@ def test_windowed_graph_degree():
     assert out_degrees == [0, 1, 3]
 
 
-def test_windowed_graph_neighbours():
+def test_windowed_graph_edges():
     g = create_graph(1)
 
     view = g.window(0, sys.maxsize)
 
-    tedges = [v.neighbours() for v in view.vertices()]
-    neighbours = []
+    tedges = [v.edges() for v in view.vertices()]
+    edges = []
     for e_iter in tedges:
         for e in e_iter:
-            neighbours.append([e.src, e.dst, e.t, e.is_remote])
+            edges.append([e.src, e.dst, e.t, e.is_remote])
 
-    assert neighbours == [
+    assert edges == [
             [1, 1, None, False], 
             [1, 1, None, False], 
             [1, 2, None, False], 
@@ -95,26 +95,26 @@ def test_windowed_graph_neighbours():
             [3, 2, None, False]
         ]
 
-    tedges = [v.in_neighbours() for v in view.vertices()]
-    in_neighbours = []
+    tedges = [v.in_edges() for v in view.vertices()]
+    in_edges = []
     for e_iter in tedges:
         for e in e_iter:
-            in_neighbours.append([e.src, e.dst, e.t, e.is_remote])
+            in_edges.append([e.src, e.dst, e.t, e.is_remote])
 
-    assert in_neighbours == [
+    assert in_edges == [
             [1, 1, None, False], 
             [1, 2, None, False], 
             [3, 2, None, False], 
             [1, 3, None, False]
         ]
     
-    tedges = [v.out_neighbours() for v in view.vertices()]
-    out_neighbours = []
+    tedges = [v.out_edges() for v in view.vertices()]
+    out_edges = []
     for e_iter in tedges:
         for e in e_iter:
-            out_neighbours.append([e.src, e.dst, e.t, e.is_remote])
+            out_edges.append([e.src, e.dst, e.t, e.is_remote])
 
-    assert out_neighbours == [
+    assert out_edges == [
             [1, 1, None, False], 
             [1, 2, None, False], 
             [1, 3, None, False], 

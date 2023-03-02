@@ -73,21 +73,21 @@ impl WindowedVertex {
         self.vertex_w.out_degree()
     }
 
-    pub fn neighbours(&self) -> EdgeIterator {
+    pub fn edges(&self) -> EdgeIterator {
         EdgeIterator {
-            iter: Box::new(self.vertex_w.neighbours().map(|te| te.into())),
+            iter: Box::new(self.vertex_w.edges().map(|te| te.into())),
         }
     }
 
-    pub fn in_neighbours(&self) -> EdgeIterator {
+    pub fn in_edges(&self) -> EdgeIterator {
         EdgeIterator {
-            iter: Box::new(self.vertex_w.in_neighbours().map(|te| te.into())),
+            iter: Box::new(self.vertex_w.in_edges().map(|te| te.into())),
         }
     }
 
-    pub fn out_neighbours(&self) -> EdgeIterator {
+    pub fn out_edges(&self) -> EdgeIterator {
         EdgeIterator {
-            iter: Box::new(self.vertex_w.out_neighbours().map(|te| te.into())),
+            iter: Box::new(self.vertex_w.out_edges().map(|te| te.into())),
         }
     }
 }

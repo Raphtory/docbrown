@@ -89,8 +89,8 @@ impl WindowedVertex {
         )
     }
 
-    pub fn neighbours(&self) -> Box<dyn Iterator<Item = TEdge> + Send> {
-        self.graph_w.graph.neighbours_window(
+    pub fn edges(&self) -> Box<dyn Iterator<Item = TEdge> + Send> {
+        self.graph_w.graph.edges_window(
             self.g_id,
             self.graph_w.t_start,
             self.graph_w.t_end,
@@ -98,8 +98,8 @@ impl WindowedVertex {
         )
     }
 
-    pub fn in_neighbours(&self) -> Box<dyn Iterator<Item = TEdge> + Send> {
-        self.graph_w.graph.neighbours_window(
+    pub fn in_edges(&self) -> Box<dyn Iterator<Item = TEdge> + Send> {
+        self.graph_w.graph.edges_window(
             self.g_id,
             self.graph_w.t_start,
             self.graph_w.t_end,
@@ -107,8 +107,8 @@ impl WindowedVertex {
         )
     }
 
-    pub fn out_neighbours(&self) -> Box<dyn Iterator<Item = TEdge> + Send> {
-        self.graph_w.graph.neighbours_window(
+    pub fn out_edges(&self) -> Box<dyn Iterator<Item = TEdge> + Send> {
+        self.graph_w.graph.edges_window(
             self.g_id,
             self.graph_w.t_start,
             self.graph_w.t_end,
