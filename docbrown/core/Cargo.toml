@@ -10,6 +10,8 @@ description = "Core package for DocBrown, a temporal graph library"
 documentation = "https://docbrown.readthedocs.io/en/latest/"
 repository = "https://github.com/Raphtory/docbrown/"
 license = "AGPL-3.0-only"
+readme = "../README.md"
+homepage = "https://github.com/Raphtory/docbrown/"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
