@@ -299,7 +299,8 @@ mod db_tests {
 
         let rand_dir = Uuid::new_v4();
         let tmp_docbrown_path: TempDir = TempDir::new("docbrown").unwrap();
-        let shards_path = format!("{:?}/{}", tmp_docbrown_path.path().to_str().unwrap(), rand_dir);
+        let shards_path = format!("{:?}/{}", tmp_docbrown_path.path()
+            .display(), rand_dir).replace("\"", "");
 
         println!("shards_path: {}", shards_path);
 
