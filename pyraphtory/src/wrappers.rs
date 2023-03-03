@@ -82,35 +82,6 @@ impl From<db_c::Prop> for Prop {
 }
 
 #[pyclass]
-pub struct TEdge {
-    #[pyo3(get)]
-    pub src: u64,
-    #[pyo3(get)]
-    pub dst: u64,
-    #[pyo3(get)]
-    pub t: Option<i64>,
-    #[pyo3(get)]
-    pub is_remote: bool,
-}
-
-impl From<tgraph_shard::TEdge> for TEdge {
-    fn from(value: tgraph_shard::TEdge) -> Self {
-        let tgraph_shard::TEdge {
-            src,
-            dst,
-            t,
-            is_remote,
-        } = value;
-        TEdge {
-            src,
-            dst,
-            t,
-            is_remote,
-        }
-    }
-}
-
-#[pyclass]
 pub struct VertexIdsIterator {
     pub(crate) iter: Box<dyn Iterator<Item = u64> + Send>,
 }

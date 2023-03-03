@@ -471,7 +471,6 @@ impl TemporalGraph {
     where
         Self: Sized,
     {
-        let w_clone = (*w).clone();
         let edges = self.edges_window(v, w, d);
 
         Box::new(edges.map(move |edge| {
@@ -1181,7 +1180,7 @@ mod graph_test {
             .collect();
 
         //return empty as no edges in this window
-        assert_eq!(actual, vec![]);
+        assert_eq!(actual, Vec::<bool>::new());
     }
 
     #[test]
@@ -1193,7 +1192,7 @@ mod graph_test {
 
         // 9 and 1 are not visible at time 3
         let actual: Vec<u64> = g.vertices_window(3..10).map(|v| v.g_id).collect();
-        assert_eq!(actual, vec![]);
+        assert_eq!(actual, Vec::<u64>::new());
 
         g.add_edge(3, 9, 1);
 
@@ -1233,7 +1232,7 @@ mod graph_test {
 
         // 9 and 1 are not visible at time 3
         let actual: Vec<u64> = g.vertices_window(3..10).map(|v| v.g_id).collect();
-        assert_eq!(actual, vec![]);
+        assert_eq!(actual, Vec::<u64>::new());
 
         g.add_edge(3, 9, 1);
         g.add_edge(12, 9, 1); // add the same edge again at different time
