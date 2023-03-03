@@ -51,7 +51,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: release
-          args: --exclude examples --push-remote ${{ inputs.version }} --no-publish --no-confirm ${{ inputs.version }}
+          args: --exclude examples --exclude pyraphtory --push-remote ${{ inputs.version }} --no-publish --no-confirm ${{ inputs.version }}
       - name: "Make PR"
         uses: peter-evans/create-pull-request@v4
         with:
@@ -70,7 +70,7 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: artifacts
-          path: target/package/docbrown-*.crate
+          path: ./target/package/docbrown-*.crate
   python-linux:
     needs: release-rust
     runs-on: ubuntu-latest
@@ -94,7 +94,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: artifacts
-          path: dist
+          path: ./pyraphtory/dist
   python-windows:
     needs: release-rust
     runs-on: windows-latest
@@ -118,7 +118,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: artifacts
-          path: dist
+          path: ./pyraphtory/dist
   python-macos:
     needs: release-rust
     runs-on: macos-latest
@@ -141,7 +141,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: artifacts
-          path: dist
+          path: ./pyraphtory/dist
   download-artifacts:
     needs: [release-rust, python-linux, python-windows, python-macos]
     name: Release
