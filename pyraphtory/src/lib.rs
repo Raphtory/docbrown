@@ -9,6 +9,7 @@ use crate::wrappers::Direction;
 use crate::wrappers::TEdge;
 use crate::graph::Graph;
 use crate::algorithms::triangle_count;
+
 #[pymodule]
 fn pyraphtory(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_class::<Direction>()?;
