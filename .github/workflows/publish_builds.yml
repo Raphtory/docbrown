@@ -83,9 +83,9 @@ jobs:
         with:
           python-version: '3.10'
       - name: Build wheels
-        working-directory: ./pyraphtory
         uses: PyO3/maturin-action@v1
         with:
+          working-directory: ./pyraphtory
           command: build
           target: ${{ matrix.target }}
           args: --release --out dist --find-interpreter
@@ -108,9 +108,9 @@ jobs:
           python-version: '3.10'
           architecture: ${{ matrix.target }}
       - name: Build wheels
-        working-directory: ./pyraphtory
         uses: PyO3/maturin-action@v1
         with:
+          working-directory: ./pyraphtory
           command: build
           target: ${{ matrix.target }}
           args: --release --out dist --find-interpreter
@@ -131,9 +131,9 @@ jobs:
         with:
           python-version: '3.10'
       - name: Build wheels
-        working-directory: ./pyraphtory
         uses: PyO3/maturin-action@v1
         with:
+          working-directory: ./pyraphtory
           command: build
           target: ${{ matrix.target }}
           args: --release --out dist --find-interpreter
