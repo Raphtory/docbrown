@@ -2,15 +2,23 @@ name: Publish Rust/PyRaphtory to Github, crates.io and PyPi
 on:
   workflow_call:
     inputs:
-      config-path:
-        required: false
-        type: string
+      base:
+        description: 'Name of branch to open PR against'
+        type: 'string'
+        default: 'main'
+      version:
+        description: 'Version to bump to (e.g. 0.1.0)'
+        type: 'string'
+        required: true
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+## DO NOT CACHE THIS UNDER ANY CIRCUMSTANCES
+## AS CACHE WILL STORE THE SECRET
+
 jobs:
-  release:
+  release-rust:
     name: Release code
     runs-on: '${{ matrix.os }}'
     strategy:
@@ -18,28 +26,65 @@ jobs:
         include:
           - os: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions-rs/toolchain@v1
+      - name: "Checkout code"
+        uses: actions/checkout@v3
+      - name: "Set up Rust toolchain"
+        uses: actions-rs/toolchain@v1
         with:
           profile: minimal
           toolchain: stable
           override: true
           components: rustfmt, clippy
-      - name: Set up cargo cache
-        uses: actions/cache@v3
-        continue-on-error: false
+      - name: "Install cargo release"
+        uses: actions-rs/cargo@v1
         with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/debug
-            target/release
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-cargo-
-      - uses: katyo/publish-crates@v2
+          command: install
+          args: cargo-release
+      - name: "Bump version with cargo release and push to remote"
+        uses: actions-rs/cargo@v1
         with:
-          registry-token: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-          dry-run: true
-          ignore-unpublished-changes: true
+          command: release
+          args: --exclude examples --push-remote ${{ input.version }} --no-publish --no-confirm ${{ input.version }}
+      - name: "Make PR"
+        uses: peter-evans/create-pull-request@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          base: ${{ input.base }}
+          branch: v${{ input.version }}
+          commit-message: "Release v${{ input.version }}"
+          title: "Release v${{ input.version }}"
+          body: |
+            Release v${{ input.version }}
+            - [x] Publish to crates.io
+            - [x] Publish to PyPi
+            - [x] Make Tag
+            - [x] Publish to Github as release
+      - name: "Publish using maturin publish"
+        run: cd pyraphtory && maturin build -r && maturin publish -u ${{ secrets.PYPI_USERNAME }} -p ${{ secrets.PYPI_PASSWORD }}
+      - name: "Upload rust packages as artifact"
+        uses: actions/upload-artifact@v2
+        with:
+          name: docbrown
+          path: target/package/docbrown-*.crate
+
+
+
+    release-gh:
+      name: Release GitHub
+      runs-on: ubuntu-latest
+      steps:
+      - name: "Publish to Github as release"
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            target/wheels/pyraphtory/pyraphtory-*.whl
+          draft: false
+          prerelease: false
+          tag_name: v${{ input.version }}
+          name: v${{ input.version }}
+          body: |
+            Release v${{ input.version }}
+            - [x] Publish to crates.io
+            - [x] Publish to PyPi
+            - [x] Make Tag
+            - [x] Publish to Github as release

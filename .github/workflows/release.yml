@@ -1,8 +1,15 @@
 name: Publish a new Release
 on:
-  push:
-    tags:
-      - 'v*'
+  workflow_dispatch:
+    inputs:
+      base:
+        description: 'Name of branch to open PR against'
+        type: 'string'
+        default: 'main'
+      version:
+        description: 'Version to bump to (e.g. 0.1.0)'
+        type: 'string'
+        required: true
 
 jobs:
   test-rust-python-workflow:
@@ -12,3 +19,6 @@ jobs:
     needs: test-scala-python-workflow
     uses: ./.github/workflows/publish_builds.yml
     secrets: inherit
+    with:
+        version: ${{ github.event.inputs.version }}
+        base: ${{ github.event.inputs.base }}
