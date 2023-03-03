@@ -111,19 +111,6 @@ impl From<tgraph_shard::TEdge> for TEdge {
 }
 
 #[pyclass]
-pub struct TVertex {
-    #[pyo3(get)]
-    pub g_id: u64,
-}
-
-impl From<tgraph_shard::TVertex> for TVertex {
-    fn from(value: tgraph_shard::TVertex) -> TVertex {
-        let tgraph_shard::TVertex { g_id, .. } = value;
-        TVertex { g_id }
-    }
-}
-
-#[pyclass]
 pub struct VertexIdsIterator {
     pub(crate) iter: Box<dyn Iterator<Item = u64> + Send>,
 }

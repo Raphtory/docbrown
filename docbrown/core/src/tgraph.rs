@@ -750,8 +750,8 @@ impl TemporalGraph {
 
 // helps us track what are we iterating over
 #[derive(Debug, PartialEq)]
-pub(crate) struct VertexView {
-    pub(crate) g_id: u64,
+pub struct VertexView {
+    pub g_id: u64,
     pub(crate) pid: usize, // this needs to be Option<pid> if we ever want to map from EdgeView to VertexView, some edges are remote
 }
 

@@ -5,8 +5,8 @@ use std::{
 };
 
 use docbrown_core::{
-    tgraph_shard::{TEdge, TGraphShard, TVertex},
-    utils, Direction, Prop,
+    tgraph_shard::{TEdge, TGraphShard},
+    utils, Direction, Prop, tgraph::VertexView,
 };
 
 use rayon::prelude::{IntoParallelRefIterator, ParallelIterator};
@@ -130,12 +130,12 @@ impl Graph {
             .any(|shard| shard.has_vertex_window(v, t_start..t_end))
     }
 
-    pub(crate) fn vertex(&self, v: u64) -> Option<TVertex> {
+    pub(crate) fn vertex(&self, v: u64) -> Option<VertexView> {
         let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
         self.shards[shard_id].vertex(v)
     }
 
-    pub(crate) fn vertex_window(&self, v: u64, t_start: i64, t_end: i64) -> Option<TVertex> {
+    pub(crate) fn vertex_window(&self, v: u64, t_start: i64, t_end: i64) -> Option<VertexView> {
         let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
         self.shards[shard_id].vertex_window(v, t_start..t_end)
     }
@@ -165,7 +165,7 @@ impl Graph {
         &self,
         t_start: i64,
         t_end: i64,
-    ) -> Box<dyn Iterator<Item = TVertex> + Send> {
+    ) -> Box<dyn Iterator<Item = VertexView> + Send> {
         let shards = self.shards.clone();
         Box::new(
             shards
@@ -183,9 +183,7 @@ impl Graph {
         d: Direction,
     ) -> Box<dyn Iterator<Item = TEdge> + Send> {
         let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
-
         let iter = self.shards[shard_id].edges_window(v, t_start..t_end, d);
-
         Box::new(iter)
     }
 
@@ -197,9 +195,7 @@ impl Graph {
         d: Direction,
     ) -> Box<dyn Iterator<Item = TEdge> + Send> {
         let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
-
         let iter = self.shards[shard_id].edges_window_t(v, t_start..t_end, d);
-
         Box::new(iter)
     }
 
@@ -209,11 +205,9 @@ impl Graph {
         t_start: i64,
         t_end: i64,
         d: Direction,
-    ) -> Box<dyn Iterator<Item = TVertex> + Send> {
+    ) -> Box<dyn Iterator<Item = VertexView> + Send> {
         let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
-
         let iter = self.shards[shard_id].neighbours_window(v, t_start..t_end, d);
-
         Box::new(iter)
     }
 }

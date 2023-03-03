@@ -1,9 +1,5 @@
 use crate::graph::Graph;
-use docbrown_core::{
-    tgraph_shard::{TEdge, TVertex},
-    Direction,
-};
-use futures::io::Window;
+use docbrown_core::{tgraph::VertexView, tgraph_shard::TEdge, Direction};
 
 use std::sync::Arc;
 
@@ -54,7 +50,7 @@ pub struct WindowedVertex {
 }
 
 impl WindowedVertex {
-    fn from(value: TVertex, graph_w: Arc<WindowedGraph>) -> Self {
+    fn from(value: VertexView, graph_w: Arc<WindowedGraph>) -> Self {
         Self {
             g_id: value.g_id,
             graph_w,
