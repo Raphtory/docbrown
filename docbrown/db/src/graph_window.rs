@@ -1,5 +1,9 @@
 use crate::graph::Graph;
-use docbrown_core::{tgraph::VertexView, tgraph_shard::TEdge, Direction, Prop};
+use docbrown_core::{
+    tgraph::{EdgeView, VertexView},
+    tgraph_shard::TEdge,
+    Direction, Prop,
+};
 
 use std::{collections::HashMap, sync::Arc};
 
@@ -201,14 +205,13 @@ pub struct WindowedEdge {
 }
 
 impl WindowedEdge {
-    fn from(value: TEdge, graph_w: Arc<WindowedGraph>) -> Self {
+    fn from(value: EdgeView, graph_w: Arc<WindowedGraph>) -> Self {
         Self {
-            edge_id: value.edge_id,
-            src: value.src,
-            dst: value.dst,
+            edge_id: value.e_meta.edge_meta_id(),
+            src: value.src_g_id,
+            dst: value.dst_g_id,
             t: value.t,
-            is_remote: value.is_remote,
-
+            is_remote: !value.e_meta.is_local(),
             graph_w,
         }
     }

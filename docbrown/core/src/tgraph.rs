@@ -838,14 +838,14 @@ impl VertexView {
     }
 }
 
-pub(crate) struct EdgeView {
-    pub(crate) src_g_id: u64,
-    pub(crate) dst_g_id: u64,
+pub struct EdgeView {
+    pub src_g_id: u64,
+    pub dst_g_id: u64,
     // src_id and dst_id could be global or physical depending upon edge being remote or local respectively
     src_id: usize,
     dst_id: usize,
-    pub(crate) t: Option<i64>,
-    pub(crate) e_meta: AdjEdge,
+    pub t: Option<i64>,
+    pub e_meta: AdjEdge,
 }
 
 #[cfg(test)]

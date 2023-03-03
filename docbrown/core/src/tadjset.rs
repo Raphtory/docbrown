@@ -36,7 +36,11 @@ pub(crate) enum TAdjSet<V: Ord + TryInto<usize> + std::hash::Hash, Time: Copy + 
     },
 }
 
-impl<V: Ord + Into<usize> + From<usize> + Copy + Hash + Send + Sync, Time: Copy + Ord + Send + Sync> TAdjSet<V, Time> {
+impl<
+        V: Ord + Into<usize> + From<usize> + Copy + Hash + Send + Sync,
+        Time: Copy + Ord + Send + Sync,
+    > TAdjSet<V, Time>
+{
     pub fn new(t: Time, v: V, e: AdjEdge) -> Self {
         Self::One(t, v, e)
     }
@@ -125,7 +129,10 @@ impl<V: Ord + Into<usize> + From<usize> + Copy + Hash + Send + Sync, Time: Copy 
         }
     }
 
-    pub fn iter_window(&self, r: &Range<Time>) -> Box<dyn Iterator<Item = (V, AdjEdge)> + Send + '_> {
+    pub fn iter_window(
+        &self,
+        r: &Range<Time>,
+    ) -> Box<dyn Iterator<Item = (V, AdjEdge)> + Send + '_> {
         match self {
             TAdjSet::Empty => Box::new(std::iter::empty()),
             TAdjSet::One(t, v, e) => {
@@ -232,7 +239,7 @@ pub(crate) struct Edge<V: Clone + PartialEq + Eq + PartialOrd + Ord> {
 
 #[repr(transparent)]
 #[derive(Serialize, Deserialize, Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub(crate) struct AdjEdge(pub(crate) i64);
+pub struct AdjEdge(pub(crate) i64);
 
 impl AdjEdge {
     pub(crate) fn new(i: usize, local: bool) -> Self {
@@ -256,11 +263,11 @@ impl AdjEdge {
         self.0 < 0
     }
 
-    pub(crate) fn is_local(&self) -> bool {
+    pub fn is_local(&self) -> bool {
         !self.is_remote()
     }
 
-    pub(crate) fn edge_meta_id(&self) -> usize {
+    pub fn edge_meta_id(&self) -> usize {
         self.0.abs().try_into().unwrap()
     }
 }

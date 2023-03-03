@@ -198,21 +198,25 @@ impl TGraphShard {
         iter.into_iter()
     }
 
-    pub fn edges(&self, v: u64, d: Direction) -> impl Iterator<Item = TEdge> {
+    pub fn edges(&self, v: u64, d: Direction) -> impl Iterator<Item = EdgeView> {
         let tgshard = self.rc.clone();
-        let iter: GenBoxed<TEdge> = GenBoxed::new_boxed(|co| async move {
+        let iter: GenBoxed<EdgeView> = GenBoxed::new_boxed(|co| async move {
             let g = tgshard.blocking_read();
             let iter = (*g).edges(v, d);
             for ev in iter {
-                let tv: TEdge = ev.into();
-                co.yield_(tv).await;
+                co.yield_(ev).await;
             }
         });
 
         iter.into_iter()
     }
 
-    pub fn edges_window(&self, v: u64, r: Range<i64>, d: Direction) -> impl Iterator<Item = TEdge> {
+    pub fn edges_window(
+        &self,
+        v: u64,
+        r: Range<i64>,
+        d: Direction,
+    ) -> impl Iterator<Item = EdgeView> {
         let tgshard = self.clone();
         let iter = gen!({
             let g = tgshard.rc.blocking_read();
@@ -231,7 +235,7 @@ impl TGraphShard {
         v: u64,
         r: Range<i64>,
         d: Direction,
-    ) -> impl Iterator<Item = TEdge> {
+    ) -> impl Iterator<Item = EdgeView> {
         let tgshard = self.clone();
         let iter = gen!({
             let g = tgshard.rc.blocking_read();

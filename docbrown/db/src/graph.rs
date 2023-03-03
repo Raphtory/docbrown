@@ -7,7 +7,7 @@ use std::{
 };
 
 use docbrown_core::{
-    tgraph::VertexView,
+    tgraph::{VertexView, EdgeView},
     tgraph_shard::{TEdge, TGraphShard},
     utils, Direction, Prop,
 };
@@ -184,7 +184,7 @@ impl Graph {
         t_start: i64,
         t_end: i64,
         d: Direction,
-    ) -> Box<dyn Iterator<Item = TEdge> + Send> {
+    ) -> Box<dyn Iterator<Item = EdgeView> + Send> {
         let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
         let iter = self.shards[shard_id].edges_window(v, t_start..t_end, d);
         Box::new(iter)
@@ -196,7 +196,7 @@ impl Graph {
         t_start: i64,
         t_end: i64,
         d: Direction,
-    ) -> Box<dyn Iterator<Item = TEdge> + Send> {
+    ) -> Box<dyn Iterator<Item = EdgeView> + Send> {
         let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
         let iter = self.shards[shard_id].edges_window_t(v, t_start..t_end, d);
         Box::new(iter)
