@@ -26,6 +26,13 @@ jobs:
         include:
           - os: ubuntu-latest
     steps:
+      - name: Wait for tests to succeed
+        uses: lewagon/wait-on-check-action@v1.3.1
+        with:
+          ref: ${{ github.ref }}
+          check-name: 'Rust Tests'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 10
       - name: "Checkout code"
         uses: actions/checkout@v3
       - name: "Set up Rust toolchain"
@@ -59,32 +66,129 @@ jobs:
             - [x] Publish to PyPi
             - [x] Make Tag
             - [x] Publish to Github as release
-      - name: "Publish using maturin publish"
-        run: cd pyraphtory && maturin build -r && maturin publish -u ${{ secrets.PYPI_USERNAME }} -p ${{ secrets.PYPI_PASSWORD }}
       - name: "Upload rust packages as artifact"
         uses: actions/upload-artifact@v2
         with:
-          name: docbrown
+          name: artifacts
           path: target/package/docbrown-*.crate
-
-
-
-    release-gh:
-      name: Release GitHub
-      runs-on: ubuntu-latest
-      steps:
-      - name: "Publish to Github as release"
-        uses: softprops/action-gh-release@v1
+  python-linux:
+    needs: release-rust
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target: [x86_64, x86, aarch64, armv7, s390x, ppc64le]
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
         with:
-          files: |
-            target/wheels/pyraphtory/pyraphtory-*.whl
-          draft: false
-          prerelease: false
-          tag_name: v${{ input.version }}
-          name: v${{ input.version }}
-          body: |
-            Release v${{ input.version }}
-            - [x] Publish to crates.io
-            - [x] Publish to PyPi
-            - [x] Make Tag
-            - [x] Publish to Github as release
+          python-version: '3.10'
+      - name: Build wheels
+        working-directory: ./pyraphtory
+        uses: PyO3/maturin-action@v1
+        with:
+          command: build
+          target: ${{ matrix.target }}
+          args: --release --out dist --find-interpreter
+          manylinux: auto
+      - name: Upload wheels to gh artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: artifacts
+          path: dist
+  python-windows:
+    needs: release-rust
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        target: [x64, x86]
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+          architecture: ${{ matrix.target }}
+      - name: Build wheels
+        working-directory: ./pyraphtory
+        uses: PyO3/maturin-action@v1
+        with:
+          command: build
+          target: ${{ matrix.target }}
+          args: --release --out dist --find-interpreter
+      - name: Upload wheels to gh artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: artifacts
+          path: dist
+  python-macos:
+    needs: release-rust
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        target: [x86_64, aarch64]
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      - name: Build wheels
+        working-directory: ./pyraphtory
+        uses: PyO3/maturin-action@v1
+        with:
+          command: build
+          target: ${{ matrix.target }}
+          args: --release --out dist --find-interpreter
+      - name: Upload wheels to gh artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: artifacts
+          path: dist
+  download-artifacts:
+    needs: [release-rust, python-linux, python-windows, python-macos]
+    name: Release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v3
+        with:
+          name: artifacts
+          path: artifacts
+      - name: Display structure of downloaded files
+        run: ls -R
+        working-directory: artifacts
+
+
+#    release-gh:
+#      name: Release GitHub
+#      runs-on: ubuntu-latest
+#      steps:
+#      - name: "Publish to Github as release"
+#        uses: softprops/action-gh-release@v1
+#        with:
+#          files: |
+#            target/wheels/pyraphtory/pyraphtory-*.whl
+#          draft: false
+#          prerelease: false
+#          tag_name: v${{ input.version }}
+#          name: v${{ input.version }}
+#          body: |
+#            Release v${{ input.version }}
+#            - [x] Publish to crates.io
+#            - [x] Publish to PyPi
+#            - [x] Make Tag
+#            - [x] Publish to Github as release
+#
+#  release:
+#    name: Release
+#    runs-on: ubuntu-latest
+#    if: "startsWith(github.ref, 'refs/tags/')"
+#    needs: [linux, windows, macos]
+#    steps:
+#      - uses: actions/download-artifact@v3
+#        with:
+#          name: wheels
+#      - name: Publish to PyPI
+#        uses: PyO3/maturin-action@v1
+#        env:
+#          MATURIN_PYPI_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+#        with:
+#          command: upload
+#          args: --skip-existing *
