@@ -1,5 +1,5 @@
 use crate::graph::Graph;
-use docbrown_core::{tgraph::VertexView, tgraph_shard::TEdge, Direction};
+use docbrown_core::{tgraph::VertexView, tgraph_shard::TEdge, Direction, Prop};
 
 use std::sync::Arc;
 
@@ -59,6 +59,10 @@ impl WindowedVertex {
 }
 
 impl WindowedVertex {
+    pub fn props(&self, name: String) -> Vec<(i64, Prop)> {
+        self.graph_w.graph.vertex_props_vec(self.g_id, name)
+    }
+
     pub fn degree(&self) -> usize {
         self.graph_w.graph.degree_window(
             self.g_id,

@@ -170,3 +170,15 @@ def test_windowed_graph_neighbours():
         out_neighbours.append([v.g_id for v in v_iter])
 
     assert out_neighbours == [[1, 2, 3], [1], [2]]
+
+
+def test_windowed_graph_vertex_props():
+    g = create_graph(1)
+
+    max_size = sys.maxsize
+    min_size = -sys.maxsize - 1
+
+    view = g.window(min_size, max_size)
+
+    assert view.vertex(1).props("type") == [(0, 'wallet')]
+    assert view.vertex(1).props("undefined") == []

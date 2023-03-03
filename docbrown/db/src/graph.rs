@@ -5,8 +5,9 @@ use std::{
 };
 
 use docbrown_core::{
+    tgraph::VertexView,
     tgraph_shard::{TEdge, TGraphShard},
-    utils, Direction, Prop, tgraph::VertexView,
+    utils, Direction, Prop,
 };
 
 use rayon::prelude::{IntoParallelRefIterator, ParallelIterator};
@@ -209,6 +210,11 @@ impl Graph {
         let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
         let iter = self.shards[shard_id].neighbours_window(v, t_start..t_end, d);
         Box::new(iter)
+    }
+
+    pub(crate) fn vertex_props_vec(&self, v: u64, name: String) -> Vec<(i64, Prop)> {
+        let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
+        self.shards[shard_id].vertex_props_vec(v, name)
     }
 }
 

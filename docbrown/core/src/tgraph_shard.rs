@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::ops::Range;
 use std::path::Path;
@@ -274,6 +275,10 @@ impl TGraphShard {
         });
 
         iter.into_iter()
+    }
+
+    pub fn vertex_props_vec(&self, v: u64, name: String) -> Vec<(i64, Prop)> {
+        self.read_shard(|tg| tg.vertex_props_vec(v, &name).unwrap_or_else(|| vec![]))
     }
 }
 

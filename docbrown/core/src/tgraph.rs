@@ -487,15 +487,11 @@ impl TemporalGraph {
         }))
     }
 
-    pub(crate) fn vertex_props(
-        &self,
-        v: u64,
-        name: &str,
-    ) -> Option<Box<dyn Iterator<Item = (&i64, Prop)> + '_>> {
+    pub(crate) fn vertex_props_vec(&self, v: u64, name: &str) -> Option<Vec<(i64, Prop)>> {
         let index = self.logical_to_physical.get(&v)?;
         let meta = self.props.vertex_meta.get(*index)?;
         let prop_id = self.props.prop_ids.get(name)?;
-        Some(meta.iter(*prop_id))
+        Some(meta.iter(*prop_id).map(|(t, p)| (*t, p)).collect_vec())
     }
 
     pub(crate) fn vertex_props_window(
@@ -857,11 +853,11 @@ mod graph_test {
 
         let res = g
             .vertices()
-            .flat_map(|v| g.vertex_props(v.g_id, "type"))
-            .flat_map(|v| v.collect::<Vec<_>>())
-            .collect::<Vec<_>>();
+            .flat_map(|v| g.vertex_props_vec(v.g_id, "type"))
+            .flatten()
+            .collect_vec();
 
-        assert_eq!(res, vec![(&1, Prop::Str("wallet".into()))]);
+        assert_eq!(res, vec![(1i64, Prop::Str("wallet".into()))]);
     }
 
     #[test]
@@ -880,12 +876,8 @@ mod graph_test {
         let res = g
             .vertices()
             .flat_map(|v| {
-                let type_ = g
-                    .vertex_props(v.g_id, "type")
-                    .map(|x| x.collect::<Vec<_>>());
-                let active = g
-                    .vertex_props(v.g_id, "active")
-                    .map(|x| x.collect::<Vec<_>>());
+                let type_ = g.vertex_props_vec(v.g_id, "type");
+                let active = g.vertex_props_vec(v.g_id, "active");
                 type_.zip(active).map(|(mut x, mut y)| {
                     x.append(&mut y);
                     x
@@ -896,7 +888,7 @@ mod graph_test {
 
         assert_eq!(
             res,
-            vec![(&1, Prop::Str("wallet".into())), (&1, Prop::U32(0)),]
+            vec![(1i64, Prop::Str("wallet".into())), (1i64, Prop::U32(0)),]
         );
     }
 
@@ -1977,10 +1969,7 @@ mod graph_test {
         let pid = *(g.logical_to_physical.get(&1).unwrap());
 
         let actual = g.vertex(1);
-        let expected = Some(VertexView {
-            g_id: 1,
-            pid,
-        });
+        let expected = Some(VertexView { g_id: 1, pid });
 
         assert_eq!(actual, expected);
 
@@ -1990,10 +1979,7 @@ mod graph_test {
         assert_eq!(actual, expected);
 
         let actual = g.vertex_window(1, &(0..3));
-        let expected = Some(VertexView {
-            g_id: 1,
-            pid,
-        });
+        let expected = Some(VertexView { g_id: 1, pid });
 
         assert_eq!(actual, expected);
 

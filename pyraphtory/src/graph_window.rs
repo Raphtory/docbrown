@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use crate::{graph::Graph, wrappers::*};
 use docbrown_db::graph_window;
+use itertools::Itertools;
 use pyo3::prelude::*;
 
 #[pyclass]
@@ -61,6 +62,14 @@ impl From<graph_window::WindowedVertex> for WindowedVertex {
 
 #[pymethods]
 impl WindowedVertex {
+    pub fn props(&self, name: String) -> Vec<(i64, Prop)> {
+        self.vertex_w
+            .props(name)
+            .into_iter()
+            .map(|(t, p)| (t, p.into()))
+            .collect_vec()
+    }
+
     pub fn degree(&self) -> usize {
         self.vertex_w.degree()
     }
