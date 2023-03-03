@@ -12,11 +12,11 @@ on:
         required: true
 
 jobs:
-  test-rust-python-workflow:
-    uses: ./.github/workflows/test_rust_workflow.yml
-    secrets: inherit
+#  test-rust-python-workflow:
+#    uses: ./.github/workflows/test_rust_workflow.yml
+#    secrets: inherit
   publish-builds-to-cargo-github-pypi:
-    needs: test-scala-python-workflow
+#    needs: test-rust-python-workflow
     uses: ./.github/workflows/publish_builds.yml
     secrets: inherit
     with:

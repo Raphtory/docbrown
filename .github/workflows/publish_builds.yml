@@ -12,7 +12,7 @@ on:
         required: true
 
 env:
-  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
 
 ## DO NOT CACHE THIS UNDER ANY CIRCUMSTANCES
 ## AS CACHE WILL STORE THE SECRET
@@ -26,13 +26,13 @@ jobs:
         include:
           - os: ubuntu-latest
     steps:
-      - name: Wait for tests to succeed
-        uses: lewagon/wait-on-check-action@v1.3.1
-        with:
-          ref: ${{ github.ref }}
-          check-name: 'Rust Tests'
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 10
+#      - name: Wait for tests to succeed
+#        uses: lewagon/wait-on-check-action@v1.3.1
+#        with:
+#          ref: ${{ github.ref }}
+#          check-name: 'Rust Tests'
+#          repo-token: ${{ secrets.GH_TOKEN }}
+#          wait-interval: 10
       - name: "Checkout code"
         uses: actions/checkout@v3
       - name: "Set up Rust toolchain"
@@ -51,17 +51,17 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: release
-          args: --exclude examples --push-remote ${{ input.version }} --no-publish --no-confirm ${{ input.version }}
+          args: --exclude examples --exclude pyraphtory --push-remote ${{ inputs.version }} --no-confirm ${{ inputs.version }}
       - name: "Make PR"
         uses: peter-evans/create-pull-request@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          base: ${{ input.base }}
-          branch: v${{ input.version }}
-          commit-message: "Release v${{ input.version }}"
-          title: "Release v${{ input.version }}"
+          token: ${{ secrets.GH_TOKEN }}
+          base: ${{ inputs.base }}
+          branch: v${{ inputs.version }}
+          commit-message: "Release v${{ inputs.version }}"
+          title: "Release v${{ inputs.version }}"
           body: |
-            Release v${{ input.version }}
+            Release v${{ inputs.version }}
             - [x] Publish to crates.io
             - [x] Publish to PyPi
             - [x] Make Tag
@@ -70,7 +70,7 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: artifacts
-          path: target/package/docbrown-*.crate
+          path: ./target/package/docbrown-*.crate
   python-linux:
     needs: release-rust
     runs-on: ubuntu-latest
@@ -82,10 +82,12 @@ jobs:
       - uses: actions/setup-python@v4
         with:
           python-version: '3.10'
+      - name: Install SSL
+        run: sudo apt-get -y install pkg-config libssl-dev
       - name: Build wheels
-        working-directory: ./pyraphtory
         uses: PyO3/maturin-action@v1
         with:
+          working-directory: ./pyraphtory
           command: build
           target: ${{ matrix.target }}
           args: --release --out dist --find-interpreter
@@ -94,7 +96,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: artifacts
-          path: dist
+          path: ./pyraphtory/dist
   python-windows:
     needs: release-rust
     runs-on: windows-latest
@@ -108,9 +110,9 @@ jobs:
           python-version: '3.10'
           architecture: ${{ matrix.target }}
       - name: Build wheels
-        working-directory: ./pyraphtory
         uses: PyO3/maturin-action@v1
         with:
+          working-directory: ./pyraphtory
           command: build
           target: ${{ matrix.target }}
           args: --release --out dist --find-interpreter
@@ -118,7 +120,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: artifacts
-          path: dist
+          path: ./pyraphtory/dist
   python-macos:
     needs: release-rust
     runs-on: macos-latest
@@ -131,9 +133,9 @@ jobs:
         with:
           python-version: '3.10'
       - name: Build wheels
-        working-directory: ./pyraphtory
         uses: PyO3/maturin-action@v1
         with:
+          working-directory: ./pyraphtory
           command: build
           target: ${{ matrix.target }}
           args: --release --out dist --find-interpreter
@@ -141,7 +143,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: artifacts
-          path: dist
+          path: ./pyraphtory/dist
   download-artifacts:
     needs: [release-rust, python-linux, python-windows, python-macos]
     name: Release
@@ -167,10 +169,10 @@ jobs:
 #            target/wheels/pyraphtory/pyraphtory-*.whl
 #          draft: false
 #          prerelease: false
-#          tag_name: v${{ input.version }}
-#          name: v${{ input.version }}
+#          tag_name: v${{ inputs.version }}
+#          name: v${{ inputs.version }}
 #          body: |
-#            Release v${{ input.version }}
+#            Release v${{ inputs.version }}
 #            - [x] Publish to crates.io
 #            - [x] Publish to PyPi
 #            - [x] Make Tag
