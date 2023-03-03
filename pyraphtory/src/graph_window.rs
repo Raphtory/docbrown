@@ -137,6 +137,7 @@ impl WindowedVertex {
 
 #[pyclass]
 pub struct WindowedEdge {
+    pub edge_id: usize,
     #[pyo3(get)]
     pub src: u64,
     #[pyo3(get)]
@@ -151,11 +152,23 @@ pub struct WindowedEdge {
 impl From<graph_window::WindowedEdge> for WindowedEdge {
     fn from(value: graph_window::WindowedEdge) -> WindowedEdge {
         WindowedEdge {
+            edge_id: value.edge_id,
             src: value.src,
             dst: value.dst,
             t: value.t,
             is_remote: value.is_remote,
             edge_w: value,
         }
+    }
+}
+
+#[pymethods]
+impl WindowedEdge {
+    pub fn prop(&self, name: String) -> Vec<(i64, Prop)> {
+        self.edge_w
+            .prop(name)
+            .into_iter()
+            .map(|(t, p)| (t, p.into()))
+            .collect_vec()
     }
 }

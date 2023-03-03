@@ -192,3 +192,17 @@ def test_windowed_graph_vertex_props():
     view = g.window(min_size, max_size)
 
     assert view.vertex(1).props() == {'cost': [(0, 99.5)], 'type': [(0, 'wallet')]}
+
+def test_windowed_graph_edge_prop():
+    g = create_graph(1)
+
+    max_size = sys.maxsize
+    min_size = -sys.maxsize - 1
+
+    view = g.window(min_size, max_size)
+
+    edge = next(view.vertex(1).edges())
+
+    assert edge.prop("prop1") == [(0, 1), (1, 1)]
+    assert edge.prop("prop3") == [(0, 'test'), (1, 'test')]
+    assert edge.prop("undefined") == []

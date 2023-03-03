@@ -1,4 +1,3 @@
-use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::ops::Range;
@@ -13,9 +12,9 @@ use crate::{Direction, Prop};
 
 #[derive(Debug)]
 pub struct TEdge {
+    pub edge_id: usize,
     pub src: u64,
     pub dst: u64,
-    // edge_meta_id: AdjEdge,
     pub t: Option<i64>,
     pub is_remote: bool,
 }
@@ -23,6 +22,7 @@ pub struct TEdge {
 impl<'a> From<EdgeView<'a, TemporalGraph>> for TEdge {
     fn from(e: EdgeView<'a, TemporalGraph>) -> Self {
         Self {
+            edge_id: e.e_meta.edge_meta_id(),
             src: e.global_src(),
             dst: e.global_dst(),
             t: e.t,
@@ -278,7 +278,7 @@ impl TGraphShard {
         iter.into_iter()
     }
 
-    pub fn vertex_props_vec(&self, v: u64, name: String) -> Vec<(i64, Prop)> {
+    pub fn vertex_prop_vec(&self, v: u64, name: String) -> Vec<(i64, Prop)> {
         self.read_shard(|tg| tg.vertex_prop_vec(v, &name).unwrap_or_else(|| vec![]))
     }
 
@@ -300,6 +300,17 @@ impl TGraphShard {
         self.read_shard(|tg| {
             tg.vertex_props_window(v, &w)
                 .unwrap_or_else(|| HashMap::<String, Vec<(i64, Prop)>>::new())
+        })
+    }
+
+    pub fn edge_prop_vec(&self, e: usize, name: String) -> Vec<(i64, Prop)> {
+        self.read_shard(|tg| tg.edge_prop_vec(e, &name).unwrap_or_else(|| vec![]))
+    }
+
+    pub fn edge_props_vec_window(&self, e: usize, name: String, w: Range<i64>) -> Vec<(i64, Prop)> {
+        self.read_shard(|tg| {
+            tg.edge_prop_vec_window(e, &name, w.clone())
+                .unwrap_or_else(|| vec![])
         })
     }
 }

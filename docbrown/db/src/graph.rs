@@ -214,9 +214,9 @@ impl Graph {
         Box::new(iter)
     }
 
-    pub(crate) fn vertex_props_vec(&self, v: u64, name: String) -> Vec<(i64, Prop)> {
+    pub(crate) fn vertex_prop_vec(&self, v: u64, name: String) -> Vec<(i64, Prop)> {
         let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
-        self.shards[shard_id].vertex_props_vec(v, name)
+        self.shards[shard_id].vertex_prop_vec(v, name)
     }
 
     pub(crate) fn vertex_prop_vec_window(
@@ -241,6 +241,17 @@ impl Graph {
     ) -> HashMap<String, Vec<(i64, Prop)>> {
         let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
         self.shards[shard_id].vertex_props_window(v, w)
+    }
+
+    pub fn edge_props_vec_window(
+        &self,
+        v: u64,
+        e: usize,
+        name: String,
+        w: Range<i64>,
+    ) -> Vec<(i64, Prop)> {
+        let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
+        self.shards[shard_id].edge_props_vec_window(e, name, w)
     }
 }
 

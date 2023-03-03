@@ -192,6 +192,7 @@ impl WindowedVertex {
 }
 
 pub struct WindowedEdge {
+    pub edge_id: usize,
     pub src: u64,
     pub dst: u64,
     pub t: Option<i64>,
@@ -202,12 +203,25 @@ pub struct WindowedEdge {
 impl WindowedEdge {
     fn from(value: TEdge, graph_w: Arc<WindowedGraph>) -> Self {
         Self {
+            edge_id: value.edge_id,
             src: value.src,
             dst: value.dst,
             t: value.t,
             is_remote: value.is_remote,
+
             graph_w,
         }
+    }
+}
+
+impl WindowedEdge {
+    pub fn prop(&self, name: String) -> Vec<(i64, Prop)> {
+        self.graph_w.graph.edge_props_vec_window(
+            self.src,
+            self.edge_id,
+            name,
+            self.graph_w.t_start..self.graph_w.t_end,
+        )
     }
 }
 
