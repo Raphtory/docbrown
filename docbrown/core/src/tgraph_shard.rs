@@ -19,14 +19,14 @@ pub struct TEdge {
     pub is_remote: bool,
 }
 
-impl<'a> From<EdgeView<'a, TemporalGraph>> for TEdge {
-    fn from(e: EdgeView<'a, TemporalGraph>) -> Self {
+impl From<EdgeView> for TEdge {
+    fn from(e: EdgeView) -> Self {
         Self {
             edge_id: e.e_meta.edge_meta_id(),
-            src: e.global_src(),
-            dst: e.global_dst(),
+            src: e.src_g_id,
+            dst: e.dst_g_id,
             t: e.t,
-            is_remote: e.is_remote(),
+            is_remote: !e.e_meta.is_local(),
         }
     }
 }
