@@ -8,15 +8,15 @@ use pyo3::prelude::*;
 use crate::wrappers::Direction;
 use crate::wrappers::TEdge;
 use crate::graph::Graph;
-use crate::algorithms::triangle_count; 
-
+use crate::algorithms::triangle_count;
 #[pymodule]
-fn pyraphtory(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
+fn pyraphtory(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_class::<Direction>()?;
     m.add_class::<Graph>()?;
     m.add_class::<TEdge>()?;
-    let submod = PyModule::new(_py, "algorithms")?;
-    submod.add_wrapped(wrap_pyfunction!(triangle_count))?;
-    m.add_submodule(submod)?;
+    let algorithm_module = PyModule::new(py, "algorithms")?;
+    // m.add_submodule(algorithms::create_submodule(py)?)?;
+    algorithm_module.add_function(wrap_pyfunction!(triangle_count, algorithm_module)?)?;
+    m.add_submodule(algorithm_module)?;
     Ok(())
 }
