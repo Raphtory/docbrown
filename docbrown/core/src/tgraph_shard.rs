@@ -34,22 +34,13 @@ impl<'a> From<EdgeView<'a, TemporalGraph>> for TEdge {
 pub struct TVertex {
     pub g_id: u64,
     pub w: Option<Range<i64>>,
-    pub props: Option<HashMap<String, Vec<(i64, Prop)>>>,
 }
 
 impl<'a> From<VertexView<'a, TemporalGraph>> for TVertex {
     fn from(v: VertexView<'a, TemporalGraph>) -> Self {
-        let w = v.w.clone();
-        let props = if w.is_none() {
-            v.all_props()
-        } else {
-            v.all_props_window(w.clone().unwrap())
-        };
-
         Self {
             g_id: v.g_id,
-            w: w.clone(),
-            props,
+            w: v.w.clone(),
         }
     }
 }
@@ -237,12 +228,7 @@ impl TGraphShard {
         Box::new(iter.into_iter())
     }
 
-    pub fn edges_window(
-        &self,
-        v: u64,
-        r: Range<i64>,
-        d: Direction,
-    ) -> impl Iterator<Item = TEdge> {
+    pub fn edges_window(&self, v: u64, r: Range<i64>, d: Direction) -> impl Iterator<Item = TEdge> {
         let tgshard = self.clone();
         let vertices_iter = gen!({
             let g = tgshard.rc.blocking_read();

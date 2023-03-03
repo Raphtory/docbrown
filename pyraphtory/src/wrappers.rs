@@ -1,5 +1,3 @@
-use std::{collections::HashMap, sync::Arc};
-
 use pyo3::prelude::*;
 
 use db_c::tgraph_shard;
@@ -116,37 +114,12 @@ impl From<tgraph_shard::TEdge> for TEdge {
 pub struct TVertex {
     #[pyo3(get)]
     pub g_id: u64,
-    #[pyo3(get)]
-    pub props: Option<HashMap<String, Vec<(i64, Prop)>>>,
 }
 
 impl From<tgraph_shard::TVertex> for TVertex {
     fn from(value: tgraph_shard::TVertex) -> TVertex {
-        let tgraph_shard::TVertex {
-            g_id,
-            props: maybe_props,
-            ..
-        } = value;
-
-        if let Some(props) = maybe_props {
-            let vs = props
-                .iter()
-                .map(|(k, v)| {
-                    (
-                        k.clone(),
-                        v.iter()
-                            .map(move |(t, p)| (*t, (*p).clone().into()))
-                            .collect::<Vec<(i64, Prop)>>(),
-                    )
-                })
-                .collect::<HashMap<String, Vec<(i64, Prop)>>>();
-            TVertex {
-                g_id,
-                props: Some(vs),
-            }
-        } else {
-            TVertex { g_id, props: None }
-        }
+        let tgraph_shard::TVertex { g_id, .. } = value;
+        TVertex { g_id }
     }
 }
 

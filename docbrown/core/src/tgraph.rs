@@ -507,6 +507,96 @@ impl TemporalGraph {
             }
         }))
     }
+
+    pub(crate) fn vertex_props(
+        &self,
+        v: u64,
+        name: &str,
+    ) -> Option<Box<dyn Iterator<Item = (&i64, Prop)> + '_>> {
+        let index = self.logical_to_physical.get(&v)?;
+        let meta = self.props.vertex_meta.get(*index)?;
+        let prop_id = self.props.prop_ids.get(name)?;
+        Some(meta.iter(*prop_id))
+    }
+
+    pub(crate) fn vertex_props_window(
+        &self,
+        name: &str,
+        v: u64,
+        r: Range<i64>,
+    ) -> Option<Box<dyn Iterator<Item = (&i64, Prop)> + '_>> {
+        let index = self.logical_to_physical.get(&v)?;
+        let meta = self.props.vertex_meta.get(*index)?;
+        let prop_id = self.props.prop_ids.get(name)?;
+        Some(meta.iter_window(*prop_id, r))
+    }
+
+    pub(crate) fn vertex_all_props<T: From<Prop>>(
+        &self,
+        v: u64,
+    ) -> Option<HashMap<String, Vec<(i64, T)>>> {
+        let index = self.logical_to_physical.get(&v)?;
+        let meta = self.props.vertex_meta.get(*index)?;
+
+        let mut hm: HashMap<String, Vec<(i64, T)>> = HashMap::new();
+
+        self.props.prop_ids.iter().for_each(|(k, v)| {
+            if hm.contains_key(k) {
+                let vs = hm.get_mut(k).unwrap();
+                vs.append(
+                    &mut meta
+                        .iter(*v)
+                        .map(|(x, y)| (*x, y.into()))
+                        .collect::<Vec<(i64, T)>>(),
+                )
+            } else {
+                let value = meta
+                    .iter(*v)
+                    .map(|(x, y)| (*x, y.into()))
+                    .collect::<Vec<(i64, T)>>();
+                if !value.is_empty() {
+                    // self.g.props.prop_ids returns all prop ids, including edge property ids
+                    hm.insert(k.clone(), Vec::from(value));
+                }
+            }
+        });
+
+        Some(hm) // Don't return "None" if hm.is_empty for Some({}) gets translated as {} in python
+    }
+
+    pub(crate) fn vertex_all_props_window<T: From<Prop>>(
+        &self,
+        v: u64,
+        r: Range<i64>,
+    ) -> Option<HashMap<String, Vec<(i64, T)>>> {
+        let index = self.logical_to_physical.get(&v)?;
+        let meta = self.props.vertex_meta.get(*index)?;
+
+        let mut hm: HashMap<String, Vec<(i64, T)>> = HashMap::new();
+
+        self.props.prop_ids.iter().for_each(|(k, v)| {
+            if hm.contains_key(k) {
+                let vs = hm.get_mut(k).unwrap();
+                vs.append(
+                    &mut meta
+                        .iter_window(*v, r.clone())
+                        .map(|(x, y)| (*x, y.into()))
+                        .collect::<Vec<(i64, T)>>(),
+                )
+            } else {
+                let value = meta
+                    .iter_window(*v, r.clone())
+                    .map(|(x, y)| (*x, y.into()))
+                    .collect::<Vec<(i64, T)>>();
+                if !value.is_empty() {
+                    // self.g.props.prop_ids returns all prop ids, including edge property ids
+                    hm.insert(k.clone(), Vec::from(value));
+                }
+            }
+        });
+
+        Some(hm) // Don't return "None" if hm.is_empty for Some({}) gets translated as {} in python
+    }
 }
 
 impl TemporalGraph {
@@ -693,93 +783,6 @@ impl<'a, G> VertexView<'a, G> {
     }
 }
 
-impl<'a> VertexView<'a, TemporalGraph> {
-    pub fn graph(&self) -> &TemporalGraph {
-        self.g
-    }
-
-    pub fn props(&self, name: &'a str) -> Option<Box<dyn Iterator<Item = (&'a i64, Prop)> + 'a>> {
-        let index = self.g.logical_to_physical.get(&self.g_id)?;
-        let meta = self.g.props.vertex_meta.get(*index)?;
-        let prop_id = self.g.props.prop_ids.get(name)?;
-        Some(meta.iter(*prop_id))
-    }
-
-    pub fn props_window(
-        &self,
-        name: &'a str,
-        r: Range<i64>,
-    ) -> Option<Box<dyn Iterator<Item = (&'a i64, Prop)> + 'a>> {
-        let index = self.g.logical_to_physical.get(&self.g_id)?;
-        let meta = self.g.props.vertex_meta.get(*index)?;
-        let prop_id = self.g.props.prop_ids.get(name)?;
-        Some(meta.iter_window(*prop_id, r))
-    }
-
-    pub fn all_props<T: From<Prop>>(&self) -> Option<HashMap<String, Vec<(i64, T)>>> {
-        let index = self.g.logical_to_physical.get(&self.g_id)?;
-        let meta = self.g.props.vertex_meta.get(*index)?;
-
-        let mut hm: HashMap<String, Vec<(i64, T)>> = HashMap::new();
-
-        self.g.props.prop_ids.iter().for_each(|(k, v)| {
-            if hm.contains_key(k) {
-                let vs = hm.get_mut(k).unwrap();
-                vs.append(
-                    &mut meta
-                        .iter(*v)
-                        .map(|(x, y)| (*x, y.into()))
-                        .collect::<Vec<(i64, T)>>(),
-                )
-            } else {
-                let value = meta
-                    .iter(*v)
-                    .map(|(x, y)| (*x, y.into()))
-                    .collect::<Vec<(i64, T)>>();
-                if !value.is_empty() {
-                    // self.g.props.prop_ids returns all prop ids, including edge property ids
-                    hm.insert(k.clone(), Vec::from(value));
-                }
-            }
-        });
-
-        Some(hm) // Don't return "None" if hm.is_empty for Some({}) gets translated as {} in python
-    }
-
-    pub fn all_props_window<T: From<Prop>>(
-        &self,
-        r: Range<i64>,
-    ) -> Option<HashMap<String, Vec<(i64, T)>>> {
-        let index = self.g.logical_to_physical.get(&self.g_id)?;
-        let meta = self.g.props.vertex_meta.get(*index)?;
-
-        let mut hm: HashMap<String, Vec<(i64, T)>> = HashMap::new();
-
-        self.g.props.prop_ids.iter().for_each(|(k, v)| {
-            if hm.contains_key(k) {
-                let vs = hm.get_mut(k).unwrap();
-                vs.append(
-                    &mut meta
-                        .iter_window(*v, r.clone())
-                        .map(|(x, y)| (*x, y.into()))
-                        .collect::<Vec<(i64, T)>>(),
-                )
-            } else {
-                let value = meta
-                    .iter_window(*v, r.clone())
-                    .map(|(x, y)| (*x, y.into()))
-                    .collect::<Vec<(i64, T)>>();
-                if !value.is_empty() {
-                    // self.g.props.prop_ids returns all prop ids, including edge property ids
-                    hm.insert(k.clone(), Vec::from(value));
-                }
-            }
-        });
-
-        Some(hm) // Don't return "None" if hm.is_empty for Some({}) gets translated as {} in python
-    }
-}
-
 pub(crate) struct EdgeView<'a, G: Sized> {
     src_id: usize,
     dst_id: usize,
@@ -877,7 +880,7 @@ mod graph_test {
 
         let res = g
             .vertices()
-            .flat_map(|v| v.props("type"))
+            .flat_map(|v| g.vertex_props(v.g_id, "type"))
             .flat_map(|v| v.collect::<Vec<_>>())
             .collect::<Vec<_>>();
 
@@ -900,8 +903,12 @@ mod graph_test {
         let res = g
             .vertices()
             .flat_map(|v| {
-                let type_ = v.props("type").map(|x| x.collect::<Vec<_>>());
-                let active = v.props("active").map(|x| x.collect::<Vec<_>>());
+                let type_ = g
+                    .vertex_props(v.g_id, "type")
+                    .map(|x| x.collect::<Vec<_>>());
+                let active = g
+                    .vertex_props(v.g_id, "active")
+                    .map(|x| x.collect::<Vec<_>>());
                 type_.zip(active).map(|(mut x, mut y)| {
                     x.append(&mut y);
                     x
@@ -950,9 +957,11 @@ mod graph_test {
         let res: Vec<(&i64, Prop)> = g
             .vertices()
             .flat_map(|v| {
-                let type_ = v.props_window("type", 2..3).map(|x| x.collect::<Vec<_>>());
-                let active = v
-                    .props_window("active", 2..3)
+                let type_ = g
+                    .vertex_props_window("type", v.g_id, 2..3)
+                    .map(|x| x.collect::<Vec<_>>());
+                let active = g
+                    .vertex_props_window("active", v.g_id, 2..3)
                     .map(|x| x.collect::<Vec<_>>());
                 type_.zip(active).map(|(mut x, mut y)| {
                     x.append(&mut y);
@@ -995,13 +1004,17 @@ mod graph_test {
         let res = g
             .vertices()
             .flat_map(|v| {
-                let type_ = v.props_window("type", 1..2).map(|x| x.collect::<Vec<_>>());
-                let active = v
-                    .props_window("active", 2..5)
+                let type_ = g
+                    .vertex_props_window("type", v.g_id, 1..2)
                     .map(|x| x.collect::<Vec<_>>());
-                let label = v.props_window("label", 2..5).map(|x| x.collect::<Vec<_>>());
-                let origin = v
-                    .props_window("origin", 2..5)
+                let active = g
+                    .vertex_props_window("active", v.g_id, 2..5)
+                    .map(|x| x.collect::<Vec<_>>());
+                let label = g
+                    .vertex_props_window("label", v.g_id, 2..5)
+                    .map(|x| x.collect::<Vec<_>>());
+                let origin = g
+                    .vertex_props_window("origin", v.g_id, 2..5)
                     .map(|x| x.collect::<Vec<_>>());
                 type_
                     .zip(active)
