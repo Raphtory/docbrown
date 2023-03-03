@@ -51,17 +51,17 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: release
-          args: --exclude examples --push-remote ${{ input.version }} --no-publish --no-confirm ${{ input.version }}
+          args: --exclude examples --push-remote ${{ inputs.version }} --no-publish --no-confirm ${{ inputs.version }}
       - name: "Make PR"
         uses: peter-evans/create-pull-request@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          base: ${{ input.base }}
-          branch: v${{ input.version }}
-          commit-message: "Release v${{ input.version }}"
-          title: "Release v${{ input.version }}"
+          base: ${{ inputs.base }}
+          branch: v${{ inputs.version }}
+          commit-message: "Release v${{ inputs.version }}"
+          title: "Release v${{ inputs.version }}"
           body: |
-            Release v${{ input.version }}
+            Release v${{ inputs.version }}
             - [x] Publish to crates.io
             - [x] Publish to PyPi
             - [x] Make Tag
@@ -167,10 +167,10 @@ jobs:
 #            target/wheels/pyraphtory/pyraphtory-*.whl
 #          draft: false
 #          prerelease: false
-#          tag_name: v${{ input.version }}
-#          name: v${{ input.version }}
+#          tag_name: v${{ inputs.version }}
+#          name: v${{ inputs.version }}
 #          body: |
-#            Release v${{ input.version }}
+#            Release v${{ inputs.version }}
 #            - [x] Publish to crates.io
 #            - [x] Publish to PyPi
 #            - [x] Make Tag
