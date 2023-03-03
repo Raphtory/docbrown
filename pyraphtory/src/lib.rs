@@ -15,8 +15,7 @@ fn pyraphtory(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_class::<Direction>()?;
     m.add_class::<Graph>()?;
     m.add_class::<TEdge>()?;
-    let algorithm_module = PyModule::new(py, "pyraphtory")?;
-    // m.add_submodule(algorithms::create_submodule(py)?)?;
+    let algorithm_module = PyModule::new(py, "algorithms")?;
     algorithm_module.add_function(wrap_pyfunction!(triangle_count, algorithm_module)?)?;
     m.add_submodule(algorithm_module)?;
     Ok(())

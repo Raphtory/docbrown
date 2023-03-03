@@ -154,6 +154,5 @@ def test_local_triangle_count():
 
     view = g.window(0, 4)
     triangles = algorithms.triangle_count(view, 1)
-    # print("my module", algorithms.triangle_count(view, 1))
 
     assert triangles == 1
