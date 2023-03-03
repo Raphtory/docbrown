@@ -133,6 +133,24 @@ impl WindowedVertex {
             iter: Box::new(self.vertex_w.out_neighbours().map(|tv| tv.into())),
         }
     }
+
+    pub fn neighbours_ids(&self) -> VertexIdsIterator {
+        VertexIdsIterator {
+            iter: Box::new(self.vertex_w.neighbours_ids()),
+        }
+    }
+
+    pub fn in_neighbours_ids(&self) -> VertexIdsIterator {
+        VertexIdsIterator {
+            iter: Box::new(self.vertex_w.in_neighbours_ids()),
+        }
+    }
+
+    pub fn out_neighbours_ids(&self) -> VertexIdsIterator {
+        VertexIdsIterator {
+            iter: Box::new(self.vertex_w.out_neighbours_ids()),
+        }
+    }
 }
 
 #[pyclass]

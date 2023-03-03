@@ -282,6 +282,45 @@ impl TGraphShard {
         iter.into_iter()
     }
 
+    pub fn neighbours_ids(&self, v: u64, d: Direction) -> impl Iterator<Item = u64>
+    where
+        Self: Sized,
+    {
+        let tgshard = self.clone();
+        let iter = gen!({
+            let g = tgshard.rc.blocking_read();
+            let chunks = (*g).neighbours_ids(v, d);
+            let iter = chunks.into_iter();
+            for v_id in iter {
+                yield_!(v_id)
+            }
+        });
+
+        iter.into_iter()
+    }
+
+    pub fn neighbours_ids_window(
+        &self,
+        v: u64,
+        w: Range<i64>,
+        d: Direction,
+    ) -> impl Iterator<Item = u64>
+    where
+        Self: Sized,
+    {
+        let tgshard = self.clone();
+        let iter = gen!({
+            let g = tgshard.rc.blocking_read();
+            let chunks = (*g).neighbours_ids_window(v, &w, d);
+            let iter = chunks.into_iter();
+            for v_id in iter {
+                yield_!(v_id)
+            }
+        });
+
+        iter.into_iter()
+    }
+
     pub fn vertex_prop_vec(&self, v: u64, name: String) -> Vec<(i64, Prop)> {
         self.read_shard(|tg| tg.vertex_prop_vec(v, &name).unwrap_or_else(|| vec![]))
     }

@@ -493,6 +493,29 @@ impl TemporalGraph {
         }))
     }
 
+    pub(crate) fn neighbours_ids(
+        &self,
+        v: u64,
+        d: Direction,
+    ) -> Box<dyn Iterator<Item = u64> + Send + '_>
+    where
+        Self: Sized,
+    {
+        Box::new(self.neighbours(v, d).map(|vv| vv.g_id))
+    }
+
+    pub(crate) fn neighbours_ids_window(
+        &self,
+        v: u64,
+        w: &Range<i64>,
+        d: Direction,
+    ) -> Box<dyn Iterator<Item = u64> + Send + '_>
+    where
+        Self: Sized,
+    {
+        Box::new(self.neighbours_window(v, w, d).map(|vv| vv.g_id))
+    }
+
     pub(crate) fn vertex_prop(
         &self,
         v: u64,

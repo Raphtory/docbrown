@@ -171,6 +171,34 @@ def test_windowed_graph_neighbours():
 
     assert out_neighbours == [[1, 2, 3], [1], [2]]
 
+def test_windowed_graph_neighbours_ids():
+    g = create_graph(1)
+
+    max_size = sys.maxsize
+    min_size = -sys.maxsize - 1
+
+    view = g.window(min_size, max_size)
+
+    vertices_w = [v.neighbours_ids() for v in view.vertices()]
+    neighbours_ids = []
+    for v_iter in vertices_w:
+        neighbours_ids.append([v for v in v_iter])
+
+    assert neighbours_ids == [[1, 2, 1, 2, 3], [1, 3, 1], [1, 2]]
+
+    vertices_w = [v.in_neighbours_ids() for v in view.vertices()]
+    in_neighbours_ids = []
+    for v_iter in vertices_w:
+        in_neighbours_ids.append([v for v in v_iter])
+
+    assert in_neighbours_ids == [[1, 2], [1, 3], [1]]
+    
+    vertices_w = [v.out_neighbours_ids() for v in view.vertices()]
+    out_neighbours_ids = []
+    for v_iter in vertices_w:
+        out_neighbours_ids.append([v for v in v_iter])
+
+    assert out_neighbours_ids == [[1, 2, 3], [1], [2]]
 
 def test_windowed_graph_vertex_prop():
     g = create_graph(1)

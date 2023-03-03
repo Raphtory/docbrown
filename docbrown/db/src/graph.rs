@@ -7,7 +7,7 @@ use std::{
 };
 
 use docbrown_core::{
-    tgraph::{VertexView, EdgeView},
+    tgraph::{EdgeView, VertexView},
     tgraph_shard::{TEdge, TGraphShard},
     utils, Direction, Prop,
 };
@@ -211,6 +211,21 @@ impl Graph {
     ) -> Box<dyn Iterator<Item = VertexView> + Send> {
         let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
         let iter = self.shards[shard_id].neighbours_window(v, t_start..t_end, d);
+        Box::new(iter)
+    }
+
+    pub(crate) fn neighbours_ids_window(
+        &self,
+        v: u64,
+        t_start: i64,
+        t_end: i64,
+        d: Direction,
+    ) -> Box<dyn Iterator<Item = u64> + Send>
+    where
+        Self: Sized,
+    {
+        let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
+        let iter = self.shards[shard_id].neighbours_ids_window(v, t_start..t_end, d);
         Box::new(iter)
     }
 

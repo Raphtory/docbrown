@@ -193,6 +193,33 @@ impl WindowedVertex {
                 .map(move |tv| WindowedVertex::from(tv, wg.clone())),
         )
     }
+
+    pub fn neighbours_ids(&self) -> Box<dyn Iterator<Item = u64> + Send> {
+        Box::new(self.graph_w.graph.neighbours_ids_window(
+            self.g_id,
+            self.graph_w.t_start,
+            self.graph_w.t_end,
+            Direction::BOTH,
+        ))
+    }
+
+    pub fn in_neighbours_ids(&self) -> Box<dyn Iterator<Item = u64> + Send> {
+        Box::new(self.graph_w.graph.neighbours_ids_window(
+            self.g_id,
+            self.graph_w.t_start,
+            self.graph_w.t_end,
+            Direction::IN,
+        ))
+    }
+
+    pub fn out_neighbours_ids(&self) -> Box<dyn Iterator<Item = u64> + Send> {
+        Box::new(self.graph_w.graph.neighbours_ids_window(
+            self.g_id,
+            self.graph_w.t_start,
+            self.graph_w.t_end,
+            Direction::OUT,
+        ))
+    }
 }
 
 pub struct WindowedEdge {
