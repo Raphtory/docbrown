@@ -237,26 +237,22 @@ impl TemporalGraph {
         }
     }
 
-    pub(crate) fn vertex(&self, v: u64) -> Option<VertexView<'_, Self>> {
+    pub(crate) fn vertex(&self, v: u64) -> Option<VertexView> {
         let pid = self.logical_to_physical.get(&v)?;
         let r = i64::MIN..i64::MAX;
         Some(match self.adj_lists[*pid] {
             Adj::Solo(lid) => VertexView {
                 g_id: lid,
                 pid: *pid,
-                g: self,
-                w: Some(r.clone()),
             },
             Adj::List { logical, .. } => VertexView {
                 g_id: logical,
                 pid: *pid,
-                g: self,
-                w: Some(r.clone()),
             },
         })
     }
 
-    pub(crate) fn vertex_window(&self, v: u64, r: &Range<i64>) -> Option<VertexView<'_, Self>> {
+    pub(crate) fn vertex_window(&self, v: u64, r: &Range<i64>) -> Option<VertexView> {
         let pid = self.logical_to_physical.get(&v)?;
         let w = r.clone();
         let mut vs = self.index.range(w.clone()).flat_map(|(_, vs)| vs.iter());
@@ -266,14 +262,10 @@ impl TemporalGraph {
                 Adj::Solo(lid) => VertexView {
                     g_id: lid,
                     pid: *pid,
-                    g: self,
-                    w: Some(w),
                 },
                 Adj::List { logical, .. } => VertexView {
                     g_id: logical,
                     pid: *pid,
-                    g: self,
-                    w: Some(w),
                 },
             }),
             false => None,
@@ -301,7 +293,7 @@ impl TemporalGraph {
         )
     }
 
-    pub(crate) fn vertices(&self) -> Box<dyn Iterator<Item = VertexView<'_, Self>> + Send + '_> {
+    pub(crate) fn vertices(&self) -> Box<dyn Iterator<Item = VertexView> + Send + '_> {
         Box::new(
             self.adj_lists
                 .iter()
@@ -309,8 +301,6 @@ impl TemporalGraph {
                 .map(|(pid, v)| VertexView {
                     g_id: *v.logical(),
                     pid,
-                    g: self,
-                    w: None,
                 }),
         )
     }
@@ -318,7 +308,7 @@ impl TemporalGraph {
     pub(crate) fn vertices_window(
         &self,
         r: Range<i64>,
-    ) -> Box<dyn Iterator<Item = VertexView<'_, Self>> + Send + '_> {
+    ) -> Box<dyn Iterator<Item = VertexView> + Send + '_> {
         let unique_vids = self
             .index
             .range(r.clone())
@@ -327,18 +317,8 @@ impl TemporalGraph {
             .dedup();
 
         let vs = unique_vids.map(move |pid| match self.adj_lists[pid] {
-            Adj::Solo(lid) => VertexView {
-                g_id: lid,
-                pid,
-                g: self,
-                w: Some(r.clone()),
-            },
-            Adj::List { logical, .. } => VertexView {
-                g_id: logical,
-                pid,
-                g: self,
-                w: Some(r.clone()),
-            },
+            Adj::Solo(lid) => VertexView { g_id: lid, pid },
+            Adj::List { logical, .. } => VertexView { g_id: logical, pid },
         });
 
         Box::new(vs)
@@ -462,7 +442,7 @@ impl TemporalGraph {
         &self,
         v: u64,
         d: Direction,
-    ) -> Box<dyn Iterator<Item = VertexView<'_, Self>> + Send + '_>
+    ) -> Box<dyn Iterator<Item = VertexView> + Send + '_>
     where
         Self: Sized,
     {
@@ -475,9 +455,9 @@ impl TemporalGraph {
             let dst_g_id = edge.global_dst();
 
             if v == src_g_id {
-                VertexView::new(self, dst_g_id, dst_id, None)
+                VertexView::new(dst_g_id, dst_id)
             } else {
-                VertexView::new(self, src_g_id, src_id, None)
+                VertexView::new(src_g_id, src_id)
             }
         }))
     }
@@ -487,7 +467,7 @@ impl TemporalGraph {
         v: u64,
         w: &Range<i64>,
         d: Direction,
-    ) -> Box<dyn Iterator<Item = VertexView<'_, Self>> + Send + '_>
+    ) -> Box<dyn Iterator<Item = VertexView> + Send + '_>
     where
         Self: Sized,
     {
@@ -501,9 +481,9 @@ impl TemporalGraph {
             let dst_g_id = edge.global_dst();
 
             if v == src_g_id {
-                VertexView::new(self, dst_g_id, dst_id, Some(w_clone.clone()))
+                VertexView::new(dst_g_id, dst_id)
             } else {
-                VertexView::new(self, src_g_id, src_id, Some(w_clone.clone()))
+                VertexView::new(src_g_id, src_id)
             }
         }))
     }
@@ -770,16 +750,14 @@ impl TemporalGraph {
 
 // helps us track what are we iterating over
 #[derive(Debug, PartialEq)]
-pub(crate) struct VertexView<'a, G> {
+pub(crate) struct VertexView {
     pub(crate) g_id: u64,
     pub(crate) pid: usize, // this needs to be Option<pid> if we ever want to map from EdgeView to VertexView, some edges are remote
-    pub(crate) g: &'a G,
-    pub(crate) w: Option<Range<i64>>,
 }
 
-impl<'a, G> VertexView<'a, G> {
-    pub fn new(g: &'a G, g_id: u64, pid: usize, w: Option<Range<i64>>) -> Self {
-        Self { g_id, pid, g, w }
+impl VertexView {
+    pub fn new(g_id: u64, pid: usize) -> Self {
+        Self { g_id, pid }
     }
 }
 
@@ -2003,8 +1981,6 @@ mod graph_test {
         let expected = Some(VertexView {
             g_id: 1,
             pid,
-            g: &g,
-            w: Some(i64::MIN..i64::MAX),
         });
 
         assert_eq!(actual, expected);
@@ -2018,8 +1994,6 @@ mod graph_test {
         let expected = Some(VertexView {
             g_id: 1,
             pid,
-            g: &g,
-            w: Some(0..3),
         });
 
         assert_eq!(actual, expected);

@@ -33,15 +33,11 @@ impl<'a> From<EdgeView<'a, TemporalGraph>> for TEdge {
 #[derive(Debug)]
 pub struct TVertex {
     pub g_id: u64,
-    pub w: Option<Range<i64>>,
 }
 
-impl<'a> From<VertexView<'a, TemporalGraph>> for TVertex {
-    fn from(v: VertexView<'a, TemporalGraph>) -> Self {
-        Self {
-            g_id: v.g_id,
-            w: v.w.clone(),
-        }
+impl From<VertexView> for TVertex {
+    fn from(v: VertexView) -> Self {
+        Self { g_id: v.g_id }
     }
 }
 

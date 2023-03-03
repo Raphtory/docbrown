@@ -363,7 +363,7 @@ impl Eval for TemporalGraph {
             let iter = if !cur_active_set.is_all() {
                 let active_vertices_iter = cur_active_set.iter().map(|pid| {
                     let g_id = self.adj_lists[*pid].logical();
-                    VertexView::new(self, *g_id, *pid, Some(window.clone()))
+                    VertexView::new(*g_id, *pid)
                 });
                 Box::new(active_vertices_iter)
             } else {
@@ -372,7 +372,10 @@ impl Eval for TemporalGraph {
 
             // iterate over the active vertices
             for v_view in iter {
-                let mut eval_v_view = EvalVertexView { vv: v_view };
+                let mut eval_v_view = EvalVertexView {
+                    vv: v_view,
+                    g: self,
+                };
                 let next_vertices = f(&mut eval_v_view, &mut ctx);
                 for next_vertex in next_vertices {
                     next_active_set.insert(next_vertex.pid());
@@ -382,8 +385,14 @@ impl Eval for TemporalGraph {
             // from the next_active_set we apply the PRED
             next_active_set.retain(|pid| {
                 let g_id = self.adj_lists[*pid].logical();
-                let v_view = VertexView::new(self, *g_id, *pid, Some(window.clone()));
-                having(&EvalVertexView { vv: v_view }, &mut ctx)
+                let v_view = VertexView::new(*g_id, *pid);
+                having(
+                    &EvalVertexView {
+                        vv: v_view,
+                        g: self,
+                    },
+                    &mut ctx,
+                )
             });
 
             cur_active_set = WorkingSet::Set(next_active_set);
@@ -397,7 +406,8 @@ impl Eval for TemporalGraph {
 // view over the vertex
 // this includes the state during the evaluation
 pub struct EvalVertexView<'a, G> {
-    vv: VertexView<'a, G>,
+    vv: VertexView,
+    pub(crate) g: &'a G,
 }
 
 // here we implement the Fn trait for the EvalVertexView to return Option<AccumulatorEntry>
@@ -429,10 +439,9 @@ impl<'a> EvalVertexView<'a, TemporalGraph> {
         &'a self,
         d: Direction,
     ) -> impl Iterator<Item = EvalVertexView<'a, TemporalGraph>> {
-        self.vv
-            .g
+        self.g
             .neighbours(self.vv.g_id, d)
-            .map(move |vv| EvalVertexView { vv })
+            .map(move |vv| EvalVertexView { vv, g: self.g })
     }
 }
 
