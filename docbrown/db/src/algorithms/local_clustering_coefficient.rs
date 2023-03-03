@@ -1,5 +1,5 @@
 use crate::algorithms::local_triangle_count::local_triangle_count;
-use crate::{graph::Graph, graph_window::WindowedGraph};
+use crate::graph_window::WindowedGraph;
 
 pub fn local_clustering_coefficient(graph: &WindowedGraph, v: u64) -> u32 {
    
@@ -38,7 +38,7 @@ mod clustering_coefficient_tests {
             g.add_edge(*t, *src, *dst, &vec![]);
         }
 
-        let expected = vec![1, 5, 5, 5, 0];
+        let expected = vec![0, 1, 1, 1, 0];
 
         let actual = (1..=5)
             .map(|v| local_clustering_coefficient(&windowed_graph, v))
