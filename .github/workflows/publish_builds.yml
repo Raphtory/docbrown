@@ -51,7 +51,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: release
-          args: --exclude examples --exclude pyraphtory --push-remote ${{ inputs.version }} --no-publish --no-confirm ${{ inputs.version }}
+          args: --exclude examples --exclude pyraphtory --push-remote ${{ inputs.version }} --no-confirm ${{ inputs.version }}
       - name: "Make PR"
         uses: peter-evans/create-pull-request@v4
         with:
