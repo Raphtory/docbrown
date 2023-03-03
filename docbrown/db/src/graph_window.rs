@@ -3,6 +3,7 @@ use docbrown_core::{
     tgraph_shard::{TEdge, TVertex},
     Direction,
 };
+use futures::io::Window;
 
 use std::sync::Arc;
 
@@ -89,30 +90,48 @@ impl WindowedVertex {
         )
     }
 
-    pub fn edges(&self) -> Box<dyn Iterator<Item = TEdge> + Send> {
-        self.graph_w.graph.edges_window(
-            self.g_id,
-            self.graph_w.t_start,
-            self.graph_w.t_end,
-            Direction::BOTH,
+    pub fn edges(&self) -> Box<dyn Iterator<Item = WindowedEdge> + Send> {
+        let wg = self.graph_w.clone();
+        Box::new(
+            self.graph_w
+                .graph
+                .edges_window(
+                    self.g_id,
+                    self.graph_w.t_start,
+                    self.graph_w.t_end,
+                    Direction::BOTH,
+                )
+                .map(move |te| WindowedEdge::from(te, wg.clone())),
         )
     }
 
-    pub fn in_edges(&self) -> Box<dyn Iterator<Item = TEdge> + Send> {
-        self.graph_w.graph.edges_window(
-            self.g_id,
-            self.graph_w.t_start,
-            self.graph_w.t_end,
-            Direction::IN,
+    pub fn in_edges(&self) -> Box<dyn Iterator<Item = WindowedEdge> + Send> {
+        let wg = self.graph_w.clone();
+        Box::new(
+            self.graph_w
+                .graph
+                .edges_window(
+                    self.g_id,
+                    self.graph_w.t_start,
+                    self.graph_w.t_end,
+                    Direction::IN,
+                )
+                .map(move |te| WindowedEdge::from(te, wg.clone())),
         )
     }
 
-    pub fn out_edges(&self) -> Box<dyn Iterator<Item = TEdge> + Send> {
-        self.graph_w.graph.edges_window(
-            self.g_id,
-            self.graph_w.t_start,
-            self.graph_w.t_end,
-            Direction::OUT,
+    pub fn out_edges(&self) -> Box<dyn Iterator<Item = WindowedEdge> + Send> {
+        let wg = self.graph_w.clone();
+        Box::new(
+            self.graph_w
+                .graph
+                .edges_window(
+                    self.g_id,
+                    self.graph_w.t_start,
+                    self.graph_w.t_end,
+                    Direction::OUT,
+                )
+                .map(move |te| WindowedEdge::from(te, wg.clone())),
         )
     }
 
@@ -159,6 +178,26 @@ impl WindowedVertex {
                 )
                 .map(move |tv| WindowedVertex::from(tv, wg.clone())),
         )
+    }
+}
+
+pub struct WindowedEdge {
+    pub src: u64,
+    pub dst: u64,
+    pub t: Option<i64>,
+    pub is_remote: bool,
+    pub graph_w: Arc<WindowedGraph>,
+}
+
+impl WindowedEdge {
+    fn from(value: TEdge, graph_w: Arc<WindowedGraph>) -> Self {
+        Self {
+            src: value.src,
+            dst: value.dst,
+            t: value.t,
+            is_remote: value.is_remote,
+            graph_w,
+        }
     }
 }
 

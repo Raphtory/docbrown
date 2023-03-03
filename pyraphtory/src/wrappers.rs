@@ -4,7 +4,7 @@ use db_c::tgraph_shard;
 use docbrown_core as db_c;
 use docbrown_db as db_db;
 
-use crate::graph_window::WindowedVertex;
+use crate::graph_window::{WindowedEdge, WindowedVertex};
 
 #[pyclass]
 #[derive(Copy, Clone, PartialEq, Eq)]
@@ -154,16 +154,16 @@ impl WindowedVertexIterator {
 }
 
 #[pyclass]
-pub struct EdgeIterator {
-    pub(crate) iter: Box<dyn Iterator<Item = TEdge> + Send>,
+pub struct WindowedEdgeIterator {
+    pub(crate) iter: Box<dyn Iterator<Item = WindowedEdge> + Send>,
 }
 
 #[pymethods]
-impl EdgeIterator {
+impl WindowedEdgeIterator {
     fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
         slf
     }
-    fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<TEdge> {
+    fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<WindowedEdge> {
         slf.iter.next()
     }
 }

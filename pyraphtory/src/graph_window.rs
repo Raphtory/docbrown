@@ -73,20 +73,20 @@ impl WindowedVertex {
         self.vertex_w.out_degree()
     }
 
-    pub fn edges(&self) -> EdgeIterator {
-        EdgeIterator {
+    pub fn edges(&self) -> WindowedEdgeIterator {
+        WindowedEdgeIterator {
             iter: Box::new(self.vertex_w.edges().map(|te| te.into())),
         }
     }
 
-    pub fn in_edges(&self) -> EdgeIterator {
-        EdgeIterator {
+    pub fn in_edges(&self) -> WindowedEdgeIterator {
+        WindowedEdgeIterator {
             iter: Box::new(self.vertex_w.in_edges().map(|te| te.into())),
         }
     }
 
-    pub fn out_edges(&self) -> EdgeIterator {
-        EdgeIterator {
+    pub fn out_edges(&self) -> WindowedEdgeIterator {
+        WindowedEdgeIterator {
             iter: Box::new(self.vertex_w.out_edges().map(|te| te.into())),
         }
     }
@@ -106,6 +106,31 @@ impl WindowedVertex {
     pub fn out_neighbours(&self) -> WindowedVertexIterator {
         WindowedVertexIterator {
             iter: Box::new(self.vertex_w.out_neighbours().map(|tv| tv.into())),
+        }
+    }
+}
+
+#[pyclass]
+pub struct WindowedEdge {
+    #[pyo3(get)]
+    pub src: u64,
+    #[pyo3(get)]
+    pub dst: u64,
+    #[pyo3(get)]
+    pub t: Option<i64>,
+    #[pyo3(get)]
+    pub is_remote: bool,
+    pub(crate) edge_w: graph_window::WindowedEdge,
+}
+
+impl From<graph_window::WindowedEdge> for WindowedEdge {
+    fn from(value: graph_window::WindowedEdge) -> WindowedEdge {
+        WindowedEdge {
+            src: value.src,
+            dst: value.dst,
+            t: value.t,
+            is_remote: value.is_remote,
+            edge_w: value,
         }
     }
 }
