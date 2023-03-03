@@ -1,3 +1,4 @@
+use std::borrow::BorrowMut;
 use std::sync::Arc;
 
 use crate::{graph::Graph, wrappers::*};
@@ -8,15 +9,19 @@ use crate::wrappers::Perspective;
 
 #[pyclass]
 pub struct GraphWindowSet {
-    graph: Arc<docbrown_db::graph::Graph>,
-    perspectives: Py<PyIterator>,
+    window_set: graph_window::GraphWindowSet,
+}
+
+impl From<graph_window::GraphWindowSet> for GraphWindowSet {
+    fn from(value: graph_window::GraphWindowSet) -> Self {
+        GraphWindowSet::new(value)
+    }
 }
 
 impl GraphWindowSet {
-    pub fn new(graph: Arc<docbrown_db::graph::Graph>, perspectives: Py<PyIterator>) -> GraphWindowSet {
+    pub fn new(window_set: graph_window::GraphWindowSet) -> GraphWindowSet {
         GraphWindowSet {
-            graph,
-            perspectives,
+            window_set,
         }
     }
 }
@@ -27,12 +32,8 @@ impl GraphWindowSet {
         slf
     }
     fn __next__(mut slf: PyRefMut<'_, Self>, py: Python) -> Option<WindowedGraph> {
-        let py_perspective = slf.perspectives.call_method0(py, "next");
-        let perspective = py_perspective.ok()?.extract::<Perspective>(py).ok()?;
-        let wg = slf.graph.window(perspective.start, perspective.end);
-        Some(WindowedGraph {
-            graph_w: wg,
-        })
+        let windowed_graph = slf.window_set.next()?;
+        Some(windowed_graph.into())
     }
 }
 
@@ -40,6 +41,14 @@ impl GraphWindowSet {
 #[pyclass]
 pub struct WindowedGraph {
     pub(crate) graph_w: graph_window::WindowedGraph,
+}
+
+impl From<graph_window::WindowedGraph> for WindowedGraph {
+    fn from(value: graph_window::WindowedGraph) -> Self {
+        WindowedGraph {
+            graph_w: value,
+        }
+    }
 }
 
 #[pymethods]

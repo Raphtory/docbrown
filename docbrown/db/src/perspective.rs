@@ -7,7 +7,7 @@ pub struct Perspective {
 impl Perspective {
     pub fn new(start: i64, end: i64) -> Perspective {
         Perspective {
-            start, // inclusive
+            start, // inclusive // TODO these should be options!!
             end,   // exclusive
         }
     }
@@ -34,11 +34,15 @@ impl PerspectiveSet {
     pub fn back_windows(&mut self, size: u64) {
         self.window = Some(size as i64);
     }
+    pub fn set_timeline(self: &mut Self, start: i64, end: i64) { // TODO this should probably return an iterator...
+        self.cursor = start; // TODO override if it is not None or add additional param
+        self.end = end;
+    }
 }
 
 impl Iterator for PerspectiveSet {
     type Item = Perspective;
-    fn next(&mut self) -> Option<Perspective> {
+    fn next(&mut self) -> Option<Self::Item> {
         if self.cursor > self.end {
             None
         } else {

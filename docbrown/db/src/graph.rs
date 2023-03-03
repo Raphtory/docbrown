@@ -31,7 +31,12 @@ impl Graph {
         WindowedGraph::new(Arc::new(self.clone()), t_start, t_end)
     }
 
-    pub fn through(&self, perspectives: Box<dyn Iterator<Item=Perspective> + Send>) -> GraphWindowSet {
+    pub fn through_perspectives(&self, mut perspectives: PerspectiveSet) -> GraphWindowSet {
+        perspectives.set_timeline(0, 2); // TODO this doesnt do anything yet, we need to infer it from the graph
+        GraphWindowSet::new(Arc::new(self.clone()), Box::new(perspectives))
+    }
+
+    pub fn through_iter(&self, perspectives: Box<dyn Iterator<Item=Perspective> + Send>) -> GraphWindowSet  {
         GraphWindowSet::new(Arc::new(self.clone()), perspectives)
     }
 

@@ -1,13 +1,15 @@
 use pyo3::exceptions;
 use docbrown_core as dbc;
-use docbrown_db::graph;
+use docbrown_db::{graph, graph_window, perspective};
 use pyo3::prelude::*;
 use std::collections::HashMap;
+use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use pyo3::types::PyIterator;
 
 use crate::graph_window::{GraphWindowSet, WindowedGraph};
+use crate::Perspective;
 use crate::wrappers::Prop;
 use crate::wrappers::{Direction, PerspectiveSet};
 use crate::wrappers::EdgeIterator;
@@ -17,6 +19,25 @@ use crate::wrappers::VertexIterator;
 #[pyclass]
 pub struct Graph {
     pub(crate) graph: graph::Graph,
+}
+
+struct PyPerspectiveIterator {
+    pub iter: Py<PyIterator>,
+}
+
+// this is provided by the fact that the iter is handled by holding the GIL
+unsafe impl Send for PyPerspectiveIterator {}
+
+impl Iterator for PyPerspectiveIterator {
+    type Item = perspective::Perspective;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        Python::with_gil(|py| {
+            let item = self.iter.as_ref(py).next()?.ok()?;
+            let perspective = item.extract::<Perspective>().ok()?;
+            Some(perspective.into())
+        })
+    }
 }
 
 #[pymethods]
@@ -32,17 +53,17 @@ impl Graph {
         WindowedGraph::new(self, t_start, t_end)
     }
 
-    #[pyo3(name = "through")]
-    fn py_through(&self, perspectives: &PyAny) -> PyResult<GraphWindowSet> { // is this exposed even if private
-        let test = perspectives.extract::<PerspectiveSet>();
-        match test {
-            Ok(set) => println!("PerspectiveSet"),
-            Err(e) => println!("error"),
-        }
-        let iter = perspectives.iter()?;
-        let graph = Arc::new(self.graph.clone());
-        let gws = GraphWindowSet::new(graph, Py::from(iter));
-        Ok(gws)
+    fn through(&self, perspectives: &PyAny) -> PyResult<GraphWindowSet> {
+        let result = match perspectives.extract::<PerspectiveSet>() {
+            Ok(perspective_set) =>  self.graph.through_perspectives(perspective_set.ps),
+            Err(_) => {
+                let iter = PyPerspectiveIterator {
+                    iter: Py::from(perspectives.iter()?)
+                };
+                self.graph.through_iter(Box::new(iter))
+            }
+        };
+        Ok(result.into())
     }
 
     #[staticmethod]

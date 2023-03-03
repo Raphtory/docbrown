@@ -145,18 +145,17 @@ def test_windowed_graph_vertices():
 
     assert vertices == [1, 2]
 
+
 def test_perspective_set():
     g = create_graph(1)
 
     from pyraphtory import Perspective
 
-    windows = [Perspective(0, 2), Perspective(2, 4), Perspective(4, 6)]
+    windows = [Perspective(start=0, end=2), Perspective(2, 4), Perspective(4, 6)]
 
     for wg in g.through(windows):
         vertices = (wg.vertex_ids())
         print(vertices)
-
-
 
     # I want to create a set of windowed graphs and apply an algo over all of them:
 
@@ -177,5 +176,7 @@ def test_perspective_set():
     # 3:
     windows = Perspective.range(start=2, end=6, increment=2)
     windows.back_windows(2)
-    windowed_graphs = g.through(windows)
-    results = [wg.vertex_ids() for wg in windowed_graphs]
+    # windows.undirected()
+    for wg in g.through(windows):
+        vertices = (wg.vertex_ids())
+        print(vertices)

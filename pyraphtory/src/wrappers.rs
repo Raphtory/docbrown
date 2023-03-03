@@ -232,7 +232,7 @@ impl Perspective {
     #[staticmethod]
     pub fn range(start: i64, end: i64, increment: u64) -> PerspectiveSet {
         PerspectiveSet {
-            iter: perspective::Perspective::range(start, end, increment)
+            ps: perspective::Perspective::range(start, end, increment)
         }
     }
 }
@@ -246,11 +246,11 @@ impl From<perspective::Perspective> for Perspective {
     }
 }
 
-impl Into<perspective::Perspective> for Perspective {
-    fn into(self) -> perspective::Perspective {
+impl From<Perspective> for perspective::Perspective {
+    fn from(value: Perspective) -> Self {
         perspective::Perspective {
-            start: self.start,
-            end: self.end,
+            start: value.start,
+            end: value.end,
         }
     }
 }
@@ -258,19 +258,12 @@ impl Into<perspective::Perspective> for Perspective {
 #[pyclass]
 #[derive(Clone)]
 pub struct PerspectiveSet {
-    iter: docbrown_db::perspective::PerspectiveSet
+    pub(crate) ps: perspective::PerspectiveSet
 }
 
 #[pymethods]
 impl PerspectiveSet {
-    fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
-        slf
-    }
-    fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<Perspective> {
-        slf.iter.next().map(|p| p.into())
-    }
-
-    pub fn back_windows(&mut self, size: u64) {
-        self.iter.back_windows(size);
+    fn back_windows(&mut self, size: u64) {
+        self.ps.back_windows(size);
     }
 }
