@@ -202,6 +202,20 @@ impl Graph {
 
         Box::new(iter)
     }
+
+    pub(crate) fn neighbours_window(
+        &self,
+        v: u64,
+        t_start: i64,
+        t_end: i64,
+        d: Direction,
+    ) -> Box<dyn Iterator<Item = TVertex> + Send> {
+        let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
+
+        let iter = self.shards[shard_id].neighbours_window(v, t_start..t_end, d);
+
+        Box::new(iter)
+    }
 }
 
 #[cfg(test)]

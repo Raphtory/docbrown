@@ -141,3 +141,32 @@ def test_windowed_graph_vertices():
         vertices.append(v.g_id)
 
     assert vertices == [1, 2]
+
+def test_windowed_graph_neighbours():
+    g = create_graph(1)
+
+    max_size = sys.maxsize
+    min_size = -sys.maxsize - 1
+
+    view = g.window(min_size, max_size)
+
+    vertices_w = [v.neighbours() for v in view.vertices()]
+    neighbours = []
+    for v_iter in vertices_w:
+        neighbours.append([v.g_id for v in v_iter])
+
+    assert neighbours == [[1, 2, 1, 2, 3], [1, 3, 1], [1, 2]]
+
+    vertices_w = [v.in_neighbours() for v in view.vertices()]
+    in_neighbours = []
+    for v_iter in vertices_w:
+        in_neighbours.append([v.g_id for v in v_iter])
+
+    assert in_neighbours == [[1, 2], [1, 3], [1]]
+    
+    vertices_w = [v.out_neighbours() for v in view.vertices()]
+    out_neighbours = []
+    for v_iter in vertices_w:
+        out_neighbours.append([v.g_id for v in v_iter])
+
+    assert out_neighbours == [[1, 2, 3], [1], [2]]

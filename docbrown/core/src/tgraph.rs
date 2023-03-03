@@ -1917,6 +1917,70 @@ mod graph_test {
     }
 
     #[test]
+    fn vertex_neighbours() {
+        let mut g = TemporalGraph::default();
+
+        let triplets = vec![
+            (1, 1, 2),
+            (2, 1, 3),
+            (-1, 2, 1),
+            (0, 1, 1),
+            (7, 3, 2),
+            (1, 1, 1),
+        ];
+
+        for (t, src, dst) in triplets {
+            g.add_edge(t, src, dst);
+        }
+
+        let neighbours = g
+            .vertices()
+            .map(|v| {
+                (
+                    v.g_id,
+                    g.neighbours(v.g_id, Direction::IN)
+                        .map(|v| v.g_id)
+                        .collect_vec(),
+                    g.neighbours(v.g_id, Direction::OUT)
+                        .map(|v| v.g_id)
+                        .collect_vec(),
+                    g.neighbours(v.g_id, Direction::BOTH)
+                        .map(|v| v.g_id)
+                        .collect_vec(),
+                )
+            })
+            .collect_vec();
+
+        let w = i64::MIN..i64::MAX;
+        let neighbours_window = g
+            .vertices_window(w.clone())
+            .map(|v| {
+                (
+                    v.g_id,
+                    g.neighbours_window(v.g_id, &w, Direction::IN)
+                        .map(|v| v.g_id)
+                        .collect_vec(),
+                    g.neighbours_window(v.g_id, &w, Direction::OUT)
+                        .map(|v| v.g_id)
+                        .collect_vec(),
+                    g.neighbours_window(v.g_id, &w, Direction::BOTH)
+                        .map(|v| v.g_id)
+                        .collect_vec(),
+                )
+            })
+            .collect_vec();
+
+        let expected = vec![
+            (1, vec![1, 2], vec![1, 2, 3], vec![1, 2, 1, 2, 3]),
+            (2, vec![1, 3], vec![1], vec![1, 3, 1]),
+            (3, vec![1], vec![2], vec![1, 2]),
+        ];
+
+        assert_eq!(neighbours, expected);
+        assert_eq!(neighbours_window, expected);
+    }
+
+    #[test]
     fn find_vertex() {
         let mut g = TemporalGraph::default();
 

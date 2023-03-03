@@ -90,4 +90,22 @@ impl WindowedVertex {
             iter: Box::new(self.vertex_w.out_edges().map(|te| te.into())),
         }
     }
+
+    pub fn neighbours(&self) -> WindowedVertexIterator {
+        WindowedVertexIterator {
+            iter: Box::new(self.vertex_w.neighbours().map(|tv| tv.into())),
+        }
+    }
+
+    pub fn in_neighbours(&self) -> WindowedVertexIterator {
+        WindowedVertexIterator {
+            iter: Box::new(self.vertex_w.in_neighbours().map(|tv| tv.into())),
+        }
+    }
+
+    pub fn out_neighbours(&self) -> WindowedVertexIterator {
+        WindowedVertexIterator {
+            iter: Box::new(self.vertex_w.out_neighbours().map(|tv| tv.into())),
+        }
+    }
 }

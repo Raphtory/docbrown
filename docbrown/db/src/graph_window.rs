@@ -115,6 +115,51 @@ impl WindowedVertex {
             Direction::OUT,
         )
     }
+
+    pub fn neighbours(&self) -> Box<dyn Iterator<Item = WindowedVertex> + Send> {
+        let wg = self.graph_w.clone();
+        Box::new(
+            self.graph_w
+                .graph
+                .neighbours_window(
+                    self.g_id,
+                    self.graph_w.t_start,
+                    self.graph_w.t_end,
+                    Direction::BOTH,
+                )
+                .map(move |tv| WindowedVertex::from(tv, wg.clone())),
+        )
+    }
+
+    pub fn in_neighbours(&self) -> Box<dyn Iterator<Item = WindowedVertex> + Send> {
+        let wg = self.graph_w.clone();
+        Box::new(
+            self.graph_w
+                .graph
+                .neighbours_window(
+                    self.g_id,
+                    self.graph_w.t_start,
+                    self.graph_w.t_end,
+                    Direction::IN,
+                )
+                .map(move |tv| WindowedVertex::from(tv, wg.clone())),
+        )
+    }
+
+    pub fn out_neighbours(&self) -> Box<dyn Iterator<Item = WindowedVertex> + Send> {
+        let wg = self.graph_w.clone();
+        Box::new(
+            self.graph_w
+                .graph
+                .neighbours_window(
+                    self.g_id,
+                    self.graph_w.t_start,
+                    self.graph_w.t_end,
+                    Direction::OUT,
+                )
+                .map(move |tv| WindowedVertex::from(tv, wg.clone())),
+        )
+    }
 }
 
 #[cfg(test)]

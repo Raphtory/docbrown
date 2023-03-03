@@ -160,7 +160,7 @@ impl TGraphShard {
         self.read_shard(|tg| tg.vertex_window(v, &r).map(|vv| vv.into()))
     }
 
-    pub fn vertex_ids(&self) -> Box<impl Iterator<Item = u64> + Send> {
+    pub fn vertex_ids(&self) -> impl Iterator<Item = u64> {
         let tgshard = self.rc.clone();
         let iter: GenBoxed<u64> = GenBoxed::new_boxed(|co| async move {
             let g = tgshard.blocking_read();
@@ -170,10 +170,10 @@ impl TGraphShard {
             }
         });
 
-        Box::new(iter.into_iter())
+        iter.into_iter()
     }
 
-    pub fn vertex_ids_window(&self, r: Range<i64>) -> Box<impl Iterator<Item = u64> + Send> {
+    pub fn vertex_ids_window(&self, r: Range<i64>) -> impl Iterator<Item = u64> {
         let tgshard = self.rc.clone();
         let iter: GenBoxed<u64> = GenBoxed::new_boxed(|co| async move {
             let g = tgshard.blocking_read();
@@ -183,10 +183,10 @@ impl TGraphShard {
             }
         });
 
-        Box::new(iter.into_iter())
+        iter.into_iter()
     }
 
-    pub fn vertices(&self) -> Box<impl Iterator<Item = TVertex> + Send> {
+    pub fn vertices(&self) -> impl Iterator<Item = TVertex> {
         let tgshard = self.rc.clone();
         let iter: GenBoxed<TVertex> = GenBoxed::new_boxed(|co| async move {
             let g = tgshard.blocking_read();
@@ -197,10 +197,10 @@ impl TGraphShard {
             }
         });
 
-        Box::new(iter.into_iter())
+        iter.into_iter()
     }
 
-    pub fn vertices_window(&self, r: Range<i64>) -> Box<impl Iterator<Item = TVertex> + Send> {
+    pub fn vertices_window(&self, r: Range<i64>) -> impl Iterator<Item = TVertex> {
         let tgshard = self.rc.clone();
         let iter: GenBoxed<TVertex> = GenBoxed::new_boxed(|co| async move {
             let g = tgshard.blocking_read();
@@ -211,10 +211,10 @@ impl TGraphShard {
             }
         });
 
-        Box::new(iter.into_iter())
+        iter.into_iter()
     }
 
-    pub fn edges(&self, v: u64, d: Direction) -> Box<impl Iterator<Item = TEdge> + Send> {
+    pub fn edges(&self, v: u64, d: Direction) -> impl Iterator<Item = TEdge> {
         let tgshard = self.rc.clone();
         let iter: GenBoxed<TEdge> = GenBoxed::new_boxed(|co| async move {
             let g = tgshard.blocking_read();
@@ -225,12 +225,12 @@ impl TGraphShard {
             }
         });
 
-        Box::new(iter.into_iter())
+        iter.into_iter()
     }
 
     pub fn edges_window(&self, v: u64, r: Range<i64>, d: Direction) -> impl Iterator<Item = TEdge> {
         let tgshard = self.clone();
-        let vertices_iter = gen!({
+        let iter = gen!({
             let g = tgshard.rc.blocking_read();
             let chunks = (*g).edges_window(v, &r, d).map(|e| e.into());
             let iter = chunks.into_iter();
@@ -239,7 +239,7 @@ impl TGraphShard {
             }
         });
 
-        vertices_iter.into_iter()
+        iter.into_iter()
     }
 
     pub fn edges_window_t(
@@ -249,7 +249,7 @@ impl TGraphShard {
         d: Direction,
     ) -> impl Iterator<Item = TEdge> {
         let tgshard = self.clone();
-        let vertices_iter = gen!({
+        let iter = gen!({
             let g = tgshard.rc.blocking_read();
             let chunks = (*g).edges_window_t(v, &r, d).map(|e| e.into());
             let iter = chunks.into_iter();
@@ -258,7 +258,40 @@ impl TGraphShard {
             }
         });
 
-        vertices_iter.into_iter()
+        iter.into_iter()
+    }
+
+    pub fn neighbours(&self, v: u64, d: Direction) -> impl Iterator<Item = TVertex> {
+        let tgshard = self.clone();
+        let iter = gen!({
+            let g = tgshard.rc.blocking_read();
+            let chunks = (*g).neighbours(v, d).map(|e| e.into());
+            let iter = chunks.into_iter();
+            for v_id in iter {
+                yield_!(v_id)
+            }
+        });
+
+        iter.into_iter()
+    }
+
+    pub fn neighbours_window(
+        &self,
+        v: u64,
+        w: Range<i64>,
+        d: Direction,
+    ) -> impl Iterator<Item = TVertex> {
+        let tgshard = self.clone();
+        let iter = gen!({
+            let g = tgshard.rc.blocking_read();
+            let chunks = (*g).neighbours_window(v, &w, d).map(|n| n.into());
+            let iter = chunks.into_iter();
+            for v_id in iter {
+                yield_!(v_id)
+            }
+        });
+
+        iter.into_iter()
     }
 }
 

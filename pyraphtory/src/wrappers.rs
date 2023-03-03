@@ -139,21 +139,6 @@ impl VertexIdsIterator {
 }
 
 #[pyclass]
-pub struct VertexIterator {
-    pub(crate) iter: Box<dyn Iterator<Item = TVertex> + Send>,
-}
-
-#[pymethods]
-impl VertexIterator {
-    fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
-        slf
-    }
-    fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<TVertex> {
-        slf.iter.next()
-    }
-}
-
-#[pyclass]
 pub struct WindowedVertexIterator {
     pub(crate) iter: Box<dyn Iterator<Item = WindowedVertex> + Send>,
 }
