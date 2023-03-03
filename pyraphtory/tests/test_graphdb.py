@@ -145,7 +145,7 @@ def test_windowed_graph_vertices():
 
 def test_local_triangle_count():
 
-    g = create_graph(1)
+    g = Graph(1)
 
     g.add_edge(1, 1, 2, {"prop1": 1})
     g.add_edge(2, 2, 3, {"prop1": 1})
