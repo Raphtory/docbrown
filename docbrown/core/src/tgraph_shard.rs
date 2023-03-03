@@ -1,5 +1,6 @@
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::ops::Range;
 use std::path::Path;
 use std::sync::Arc;
@@ -278,7 +279,28 @@ impl TGraphShard {
     }
 
     pub fn vertex_props_vec(&self, v: u64, name: String) -> Vec<(i64, Prop)> {
-        self.read_shard(|tg| tg.vertex_props_vec(v, &name).unwrap_or_else(|| vec![]))
+        self.read_shard(|tg| tg.vertex_prop_vec(v, &name).unwrap_or_else(|| vec![]))
+    }
+
+    pub fn vertex_prop_vec_window(&self, v: u64, name: String, w: Range<i64>) -> Vec<(i64, Prop)> {
+        self.read_shard(|tg| {
+            tg.vertex_prop_vec_window(v, &name, &w)
+                .unwrap_or_else(|| vec![])
+        })
+    }
+
+    pub fn vertex_props(&self, v: u64) -> HashMap<String, Vec<(i64, Prop)>> {
+        self.read_shard(|tg| {
+            tg.vertex_props(v)
+                .unwrap_or_else(|| HashMap::<String, Vec<(i64, Prop)>>::new())
+        })
+    }
+
+    pub fn vertex_props_window(&self, v: u64, w: Range<i64>) -> HashMap<String, Vec<(i64, Prop)>> {
+        self.read_shard(|tg| {
+            tg.vertex_props_window(v, &w)
+                .unwrap_or_else(|| HashMap::<String, Vec<(i64, Prop)>>::new())
+        })
     }
 }
 

@@ -1,7 +1,7 @@
 use crate::graph::Graph;
 use docbrown_core::{tgraph::VertexView, tgraph_shard::TEdge, Direction, Prop};
 
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 #[derive(Debug, Clone)]
 pub struct WindowedGraph {
@@ -59,8 +59,18 @@ impl WindowedVertex {
 }
 
 impl WindowedVertex {
-    pub fn props(&self, name: String) -> Vec<(i64, Prop)> {
-        self.graph_w.graph.vertex_props_vec(self.g_id, name)
+    pub fn prop(&self, name: String) -> Vec<(i64, Prop)> {
+        self.graph_w.graph.vertex_prop_vec_window(
+            self.g_id,
+            name,
+            self.graph_w.t_start..self.graph_w.t_end,
+        )
+    }
+
+    pub fn props(&self) -> HashMap<String, Vec<(i64, Prop)>> {
+        self.graph_w
+            .graph
+            .vertex_props_window(self.g_id, self.graph_w.t_start..self.graph_w.t_end)
     }
 
     pub fn degree(&self) -> usize {

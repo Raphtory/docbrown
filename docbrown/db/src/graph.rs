@@ -1,5 +1,7 @@
 use crate::graph_window::WindowedGraph;
 use std::{
+    collections::HashMap,
+    ops::Range,
     path::{Path, PathBuf},
     sync::Arc,
 };
@@ -215,6 +217,30 @@ impl Graph {
     pub(crate) fn vertex_props_vec(&self, v: u64, name: String) -> Vec<(i64, Prop)> {
         let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
         self.shards[shard_id].vertex_props_vec(v, name)
+    }
+
+    pub(crate) fn vertex_prop_vec_window(
+        &self,
+        v: u64,
+        name: String,
+        w: Range<i64>,
+    ) -> Vec<(i64, Prop)> {
+        let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
+        self.shards[shard_id].vertex_prop_vec_window(v, name, w)
+    }
+
+    pub(crate) fn vertex_props(&self, v: u64) -> HashMap<String, Vec<(i64, Prop)>> {
+        let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
+        self.shards[shard_id].vertex_props(v)
+    }
+
+    pub(crate) fn vertex_props_window(
+        &self,
+        v: u64,
+        w: Range<i64>,
+    ) -> HashMap<String, Vec<(i64, Prop)>> {
+        let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
+        self.shards[shard_id].vertex_props_window(v, w)
     }
 }
 

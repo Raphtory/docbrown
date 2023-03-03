@@ -487,33 +487,57 @@ impl TemporalGraph {
         }))
     }
 
-    pub(crate) fn vertex_props_vec(&self, v: u64, name: &str) -> Option<Vec<(i64, Prop)>> {
+    pub(crate) fn vertex_prop(
+        &self,
+        v: u64,
+        name: &str,
+    ) -> Option<Box<dyn Iterator<Item = (&i64, Prop)> + '_>> {
+        let index = self.logical_to_physical.get(&v)?;
+        let meta = self.props.vertex_meta.get(*index)?;
+        let prop_id = self.props.prop_ids.get(name)?;
+        Some(meta.iter(*prop_id))
+    }
+
+    pub(crate) fn vertex_prop_vec(&self, v: u64, name: &str) -> Option<Vec<(i64, Prop)>> {
         let index = self.logical_to_physical.get(&v)?;
         let meta = self.props.vertex_meta.get(*index)?;
         let prop_id = self.props.prop_ids.get(name)?;
         Some(meta.iter(*prop_id).map(|(t, p)| (*t, p)).collect_vec())
     }
 
-    pub(crate) fn vertex_props_window(
+    pub(crate) fn vertex_prop_window(
         &self,
-        name: &str,
         v: u64,
-        r: Range<i64>,
+        name: &str,
+        w: &Range<i64>,
     ) -> Option<Box<dyn Iterator<Item = (&i64, Prop)> + '_>> {
         let index = self.logical_to_physical.get(&v)?;
         let meta = self.props.vertex_meta.get(*index)?;
         let prop_id = self.props.prop_ids.get(name)?;
-        Some(meta.iter_window(*prop_id, r))
+        Some(meta.iter_window(*prop_id, w.clone()))
     }
 
-    pub(crate) fn vertex_all_props<T: From<Prop>>(
+    pub(crate) fn vertex_prop_vec_window(
         &self,
         v: u64,
-    ) -> Option<HashMap<String, Vec<(i64, T)>>> {
+        name: &str,
+        w: &Range<i64>,
+    ) -> Option<Vec<(i64, Prop)>> {
+        let index = self.logical_to_physical.get(&v)?;
+        let meta = self.props.vertex_meta.get(*index)?;
+        let prop_id = self.props.prop_ids.get(name)?;
+        Some(
+            meta.iter_window(*prop_id, w.clone())
+                .map(|(t, p)| (*t, p))
+                .collect_vec(),
+        )
+    }
+
+    pub(crate) fn vertex_props(&self, v: u64) -> Option<HashMap<String, Vec<(i64, Prop)>>> {
         let index = self.logical_to_physical.get(&v)?;
         let meta = self.props.vertex_meta.get(*index)?;
 
-        let mut hm: HashMap<String, Vec<(i64, T)>> = HashMap::new();
+        let mut hm: HashMap<String, Vec<(i64, Prop)>> = HashMap::new();
 
         self.props.prop_ids.iter().for_each(|(k, v)| {
             if hm.contains_key(k) {
@@ -522,13 +546,13 @@ impl TemporalGraph {
                     &mut meta
                         .iter(*v)
                         .map(|(x, y)| (*x, y.into()))
-                        .collect::<Vec<(i64, T)>>(),
+                        .collect::<Vec<(i64, Prop)>>(),
                 )
             } else {
                 let value = meta
                     .iter(*v)
                     .map(|(x, y)| (*x, y.into()))
-                    .collect::<Vec<(i64, T)>>();
+                    .collect::<Vec<(i64, Prop)>>();
                 if !value.is_empty() {
                     // self.g.props.prop_ids returns all prop ids, including edge property ids
                     hm.insert(k.clone(), Vec::from(value));
@@ -539,30 +563,30 @@ impl TemporalGraph {
         Some(hm) // Don't return "None" if hm.is_empty for Some({}) gets translated as {} in python
     }
 
-    pub(crate) fn vertex_all_props_window<T: From<Prop>>(
+    pub(crate) fn vertex_props_window(
         &self,
         v: u64,
-        r: Range<i64>,
-    ) -> Option<HashMap<String, Vec<(i64, T)>>> {
+        w: &Range<i64>,
+    ) -> Option<HashMap<String, Vec<(i64, Prop)>>> {
         let index = self.logical_to_physical.get(&v)?;
         let meta = self.props.vertex_meta.get(*index)?;
 
-        let mut hm: HashMap<String, Vec<(i64, T)>> = HashMap::new();
+        let mut hm: HashMap<String, Vec<(i64, Prop)>> = HashMap::new();
 
         self.props.prop_ids.iter().for_each(|(k, v)| {
             if hm.contains_key(k) {
                 let vs = hm.get_mut(k).unwrap();
                 vs.append(
                     &mut meta
-                        .iter_window(*v, r.clone())
+                        .iter_window(*v, w.clone())
                         .map(|(x, y)| (*x, y.into()))
-                        .collect::<Vec<(i64, T)>>(),
+                        .collect::<Vec<(i64, Prop)>>(),
                 )
             } else {
                 let value = meta
-                    .iter_window(*v, r.clone())
+                    .iter_window(*v, w.clone())
                     .map(|(x, y)| (*x, y.into()))
-                    .collect::<Vec<(i64, T)>>();
+                    .collect::<Vec<(i64, Prop)>>();
                 if !value.is_empty() {
                     // self.g.props.prop_ids returns all prop ids, including edge property ids
                     hm.insert(k.clone(), Vec::from(value));
@@ -853,7 +877,7 @@ mod graph_test {
 
         let res = g
             .vertices()
-            .flat_map(|v| g.vertex_props_vec(v.g_id, "type"))
+            .flat_map(|v| g.vertex_prop_vec(v.g_id, "type"))
             .flatten()
             .collect_vec();
 
@@ -876,8 +900,8 @@ mod graph_test {
         let res = g
             .vertices()
             .flat_map(|v| {
-                let type_ = g.vertex_props_vec(v.g_id, "type");
-                let active = g.vertex_props_vec(v.g_id, "active");
+                let type_ = g.vertex_prop_vec(v.g_id, "type");
+                let active = g.vertex_prop_vec(v.g_id, "active");
                 type_.zip(active).map(|(mut x, mut y)| {
                     x.append(&mut y);
                     x
@@ -923,15 +947,11 @@ mod graph_test {
             ],
         );
 
-        let res: Vec<(&i64, Prop)> = g
+        let res: Vec<(i64, Prop)> = g
             .vertices()
             .flat_map(|v| {
-                let type_ = g
-                    .vertex_props_window("type", v.g_id, 2..3)
-                    .map(|x| x.collect::<Vec<_>>());
-                let active = g
-                    .vertex_props_window("active", v.g_id, 2..3)
-                    .map(|x| x.collect::<Vec<_>>());
+                let type_ = g.vertex_prop_vec_window(v.g_id, "type", &(2..3));
+                let active = g.vertex_prop_vec_window(v.g_id, "active", &(2..3));
                 type_.zip(active).map(|(mut x, mut y)| {
                     x.append(&mut y);
                     x
@@ -942,7 +962,7 @@ mod graph_test {
 
         assert_eq!(
             res,
-            vec![(&2, Prop::Str("wallet".into())), (&2, Prop::U32(1)),]
+            vec![(2i64, Prop::Str("wallet".into())), (2i64, Prop::U32(1)),]
         );
     }
 
@@ -973,18 +993,10 @@ mod graph_test {
         let res = g
             .vertices()
             .flat_map(|v| {
-                let type_ = g
-                    .vertex_props_window("type", v.g_id, 1..2)
-                    .map(|x| x.collect::<Vec<_>>());
-                let active = g
-                    .vertex_props_window("active", v.g_id, 2..5)
-                    .map(|x| x.collect::<Vec<_>>());
-                let label = g
-                    .vertex_props_window("label", v.g_id, 2..5)
-                    .map(|x| x.collect::<Vec<_>>());
-                let origin = g
-                    .vertex_props_window("origin", v.g_id, 2..5)
-                    .map(|x| x.collect::<Vec<_>>());
+                let type_ = g.vertex_prop_vec_window(v.g_id, "type", &(1..2));
+                let active = g.vertex_prop_vec_window(v.g_id, "active", &(2..5));
+                let label = g.vertex_prop_vec_window(v.g_id, "label", &(2..5));
+                let origin = g.vertex_prop_vec_window(v.g_id, "origin", &(2..5));
                 type_
                     .zip(active)
                     .map(|(mut x, mut y)| {
@@ -1008,10 +1020,10 @@ mod graph_test {
         assert_eq!(
             res,
             vec![
-                (&1, Prop::Str("wallet".into())),
-                (&3, Prop::U32(2)),
-                (&2, Prop::I32(12345)),
-                (&3, Prop::F32(0.1)),
+                (1i64, Prop::Str("wallet".into())),
+                (3, Prop::U32(2)),
+                (2, Prop::I32(12345)),
+                (3, Prop::F32(0.1)),
             ]
         );
     }
