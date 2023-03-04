@@ -326,9 +326,9 @@ impl TemporalGraph {
     }
 
     pub(crate) fn edge(&self, v1: u64, v2: u64) -> Option<EdgeView> {
-        let v_pid = self.logical_to_physical[&v1];
+        let v1_pid = self.logical_to_physical[&v1];
 
-        match &self.adj_lists[v_pid] {
+        match &self.adj_lists[v1_pid] {
             Adj::Solo(_) => None,
             Adj::List {
                 out,
@@ -337,32 +337,48 @@ impl TemporalGraph {
                 remote_into,
                 ..
             } => {
-                let (e_meta, v) = if !self.has_vertex(v2) {
-                    match (
-                        remote_out.find(v2 as usize),
-                        remote_into.find(v2 as usize),
-                    ) {
-                        (Some(e), None) => Some((e, v2 as usize)),
-                        (None, Some(e)) => Some((e, v2 as usize)),
+                if !self.has_vertex(v2) {
+                    match (remote_out.find(v2 as usize), remote_into.find(v2 as usize)) {
+                        (Some(e), None) => Some(EdgeView {
+                            src_g_id: v1,
+                            dst_g_id: v2,
+                            src_id: v1_pid,
+                            dst_id: v2 as usize,
+                            t: None,
+                            e_meta: e,
+                        }),
+                        (None, Some(e)) => Some(EdgeView {
+                            src_g_id: v2,
+                            dst_g_id: v1,
+                            src_id: v2 as usize,
+                            dst_id: v1_pid,
+                            t: None,
+                            e_meta: e,
+                        }),
                         _ => None,
                     }
                 } else {
-                    let dst_pid = self.logical_to_physical[&v2];
-                    match (out.find(dst_pid), into.find(dst_pid)) {
-                        (Some(e), None) => Some((e, dst_pid)),
-                        (None, Some(e)) => Some((e, dst_pid)),
+                    let v2_pid = self.logical_to_physical[&v2];
+                    match (out.find(v2_pid), into.find(v2_pid)) {
+                        (Some(e), None) => Some(EdgeView {
+                            src_g_id: v1,
+                            dst_g_id: v2,
+                            src_id: v1_pid,
+                            dst_id: v2_pid,
+                            t: None,
+                            e_meta: e,
+                        }),
+                        (None, Some(e)) => Some(EdgeView {
+                            src_g_id: v2,
+                            dst_g_id: v1,
+                            src_id: v2_pid,
+                            dst_id: v1_pid,
+                            t: None,
+                            e_meta: e,
+                        }),
                         _ => None,
                     }
-                }?;
-
-                Some(EdgeView {
-                    src_g_id: v1,
-                    dst_g_id: v2,
-                    src_id: v_pid,
-                    dst_id: v,
-                    t: None,
-                    e_meta,
-                })
+                }
             }
         }
     }
