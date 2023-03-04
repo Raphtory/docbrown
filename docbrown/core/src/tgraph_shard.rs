@@ -102,8 +102,8 @@ impl TGraphShard {
         self.read_shard(|tg| tg.out_edges_len())
     }
 
-    pub fn has_edge(&self, src: u64, dst: u64) -> bool {
-        self.read_shard(|tg| tg.has_edge(src, dst))
+    pub fn has_edge(&self, v1: u64, v2: u64) -> bool {
+        self.read_shard(|tg| tg.has_edge(v1, v2))
     }
 
     pub fn has_vertex(&self, v: u64) -> bool {
