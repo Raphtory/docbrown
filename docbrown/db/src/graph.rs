@@ -178,6 +178,11 @@ impl Graph {
         )
     }
 
+    pub(crate) fn edge(&self, v1: u64, v2: u64) -> Option<EdgeView> {
+        let shard_id = utils::get_shard_id_from_global_vid(v1, self.nr_shards);
+        self.shards[shard_id].edge(v1, v2)
+    }
+
     pub(crate) fn edges_window(
         &self,
         v: u64,

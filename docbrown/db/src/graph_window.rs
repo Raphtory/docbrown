@@ -31,7 +31,7 @@ impl WindowedGraph {
         let graph_w = self.clone();
         self.graph
             .vertex_window(v, self.t_start, self.t_end)
-            .map(|tv| WindowedVertex::from(tv, Arc::new(graph_w.clone())))
+            .map(|vv| WindowedVertex::from(vv, Arc::new(graph_w.clone())))
     }
 
     pub fn vertex_ids(&self) -> Box<dyn Iterator<Item = u64> + Send> {
@@ -43,8 +43,15 @@ impl WindowedGraph {
         Box::new(
             self.graph
                 .vertices_window(self.t_start, self.t_end)
-                .map(move |tv| WindowedVertex::from(tv, Arc::new(graph_w.clone()))),
+                .map(move |vv| WindowedVertex::from(vv, Arc::new(graph_w.clone()))),
         )
+    }
+
+    pub fn edge(&self, v1: u64, v2: u64) -> Option<WindowedEdge> {
+        let graph_w = self.clone();
+        self.graph
+            .edge(v1, v2)
+            .map(|ev| WindowedEdge::from(ev, Arc::new(graph_w.clone())))
     }
 }
 

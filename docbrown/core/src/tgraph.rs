@@ -326,9 +326,9 @@ impl TemporalGraph {
     }
 
     pub(crate) fn edge(&self, v1: u64, v2: u64) -> Option<EdgeView> {
-        let v1_pid = self.logical_to_physical[&v1];
+        let v1_pid = self.logical_to_physical.get(&v1)?;
 
-        match &self.adj_lists[v1_pid] {
+        match &self.adj_lists[*v1_pid] {
             Adj::Solo(_) => None,
             Adj::List {
                 out,
@@ -342,7 +342,7 @@ impl TemporalGraph {
                         (Some(e), None) => Some(EdgeView {
                             src_g_id: v1,
                             dst_g_id: v2,
-                            src_id: v1_pid,
+                            src_id: *v1_pid,
                             dst_id: v2 as usize,
                             t: None,
                             e_meta: e,
@@ -351,28 +351,28 @@ impl TemporalGraph {
                             src_g_id: v2,
                             dst_g_id: v1,
                             src_id: v2 as usize,
-                            dst_id: v1_pid,
+                            dst_id: *v1_pid,
                             t: None,
                             e_meta: e,
                         }),
                         _ => None,
                     }
                 } else {
-                    let v2_pid = self.logical_to_physical[&v2];
-                    match (out.find(v2_pid), into.find(v2_pid)) {
+                    let v2_pid = self.logical_to_physical.get(&v2)?;
+                    match (out.find(*v2_pid), into.find(*v2_pid)) {
                         (Some(e), None) => Some(EdgeView {
                             src_g_id: v1,
                             dst_g_id: v2,
-                            src_id: v1_pid,
-                            dst_id: v2_pid,
+                            src_id: *v1_pid,
+                            dst_id: *v2_pid,
                             t: None,
                             e_meta: e,
                         }),
                         (None, Some(e)) => Some(EdgeView {
                             src_g_id: v2,
                             dst_g_id: v1,
-                            src_id: v2_pid,
-                            dst_id: v1_pid,
+                            src_id: *v2_pid,
+                            dst_id: *v1_pid,
                             t: None,
                             e_meta: e,
                         }),

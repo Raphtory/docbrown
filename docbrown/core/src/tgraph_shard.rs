@@ -198,6 +198,10 @@ impl TGraphShard {
         iter.into_iter()
     }
 
+    pub fn edge(&self, v1: u64, v2: u64) -> Option<EdgeView> {
+        self.read_shard(|tg| tg.edge(v1, v2))
+    }
+
     pub fn edges(&self, v: u64, d: Direction) -> impl Iterator<Item = EdgeView> {
         let tgshard = self.rc.clone();
         let iter: GenBoxed<EdgeView> = GenBoxed::new_boxed(|co| async move {

@@ -72,6 +72,17 @@ def test_windowed_graph_degree():
 
     assert out_degrees == [0, 1, 3]
 
+def test_windowed_graph_get_edge():
+    g = create_graph(2)
+    
+    max_size = sys.maxsize
+    min_size = -sys.maxsize - 1
+
+    view = g.window(min_size, max_size)
+
+    assert (view.edge(1, 3).src, view.edge(1, 3).dst) == (1, 3)
+    assert (view.edge(2, 3).src, view.edge(2, 3).dst) == (3, 2)
+    assert view.edge(6, 5) == None
 
 def test_windowed_graph_edges():
     g = create_graph(1)

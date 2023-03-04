@@ -43,6 +43,10 @@ impl WindowedGraph {
             iter: Box::new(self.graph_w.vertices().map(|wv| wv.into())),
         }
     }
+
+    pub fn edge(&self, v1: u64, v2: u64) -> Option<WindowedEdge> {
+        self.graph_w.edge(v1, v2).map(|we| we.into())
+    }
 }
 
 #[pyclass]
