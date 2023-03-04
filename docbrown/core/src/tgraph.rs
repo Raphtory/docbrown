@@ -388,6 +388,7 @@ impl TemporalGraph {
         let w = w.clone();
         let mut vs = self.index.range(w.clone()).flat_map(|(_, vs)| vs.iter());
 
+        // First check if v1 exists within the given window
         match vs.contains(&v1_pid) {
             true => match &self.adj_lists[*v1_pid] {
                 Adj::Solo(_) => Option::<EdgeView>::None,

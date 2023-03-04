@@ -90,6 +90,9 @@ def test_windowed_graph_get_edge():
     view = g.window(2, 3)
     assert (view.edge(1, 3).src, view.edge(1, 3).dst) == (1, 3)
 
+    view = g.window(3, 7)
+    assert view.edge(1, 3) == None
+
 
 def test_windowed_graph_edges():
     g = create_graph(1)
