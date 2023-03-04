@@ -110,8 +110,8 @@ impl TGraphShard {
         self.read_shard(|tg| tg.has_vertex(v))
     }
 
-    pub fn has_vertex_window(&self, v: u64, r: Range<i64>) -> bool {
-        self.read_shard(|tg| tg.has_vertex_window(&r, v))
+    pub fn has_vertex_window(&self, v: u64, w: Range<i64>) -> bool {
+        self.read_shard(|tg| tg.has_vertex_window(&w, v))
     }
 
     pub fn add_vertex(&self, t: i64, v: u64, props: &Vec<(String, Prop)>) {
@@ -134,16 +134,16 @@ impl TGraphShard {
         self.read_shard(|tg: &TemporalGraph| tg.degree(v, d))
     }
 
-    pub fn degree_window(&self, v: u64, r: Range<i64>, d: Direction) -> usize {
-        self.read_shard(|tg: &TemporalGraph| tg.degree_window(v, &r, d))
+    pub fn degree_window(&self, v: u64, w: Range<i64>, d: Direction) -> usize {
+        self.read_shard(|tg: &TemporalGraph| tg.degree_window(v, &w, d))
     }
 
     pub fn vertex(&self, v: u64) -> Option<VertexView> {
         self.read_shard(|tg| tg.vertex(v))
     }
 
-    pub fn vertex_window(&self, v: u64, r: Range<i64>) -> Option<VertexView> {
-        self.read_shard(|tg| tg.vertex_window(v, &r))
+    pub fn vertex_window(&self, v: u64, w: Range<i64>) -> Option<VertexView> {
+        self.read_shard(|tg| tg.vertex_window(v, &w))
     }
 
     pub fn vertex_ids(&self) -> impl Iterator<Item = u64> {
@@ -159,11 +159,11 @@ impl TGraphShard {
         iter.into_iter()
     }
 
-    pub fn vertex_ids_window(&self, r: Range<i64>) -> impl Iterator<Item = u64> {
+    pub fn vertex_ids_window(&self, w: Range<i64>) -> impl Iterator<Item = u64> {
         let tgshard = self.rc.clone();
         let iter: GenBoxed<u64> = GenBoxed::new_boxed(|co| async move {
             let g = tgshard.blocking_read();
-            let iter = (*g).vertex_ids_window(r).map(|v| v.into());
+            let iter = (*g).vertex_ids_window(w).map(|v| v.into());
             for v_id in iter {
                 co.yield_(v_id).await;
             }
@@ -185,11 +185,11 @@ impl TGraphShard {
         iter.into_iter()
     }
 
-    pub fn vertices_window(&self, r: Range<i64>) -> impl Iterator<Item = VertexView> {
+    pub fn vertices_window(&self, w: Range<i64>) -> impl Iterator<Item = VertexView> {
         let tgshard = self.rc.clone();
         let iter: GenBoxed<VertexView> = GenBoxed::new_boxed(|co| async move {
             let g = tgshard.blocking_read();
-            let iter = (*g).vertices_window(r);
+            let iter = (*g).vertices_window(w);
             for vv in iter {
                 co.yield_(vv).await;
             }
@@ -200,6 +200,10 @@ impl TGraphShard {
 
     pub fn edge(&self, v1: u64, v2: u64) -> Option<EdgeView> {
         self.read_shard(|tg| tg.edge(v1, v2))
+    }
+
+    pub fn edge_window(&self, v1: u64, v2: u64, w: Range<i64>) -> Option<EdgeView> {
+        self.read_shard(|tg| tg.edge_window(v1, v2, &w))
     }
 
     pub fn edges(&self, v: u64, d: Direction) -> impl Iterator<Item = EdgeView> {
@@ -218,13 +222,13 @@ impl TGraphShard {
     pub fn edges_window(
         &self,
         v: u64,
-        r: Range<i64>,
+        w: Range<i64>,
         d: Direction,
     ) -> impl Iterator<Item = EdgeView> {
         let tgshard = self.clone();
         let iter = gen!({
             let g = tgshard.rc.blocking_read();
-            let chunks = (*g).edges_window(v, &r, d).map(|e| e.into());
+            let chunks = (*g).edges_window(v, &w, d).map(|e| e.into());
             let iter = chunks.into_iter();
             for v_id in iter {
                 yield_!(v_id)
@@ -237,13 +241,13 @@ impl TGraphShard {
     pub fn edges_window_t(
         &self,
         v: u64,
-        r: Range<i64>,
+        w: Range<i64>,
         d: Direction,
     ) -> impl Iterator<Item = EdgeView> {
         let tgshard = self.clone();
         let iter = gen!({
             let g = tgshard.rc.blocking_read();
-            let chunks = (*g).edges_window_t(v, &r, d).map(|e| e.into());
+            let chunks = (*g).edges_window_t(v, &w, d).map(|e| e.into());
             let iter = chunks.into_iter();
             for v_id in iter {
                 yield_!(v_id)

@@ -183,6 +183,17 @@ impl Graph {
         self.shards[shard_id].edge(v1, v2)
     }
 
+    pub(crate) fn edge_window(
+        &self,
+        v1: u64,
+        v2: u64,
+        t_start: i64,
+        t_end: i64,
+    ) -> Option<EdgeView> {
+        let shard_id = utils::get_shard_id_from_global_vid(v1, self.nr_shards);
+        self.shards[shard_id].edge_window(v1, v2, t_start..t_end)
+    }
+
     pub(crate) fn edges_window(
         &self,
         v: u64,
@@ -405,6 +416,31 @@ mod db_tests {
         g.add_edge(1, 7, 8, &vec![]);
 
         assert_eq!(g.has_edge(8, 7), true);
+    }
+
+    #[test]
+    fn graph_edge() {
+        let g = Graph::new(2);
+        let es = vec![
+            (1, 1, 2),
+            (2, 1, 3),
+            (-1, 2, 1),
+            (0, 1, 1),
+            (7, 3, 2),
+            (1, 1, 1),
+        ];
+        for (t, src, dst) in es {
+            g.add_edge(t, src, dst, &vec![])
+        }
+
+        assert_eq!(
+            g.edge_window(1, 3, i64::MIN, i64::MAX).unwrap().src_g_id,
+            1u64
+        );
+        assert_eq!(
+            g.edge_window(1, 3, i64::MIN, i64::MAX).unwrap().dst_g_id,
+            3u64
+        );
     }
 
     #[test]

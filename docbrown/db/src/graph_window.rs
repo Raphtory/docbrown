@@ -50,7 +50,7 @@ impl WindowedGraph {
     pub fn edge(&self, v1: u64, v2: u64) -> Option<WindowedEdge> {
         let graph_w = self.clone();
         self.graph
-            .edge(v1, v2)
+            .edge_window(v1, v2, self.t_start, self.t_end)
             .map(|ev| WindowedEdge::from(ev, Arc::new(graph_w.clone())))
     }
 }
@@ -302,6 +302,28 @@ mod views_test {
         let expected = vec![(2, 1), (1, 2)];
 
         assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn windowed_graph_edge() {
+        let vs = vec![
+            (1, 1, 2),
+            (2, 1, 3),
+            (-1, 2, 1),
+            (0, 1, 1),
+            (7, 3, 2),
+            (1, 1, 1),
+        ];
+
+        let g = Graph::new(2);
+
+        for (t, src, dst) in vs {
+            g.add_edge(t, src, dst, &vec![]);
+        }
+
+        let wg = g.window(i64::MIN, i64::MAX);
+        assert_eq!(wg.edge(1, 3).unwrap().src, 1);
+        assert_eq!(wg.edge(1, 3).unwrap().dst, 3);
     }
 
     #[test]

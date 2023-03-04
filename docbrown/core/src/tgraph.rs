@@ -77,9 +77,9 @@ impl TemporalGraph {
         self.logical_to_physical.contains_key(&v)
     }
 
-    pub(crate) fn has_vertex_window(&self, r: &Range<i64>, v: u64) -> bool {
+    pub(crate) fn has_vertex_window(&self, w: &Range<i64>, v: u64) -> bool {
         if let Some(v_id) = self.logical_to_physical.get(&v) {
-            self.index.range(r.clone()).any(|(_, bs)| bs.contains(v_id))
+            self.index.range(w.clone()).any(|(_, bs)| bs.contains(v_id))
         } else {
             false
         }
@@ -279,11 +279,11 @@ impl TemporalGraph {
 
     pub(crate) fn vertex_ids_window(
         &self,
-        r: Range<i64>,
+        w: Range<i64>,
     ) -> Box<dyn Iterator<Item = u64> + Send + '_> {
         Box::new(
             self.index
-                .range(r.clone())
+                .range(w.clone())
                 .map(|(_, vs)| vs.iter())
                 .kmerge()
                 .dedup()
@@ -383,7 +383,72 @@ impl TemporalGraph {
         }
     }
 
-    // pub(crate) fn edge_window(&self, src: u64, dst: u64, r: &Range<i64>) -> Option<EdgeView> {}
+    pub(crate) fn edge_window(&self, v1: u64, v2: u64, w: &Range<i64>) -> Option<EdgeView> {
+        let v1_pid = self.logical_to_physical.get(&v1)?;
+        let w = w.clone();
+        let mut vs = self.index.range(w.clone()).flat_map(|(_, vs)| vs.iter());
+
+        match vs.contains(&v1_pid) {
+            true => match &self.adj_lists[*v1_pid] {
+                Adj::Solo(_) => Option::<EdgeView>::None,
+                Adj::List {
+                    out,
+                    remote_out,
+                    into,
+                    remote_into,
+                    ..
+                } => {
+                    // Then check if v2 exists in the given window while sharing an edge with v1
+                    if !self.has_vertex(v2) {
+                        match (
+                            remote_out.find_window(v2 as usize, &w),
+                            remote_into.find_window(v2 as usize, &w),
+                        ) {
+                            (Some(e), None) => Some(EdgeView {
+                                src_g_id: v1,
+                                dst_g_id: v2,
+                                src_id: *v1_pid,
+                                dst_id: v2 as usize,
+                                t: None,
+                                e_meta: e,
+                            }),
+                            (None, Some(e)) => Some(EdgeView {
+                                src_g_id: v2,
+                                dst_g_id: v1,
+                                src_id: v2 as usize,
+                                dst_id: *v1_pid,
+                                t: None,
+                                e_meta: e,
+                            }),
+                            _ => None,
+                        }
+                    } else {
+                        let v2_pid = self.logical_to_physical.get(&v2)?;
+                        match (out.find_window(*v2_pid, &w), into.find_window(*v2_pid, &w)) {
+                            (Some(e), None) => Some(EdgeView {
+                                src_g_id: v1,
+                                dst_g_id: v2,
+                                src_id: *v1_pid,
+                                dst_id: *v2_pid,
+                                t: None,
+                                e_meta: e,
+                            }),
+                            (None, Some(e)) => Some(EdgeView {
+                                src_g_id: v2,
+                                dst_g_id: v1,
+                                src_id: *v2_pid,
+                                dst_id: *v1_pid,
+                                t: None,
+                                e_meta: e,
+                            }),
+                            _ => None,
+                        }
+                    }
+                }
+            },
+            false => Option::<EdgeView>::None,
+        }
+    }
 
     // FIXME: all the functions using global ID need to be changed to use the physical ID instead
     pub(crate) fn edges(
@@ -1819,6 +1884,52 @@ mod graph_test {
             })
         );
         assert_eq!(g.edge(11, 33), None);
+
+        assert_eq!(
+            g.edge_window(11, 22, &(1..5)),
+            Some(EdgeView {
+                src_g_id: 11,
+                dst_g_id: 22,
+                src_id: 0,
+                dst_id: 1,
+                t: None,
+                e_meta: AdjEdge(1)
+            })
+        );
+        assert_eq!(g.edge_window(11, 22, &(1..4)), None);
+        assert_eq!(g.edge_window(11, 22, &(5..6)), None);
+        assert_eq!(
+            g.edge_window(11, 22, &(4..5)),
+            Some(EdgeView {
+                src_g_id: 11,
+                dst_g_id: 22,
+                src_id: 0,
+                dst_id: 1,
+                t: None,
+                e_meta: AdjEdge(1)
+            })
+        );
+
+        let mut g = TemporalGraph::default();
+        let es = vec![
+            (1, 1, 2),
+            (2, 1, 3),
+            (-1, 2, 1),
+            (0, 1, 1),
+            (7, 3, 2),
+            (1, 1, 1),
+        ];
+        for (t, src, dst) in es {
+            g.add_edge(t, src, dst)
+        }
+        assert_eq!(
+            g.edge_window(1, 3, &(i64::MIN..i64::MAX)).unwrap().src_g_id,
+            1u64
+        );
+        assert_eq!(
+            g.edge_window(1, 3, &(i64::MIN..i64::MAX)).unwrap().dst_g_id,
+            3u64
+        );
     }
 
     #[test]

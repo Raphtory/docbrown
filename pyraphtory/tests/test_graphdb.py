@@ -72,6 +72,7 @@ def test_windowed_graph_degree():
 
     assert out_degrees == [0, 1, 3]
 
+
 def test_windowed_graph_get_edge():
     g = create_graph(2)
     
@@ -83,6 +84,12 @@ def test_windowed_graph_get_edge():
     assert (view.edge(1, 3).src, view.edge(1, 3).dst) == (1, 3)
     assert (view.edge(2, 3).src, view.edge(2, 3).dst) == (3, 2)
     assert view.edge(6, 5) == None
+
+    assert (view.vertex(1).g_id, view.vertex(3).g_id) == (1, 3)
+
+    view = g.window(2, 3)
+    assert (view.edge(1, 3).src, view.edge(1, 3).dst) == (1, 3)
+
 
 def test_windowed_graph_edges():
     g = create_graph(1)
@@ -153,6 +160,7 @@ def test_windowed_graph_vertices():
 
     assert vertices == [1, 2]
 
+
 def test_windowed_graph_neighbours():
     g = create_graph(1)
 
@@ -181,6 +189,7 @@ def test_windowed_graph_neighbours():
         out_neighbours.append([v.g_id for v in v_iter])
 
     assert out_neighbours == [[1, 2, 3], [1], [2]]
+
 
 def test_windowed_graph_neighbours_ids():
     g = create_graph(1)
@@ -211,6 +220,7 @@ def test_windowed_graph_neighbours_ids():
 
     assert out_neighbours_ids == [[1, 2, 3], [1], [2]]
 
+
 def test_windowed_graph_vertex_prop():
     g = create_graph(1)
 
@@ -222,6 +232,7 @@ def test_windowed_graph_vertex_prop():
     assert view.vertex(1).prop("type") == [(0, 'wallet')]
     assert view.vertex(1).prop("undefined") == []
 
+
 def test_windowed_graph_vertex_props():
     g = create_graph(1)
 
@@ -231,6 +242,7 @@ def test_windowed_graph_vertex_props():
     view = g.window(min_size, max_size)
 
     assert view.vertex(1).props() == {'cost': [(0, 99.5)], 'type': [(0, 'wallet')]}
+
 
 def test_windowed_graph_edge_prop():
     g = create_graph(1)
