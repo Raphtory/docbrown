@@ -115,6 +115,11 @@ jobs:
                   apk update
                   apk add openssl-dev
                   ;;
+                centos)
+                    echo "Installing openssl-dev on CentOS..."
+                    yum update
+                    yum install -y openssl-devel
+                    ;;  
                 *)
                     echo "Unsupported distribution: $ID"
                     exit 1
