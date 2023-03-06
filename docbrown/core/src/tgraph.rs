@@ -1023,7 +1023,7 @@ pub struct VertexView {
     pub g_id: u64,
     // `pid` is optional because pid info is unavailable while creating remote vertex view locally.
     // For instance, when returning vertex neighbours
-    pub(crate) pid: Option<usize>,
+    pub pid: Option<usize>,
 }
 
 impl VertexView {

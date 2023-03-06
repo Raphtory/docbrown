@@ -494,7 +494,7 @@ mod db_tests {
     }
 
     #[test]
-    fn graph_neighbours_window() {
+    fn graph_edges_window() {
         let vs = vec![
             (1, 1, 2),
             (2, 1, 3),
@@ -556,7 +556,7 @@ mod db_tests {
     }
 
     #[test]
-    fn graph_neighbours_window_t() {
+    fn graph_edges_window_t() {
         let vs = vec![
             (1, 1, 2),
             (2, 1, 3),
@@ -641,6 +641,80 @@ mod db_tests {
             })
             .collect::<Vec<_>>();
         assert_eq!(both_expected, both_actual);
+    }
+
+    #[test]
+    fn graph_neighbours_window() {
+        let vs = vec![
+            (1, 1, 2),
+            (2, 1, 3),
+            (-1, 2, 1),
+            (0, 1, 1),
+            (7, 3, 2),
+            (1, 1, 1),
+        ];
+
+        let g = Graph::new(2);
+
+        for (t, src, dst) in &vs {
+            g.add_edge(*t, *src, *dst, &vec![]);
+        }
+
+        let expected = [
+            (
+                vec![
+                    VertexView {
+                        g_id: 1,
+                        pid: Some(0),
+                    },
+                    VertexView { g_id: 2, pid: None },
+                ],
+                vec![
+                    VertexView {
+                        g_id: 1,
+                        pid: Some(0),
+                    },
+                    VertexView {
+                        g_id: 3,
+                        pid: Some(1),
+                    },
+                    VertexView { g_id: 2, pid: None },
+                ],
+                vec![
+                    VertexView {
+                        g_id: 1,
+                        pid: Some(0),
+                    },
+                    VertexView {
+                        g_id: 1,
+                        pid: Some(0),
+                    },
+                ],
+            ),
+            (vec![VertexView { g_id: 1, pid: None }], vec![], vec![]),
+            (
+                vec![VertexView {
+                    g_id: 1,
+                    pid: Some(0),
+                }],
+                vec![],
+                vec![],
+            ),
+        ];
+        let actual = (1..=3)
+            .map(|i| {
+                (
+                    g.neighbours_window(i, -1, 7, Direction::IN)
+                        .collect::<Vec<_>>(),
+                    g.neighbours_window(i, 1, 7, Direction::OUT)
+                        .collect::<Vec<_>>(),
+                    g.neighbours_window(i, 0, 1, Direction::BOTH)
+                        .collect::<Vec<_>>(),
+                )
+            })
+            .collect::<Vec<_>>();
+
+        assert_eq!(actual, expected);
     }
 
     #[test]
