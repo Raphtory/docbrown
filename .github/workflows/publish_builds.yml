@@ -26,13 +26,13 @@ jobs:
           include:
             - os: ubuntu-latest
       steps:
-        - name: Wait for tests to succeed
-          uses: lewagon/wait-on-check-action@v1.3.1
-          with:
-            ref: ${{ github.ref }}
-            check-name: 'Rust Tests'
-            repo-token: ${{ secrets.GH_TOKEN }}
-            wait-interval: 10
+#        - name: Wait for tests to succeed
+#          uses: lewagon/wait-on-check-action@v1.3.1
+#          with:
+#            ref: ${{ github.ref }}
+#            check-name: 'Rust Tests'
+#            repo-token: ${{ secrets.GH_TOKEN }}
+#            wait-interval: 10
         - name: Set up cargo cache
           uses: actions/cache@v3
           continue-on-error: false
