@@ -159,7 +159,7 @@ jobs:
       - name: Upload wheels to gh artifact
         uses: actions/upload-artifact@v3
         with:
-          name: artifacts
+          name: pyartifacts
           path: ./pyraphtory/dist
   python-windows:
     needs: release-rust
@@ -185,7 +185,7 @@ jobs:
       - name: Upload wheels to gh artifact
         uses: actions/upload-artifact@v3
         with:
-          name: artifacts
+          name: pyartifacts
           path: ./pyraphtory/dist
   python-macos:
     needs: release-rust
@@ -218,11 +218,11 @@ jobs:
           command: build
           target: ${{ matrix.target }}
           args: --release --out dist --find-interpreter
-#      - name: Upload wheels to gh artifact
-#        uses: actions/upload-artifact@v3
-#        with:
-#          name: artifacts
-#          path: ./pyraphtory/dist
+      - name: Upload wheels to gh artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: pyartifacts
+          path: ./pyraphtory/dist
   download-release-gh-artifacts:
     needs: [release-rust, python-linux, python-windows, python-macos]
     name: Release
