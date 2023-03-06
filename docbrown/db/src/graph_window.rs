@@ -244,11 +244,11 @@ pub struct WindowedEdge {
 impl WindowedEdge {
     fn from(value: EdgeView, graph_w: Arc<WindowedGraph>) -> Self {
         Self {
-            edge_id: value.e_meta.edge_id(),
+            edge_id: value.edge_id,
             src: value.src_g_id,
             dst: value.dst_g_id,
             t: value.t,
-            is_remote: !value.e_meta.is_local(),
+            is_remote: value.is_remote,
             graph_w,
         }
     }

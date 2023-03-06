@@ -340,20 +340,22 @@ impl TemporalGraph {
                 if !self.has_vertex(v2) {
                     match (remote_out.find(v2 as usize), remote_into.find(v2 as usize)) {
                         (Some(e), None) => Some(EdgeView {
+                            edge_id: e.edge_id(),
                             src_g_id: v1,
                             dst_g_id: v2,
                             src_id: *v1_pid,
                             dst_id: v2 as usize,
                             t: None,
-                            e_meta: e,
+                            is_remote: !e.is_local()
                         }),
                         (None, Some(e)) => Some(EdgeView {
+                            edge_id: e.edge_id(),
                             src_g_id: v2,
                             dst_g_id: v1,
                             src_id: v2 as usize,
                             dst_id: *v1_pid,
                             t: None,
-                            e_meta: e,
+                            is_remote: !e.is_local()
                         }),
                         _ => None,
                     }
@@ -361,20 +363,22 @@ impl TemporalGraph {
                     let v2_pid = self.logical_to_physical.get(&v2)?;
                     match (out.find(*v2_pid), into.find(*v2_pid)) {
                         (Some(e), None) => Some(EdgeView {
+                            edge_id: e.edge_id(),
                             src_g_id: v1,
                             dst_g_id: v2,
                             src_id: *v1_pid,
                             dst_id: *v2_pid,
                             t: None,
-                            e_meta: e,
+                            is_remote: !e.is_local()
                         }),
                         (None, Some(e)) => Some(EdgeView {
+                            edge_id: e.edge_id(),
                             src_g_id: v2,
                             dst_g_id: v1,
                             src_id: *v2_pid,
                             dst_id: *v1_pid,
                             t: None,
-                            e_meta: e,
+                            is_remote: !e.is_local()
                         }),
                         _ => None,
                     }
@@ -406,20 +410,22 @@ impl TemporalGraph {
                             remote_into.find_window(v2 as usize, &w),
                         ) {
                             (Some(e), None) => Some(EdgeView {
+                                edge_id: e.edge_id(),
                                 src_g_id: v1,
                                 dst_g_id: v2,
                                 src_id: *v1_pid,
                                 dst_id: v2 as usize,
                                 t: None,
-                                e_meta: e,
+                                is_remote: !e.is_local()
                             }),
                             (None, Some(e)) => Some(EdgeView {
+                                edge_id: e.edge_id(),
                                 src_g_id: v2,
                                 dst_g_id: v1,
                                 src_id: v2 as usize,
                                 dst_id: *v1_pid,
                                 t: None,
-                                e_meta: e,
+                                is_remote: !e.is_local()
                             }),
                             _ => None,
                         }
@@ -427,20 +433,22 @@ impl TemporalGraph {
                         let v2_pid = self.logical_to_physical.get(&v2)?;
                         match (out.find_window(*v2_pid, &w), into.find_window(*v2_pid, &w)) {
                             (Some(e), None) => Some(EdgeView {
+                                edge_id: e.edge_id(),
                                 src_g_id: v1,
                                 dst_g_id: v2,
                                 src_id: *v1_pid,
                                 dst_id: *v2_pid,
                                 t: None,
-                                e_meta: e,
+                                is_remote: !e.is_local()
                             }),
                             (None, Some(e)) => Some(EdgeView {
+                                edge_id: e.edge_id(),
                                 src_g_id: v2,
                                 dst_g_id: v1,
                                 src_id: *v2_pid,
                                 dst_id: *v1_pid,
                                 t: None,
-                                e_meta: e,
+                                is_remote: !e.is_local()
                             }),
                             _ => None,
                         }
@@ -466,26 +474,28 @@ impl TemporalGraph {
             Direction::OUT => {
                 Box::new(
                     self.edges_iter(v_pid, d)
-                        .map(move |(dst, e_meta)| EdgeView {
+                        .map(move |(dst, e)| EdgeView {
+                            edge_id: e.edge_id(),
                             src_g_id: v,
-                            dst_g_id: self.v_g_id(*dst, e_meta),
+                            dst_g_id: self.v_g_id(*dst, e),
                             src_id: v_pid,
                             dst_id: *dst,
                             t: None,
-                            e_meta,
+                            is_remote: !e.is_local()
                         }),
                 )
             }
             Direction::IN => {
                 Box::new(
                     self.edges_iter(v_pid, d)
-                        .map(move |(dst, e_meta)| EdgeView {
-                            src_g_id: self.v_g_id(*dst, e_meta),
+                        .map(move |(dst, e)| EdgeView {
+                            edge_id: e.edge_id(),
+                            src_g_id: self.v_g_id(*dst, e),
                             dst_g_id: v,
                             src_id: *dst,
                             dst_id: v_pid,
                             t: None,
-                            e_meta,
+                            is_remote: !e.is_local()
                         }),
                 )
             }
@@ -509,23 +519,25 @@ impl TemporalGraph {
 
         match d {
             Direction::OUT => Box::new(self.edges_iter_window(v_pid, w, d).map(
-                move |(dst, e_meta)| EdgeView {
+                move |(dst, e)| EdgeView {
+                    edge_id: e.edge_id(),
                     src_g_id: v,
-                    dst_g_id: self.v_g_id(dst, e_meta),
+                    dst_g_id: self.v_g_id(dst, e),
                     src_id: v_pid,
                     dst_id: dst,
                     t: None,
-                    e_meta,
+                    is_remote: !e.is_local()
                 },
             )),
             Direction::IN => Box::new(self.edges_iter_window(v_pid, w, d).map(
-                move |(dst, e_meta)| EdgeView {
-                    src_g_id: self.v_g_id(dst, e_meta),
+                move |(dst, e)| EdgeView {
+                    edge_id: e.edge_id(),
+                    src_g_id: self.v_g_id(dst, e),
                     dst_g_id: v,
                     src_id: dst,
                     dst_id: v_pid,
                     t: None,
-                    e_meta,
+                    is_remote: !e.is_local()
                 },
             )),
             Direction::BOTH => Box::new(itertools::chain!(
@@ -545,23 +557,25 @@ impl TemporalGraph {
 
         match d {
             Direction::OUT => Box::new(self.edges_iter_window_t(v_pid, w, d).map(
-                move |(dst, t, e_meta)| EdgeView {
+                move |(dst, t, e)| EdgeView {
+                    edge_id: e.edge_id(),
                     src_g_id: v,
-                    dst_g_id: self.v_g_id(dst, e_meta),
+                    dst_g_id: self.v_g_id(dst, e),
                     src_id: v_pid,
                     dst_id: dst,
                     t: Some(t),
-                    e_meta,
+                    is_remote: !e.is_local()
                 },
             )),
             Direction::IN => Box::new(self.edges_iter_window_t(v_pid, w, d).map(
-                move |(dst, t, e_meta)| EdgeView {
-                    src_g_id: self.v_g_id(dst, e_meta),
+                move |(dst, t, e)| EdgeView {
+                    edge_id: e.edge_id(),
+                    src_g_id: self.v_g_id(dst, e),
                     dst_g_id: v,
                     src_id: dst,
                     dst_id: v_pid,
                     t: Some(t),
-                    e_meta,
+                    is_remote: !e.is_local()
                 },
             )),
             Direction::BOTH => Box::new(itertools::chain!(
@@ -966,8 +980,8 @@ impl TemporalGraph {
         }
     }
 
-    fn v_g_id(&self, v_id: usize, e_meta: AdjEdge) -> u64 {
-        if e_meta.is_local() {
+    fn v_g_id(&self, v_id: usize, e: AdjEdge) -> u64 {
+        if e.is_local() {
             *self.adj_lists[v_id].logical()
         } else {
             v_id.try_into().unwrap()
@@ -990,13 +1004,14 @@ impl VertexView {
 
 #[derive(Debug, PartialEq)]
 pub struct EdgeView {
+    pub edge_id: usize,
     pub src_g_id: u64,
     pub dst_g_id: u64,
     // src_id and dst_id could be global or physical depending upon edge being remote or local respectively
     src_id: usize,
     dst_id: usize,
     pub t: Option<i64>,
-    pub e_meta: AdjEdge,
+    pub is_remote: bool,
 }
 
 #[cfg(test)]
@@ -1509,7 +1524,7 @@ mod graph_test {
         let edge_weights = g
             .vertex_edges(11, Direction::OUT)
             .flat_map(|e| {
-                g.edge_prop(e.e_meta.edge_id(), "weight").map(|i| {
+                g.edge_prop(e.edge_id, "weight").map(|i| {
                     i.flat_map(|(t, prop)| match prop {
                         Prop::U32(weight) => Some((t, weight)),
                         _ => None,
@@ -1545,13 +1560,13 @@ mod graph_test {
             .vertex_edges(11, Direction::OUT)
             .flat_map(|e| {
                 let weight = g
-                    .edge_prop(e.e_meta.edge_id(), "weight")
+                    .edge_prop(e.edge_id, "weight")
                     .map(|x| x.collect::<Vec<_>>());
                 let amount = g
-                    .edge_prop(e.e_meta.edge_id(), "amount")
+                    .edge_prop(e.edge_id, "amount")
                     .map(|x| x.collect::<Vec<_>>());
                 let label = g
-                    .edge_prop(e.e_meta.edge_id(), "label")
+                    .edge_prop(e.edge_id, "label")
                     .map(|x| x.collect::<Vec<_>>());
                 weight
                     .zip(amount)
@@ -1592,7 +1607,7 @@ mod graph_test {
         let edge_weights = g
             .vertex_edges_window(11, &(4..8), Direction::OUT)
             .flat_map(|e| {
-                g.edge_prop_window(e.e_meta.edge_id(), "amount", 4..8)
+                g.edge_prop_window(e.edge_id, "amount", 4..8)
                     .map(|i| {
                         i.flat_map(|(t, prop)| match prop {
                             Prop::U32(weight) => Some((t, weight)),
@@ -1609,7 +1624,7 @@ mod graph_test {
         let edge_weights = g
             .vertex_edges_window(22, &(4..8), Direction::IN)
             .flat_map(|e| {
-                g.edge_prop_window(e.e_meta.edge_id(), "amount", 4..8)
+                g.edge_prop_window(e.edge_id, "amount", 4..8)
                     .map(|i| {
                         i.flat_map(|(t, prop)| match prop {
                             Prop::U32(weight) => Some((t, weight)),
@@ -1672,13 +1687,13 @@ mod graph_test {
             .vertex_edges_window(11, &(3..5), Direction::OUT)
             .flat_map(|e| {
                 let weight = g
-                    .edge_prop_window(e.e_meta.edge_id(), "weight", 3..5)
+                    .edge_prop_window(e.edge_id, "weight", 3..5)
                     .map(|x| x.collect::<Vec<_>>());
                 let amount = g
-                    .edge_prop_window(e.e_meta.edge_id(), "amount", 3..5)
+                    .edge_prop_window(e.edge_id, "amount", 3..5)
                     .map(|x| x.collect::<Vec<_>>());
                 let label = g
-                    .edge_prop_window(e.e_meta.edge_id(), "label", 3..5)
+                    .edge_prop_window(e.edge_id, "label", 3..5)
                     .map(|x| x.collect::<Vec<_>>());
                 weight
                     .zip(amount)
@@ -1734,7 +1749,7 @@ mod graph_test {
         let edge_weights_out_11 = g
             .vertex_edges(11, Direction::OUT)
             .flat_map(|e| {
-                g.edge_prop(e.e_meta.edge_id(), "weight").map(|i| {
+                g.edge_prop(e.edge_id, "weight").map(|i| {
                     i.flat_map(|(t, prop)| match prop {
                         Prop::F32(weight) => Some((t, weight)),
                         _ => None,
@@ -1750,7 +1765,7 @@ mod graph_test {
         let edge_weights_into_11 = g
             .vertex_edges(11, Direction::IN)
             .flat_map(|e| {
-                g.edge_prop(e.e_meta.edge_id(), "weight").map(|i| {
+                g.edge_prop(e.edge_id, "weight").map(|i| {
                     i.flat_map(|(t, prop)| match prop {
                         Prop::F32(weight) => Some((t, weight)),
                         _ => None,
@@ -1831,13 +1846,13 @@ mod graph_test {
             .vertex_edges(11, Direction::OUT)
             .flat_map(|e| {
                 let weight = g
-                    .edge_prop(e.e_meta.edge_id(), "weight")
+                    .edge_prop(e.edge_id, "weight")
                     .map(|x| x.collect::<Vec<_>>());
                 let amount = g
-                    .edge_prop(e.e_meta.edge_id(), "amount")
+                    .edge_prop(e.edge_id, "amount")
                     .map(|x| x.collect::<Vec<_>>());
                 let label = g
-                    .edge_prop(e.e_meta.edge_id(), "label")
+                    .edge_prop(e.edge_id, "label")
                     .map(|x| x.collect::<Vec<_>>());
                 weight
                     .zip(amount)
@@ -1876,12 +1891,13 @@ mod graph_test {
         assert_eq!(
             g.edge(11, 22),
             Some(EdgeView {
+                edge_id: 1,
                 src_g_id: 11,
                 dst_g_id: 22,
                 src_id: 0,
                 dst_id: 1,
                 t: None,
-                e_meta: AdjEdge(1)
+                is_remote: false
             })
         );
         assert_eq!(g.edge(11, 33), None);
@@ -1889,12 +1905,13 @@ mod graph_test {
         assert_eq!(
             g.edge_window(11, 22, &(1..5)),
             Some(EdgeView {
+                edge_id: 1,
                 src_g_id: 11,
                 dst_g_id: 22,
                 src_id: 0,
                 dst_id: 1,
                 t: None,
-                e_meta: AdjEdge(1)
+                is_remote: false
             })
         );
         assert_eq!(g.edge_window(11, 22, &(1..4)), None);
@@ -1902,12 +1919,13 @@ mod graph_test {
         assert_eq!(
             g.edge_window(11, 22, &(4..5)),
             Some(EdgeView {
+                edge_id: 1,
                 src_g_id: 11,
                 dst_g_id: 22,
                 src_id: 0,
                 dst_id: 1,
                 t: None,
-                e_meta: AdjEdge(1)
+                is_remote: false
             })
         );
 
