@@ -33,44 +33,44 @@ jobs:
 #          check-name: 'Rust Tests'
 #          repo-token: ${{ secrets.GH_TOKEN }}
 #          wait-interval: 10
-      - name: "Checkout code"
-        uses: actions/checkout@v3
-      - name: "Set up Rust toolchain"
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-          components: rustfmt, clippy
-      - name: "Install cargo release"
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: cargo-release
-      - name: "Bump version with cargo release and push to remote"
-        uses: actions-rs/cargo@v1
-        with:
-          command: release
-          args: --exclude examples --exclude pyraphtory --push-remote ${{ inputs.version }} --no-confirm ${{ inputs.version }}
-      - name: "Make PR"
-        uses: peter-evans/create-pull-request@v4
-        with:
-          token: ${{ secrets.GH_TOKEN }}
-          base: ${{ inputs.base }}
-          branch: v${{ inputs.version }}
-          commit-message: "Release v${{ inputs.version }}"
-          title: "Release v${{ inputs.version }}"
-          body: |
-            Release v${{ inputs.version }}
-            - [x] Publish to crates.io
-            - [x] Publish to PyPi
-            - [x] Make Tag
-            - [x] Publish to Github as release
-      - name: "Upload rust packages as artifact"
-        uses: actions/upload-artifact@v2
-        with:
-          name: artifacts
-          path: ./target/package/docbrown-*.crate
+#      - name: "Checkout code"
+#        uses: actions/checkout@v3
+#      - name: "Set up Rust toolchain"
+#        uses: actions-rs/toolchain@v1
+#        with:
+#          profile: minimal
+#          toolchain: stable
+#          override: true
+#          components: rustfmt, clippy
+#      - name: "Install cargo release"
+#        uses: actions-rs/cargo@v1
+#        with:
+#          command: install
+#          args: cargo-release
+#      - name: "Bump version with cargo release and push to remote"
+#        uses: actions-rs/cargo@v1
+#        with:
+#          command: release
+#          args: --exclude examples --exclude pyraphtory --push-remote ${{ inputs.version }} --no-confirm ${{ inputs.version }}
+#      - name: "Make PR"
+#        uses: peter-evans/create-pull-request@v4
+#        with:
+#          token: ${{ secrets.GH_TOKEN }}
+#          base: ${{ inputs.base }}
+#          branch: v${{ inputs.version }}
+#          commit-message: "Release v${{ inputs.version }}"
+#          title: "Release v${{ inputs.version }}"
+#          body: |
+#            Release v${{ inputs.version }}
+#            - [x] Publish to crates.io
+#            - [x] Publish to PyPi
+#            - [x] Make Tag
+#            - [x] Publish to Github as release
+#      - name: "Upload rust packages as artifact"
+#        uses: actions/upload-artifact@v2
+#        with:
+#          name: artifacts
+#          path: ./target/package/docbrown-*.crate
   python-linux:
     needs: release-rust
     runs-on: ubuntu-latest
@@ -82,8 +82,6 @@ jobs:
       - uses: actions/setup-python@v4
         with:
           python-version: '3.10'
-      - name: Install SSL
-        run: sudo apt-get -y install pkg-config libssl-dev
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
@@ -94,7 +92,7 @@ jobs:
           manylinux: auto
           before-script-linux: |
             if [  -n "$(uname -a | grep Ubuntu)" ]; then
-              sudo apt-get update && sudo apt-get -y install libssl-dev
+              apt-get update && apt-get -y install libssl-dev
             else
               yum install -y openssl-devel
             fi
