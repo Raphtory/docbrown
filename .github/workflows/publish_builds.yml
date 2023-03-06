@@ -17,69 +17,85 @@ env:
 ## DO NOT CACHE THIS UNDER ANY CIRCUMSTANCES
 ## AS CACHE WILL STORE THE SECRET
 
-
-#  release-rust:
-#    name: Release code
-#    runs-on: '${{ matrix.os }}'
-#    strategy:
-#      matrix:
-#        include:
-#          - os: ubuntu-latest
-#    steps:
-#      - name: Wait for tests to succeed
-#        uses: lewagon/wait-on-check-action@v1.3.1
-#        with:
-#          ref: ${{ github.ref }}
-#          check-name: 'Rust Tests'
-#          repo-token: ${{ secrets.GH_TOKEN }}
-#          wait-interval: 10
-#      - name: "Checkout code"
-#        uses: actions/checkout@v3
-#      - name: "Set up Rust toolchain"
-#        uses: actions-rs/toolchain@v1
-#        with:
-#          profile: minimal
-#          toolchain: stable
-#          override: true
-#          components: rustfmt, clippy
-#      - name: "Install cargo release"
-#        uses: actions-rs/cargo@v1
-#        with:
-#          command: install
-#          args: cargo-release
-#      - name: "Bump version with cargo release and push to remote"
-#        uses: actions-rs/cargo@v1
-#        with:
-#          command: release
-#          args: --exclude examples --exclude pyraphtory --push-remote ${{ inputs.version }} --no-confirm ${{ inputs.version }}
-#      - name: "Make PR"
-#        uses: peter-evans/create-pull-request@v4
-#        with:
-#          token: ${{ secrets.GH_TOKEN }}
-#          base: ${{ inputs.base }}
-#          branch: v${{ inputs.version }}
-#          commit-message: "Release v${{ inputs.version }}"
-#          title: "Release v${{ inputs.version }}"
-#          body: |
-#            Release v${{ inputs.version }}
-#            - [x] Publish to crates.io
-#            - [x] Publish to PyPi
-#            - [x] Make Tag
-#            - [x] Publish to Github as release
-#      - name: "Upload rust packages as artifact"
-#        uses: actions/upload-artifact@v2
-#        with:
-#          name: artifacts
-#          path: ./target/package/docbrown-*.crate
-
 jobs:
+  release-rust:
+      name: Release code
+      runs-on: '${{ matrix.os }}'
+      strategy:
+        matrix:
+          include:
+            - os: ubuntu-latest
+      steps:
+        - name: Wait for tests to succeed
+          uses: lewagon/wait-on-check-action@v1.3.1
+          with:
+            ref: ${{ github.ref }}
+            check-name: 'Rust Tests'
+            repo-token: ${{ secrets.GH_TOKEN }}
+            wait-interval: 10
+        - name: Set up cargo cache
+          uses: actions/cache@v3
+          continue-on-error: false
+          with:
+            path: |
+              ~/.cargo/bin/
+              ~/.cargo/registry/index/
+              ~/.cargo/registry/cache/
+              ~/.cargo/git/db/
+        - name: "Checkout code"
+          uses: actions/checkout@v3
+        - name: "Set up Rust toolchain"
+          uses: actions-rs/toolchain@v1
+          with:
+            profile: minimal
+            toolchain: stable
+            override: true
+            components: rustfmt, clippy
+        - name: "Install cargo release"
+          uses: actions-rs/cargo@v1
+          with:
+            command: install
+            args: cargo-release
+        - name: "Bump version with cargo release and push to remote"
+          uses: actions-rs/cargo@v1
+          with:
+            command: release
+            args: --exclude examples --exclude pyraphtory --push-remote ${{ inputs.version }} --no-confirm ${{ inputs.version }}
+        - name: "Make PR"
+          uses: peter-evans/create-pull-request@v4
+          with:
+            token: ${{ secrets.GH_TOKEN }}
+            base: ${{ inputs.base }}
+            branch: v${{ inputs.version }}
+            commit-message: "Release v${{ inputs.version }}"
+            title: "Release v${{ inputs.version }}"
+            body: |
+              Release v${{ inputs.version }}
+              - [x] Publish to crates.io
+              - [x] Publish to PyPi
+              - [x] Make Tag
+              - [x] Publish to Github as release
+        - name: "Upload rust packages to local cache-artifact"
+          uses: actions/upload-artifact@v2
+          with:
+            name: artifacts
+            path: ./target/package/docbrown-*.crate
   python-linux:
-#    needs: release-rust
+    needs: release-rust
     runs-on: ubuntu-latest
     strategy:
       matrix:
         target: [x86_64, x86, aarch64, armv7]
     steps:
+      - name: Set up cargo cache
+        uses: actions/cache@v3
+        continue-on-error: false
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
         with:
@@ -135,12 +151,21 @@ jobs:
           name: artifacts
           path: ./pyraphtory/dist
   python-windows:
-    # needs: release-rust
+    needs: release-rust
     runs-on: windows-latest
     strategy:
       matrix:
         target: [x64]
     steps:
+      - name: Set up cargo cache
+        uses: actions/cache@v3
+        continue-on-error: false
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
         with:
@@ -159,12 +184,21 @@ jobs:
           name: artifacts
           path: ./pyraphtory/dist
   python-macos:
-    # needs: release-rust
+    needs: release-rust
     runs-on: macos-latest
     strategy:
       matrix:
         target: [x86_64, aarch64]
     steps:
+      - name: Set up cargo cache
+        uses: actions/cache@v3
+        continue-on-error: false
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
         with:
@@ -182,8 +216,7 @@ jobs:
           name: artifacts
           path: ./pyraphtory/dist
   download-artifacts:
-    # needs: [release-rust, python-linux, python-windows, python-macos]
-    needs: [ python-linux, python-windows, python-macos ]
+    needs: [release-rust, python-linux, python-windows, python-macos]
     name: Release
     runs-on: ubuntu-latest
     steps:
@@ -194,30 +227,34 @@ jobs:
       - name: Display structure of downloaded files
         run: ls -R
         working-directory: artifacts
+    release-gh:
+      name: Release GitHub
+      runs-on: ubuntu-latest
+      steps:
+      - name: "Publish to Github as release"
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            artifacts/*.*
+          draft: false
+          prerelease: false
+          tag_name: v${{ inputs.version }}
+          name: v${{ inputs.version }}
+          body: |
+            Release v${{ inputs.version }}
+            - [x] Publish to crates.io
+            - [x] Publish to PyPi
+            - [x] Make Tag
+            - [x] Publish to Github as release
+      - name: Delete artifacts
+        uses: geekyeggo/delete-artifact@v2
+        with:
+          failOnError: false
+          name: |
+            artifacts
 
-
-#    release-gh:
-#      name: Release GitHub
-#      runs-on: ubuntu-latest
-#      steps:
-#      - name: "Publish to Github as release"
-#        uses: softprops/action-gh-release@v1
-#        with:
-#          files: |
-#            target/wheels/pyraphtory/pyraphtory-*.whl
-#          draft: false
-#          prerelease: false
-#          tag_name: v${{ inputs.version }}
-#          name: v${{ inputs.version }}
-#          body: |
-#            Release v${{ inputs.version }}
-#            - [x] Publish to crates.io
-#            - [x] Publish to PyPi
-#            - [x] Make Tag
-#            - [x] Publish to Github as release
-#
 #  release:
-#    name: Release
+#    name: Publish to PyPI
 #    runs-on: ubuntu-latest
 #    if: "startsWith(github.ref, 'refs/tags/')"
 #    needs: [linux, windows, macos]
