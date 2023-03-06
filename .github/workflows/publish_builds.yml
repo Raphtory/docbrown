@@ -93,8 +93,8 @@ jobs:
           args: --release --out dist --find-interpreter
           manylinux: auto
           before-script-linux: |
-            if [  -n "$(uname -a | grep Ubuntu)" ]; then
-              apt-get update && apt-get -y install libssl-dev
+            if [[ $(lsb_release -si) == "Ubuntu" ]]; then
+              apt update && apt -y install libssl-dev
             else
               yum install -y openssl-devel
             fi
