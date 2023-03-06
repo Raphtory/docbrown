@@ -115,8 +115,8 @@ jobs:
           working-directory: ./pyraphtory
           command: build
           target: ${{ matrix.target }}
-          args: --release -i python3.10 --out dist --find-interpreter --manylinux 2014
-          manylinux: auto
+          args: --release -i python3.10 --out dist --find-interpreter
+          manylinux: 2014
           before-script-linux: |
             if [[ -f /etc/os-release ]]; then
               . /etc/os-release
