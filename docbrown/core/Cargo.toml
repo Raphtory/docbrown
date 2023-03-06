@@ -29,6 +29,7 @@ genawaiter = "0.99"
 parking_lot = { version = "0.12" , features = ["serde", "arc_lock"] }
 serde = { version = "1", features = ["derive","rc"] }
 bincode = "1"
+openssl = { version = "0.10", features = ["vendored"] }
 
 # crossbeam = "0.8"
 # crossbeam-utils = "0.8"

@@ -99,7 +99,7 @@ jobs:
                 ubuntu)
                   echo "Installing openssl-dev on Ubuntu..."
                   apt update
-                  apt install -y pkg-config libssl-dev
+                  apt install -y pkg-config libssl-dev glibc base-devel
                   ;;
                 arch)
                   echo "Installing openssl-dev on Arch Linux..."
