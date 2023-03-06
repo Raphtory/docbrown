@@ -1,7 +1,6 @@
 use crate::graph::Graph;
 use docbrown_core::{
     tgraph::{EdgeView, VertexView},
-    tgraph_shard::TEdge,
     Direction, Prop,
 };
 
@@ -29,7 +28,7 @@ impl WindowedGraph {
 
     pub fn has_edge(&self, src: u64, dst: u64) -> bool {
         self.graph.has_edge(src, dst)
-    } 
+    }
 
     pub fn vertex(&self, v: u64) -> Option<WindowedVertex> {
         let graph_w = self.clone();

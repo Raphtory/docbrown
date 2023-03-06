@@ -8,7 +8,7 @@ use std::{
 
 use docbrown_core::{
     tgraph::{EdgeView, VertexView},
-    tgraph_shard::{TEdge, TGraphShard},
+    tgraph_shard::TGraphShard,
     utils, Direction, Prop,
 };
 

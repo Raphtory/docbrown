@@ -10,27 +10,6 @@ use genawaiter::yield_;
 use crate::tgraph::{EdgeView, TemporalGraph, VertexView};
 use crate::{Direction, Prop};
 
-#[derive(Debug)]
-pub struct TEdge {
-    pub edge_id: usize,
-    pub src: u64,
-    pub dst: u64,
-    pub t: Option<i64>,
-    pub is_remote: bool,
-}
-
-impl From<EdgeView> for TEdge {
-    fn from(e: EdgeView) -> Self {
-        Self {
-            edge_id: e.e_meta.edge_meta_id(),
-            src: e.src_g_id,
-            dst: e.dst_g_id,
-            t: e.t,
-            is_remote: !e.e_meta.is_local(),
-        }
-    }
-}
-
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 #[repr(transparent)]
 pub struct TGraphShard {
