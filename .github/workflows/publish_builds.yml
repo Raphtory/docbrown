@@ -215,7 +215,7 @@ jobs:
         with:
           name: artifacts
           path: ./pyraphtory/dist
-  download-artifacts:
+  download-release-gh-artifacts:
     needs: [release-rust, python-linux, python-windows, python-macos]
     name: Release
     runs-on: ubuntu-latest
@@ -227,11 +227,7 @@ jobs:
       - name: Display structure of downloaded files
         run: ls -R
         working-directory: artifacts
-    release-gh:
-      name: Release GitHub
-      runs-on: ubuntu-latest
-      steps:
-      - name: "Publish to Github as release"
+      - name: "Publishing to Github as release"
         uses: softprops/action-gh-release@v1
         with:
           files: |
@@ -246,7 +242,7 @@ jobs:
             - [x] Publish to PyPi
             - [x] Make Tag
             - [x] Publish to Github as release
-      - name: Delete artifacts
+      - name: "Deleting artifacts"
         uses: geekyeggo/delete-artifact@v2
         with:
           failOnError: false
