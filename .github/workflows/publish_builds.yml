@@ -46,8 +46,8 @@ jobs:
             restore-keys: ${{ runner.os }}-cargo-
         - uses: actions/checkout@v3
         - run: |
-            git config user.name github-actions
-            git config user.email github-actions@github.com
+            git config user.name Haaroon
+            git config user.email Haaroon@users.noreply.github.com
             git checkout -b ${{ inputs.version }}
         - name: "Set up Rust toolchain"
           uses: actions-rs/toolchain@v1
