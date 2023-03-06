@@ -823,7 +823,7 @@ impl TemporalGraph {
                 let list = if remote_edge { remote_into } else { into };
                 let edge_id: usize = list
                     .find(src)
-                    .map(|e| e.edge_meta_id())
+                    .map(|e| e.edge_id())
                     .unwrap_or(self.props.get_next_available_edge_id());
 
                 list.push(t, src, AdjEdge::new(edge_id, !remote_edge)); // idempotent
@@ -856,7 +856,7 @@ impl TemporalGraph {
                 let list = if remote_edge { remote_out } else { out };
                 let edge_id: usize = list
                     .find(dst)
-                    .map(|e| e.edge_meta_id())
+                    .map(|e| e.edge_id())
                     .unwrap_or(self.props.get_next_available_edge_id());
 
                 list.push(t, dst, AdjEdge::new(edge_id, !remote_edge));
@@ -1509,7 +1509,7 @@ mod graph_test {
         let edge_weights = g
             .vertex_edges(11, Direction::OUT)
             .flat_map(|e| {
-                g.edge_prop(e.e_meta.edge_meta_id(), "weight").map(|i| {
+                g.edge_prop(e.e_meta.edge_id(), "weight").map(|i| {
                     i.flat_map(|(t, prop)| match prop {
                         Prop::U32(weight) => Some((t, weight)),
                         _ => None,
@@ -1545,13 +1545,13 @@ mod graph_test {
             .vertex_edges(11, Direction::OUT)
             .flat_map(|e| {
                 let weight = g
-                    .edge_prop(e.e_meta.edge_meta_id(), "weight")
+                    .edge_prop(e.e_meta.edge_id(), "weight")
                     .map(|x| x.collect::<Vec<_>>());
                 let amount = g
-                    .edge_prop(e.e_meta.edge_meta_id(), "amount")
+                    .edge_prop(e.e_meta.edge_id(), "amount")
                     .map(|x| x.collect::<Vec<_>>());
                 let label = g
-                    .edge_prop(e.e_meta.edge_meta_id(), "label")
+                    .edge_prop(e.e_meta.edge_id(), "label")
                     .map(|x| x.collect::<Vec<_>>());
                 weight
                     .zip(amount)
@@ -1592,7 +1592,7 @@ mod graph_test {
         let edge_weights = g
             .vertex_edges_window(11, &(4..8), Direction::OUT)
             .flat_map(|e| {
-                g.edge_prop_window(e.e_meta.edge_meta_id(), "amount", 4..8)
+                g.edge_prop_window(e.e_meta.edge_id(), "amount", 4..8)
                     .map(|i| {
                         i.flat_map(|(t, prop)| match prop {
                             Prop::U32(weight) => Some((t, weight)),
@@ -1609,7 +1609,7 @@ mod graph_test {
         let edge_weights = g
             .vertex_edges_window(22, &(4..8), Direction::IN)
             .flat_map(|e| {
-                g.edge_prop_window(e.e_meta.edge_meta_id(), "amount", 4..8)
+                g.edge_prop_window(e.e_meta.edge_id(), "amount", 4..8)
                     .map(|i| {
                         i.flat_map(|(t, prop)| match prop {
                             Prop::U32(weight) => Some((t, weight)),
@@ -1672,13 +1672,13 @@ mod graph_test {
             .vertex_edges_window(11, &(3..5), Direction::OUT)
             .flat_map(|e| {
                 let weight = g
-                    .edge_prop_window(e.e_meta.edge_meta_id(), "weight", 3..5)
+                    .edge_prop_window(e.e_meta.edge_id(), "weight", 3..5)
                     .map(|x| x.collect::<Vec<_>>());
                 let amount = g
-                    .edge_prop_window(e.e_meta.edge_meta_id(), "amount", 3..5)
+                    .edge_prop_window(e.e_meta.edge_id(), "amount", 3..5)
                     .map(|x| x.collect::<Vec<_>>());
                 let label = g
-                    .edge_prop_window(e.e_meta.edge_meta_id(), "label", 3..5)
+                    .edge_prop_window(e.e_meta.edge_id(), "label", 3..5)
                     .map(|x| x.collect::<Vec<_>>());
                 weight
                     .zip(amount)
@@ -1734,7 +1734,7 @@ mod graph_test {
         let edge_weights_out_11 = g
             .vertex_edges(11, Direction::OUT)
             .flat_map(|e| {
-                g.edge_prop(e.e_meta.edge_meta_id(), "weight").map(|i| {
+                g.edge_prop(e.e_meta.edge_id(), "weight").map(|i| {
                     i.flat_map(|(t, prop)| match prop {
                         Prop::F32(weight) => Some((t, weight)),
                         _ => None,
@@ -1750,7 +1750,7 @@ mod graph_test {
         let edge_weights_into_11 = g
             .vertex_edges(11, Direction::IN)
             .flat_map(|e| {
-                g.edge_prop(e.e_meta.edge_meta_id(), "weight").map(|i| {
+                g.edge_prop(e.e_meta.edge_id(), "weight").map(|i| {
                     i.flat_map(|(t, prop)| match prop {
                         Prop::F32(weight) => Some((t, weight)),
                         _ => None,
@@ -1831,13 +1831,13 @@ mod graph_test {
             .vertex_edges(11, Direction::OUT)
             .flat_map(|e| {
                 let weight = g
-                    .edge_prop(e.e_meta.edge_meta_id(), "weight")
+                    .edge_prop(e.e_meta.edge_id(), "weight")
                     .map(|x| x.collect::<Vec<_>>());
                 let amount = g
-                    .edge_prop(e.e_meta.edge_meta_id(), "amount")
+                    .edge_prop(e.e_meta.edge_id(), "amount")
                     .map(|x| x.collect::<Vec<_>>());
                 let label = g
-                    .edge_prop(e.e_meta.edge_meta_id(), "label")
+                    .edge_prop(e.e_meta.edge_id(), "label")
                     .map(|x| x.collect::<Vec<_>>());
                 weight
                     .zip(amount)
