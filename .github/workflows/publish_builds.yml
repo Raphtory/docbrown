@@ -104,7 +104,7 @@ jobs:
           name: artifacts
           path: ./pyraphtory/dist
   python-windows:
-    needs: release-rust
+    # needs: release-rust
     runs-on: windows-latest
     strategy:
       matrix:
@@ -128,7 +128,7 @@ jobs:
           name: artifacts
           path: ./pyraphtory/dist
   python-macos:
-    needs: release-rust
+    # needs: release-rust
     runs-on: macos-latest
     strategy:
       matrix:
@@ -151,7 +151,8 @@ jobs:
           name: artifacts
           path: ./pyraphtory/dist
   download-artifacts:
-    needs: [release-rust, python-linux, python-windows, python-macos]
+    # needs: [release-rust, python-linux, python-windows, python-macos]
+    needs: [ python-linux, python-windows, python-macos ]
     name: Release
     runs-on: ubuntu-latest
     steps:
