@@ -99,26 +99,26 @@ jobs:
                 ubuntu)
                   echo "Installing openssl-dev on Ubuntu..."
                   apt update
-                  apt install -y libssl-dev
+                  apt install -y pkg-config libssl-dev
                   ;;
                 arch)
                   echo "Installing openssl-dev on Arch Linux..."
-                  pacman -Syu --noconfirm openssl
+                  pacman -Syu --noconfirm pkg-config openssl
                   ;;
                 fedora)
                   echo "Installing openssl-dev on Fedora..."
                   dnf update
-                  dnf install -y openssl-devel
+                  dnf install -y pkg-config openssl-devel
                   ;;
                 alpine)
                   echo "Installing openssl-dev on Alpine Linux..."
                   apk update
-                  apk add openssl-dev
+                  apk add pkgconfig openssl-dev
                   ;;
                 centos)
                     echo "Installing openssl-dev on CentOS..."
                     yum update
-                    yum install -y openssl-devel
+                    yum install -y pkgconfig openssl-devel
                     ;;  
                 *)
                     echo "Unsupported distribution: $ID"
