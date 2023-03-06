@@ -119,7 +119,7 @@ impl WindowedVertex {
         Box::new(
             self.graph_w
                 .graph
-                .edges_window(
+                .vertex_edges_window(
                     self.g_id,
                     self.graph_w.t_start,
                     self.graph_w.t_end,
@@ -134,7 +134,7 @@ impl WindowedVertex {
         Box::new(
             self.graph_w
                 .graph
-                .edges_window(
+                .vertex_edges_window(
                     self.g_id,
                     self.graph_w.t_start,
                     self.graph_w.t_end,
@@ -149,7 +149,7 @@ impl WindowedVertex {
         Box::new(
             self.graph_w
                 .graph
-                .edges_window(
+                .vertex_edges_window(
                     self.g_id,
                     self.graph_w.t_start,
                     self.graph_w.t_end,

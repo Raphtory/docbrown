@@ -194,7 +194,7 @@ impl Graph {
         self.shards[shard_id].edge_window(v1, v2, t_start..t_end)
     }
 
-    pub(crate) fn edges_window(
+    pub(crate) fn vertex_edges_window(
         &self,
         v: u64,
         t_start: i64,
@@ -202,11 +202,11 @@ impl Graph {
         d: Direction,
     ) -> Box<dyn Iterator<Item = EdgeView> + Send> {
         let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
-        let iter = self.shards[shard_id].edges_window(v, t_start..t_end, d);
+        let iter = self.shards[shard_id].vertex_edges_window(v, t_start..t_end, d);
         Box::new(iter)
     }
 
-    pub(crate) fn edges_window_t(
+    pub(crate) fn vertex_edges_window_t(
         &self,
         v: u64,
         t_start: i64,
@@ -214,7 +214,7 @@ impl Graph {
         d: Direction,
     ) -> Box<dyn Iterator<Item = EdgeView> + Send> {
         let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
-        let iter = self.shards[shard_id].edges_window_t(v, t_start..t_end, d);
+        let iter = self.shards[shard_id].vertex_edges_window_t(v, t_start..t_end, d);
         Box::new(iter)
     }
 
@@ -514,13 +514,13 @@ mod db_tests {
         let actual = (1..=3)
             .map(|i| {
                 (
-                    g.edges_window(i, -1, 7, Direction::IN)
+                    g.vertex_edges_window(i, -1, 7, Direction::IN)
                         .collect::<Vec<_>>()
                         .len(),
-                    g.edges_window(i, 1, 7, Direction::OUT)
+                    g.vertex_edges_window(i, 1, 7, Direction::OUT)
                         .collect::<Vec<_>>()
                         .len(),
-                    g.edges_window(i, 0, 1, Direction::BOTH)
+                    g.vertex_edges_window(i, 0, 1, Direction::BOTH)
                         .collect::<Vec<_>>()
                         .len(),
                 )
@@ -539,13 +539,13 @@ mod db_tests {
         let expected = (1..=3)
             .map(|i| {
                 (
-                    g.edges_window(i, -1, 7, Direction::IN)
+                    g.vertex_edges_window(i, -1, 7, Direction::IN)
                         .collect::<Vec<_>>()
                         .len(),
-                    g.edges_window(i, 1, 7, Direction::OUT)
+                    g.vertex_edges_window(i, 1, 7, Direction::OUT)
                         .collect::<Vec<_>>()
                         .len(),
-                    g.edges_window(i, 0, 1, Direction::BOTH)
+                    g.vertex_edges_window(i, 0, 1, Direction::BOTH)
                         .collect::<Vec<_>>()
                         .len(),
                 )
@@ -574,7 +574,7 @@ mod db_tests {
 
         let in_actual = (1..=3)
             .map(|i| {
-                g.edges_window_t(i, -1, 7, Direction::IN)
+                g.vertex_edges_window_t(i, -1, 7, Direction::IN)
                     .map(|e| e.t.unwrap())
                     .collect::<Vec<_>>()
             })
@@ -583,7 +583,7 @@ mod db_tests {
 
         let out_actual = (1..=3)
             .map(|i| {
-                g.edges_window_t(i, 1, 7, Direction::OUT)
+                g.vertex_edges_window_t(i, 1, 7, Direction::OUT)
                     .map(|e| e.t.unwrap())
                     .collect::<Vec<_>>()
             })
@@ -592,7 +592,7 @@ mod db_tests {
 
         let both_actual = (1..=3)
             .map(|i| {
-                g.edges_window_t(i, 0, 1, Direction::BOTH)
+                g.vertex_edges_window_t(i, 0, 1, Direction::BOTH)
                     .map(|e| e.t.unwrap())
                     .collect::<Vec<_>>()
             })
@@ -609,7 +609,7 @@ mod db_tests {
         let in_expected = (1..=3)
             .map(|i| {
                 let mut e = g
-                    .edges_window_t(i, -1, 7, Direction::IN)
+                    .vertex_edges_window_t(i, -1, 7, Direction::IN)
                     .map(|e| e.t.unwrap())
                     .collect::<Vec<_>>();
                 e.sort();
@@ -621,7 +621,7 @@ mod db_tests {
         let out_expected = (1..=3)
             .map(|i| {
                 let mut e = g
-                    .edges_window_t(i, 1, 7, Direction::OUT)
+                    .vertex_edges_window_t(i, 1, 7, Direction::OUT)
                     .map(|e| e.t.unwrap())
                     .collect::<Vec<_>>();
                 e.sort();
@@ -633,7 +633,7 @@ mod db_tests {
         let both_expected = (1..=3)
             .map(|i| {
                 let mut e = g
-                    .edges_window_t(i, 0, 1, Direction::BOTH)
+                    .vertex_edges_window_t(i, 0, 1, Direction::BOTH)
                     .map(|e| e.t.unwrap())
                     .collect::<Vec<_>>();
                 e.sort();

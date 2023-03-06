@@ -185,11 +185,11 @@ impl TGraphShard {
         self.read_shard(|tg| tg.edge_window(v1, v2, &w))
     }
 
-    pub fn edges(&self, v: u64, d: Direction) -> impl Iterator<Item = EdgeView> {
+    pub fn vertex_edges(&self, v: u64, d: Direction) -> impl Iterator<Item = EdgeView> {
         let tgshard = self.rc.clone();
         let iter: GenBoxed<EdgeView> = GenBoxed::new_boxed(|co| async move {
             let g = tgshard.blocking_read();
-            let iter = (*g).edges(v, d);
+            let iter = (*g).vertex_edges(v, d);
             for ev in iter {
                 co.yield_(ev).await;
             }
@@ -198,7 +198,7 @@ impl TGraphShard {
         iter.into_iter()
     }
 
-    pub fn edges_window(
+    pub fn vertex_edges_window(
         &self,
         v: u64,
         w: Range<i64>,
@@ -207,7 +207,7 @@ impl TGraphShard {
         let tgshard = self.clone();
         let iter = gen!({
             let g = tgshard.rc.blocking_read();
-            let chunks = (*g).edges_window(v, &w, d).map(|e| e.into());
+            let chunks = (*g).vertex_edges_window(v, &w, d).map(|e| e.into());
             let iter = chunks.into_iter();
             for v_id in iter {
                 yield_!(v_id)
@@ -217,7 +217,7 @@ impl TGraphShard {
         iter.into_iter()
     }
 
-    pub fn edges_window_t(
+    pub fn vertex_edges_window_t(
         &self,
         v: u64,
         w: Range<i64>,
@@ -226,7 +226,7 @@ impl TGraphShard {
         let tgshard = self.clone();
         let iter = gen!({
             let g = tgshard.rc.blocking_read();
-            let chunks = (*g).edges_window_t(v, &w, d).map(|e| e.into());
+            let chunks = (*g).vertex_edges_window_t(v, &w, d).map(|e| e.into());
             let iter = chunks.into_iter();
             for v_id in iter {
                 yield_!(v_id)
@@ -555,9 +555,9 @@ mod temporal_graph_partition_test {
         let actual = (1..=3)
             .map(|i| {
                 (
-                    g.edges(i, Direction::IN).collect::<Vec<_>>().len(),
-                    g.edges(i, Direction::OUT).collect::<Vec<_>>().len(),
-                    g.edges(i, Direction::BOTH).collect::<Vec<_>>().len(),
+                    g.vertex_edges(i, Direction::IN).collect::<Vec<_>>().len(),
+                    g.vertex_edges(i, Direction::OUT).collect::<Vec<_>>().len(),
+                    g.vertex_edges(i, Direction::BOTH).collect::<Vec<_>>().len(),
                 )
             })
             .collect::<Vec<_>>();
@@ -586,13 +586,13 @@ mod temporal_graph_partition_test {
         let actual = (1..=3)
             .map(|i| {
                 (
-                    g.edges_window(i, -1..7, Direction::IN)
+                    g.vertex_edges_window(i, -1..7, Direction::IN)
                         .collect::<Vec<_>>()
                         .len(),
-                    g.edges_window(i, 1..7, Direction::OUT)
+                    g.vertex_edges_window(i, 1..7, Direction::OUT)
                         .collect::<Vec<_>>()
                         .len(),
-                    g.edges_window(i, 0..1, Direction::BOTH)
+                    g.vertex_edges_window(i, 0..1, Direction::BOTH)
                         .collect::<Vec<_>>()
                         .len(),
                 )
@@ -621,7 +621,7 @@ mod temporal_graph_partition_test {
 
         let in_actual = (1..=3)
             .map(|i| {
-                g.edges_window_t(i, -1..7, Direction::IN)
+                g.vertex_edges_window_t(i, -1..7, Direction::IN)
                     .map(|e| e.t.unwrap())
                     .collect::<Vec<_>>()
             })
@@ -630,7 +630,7 @@ mod temporal_graph_partition_test {
 
         let out_actual = (1..=3)
             .map(|i| {
-                g.edges_window_t(i, 1..7, Direction::OUT)
+                g.vertex_edges_window_t(i, 1..7, Direction::OUT)
                     .map(|e| e.t.unwrap())
                     .collect::<Vec<_>>()
             })
@@ -639,7 +639,7 @@ mod temporal_graph_partition_test {
 
         let both_actual = (1..=3)
             .map(|i| {
-                g.edges_window_t(i, 0..1, Direction::BOTH)
+                g.vertex_edges_window_t(i, 0..1, Direction::BOTH)
                     .map(|e| e.t.unwrap())
                     .collect::<Vec<_>>()
             })
