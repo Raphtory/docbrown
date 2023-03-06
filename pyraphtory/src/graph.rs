@@ -1,6 +1,6 @@
-use pyo3::exceptions;
 use docbrown_core as dbc;
-use docbrown_db::{graph, graph_window, perspective};
+use docbrown_db::{graph, perspective};
+use pyo3::exceptions;
 use pyo3::prelude::*;
 use std::collections::HashMap;
 use std::ops::Deref;
@@ -10,11 +10,7 @@ use pyo3::types::PyIterator;
 
 use crate::graph_window::{GraphWindowSet, WindowedGraph};
 use crate::Perspective;
-use crate::wrappers::Prop;
-use crate::wrappers::{Direction, PerspectiveSet};
-use crate::wrappers::EdgeIterator;
-use crate::wrappers::VertexIdsIterator;
-use crate::wrappers::VertexIterator;
+use crate::wrappers::{PerspectiveSet, Prop};
 
 #[pyclass]
 pub struct Graph {
