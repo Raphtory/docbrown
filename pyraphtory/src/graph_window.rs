@@ -176,7 +176,7 @@ impl From<graph_window::WindowedEdge> for WindowedEdge {
             edge_id: value.edge_id,
             src: value.src,
             dst: value.dst,
-            time: value.t,
+            time: value.time,
             is_remote: value.is_remote,
             edge_w: value,
         }

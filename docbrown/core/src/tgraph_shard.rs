@@ -622,7 +622,7 @@ mod temporal_graph_partition_test {
         let in_actual = (1..=3)
             .map(|i| {
                 g.vertex_edges_window_t(i, -1..7, Direction::IN)
-                    .map(|e| e.t.unwrap())
+                    .map(|e| e.time.unwrap())
                     .collect::<Vec<_>>()
             })
             .collect::<Vec<_>>();
@@ -631,7 +631,7 @@ mod temporal_graph_partition_test {
         let out_actual = (1..=3)
             .map(|i| {
                 g.vertex_edges_window_t(i, 1..7, Direction::OUT)
-                    .map(|e| e.t.unwrap())
+                    .map(|e| e.time.unwrap())
                     .collect::<Vec<_>>()
             })
             .collect::<Vec<_>>();
@@ -640,7 +640,7 @@ mod temporal_graph_partition_test {
         let both_actual = (1..=3)
             .map(|i| {
                 g.vertex_edges_window_t(i, 0..1, Direction::BOTH)
-                    .map(|e| e.t.unwrap())
+                    .map(|e| e.time.unwrap())
                     .collect::<Vec<_>>()
             })
             .collect::<Vec<_>>();

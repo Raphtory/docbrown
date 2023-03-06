@@ -575,7 +575,7 @@ mod db_tests {
         let in_actual = (1..=3)
             .map(|i| {
                 g.vertex_edges_window_t(i, -1, 7, Direction::IN)
-                    .map(|e| e.t.unwrap())
+                    .map(|e| e.time.unwrap())
                     .collect::<Vec<_>>()
             })
             .collect::<Vec<_>>();
@@ -584,7 +584,7 @@ mod db_tests {
         let out_actual = (1..=3)
             .map(|i| {
                 g.vertex_edges_window_t(i, 1, 7, Direction::OUT)
-                    .map(|e| e.t.unwrap())
+                    .map(|e| e.time.unwrap())
                     .collect::<Vec<_>>()
             })
             .collect::<Vec<_>>();
@@ -593,7 +593,7 @@ mod db_tests {
         let both_actual = (1..=3)
             .map(|i| {
                 g.vertex_edges_window_t(i, 0, 1, Direction::BOTH)
-                    .map(|e| e.t.unwrap())
+                    .map(|e| e.time.unwrap())
                     .collect::<Vec<_>>()
             })
             .collect::<Vec<_>>();
@@ -610,7 +610,7 @@ mod db_tests {
             .map(|i| {
                 let mut e = g
                     .vertex_edges_window_t(i, -1, 7, Direction::IN)
-                    .map(|e| e.t.unwrap())
+                    .map(|e| e.time.unwrap())
                     .collect::<Vec<_>>();
                 e.sort();
                 e
@@ -622,7 +622,7 @@ mod db_tests {
             .map(|i| {
                 let mut e = g
                     .vertex_edges_window_t(i, 1, 7, Direction::OUT)
-                    .map(|e| e.t.unwrap())
+                    .map(|e| e.time.unwrap())
                     .collect::<Vec<_>>();
                 e.sort();
                 e
@@ -634,7 +634,7 @@ mod db_tests {
             .map(|i| {
                 let mut e = g
                     .vertex_edges_window_t(i, 0, 1, Direction::BOTH)
-                    .map(|e| e.t.unwrap())
+                    .map(|e| e.time.unwrap())
                     .collect::<Vec<_>>();
                 e.sort();
                 e

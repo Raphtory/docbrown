@@ -236,7 +236,7 @@ pub struct WindowedEdge {
     pub edge_id: usize,
     pub src: u64,
     pub dst: u64,
-    pub t: Option<i64>,
+    pub time: Option<i64>,
     pub is_remote: bool,
     pub graph_w: Arc<WindowedGraph>,
 }
@@ -247,7 +247,7 @@ impl WindowedEdge {
             edge_id: value.edge_id,
             src: value.src_g_id,
             dst: value.dst_g_id,
-            t: value.t,
+            time: value.time,
             is_remote: value.is_remote,
             graph_w,
         }
