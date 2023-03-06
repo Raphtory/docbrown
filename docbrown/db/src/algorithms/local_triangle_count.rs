@@ -1,21 +1,20 @@
 use docbrown_core::Direction;
-use crate::{graph::Graph, graph_window::WindowedGraph};
-use itertools::Itertools;
-use std::error::Error;
+use crate::graph_window::WindowedGraph;
 
-pub fn local_triangle_count(graph: &WindowedGraph, v: u64) -> u32 {
+pub fn local_triangle_count(windowed_graph: &WindowedGraph, v: u64) -> u32 {
     let mut number_of_triangles: u32 = 0;
-    let vertex = graph.vertex(v).unwrap();
+    let vertex = windowed_graph.vertex(v).unwrap();
 
-    if graph.has_vertex(v) && vertex.degree() >= 2 {
-        graph
-            .vertex_ids()
-            .combinations(2)
-            .for_each(|v| {
-                if graph.has_edge(v[0], v[1]) || (graph.has_edge(v[1], v[0])) {
-                    number_of_triangles += 1;
-                }
-            })
+    if windowed_graph.has_vertex(v) && vertex.degree() >= 2 {
+        for j in windowed_graph.neighbours_ids(v, Direction::BOTH) {
+            for k in windowed_graph.neighbours_ids(j, Direction::BOTH) {
+                windowed_graph.neighbours_ids(k, Direction::BOTH).for_each(|l| {
+                    if l == v {
+                        number_of_triangles += 1;
+                    }
+                }) 
+            }
+        }
     }
     number_of_triangles / 3
 }

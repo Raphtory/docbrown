@@ -42,6 +42,10 @@ impl WindowedGraph {
         self.graph.vertex_ids_window(self.t_start, self.t_end)
     }
 
+    pub fn neighbours_ids(&self, v: u64, d: Direction) -> Box<dyn Iterator<Item = u64> + Send> {
+        self.graph.neighbours_ids_window(v, self.t_start, self.t_end, d)
+    }
+
     pub fn vertices(&self) -> Box<dyn Iterator<Item = WindowedVertex> + Send> {
         let graph_w = self.clone();
         Box::new(
