@@ -44,9 +44,11 @@ jobs:
               ~/.cargo/git/db/
             key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
             restore-keys: ${{ runner.os }}-cargo-
-        - name: "Checkout code"
-          uses: actions/checkout@v3
-        - run: git checkout -b ${{ inputs.version }}
+        - uses: actions/checkout@v3
+        - run: |
+            git config user.name github-actions
+            git config user.email github-actions@github.com
+            git checkout -b ${{ inputs.version }}
         - name: "Set up Rust toolchain"
           uses: actions-rs/toolchain@v1
           with:
