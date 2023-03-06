@@ -57,7 +57,7 @@ jobs:
           uses: actions-rs/cargo@v1
           with:
             command: install
-            args: cargo-release
+            args: cargo-release --force
         - name: "Create new branch"
           run: git checkout -b ${{ inputs.version }}
         - name: "Bump version with cargo release and push to remote"
