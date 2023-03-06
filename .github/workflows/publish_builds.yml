@@ -71,7 +71,7 @@ jobs:
           with:
             token: ${{ secrets.GH_TOKEN }}
             base: ${{ inputs.base }}
-            branch: v${{ inputs.version }}
+            branch: ${{ inputs.version }}
             commit-message: "Release v${{ inputs.version }}"
             title: "Release v${{ inputs.version }}"
             body: |
