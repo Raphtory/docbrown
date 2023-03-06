@@ -92,6 +92,12 @@ jobs:
           target: ${{ matrix.target }}
           args: --release --out dist --find-interpreter
           manylinux: auto
+          before-script-linux: |
+            if [  -n "$(uname -a | grep Ubuntu)" ]; then
+              sudo apt-get update && sudo apt-get -y install libssl-dev
+            else
+              yum install -y openssl-devel
+            fi
       - name: Upload wheels to gh artifact
         uses: actions/upload-artifact@v3
         with:
