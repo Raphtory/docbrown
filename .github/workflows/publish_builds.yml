@@ -18,14 +18,14 @@ env:
 ## AS CACHE WILL STORE THE SECRET
 
 jobs:
-  release-rust:
-    name: Release code
-    runs-on: '${{ matrix.os }}'
-    strategy:
-      matrix:
-        include:
-          - os: ubuntu-latest
-    steps:
+#  release-rust:
+#    name: Release code
+#    runs-on: '${{ matrix.os }}'
+#    strategy:
+#      matrix:
+#        include:
+#          - os: ubuntu-latest
+#    steps:
 #      - name: Wait for tests to succeed
 #        uses: lewagon/wait-on-check-action@v1.3.1
 #        with:
