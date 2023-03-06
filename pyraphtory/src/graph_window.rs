@@ -52,14 +52,14 @@ impl WindowedGraph {
 #[pyclass]
 pub struct WindowedVertex {
     #[pyo3(get)]
-    pub g_id: u64,
+    pub id: u64,
     pub(crate) vertex_w: graph_window::WindowedVertex,
 }
 
 impl From<graph_window::WindowedVertex> for WindowedVertex {
     fn from(value: graph_window::WindowedVertex) -> WindowedVertex {
         WindowedVertex {
-            g_id: value.g_id,
+            id: value.g_id,
             vertex_w: value,
         }
     }
@@ -165,8 +165,7 @@ pub struct WindowedEdge {
     #[pyo3(get)]
     pub dst: u64,
     #[pyo3(get)]
-    pub t: Option<i64>,
-    #[pyo3(get)]
+    pub time: Option<i64>,
     pub is_remote: bool,
     pub(crate) edge_w: graph_window::WindowedEdge,
 }
@@ -177,7 +176,7 @@ impl From<graph_window::WindowedEdge> for WindowedEdge {
             edge_id: value.edge_id,
             src: value.src,
             dst: value.dst,
-            t: value.t,
+            time: value.t,
             is_remote: value.is_remote,
             edge_w: value,
         }
