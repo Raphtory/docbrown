@@ -94,6 +94,10 @@ impl TGraphShard {
         f(&shard)
     }
 
+    pub fn timeline(&self) -> Option<Range<i64>> {
+        self.read_shard(|tg| tg.timeline())
+    }
+
     pub fn len(&self) -> usize {
         self.read_shard(|tg| tg.len())
     }

@@ -1,11 +1,6 @@
 use crate::graph_window::{GraphWindowSet, WindowedGraph};
 use crate::perspective::{Perspective, PerspectiveSet};
-use std::{
-    collections::HashMap,
-    ops::Range,
-    path::{Path, PathBuf},
-    sync::Arc,
-};
+use std::{collections::HashMap, iter, ops::Range, path::{Path, PathBuf}, sync::Arc};
 
 use docbrown_core::{
     tgraph::{EdgeView, VertexView},
@@ -35,7 +30,8 @@ impl Graph {
     }
 
     pub fn through_perspectives(&self, mut perspectives: PerspectiveSet) -> GraphWindowSet {
-        perspectives.set_timeline(0, 2); // TODO this doesnt do anything yet, we need to infer it from the graph
+        let timeline = self.timeline().unwrap_or(0..0);
+        perspectives.set_timeline(timeline);
         GraphWindowSet::new(Arc::new(self.clone()), Box::new(perspectives))
     }
 
@@ -119,6 +115,13 @@ impl Graph {
             self.shards[src_shard_id].add_edge_remote_out(t, src, dst, props);
             self.shards[dst_shard_id].add_edge_remote_into(t, src, dst, props);
         }
+    }
+
+    pub fn timeline(&self) -> Option<Range<i64>> {
+        let ranges: Vec<_> = self.shards.iter().map(|shard| shard.timeline()).collect();
+        let start = ranges.iter().filter_map(|range| Some(range.as_ref()?.start)).min()?;
+        let end = ranges.iter().filter_map(|range| Some(range.as_ref()?.end)).max()?;
+        Some(start..end)
     }
 
     pub fn len(&self) -> usize {

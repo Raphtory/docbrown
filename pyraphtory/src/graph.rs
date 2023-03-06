@@ -17,24 +17,7 @@ pub struct Graph {
     pub(crate) graph: graph::Graph,
 }
 
-struct PyPerspectiveIterator {
-    pub iter: Py<PyIterator>,
-}
 
-// this is provided by the fact that the iter is handled by holding the GIL
-unsafe impl Send for PyPerspectiveIterator {}
-
-impl Iterator for PyPerspectiveIterator {
-    type Item = perspective::Perspective;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        Python::with_gil(|py| {
-            let item = self.iter.as_ref(py).next()?.ok()?;
-            let perspective = item.extract::<Perspective>().ok()?;
-            Some(perspective.into())
-        })
-    }
-}
 
 #[pymethods]
 impl Graph {
@@ -50,6 +33,20 @@ impl Graph {
     }
 
     fn through(&self, perspectives: &PyAny) -> PyResult<GraphWindowSet> {
+        struct PyPerspectiveIterator {
+            pub iter: Py<PyIterator>,
+        }
+        unsafe impl Send for PyPerspectiveIterator {} // iter is used by holding the GIL
+        impl Iterator for PyPerspectiveIterator {
+            type Item = perspective::Perspective;
+            fn next(&mut self) -> Option<Self::Item> {
+                Python::with_gil(|py| {
+                    let item = self.iter.as_ref(py).next()?.ok()?;
+                    Some(item.extract::<Perspective>().ok()?.into())
+                })
+            }
+        }
+
         let result = match perspectives.extract::<PerspectiveSet>() {
             Ok(perspective_set) =>  self.graph.through_perspectives(perspective_set.ps),
             Err(_) => {
@@ -83,6 +80,11 @@ impl Graph {
                 e.to_string()
             ))),
         }
+    }
+
+    pub fn timeline(&self) -> Option<(i64, i64)> {
+        let timeline = self.graph.timeline()?;
+        Some((timeline.start, timeline.end))
     }
 
     pub fn len(&self) -> usize {

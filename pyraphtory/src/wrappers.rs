@@ -131,14 +131,15 @@ impl WindowedEdgeIterator {
 #[derive(Clone)]
 #[pyclass]
 pub struct Perspective {
-    pub start: i64,
-    pub end: i64,
+    pub start: Option<i64>,
+    pub end: Option<i64>,
 }
 
 #[pymethods]
 impl Perspective {
     #[new]
-    fn new(start: i64, end: i64) -> Self {
+    #[pyo3(signature = (start=None, end=None))]
+    fn new(start: Option<i64>, end: Option<i64>) -> Self {
         Perspective {
             start,
             end,
@@ -146,9 +147,34 @@ impl Perspective {
     }
 
     #[staticmethod]
+    #[pyo3(signature = (start, end, increment))]
     pub fn range(start: i64, end: i64, increment: u64) -> PerspectiveSet {
         PerspectiveSet {
             ps: perspective::Perspective::range(start, end, increment)
+        }
+    }
+
+    #[staticmethod]
+    #[pyo3(signature = (increment))]
+    pub fn walk(increment: u64) -> PerspectiveSet {
+        PerspectiveSet {
+            ps: perspective::Perspective::walk(increment)
+        }
+    }
+
+    #[staticmethod]
+    #[pyo3(signature = (start, increment))]
+    pub fn depart(start: i64, increment: u64) -> PerspectiveSet {
+        PerspectiveSet {
+            ps: perspective::Perspective::depart(start, increment)
+        }
+    }
+
+    #[staticmethod]
+    #[pyo3(signature = (end, increment))]
+    pub fn climb(end: i64, increment: u64) -> PerspectiveSet {
+        PerspectiveSet {
+            ps: perspective::Perspective::climb(end, increment)
         }
     }
 }
@@ -179,7 +205,9 @@ pub struct PerspectiveSet {
 
 #[pymethods]
 impl PerspectiveSet {
-    fn back_windows(&mut self, size: u64) {
-        self.ps.back_windows(size);
+    fn window(&mut self, size: u64) -> PerspectiveSet {
+        PerspectiveSet {
+            ps: self.ps.window(size)
+        }
     }
 }

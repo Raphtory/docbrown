@@ -285,11 +285,24 @@ def test_perspective_set():
 
     from pyraphtory import Perspective
 
-    windows = [Perspective(start=0, end=2), Perspective(2, 4), Perspective(4, 6)]
+    perspectives = [Perspective(start=0, end=2), Perspective(2, 4), Perspective(4, 6)]
 
-    for wg in g.through(windows):
+    for wg in g.through(perspectives):
         vertices = (wg.vertex_ids())
         print(vertices)
+
+
+    print(g.timeline())
+
+    perspectives = Perspective.walk(3)
+
+    print(perspectives)
+
+    print('here')
+    for wg in g.through(perspectives):
+        vertices = (wg.vertex_ids())
+        print(list(vertices))
+    print('end')
 
     # I want to create a set of windowed graphs and apply an algo over all of them:
 
@@ -308,9 +321,9 @@ def test_perspective_set():
     # results = windowed_graphs.apply_algo(algo)  # <-- ???
 
     # 3:
-    windows = Perspective.range(start=2, end=6, increment=2)
-    windows.back_windows(2)
+    perspectives = Perspective.range(start=2, end=6, increment=2)
+    perspectives.window(2)
     # windows.undirected()
-    for wg in g.through(windows):
+    for wg in g.through(perspectives):
         vertices = (wg.vertex_ids())
         print(vertices)

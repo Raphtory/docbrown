@@ -1,21 +1,50 @@
+use std::ops::Range;
+
 #[derive(Debug, PartialEq)]
 pub struct Perspective {
-    pub start: i64,
-    pub end: i64,
+    pub start: Option<i64>,
+    pub end: Option<i64>,
 }
 
 impl Perspective {
-    pub fn new(start: i64, end: i64) -> Perspective {
+    pub fn new(start: Option<i64>, end: Option<i64>) -> Perspective {
         Perspective {
-            start, // inclusive // TODO these should be options!!
+            start, // inclusive
             end,   // exclusive
         }
     }
 
     pub fn range(start: i64, end: i64, increment: u64) -> PerspectiveSet {
         PerspectiveSet {
-            cursor: start,
-            end: end,
+            cursor: Some(start),
+            end: Some(end),
+            increment: increment as i64,
+            window: None,
+        }
+    }
+
+    pub fn walk(increment: u64) -> PerspectiveSet {
+        PerspectiveSet {
+            cursor: None,
+            end: None,
+            increment: increment as i64,
+            window: None,
+        }
+    }
+
+    pub fn depart(start: i64, increment: u64) -> PerspectiveSet {
+        PerspectiveSet {
+            cursor: Some(start),
+            end: None,
+            increment: increment as i64,
+            window: None,
+        }
+    }
+
+    pub fn climb(end: i64, increment: u64) -> PerspectiveSet {
+        PerspectiveSet {
+            cursor: None,
+            end: Some(end),
             increment: increment as i64,
             window: None,
         }
@@ -24,33 +53,46 @@ impl Perspective {
 
 #[derive(Clone)]
 pub struct PerspectiveSet {
-    cursor: i64,
-    end: i64,
+    cursor: Option<i64>, // the position of the cursor of this iterator, initially set to the start
+    end: Option<i64>,
     increment: i64,
     window: Option<i64>,
 }
 
 impl PerspectiveSet {
-    pub fn back_windows(&mut self, size: u64) {
-        self.window = Some(size as i64);
+    pub fn window(&self, size: u64) -> PerspectiveSet {
+        PerspectiveSet {
+            cursor: self.cursor,
+            end: self.end,
+            increment: self.increment,
+            window: Some(size as i64), // TODO isnt there another syntax like {window, self..} ?
+        }
     }
-    pub fn set_timeline(self: &mut Self, start: i64, end: i64) { // TODO this should probably return an iterator...
-        self.cursor = start; // TODO override if it is not None or add additional param
-        self.end = end;
+    pub fn set_timeline(self: &mut Self, timeline: Range<i64>) { // TODO this should probably return an iterator...
+        if self.cursor.is_none() {
+            self.cursor = Some(timeline.start + self.increment); // TODO: alignment
+        }
+        if self.end.is_none() {
+            self.end = Some(timeline.end);
+        }
     }
 }
 
 impl Iterator for PerspectiveSet {
     type Item = Perspective;
     fn next(&mut self) -> Option<Self::Item> {
-        if self.cursor > self.end {
+        let limit = match self.window {
+            Some(window) => self.cursor? - window,
+            None => self.cursor? - self.increment,
+        };
+        if self.end? <= limit {
             None
         } else {
-            let current_cursor = self.cursor;
-            self.cursor += self.increment;
+            let current_cursor = self.cursor?;
+            self.cursor = Some(self.cursor? + self.increment);
             Some(Perspective {
-                start: self.window.map_or_else(|| i64::MIN, |w| current_cursor - w + 1),
-                end: current_cursor,
+                start: self.window.map(|w| current_cursor - w),
+                end: Some(current_cursor),
             })
         }
     }
@@ -94,14 +136,14 @@ mod perspective_tests {
         // }
 
         let mut range = Perspective::range(100, 160, 50);
-        range.back_windows(20);
+        let windows = range.window(20);
 
         // let current: Vec<Perspective> = set.collect();
         // let expected: Vec<Perspective> = [Perspective::new(80, 100), Perspective::new(130, 150)].iter().collect();
-        let expected: Vec<Perspective> = vec![Perspective::new(81, 100), Perspective::new(131, 150)];
+        let expected: Vec<Perspective> = vec![Perspective::new(Some(81), Some(100)), Perspective::new(Some(131), Some(150))];
         // assert_eq!(current, expected)
 
-        for (current, expected) in range.zip(expected) {//.foreach(|(current, expected)| assert_eq!(current, expected))
+        for (current, expected) in windows.zip(expected) {//.foreach(|(current, expected)| assert_eq!(current, expected))
             assert_eq!(current, expected)
         }
     }

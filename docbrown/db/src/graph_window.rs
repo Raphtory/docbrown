@@ -28,8 +28,8 @@ impl Iterator for GraphWindowSet {
         let perspective = self.perspectives.next()?;
         Some(WindowedGraph {
             graph: self.graph.clone(),
-            t_start: perspective.start,
-            t_end: perspective.end,
+            t_start: perspective.start.unwrap_or(i64::MIN),
+            t_end: perspective.end.unwrap_or(i64::MAX),
         })
     }
 }
