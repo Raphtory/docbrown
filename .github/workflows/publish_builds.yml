@@ -93,10 +93,36 @@ jobs:
           args: --release --out dist --find-interpreter
           manylinux: auto
           before-script-linux: |
-            if [[ $(lsb_release -si) == "Ubuntu" ]]; then
-              apt update && apt -y install libssl-dev
+            if [[ -f /etc/os-release ]]; then
+              . /etc/os-release
+              case $ID in
+                ubuntu)
+                  echo "Installing openssl-dev on Ubuntu..."
+                  apt update
+                  apt install -y libssl-dev
+                  ;;
+                arch)
+                  echo "Installing openssl-dev on Arch Linux..."
+                  pacman -Syu --noconfirm openssl
+                  ;;
+                fedora)
+                  echo "Installing openssl-dev on Fedora..."
+                  dnf update
+                  dnf install -y openssl-devel
+                  ;;
+                alpine)
+                  echo "Installing openssl-dev on Alpine Linux..."
+                  apk update
+                  apk add openssl-dev
+                  ;;
+                *)
+                    echo "Unsupported distribution: $ID"
+                    exit 1
+                    ;;
+              esac    
             else
-              yum install -y openssl-devel
+              echo "Could not determine distribution."
+              exit 1
             fi
       - name: Upload wheels to gh artifact
         uses: actions/upload-artifact@v3
