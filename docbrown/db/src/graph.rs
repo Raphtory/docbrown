@@ -119,8 +119,9 @@ impl Graph {
         self.shards.iter().map(|shard| shard.out_edges_len()).sum()
     }
 
-    pub fn has_edge(&self, v1: u64, v2: u64) -> bool {
-        self.shards.iter().any(|shard| shard.has_edge(v1, v2))
+    pub fn has_edge(&self, src: u64, dst: u64) -> bool {
+        let shard_id = utils::get_shard_id_from_global_vid(src, self.nr_shards);
+        self.shards[shard_id].has_edge(src, dst)
     }
 
     pub fn has_vertex(&self, v: u64) -> bool {
@@ -415,7 +416,7 @@ mod db_tests {
         let g = Graph::new(2);
         g.add_edge(1, 7, 8, &vec![]);
 
-        assert_eq!(g.has_edge(8, 7), true);
+        assert_eq!(g.has_edge(8, 7), false);
     }
 
     #[test]

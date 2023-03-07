@@ -31,6 +31,13 @@ def test_graph_len_edge_len():
     assert g.edges_len() == 5
 
 
+def test_graph_has_edge():
+    g = create_graph(2)
+
+    assert g.window(-1, 1).has_edge(1, 3)
+    assert not g.window(10, 11).has_edge(1, 3)
+
+
 def test_graph_has_vertex():
     g = create_graph(2)
 
