@@ -263,21 +263,21 @@ jobs:
             - [x] Publish to PyPi
             - [x] Make Tag
             - [x] Publish to Github as release
-      - name: Publish a Python distribution to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          password: ${{ secrets.PYPI_API_TOKEN }}
-          packages_dir: pyartifacts/
-          verbose: true
-          skip_existing: true
-          verify_metadata: false
-      - name: Publish crates
-        uses: katyo/publish-crates@v2
-        with:
-          token: ${{ secrets.CRATES_IO_TOKEN }}
-          path: artifacts/
-          dry_run: true
-          no-verify: true
+#      - name: Publish a Python distribution to PyPI
+#        uses: pypa/gh-action-pypi-publish@release/v1
+#        with:
+#          password: ${{ secrets.PYPI_API_TOKEN }}
+#          packages_dir: pyartifacts/
+#          verbose: true
+#          skip_existing: true
+#          verify_metadata: false
+#      - name: Publish crates
+#        uses: katyo/publish-crates@v2
+#        with:
+#          token: ${{ secrets.CRATES_IO_TOKEN }}
+#          path: artifacts/
+#          dry_run: true
+#          no-verify: true
 
       - name: "Deleting artifacts"
         uses: geekyeggo/delete-artifact@v2
