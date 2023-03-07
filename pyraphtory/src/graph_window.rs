@@ -28,8 +28,10 @@ impl WindowedGraph {
         self.graph_w.has_vertex(v)
     }
 
-    pub fn vertex(&self, v: u64) -> Option<WindowedVertex> {
-        self.graph_w.vertex(v).map(|wv| wv.into())
+    pub fn vertex(slf: PyRef<'_, Self>, v: u64) -> Option<WindowedVertex> {
+        let v = slf.graph_w.vertex(v)?;
+        let g: Py<Self> = slf.into();
+        Some(WindowedVertex::new(g, v))
     }
 
     pub fn vertex_ids(&self) -> VertexIdsIterator {
@@ -38,11 +40,15 @@ impl WindowedGraph {
         }
     }
 
-    pub fn vertices(&self) -> WindowedVertexIterator {
-        WindowedVertexIterator {
-            iter: Box::new(self.graph_w.vertices().map(|wv| wv.into())),
+    pub fn vertices(slf: PyRef<'_, Self>) -> WindowedVertexIterable {
+        let g: Py<Self> = slf.into();
+        WindowedVertexIterable {
+            graph: g,
+            operations: vec![],
+            start_at: None,
         }
     }
+    // graph.vertices().out_neighbours().map(|v| v.degree()).sum())
 
     pub fn edge(&self, v1: u64, v2: u64) -> Option<WindowedEdge> {
         self.graph_w.edge(v1, v2).map(|we| we.into())
@@ -53,14 +59,27 @@ impl WindowedGraph {
 pub struct WindowedVertex {
     #[pyo3(get)]
     pub g_id: u64,
+    pub(crate) graph: Py<WindowedGraph>,
     pub(crate) vertex_w: graph_window::WindowedVertex,
 }
 
-impl From<graph_window::WindowedVertex> for WindowedVertex {
-    fn from(value: graph_window::WindowedVertex) -> WindowedVertex {
+impl WindowedVertex {
+    fn from(&self, value: graph_window::WindowedVertex) -> WindowedVertex {
         WindowedVertex {
+            graph: self.graph.clone(),
             g_id: value.g_id,
             vertex_w: value,
+        }
+    }
+
+    pub(crate) fn new(
+        graph: Py<WindowedGraph>,
+        vertex: graph_window::WindowedVertex,
+    ) -> WindowedVertex {
+        WindowedVertex {
+            graph,
+            g_id: vertex.g_id,
+            vertex_w: vertex,
         }
     }
 }
@@ -120,21 +139,27 @@ impl WindowedVertex {
         }
     }
 
-    pub fn neighbours(&self) -> WindowedVertexIterator {
-        WindowedVertexIterator {
-            iter: Box::new(self.vertex_w.neighbours().map(|tv| tv.into())),
+    pub fn neighbours(&self) -> WindowedVertexIterable {
+        WindowedVertexIterable {
+            graph: self.graph.clone(),
+            operations: vec![Operations::Neighbours],
+            start_at: Some(self.g_id),
         }
     }
 
-    pub fn in_neighbours(&self) -> WindowedVertexIterator {
-        WindowedVertexIterator {
-            iter: Box::new(self.vertex_w.in_neighbours().map(|tv| tv.into())),
+    pub fn in_neighbours(&self) -> WindowedVertexIterable {
+        WindowedVertexIterable {
+            graph: self.graph.clone(),
+            operations: vec![Operations::InNeighbours],
+            start_at: Some(self.g_id),
         }
     }
 
-    pub fn out_neighbours(&self) -> WindowedVertexIterator {
-        WindowedVertexIterator {
-            iter: Box::new(self.vertex_w.out_neighbours().map(|tv| tv.into())),
+    pub fn out_neighbours(&self) -> WindowedVertexIterable {
+        WindowedVertexIterable {
+            graph: self.graph.clone(),
+            operations: vec![Operations::OutNeighbours],
+            start_at: Some(self.g_id),
         }
     }
 
