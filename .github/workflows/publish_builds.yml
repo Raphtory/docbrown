@@ -56,10 +56,11 @@ jobs:
             override: true
             components: rustfmt, clippy
         - name: "Install cargo release"
-          uses: actions-rs/cargo@v1
+        - uses: actions-rs/install@v0.1
           with:
-            command: install
-            args: cargo-release --force
+            crate: cargo-release
+            version: latest
+            use-tool-cache: true
         - name: "Bump version with cargo release and push to remote"
           uses: actions-rs/cargo@v1
           with:
