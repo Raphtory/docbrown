@@ -40,3 +40,5 @@ jobs:
     with:
         version: ${{ github.event.inputs.version }}
         base: ${{ github.event.inputs.base }}
+        dry_run: ${{ github.event.inputs.dry_run }}
+        skip_waiting_for_test: ${{ github.event.inputs.skip_waiting_for_test }}
