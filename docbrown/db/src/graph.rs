@@ -29,6 +29,32 @@ impl Graph {
         }
     }
 
+    pub fn earliest_time(&self) -> i64 {
+        let min_from_shards = self.shards.iter().map(|shard|shard.earliest_time()).min();
+        match min_from_shards {
+            None => {0}
+            Some(min) => {if min == i64::MAX {
+                0
+            }
+            else {
+                min
+            }}
+        }
+    }
+
+    pub fn latest_time(&self) -> i64 {
+        let max_from_shards = self.shards.iter().map(|shard|shard.latest_time()).max();
+        match max_from_shards {
+            None => {0}
+            Some(max) => {if max == i64::MIN {
+                0
+            }
+            else {
+                max
+            }}
+        }
+    }
+
     pub fn window(&self, t_start: i64, t_end: i64) -> WindowedGraph {
         WindowedGraph::new(Arc::new(self.clone()), t_start, t_end)
     }
@@ -61,8 +87,7 @@ impl Graph {
         shards.sort_by_cached_key(|(i, _)| *i);
 
         let shards = shards.into_iter().map(|(_, shard)| shard).collect();
-
-        Ok(Graph { nr_shards, shards })
+        Ok(Graph { nr_shards,shards }) //TODO I need to put in the actual values here
     }
 
     pub fn save_to_file<P: AsRef<Path>>(&self, path: P) -> Result<(), Box<bincode::ErrorKind>> {

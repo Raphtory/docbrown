@@ -1,32 +1,75 @@
 use crate::graph::Graph;
 use rand::prelude::*;
 use docbrown_core::Direction;
-use crate::graphgen::random::random_graph;
+use std::collections::HashSet;
 
-pub fn preferential_attachment(graph:Graph,nodes:u64) -> Graph {
+//let mut weights:Vec<usize> =view.vertices().map(|v|v.degree()).collect();
+
+pub fn preferential_attachment(graph:&Graph,vertices_to_add:usize,edges_per_step:usize){
+
     let mut rng = rand::thread_rng();
-    let max_id = graph.vertex_ids().max().expect("Could not get max vertex ID of graph, please provide a starting graph with nodes/edges for this model");
-    let range = max_id+1..max_id+nodes+1;
-    let mut nodes:Vec<u64> = graph.vertex_ids().collect();
-    let mut weights:Vec<usize> =graph.vertex_ids()
-        .map(|v| graph.degree(v, Direction::BOTH)).collect();
+    let mut latest_time = graph.latest_time();
 
-    for i in range {
-        let neighbour_1 = rng.gen_range(0..=graph.edges_len());
-        let neighbour_2 = rng.gen_range(0..=graph.edges_len());
-        let neighbour_3 = rng.gen_range(0..=graph.edges_len());
-        nodes.push(i);//add the new node
-        weights.push(0); // make sure we can't add self loops
-        //TODO do not select the same nodes
-        for j in weights.len(){
-            let node = nodes[j];
-            graph.add_edge(1,node,i,&vec![]);
-            weights[j]+=1;
-        }
-        let new_node_pos = weights.len()-1;
-        weights[new_node_pos]+=3;//Update the new node to have the correct weight
+    let view = graph.window(i64::MIN,i64::MAX);
+    let mut ids:Vec<u64> = view.vertex_ids().collect();
+    let mut degrees:Vec<usize> = view.vertices().map(|v| v.degree()).collect();
+    let mut edge_count:usize = degrees.iter().sum();
+
+    let mut max_id = match ids.iter().max() {
+        Some(id) => {*id},
+        None=>0
+    };
+
+    if(ids.len()==0){
+        graph.add_vertex(latest_time,0,&vec![]);
+        degrees.push(0);
+        ids.push(0);
     }
-    graph
+    while ids.len() < edges_per_step {
+        max_id+=1;
+        latest_time+=1;
+        let prev_node = ids[ids.len()-1];
+        graph.add_vertex(latest_time,max_id,&vec![]);
+        graph.add_edge(latest_time,max_id,prev_node,&vec![]);
+        degrees[ids.len()-1]+=1;
+        degrees.push(1);
+        ids.push(max_id);
+        edge_count+=2;
+
+    }
+
+
+    for i in 0..vertices_to_add {
+        max_id += 1;
+        latest_time += 1;
+        let mut normalisation = edge_count.clone();
+        let mut positions_to_skip: HashSet<usize> = HashSet::new();
+
+        for j in 0..edges_per_step {
+            let mut sum = 0;
+            let rand_num = rng.gen_range(1..=normalisation);
+            for(pos,id) in ids.iter().enumerate() {
+                if ! positions_to_skip.contains(&pos){
+                    sum += degrees[pos];
+                    if sum>= rand_num {
+                        positions_to_skip.insert(pos);
+                        normalisation-degrees[pos];
+                        break;
+                    }
+                }
+
+            }
+        }
+        for pos in positions_to_skip {
+            let dst = ids[pos];
+            degrees[pos]+=1;
+            graph.add_edge(latest_time,max_id,dst,&vec![]);
+        }
+        ids.push(max_id);
+        degrees.push(edges_per_step.clone());
+        edge_count+=edges_per_step*2;
+    }
+
 }
 
 
@@ -38,13 +81,13 @@ mod preferential_attachment_tests {
     #[test]
     fn graph_size() {
         let graph = Graph::new(2);
-        let graph = random_graph(graph,10);
-        let graph =preferential_attachment(graph,10000);
-        let mut degree:Vec<usize> =graph.vertex_ids()
-            .map(|v| graph.degree(v, Direction::BOTH)).collect();
+        preferential_attachment(&graph,1000,10);
+        let window = graph.window(i64::MIN,i64::MAX);
+                let mut degree:Vec<usize> =window.vertices()
+            .map(|v| v.degree()).collect();
         degree.sort();
         println!("{:?}",degree);
         //TODO this fails for sure
-        assert_eq!(graph.edges_len(), 10);
+        assert_eq!(graph.edges_len(), 1010);
     }
 }
