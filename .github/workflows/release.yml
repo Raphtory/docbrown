@@ -16,14 +16,14 @@ on:
           - minor
           - patch
       dry_run:
-        description: '(If true) Dry run will not publish the release and will not push anything to PyPi/crates.io. 
-        However it will still make a PR and a branch to show you what it changed. '
+        description: 'DRY RUN: If true will not publish the release and will not push anything to PyPi/crates.io. 
+        However it will still make a PR and a branch to show you what it changed'
         type: boolean
         default: true
         required: true
       skip_waiting_for_test:
-        description: '(If true) Skip waiting for tests to pass before publishing. 
-        WARNING TESTS MUST PASS BEFORE PUBLISHING else they WILL fail the workflow.'
+        description: 'SKIP WAITING FOR TESTS: If true will continue instead of waiting. 
+        WARNING TESTS MUST PASS BEFORE PUBLISHING else they WILL fail the workflow'
         type: boolean
         default: false
         required: true
