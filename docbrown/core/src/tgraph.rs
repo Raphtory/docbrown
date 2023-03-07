@@ -56,9 +56,7 @@ impl TemporalGraph {
         match &self.adj_lists[v_pid] {
             Adj::Solo(_) => false,
             Adj::List {
-                out,
-                remote_out,
-                ..
+                out, remote_out, ..
             } => {
                 if !self.has_vertex(dst) {
                     remote_out.find(dst as usize).is_some()
@@ -70,11 +68,34 @@ impl TemporalGraph {
         }
     }
 
+    pub(crate) fn has_edge_window(&self, src: u64, dst: u64, w: &Range<i64>) -> bool {
+        // First check if v1 exists within the given window
+        if self.has_vertex_window(src, w) {
+            let src_pid = self.logical_to_physical[&src];
+            match &self.adj_lists[src_pid] {
+                Adj::Solo(_) => false,
+                Adj::List {
+                    out, remote_out, ..
+                } => {
+                    // Then check if v2 exists in the given window while sharing an edge with v1
+                    if !self.has_vertex_window(dst, &w) {
+                        remote_out.find_window(dst as usize, &w).is_some()
+                    } else {
+                        let dst_pid = self.logical_to_physical[&dst];
+                        out.find_window(dst_pid, &w).is_some()
+                    }
+                }
+            }
+        } else {
+            false
+        }
+    }
+
     pub(crate) fn has_vertex(&self, v: u64) -> bool {
         self.logical_to_physical.contains_key(&v)
     }
 
-    pub(crate) fn has_vertex_window(&self, w: &Range<i64>, v: u64) -> bool {
+    pub(crate) fn has_vertex_window(&self, v: u64, w: &Range<i64>) -> bool {
         if let Some(v_id) = self.logical_to_physical.get(&v) {
             self.index.range(w.clone()).any(|(_, bs)| bs.contains(v_id))
         } else {
@@ -328,137 +349,80 @@ impl TemporalGraph {
         Box::new(vs)
     }
 
-    pub(crate) fn edge(&self, v1: u64, v2: u64) -> Option<EdgeView> {
-        let v1_pid = self.logical_to_physical.get(&v1)?;
+    pub(crate) fn edge(&self, src: u64, dst: u64) -> Option<EdgeView> {
+        let src_pid = self.logical_to_physical.get(&src)?;
 
-        match &self.adj_lists[*v1_pid] {
+        match &self.adj_lists[*src_pid] {
             Adj::Solo(_) => None,
             Adj::List {
-                out,
-                remote_out,
-                into,
-                remote_into,
-                ..
+                out, remote_out, ..
             } => {
-                if !self.has_vertex(v2) {
-                    match (remote_out.find(v2 as usize), remote_into.find(v2 as usize)) {
-                        (Some(e), None) => Some(EdgeView {
-                            edge_id: e.edge_id(),
-                            src_g_id: v1,
-                            dst_g_id: v2,
-                            src_id: *v1_pid,
-                            dst_id: v2 as usize,
-                            time: None,
-                            is_remote: !e.is_local(),
-                        }),
-                        (None, Some(e)) => Some(EdgeView {
-                            edge_id: e.edge_id(),
-                            src_g_id: v2,
-                            dst_g_id: v1,
-                            src_id: v2 as usize,
-                            dst_id: *v1_pid,
-                            time: None,
-                            is_remote: !e.is_local(),
-                        }),
-                        _ => None,
-                    }
+                if !self.has_vertex(dst) {
+                    let e = remote_out.find(dst as usize)?;
+                    Some(EdgeView {
+                        edge_id: e.edge_id(),
+                        src_g_id: src,
+                        dst_g_id: dst,
+                        src_id: *src_pid,
+                        dst_id: dst as usize,
+                        time: None,
+                        is_remote: !e.is_local(),
+                    })
                 } else {
-                    let v2_pid = self.logical_to_physical.get(&v2)?;
-                    match (out.find(*v2_pid), into.find(*v2_pid)) {
-                        (Some(e), None) => Some(EdgeView {
-                            edge_id: e.edge_id(),
-                            src_g_id: v1,
-                            dst_g_id: v2,
-                            src_id: *v1_pid,
-                            dst_id: *v2_pid,
-                            time: None,
-                            is_remote: !e.is_local(),
-                        }),
-                        (None, Some(e)) => Some(EdgeView {
-                            edge_id: e.edge_id(),
-                            src_g_id: v2,
-                            dst_g_id: v1,
-                            src_id: *v2_pid,
-                            dst_id: *v1_pid,
-                            time: None,
-                            is_remote: !e.is_local(),
-                        }),
-                        _ => None,
-                    }
+                    let dst_pid = self.logical_to_physical.get(&dst)?;
+                    let e = out.find(*dst_pid)?;
+                    Some(EdgeView {
+                        edge_id: e.edge_id(),
+                        src_g_id: src,
+                        dst_g_id: dst,
+                        src_id: *src_pid,
+                        dst_id: *dst_pid,
+                        time: None,
+                        is_remote: !e.is_local(),
+                    })
                 }
             }
         }
     }
 
-    pub(crate) fn edge_window(&self, v1: u64, v2: u64, w: &Range<i64>) -> Option<EdgeView> {
-        let v1_pid = self.logical_to_physical.get(&v1)?;
-        let w = w.clone();
-        let mut vs = self.index.range(w.clone()).flat_map(|(_, vs)| vs.iter());
-
+    pub(crate) fn edge_window(&self, src: u64, dst: u64, w: &Range<i64>) -> Option<EdgeView> {
         // First check if v1 exists within the given window
-        match vs.contains(&v1_pid) {
-            true => match &self.adj_lists[*v1_pid] {
+        if self.has_vertex_window(src, w) {
+            let src_pid = self.logical_to_physical.get(&src)?;
+            match &self.adj_lists[*src_pid] {
                 Adj::Solo(_) => Option::<EdgeView>::None,
                 Adj::List {
-                    out,
-                    remote_out,
-                    into,
-                    remote_into,
-                    ..
+                    out, remote_out, ..
                 } => {
                     // Then check if v2 exists in the given window while sharing an edge with v1
-                    if !self.has_vertex(v2) {
-                        match (
-                            remote_out.find_window(v2 as usize, &w),
-                            remote_into.find_window(v2 as usize, &w),
-                        ) {
-                            (Some(e), None) => Some(EdgeView {
-                                edge_id: e.edge_id(),
-                                src_g_id: v1,
-                                dst_g_id: v2,
-                                src_id: *v1_pid,
-                                dst_id: v2 as usize,
-                                time: None,
-                                is_remote: !e.is_local(),
-                            }),
-                            (None, Some(e)) => Some(EdgeView {
-                                edge_id: e.edge_id(),
-                                src_g_id: v2,
-                                dst_g_id: v1,
-                                src_id: v2 as usize,
-                                dst_id: *v1_pid,
-                                time: None,
-                                is_remote: !e.is_local(),
-                            }),
-                            _ => None,
-                        }
+                    if !self.has_vertex_window(dst, &w) {
+                        let e = remote_out.find_window(dst as usize, &w)?;
+                        Some(EdgeView {
+                            edge_id: e.edge_id(),
+                            src_g_id: src,
+                            dst_g_id: dst,
+                            src_id: *src_pid,
+                            dst_id: dst as usize,
+                            time: None,
+                            is_remote: !e.is_local(),
+                        })
                     } else {
-                        let v2_pid = self.logical_to_physical.get(&v2)?;
-                        match (out.find_window(*v2_pid, &w), into.find_window(*v2_pid, &w)) {
-                            (Some(e), None) => Some(EdgeView {
-                                edge_id: e.edge_id(),
-                                src_g_id: v1,
-                                dst_g_id: v2,
-                                src_id: *v1_pid,
-                                dst_id: *v2_pid,
-                                time: None,
-                                is_remote: !e.is_local(),
-                            }),
-                            (None, Some(e)) => Some(EdgeView {
-                                edge_id: e.edge_id(),
-                                src_g_id: v2,
-                                dst_g_id: v1,
-                                src_id: *v2_pid,
-                                dst_id: *v1_pid,
-                                time: None,
-                                is_remote: !e.is_local(),
-                            }),
-                            _ => None,
-                        }
+                        let dst_pid = self.logical_to_physical.get(&dst)?;
+                        let e = out.find_window(*dst_pid, &w)?;
+                        Some(EdgeView {
+                            edge_id: e.edge_id(),
+                            src_g_id: src,
+                            dst_g_id: dst,
+                            src_id: *src_pid,
+                            dst_id: *dst_pid,
+                            time: None,
+                            is_remote: !e.is_local(),
+                        })
                     }
                 }
-            },
-            false => Option::<EdgeView>::None,
+            }
+        } else {
+            Option::<EdgeView>::None
         }
     }
 
@@ -1070,7 +1034,7 @@ mod graph_test {
         g.add_vertex(1, 9);
 
         assert!(g.has_vertex(9));
-        assert!(g.has_vertex_window(&(1..15), 9));
+        assert!(g.has_vertex_window(9, &(1..15)));
         assert_eq!(g.vertices().map(|v| v.g_id).collect::<Vec<u64>>(), vec![9]);
         assert_eq!(g.props.vertex_meta.get(2), None);
     }
@@ -1084,7 +1048,7 @@ mod graph_test {
         g.add_vertex_with_props(ts, v_id, &vec![("type".into(), Prop::Str("wallet".into()))]);
 
         assert!(g.has_vertex(v_id));
-        assert!(g.has_vertex_window(&(1..15), v_id));
+        assert!(g.has_vertex_window(v_id, &(1..15)));
         assert_eq!(
             g.vertices().map(|v| v.g_id).collect::<Vec<u64>>(),
             vec![v_id]
@@ -1251,8 +1215,8 @@ mod graph_test {
         g.add_vertex(9, 1);
 
         assert!(g.has_vertex(9));
-        assert!(g.has_vertex_window(&(1..15), 9));
-        assert!(g.has_vertex_window(&(5..15), 9)); // FIXME: this is wrong and we might need a different kind of window here
+        assert!(g.has_vertex_window(9, &(1..15)));
+        assert!(g.has_vertex_window(9, &(5..15))); // FIXME: this is wrong and we might need a different kind of window here
     }
 
     #[test]

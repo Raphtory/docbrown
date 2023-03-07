@@ -34,7 +34,8 @@ def test_graph_len_edge_len():
 def test_graph_has_edge():
     g = create_graph(2)
 
-    assert g.window(-1, 1).has_edge(1, 3)
+    assert not g.window(-1, 1).has_edge(1, 3)
+    assert g.window(-1, 3).has_edge(1, 3)
     assert not g.window(10, 11).has_edge(1, 3)
 
 
@@ -90,7 +91,7 @@ def test_windowed_graph_get_edge():
     view = g.window(min_size, max_size)
 
     assert (view.edge(1, 3).src, view.edge(1, 3).dst) == (1, 3)
-    assert (view.edge(2, 3).src, view.edge(2, 3).dst) == (3, 2)
+    assert view.edge(2, 3) == None
     assert view.edge(6, 5) == None
 
     assert (view.vertex(1).id, view.vertex(3).id) == (1, 3)

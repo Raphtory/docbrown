@@ -27,7 +27,8 @@ impl WindowedGraph {
     }
 
     pub fn has_edge(&self, src: u64, dst: u64) -> bool {
-        self.graph.has_edge(src, dst)
+        self.graph
+            .has_edge_window(src, dst, self.t_start, self.t_end)
     }
 
     pub fn vertex(&self, v: u64) -> Option<WindowedVertex> {

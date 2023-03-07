@@ -124,6 +124,11 @@ impl Graph {
         self.shards[shard_id].has_edge(src, dst)
     }
 
+    pub fn has_edge_window(&self, src: u64, dst: u64, t_start: i64, t_end: i64) -> bool {
+        let shard_id = utils::get_shard_id_from_global_vid(src, self.nr_shards);
+        self.shards[shard_id].has_edge_window(src, dst, t_start..t_end)
+    }
+
     pub fn has_vertex(&self, v: u64) -> bool {
         self.shards.iter().any(|shard| shard.has_vertex(v))
     }

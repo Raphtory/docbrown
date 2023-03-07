@@ -85,12 +85,16 @@ impl TGraphShard {
         self.read_shard(|tg| tg.has_edge(src, dst))
     }
 
+    pub fn has_edge_window(&self, src: u64, dst: u64, w: Range<i64>) -> bool {
+        self.read_shard(|tg| tg.has_edge_window(src, dst, &w))
+    }
+
     pub fn has_vertex(&self, v: u64) -> bool {
         self.read_shard(|tg| tg.has_vertex(v))
     }
 
     pub fn has_vertex_window(&self, v: u64, w: Range<i64>) -> bool {
-        self.read_shard(|tg| tg.has_vertex_window(&w, v))
+        self.read_shard(|tg| tg.has_vertex_window(v, &w))
     }
 
     pub fn add_vertex(&self, t: i64, v: u64, props: &Vec<(String, Prop)>) {
