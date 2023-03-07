@@ -48,7 +48,6 @@ impl WindowedGraph {
             start_at: None,
         }
     }
-    // graph.vertices().out_neighbours().map(|v| v.degree()).sum())
 
     pub fn edge(&self, v1: u64, v2: u64) -> Option<WindowedEdge> {
         self.graph_w.edge(v1, v2).map(|we| we.into())
