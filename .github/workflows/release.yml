@@ -38,7 +38,7 @@ jobs:
     uses: ./.github/workflows/publish_builds.yml
     secrets: inherit
     with:
-        version: ${{ github.event.inputs.version }}
         base: ${{ github.event.inputs.base }}
+        version: ${{ github.event.inputs.version }}
         dry_run: ${{ github.event.inputs.dry_run }}
         skip_waiting_for_test: ${{ github.event.inputs.skip_waiting_for_test }}
