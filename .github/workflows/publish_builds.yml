@@ -71,7 +71,13 @@ jobs:
           with:
             token: ${{ secrets.GH_TOKEN }}
             base: ${{ inputs.base }}
+            author: ${{ github.actor }} <${{ github.actor }}@users.noreply.github.com>
+            assignees: haaroon,miratepuffin
+            reviewers: haaroon,miratepuffin
             branch: ${{ inputs.version }}
+            team-reviewers: |
+              owners
+              maintainers
             commit-message: "Release v${{ inputs.version }}"
             title: "Release v${{ inputs.version }}"
             body: |
@@ -256,6 +262,7 @@ jobs:
           failOnError: false
           name: |
             artifacts
+            pyartifacts
 
 #  release:
 #    name: Publish to PyPI
