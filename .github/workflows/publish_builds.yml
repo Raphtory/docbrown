@@ -60,12 +60,12 @@ jobs:
           with:
             command: install
             args: cargo-release --force
-        - name: "Bump version with cargo release and push to remote"
+        - name: "Bump version with cargo release"
           uses: actions-rs/cargo@v1
           with:
             command: release
             args: --exclude examples --exclude pyraphtory --execute --no-confirm --no-push --no-publish --no-tag ${{ inputs.version }}
-        - name: "Make PR"
+        - name: "Push version changes & Make PR"
           uses: peter-evans/create-pull-request@v4
           with:
             token: ${{ secrets.GH_TOKEN }}
