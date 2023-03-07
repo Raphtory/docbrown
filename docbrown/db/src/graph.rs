@@ -184,20 +184,20 @@ impl Graph {
         )
     }
 
-    pub(crate) fn edge(&self, v1: u64, v2: u64) -> Option<EdgeView> {
-        let shard_id = utils::get_shard_id_from_global_vid(v1, self.nr_shards);
-        self.shards[shard_id].edge(v1, v2)
+    pub(crate) fn edge(&self, src: u64, dst: u64) -> Option<EdgeView> {
+        let shard_id = utils::get_shard_id_from_global_vid(src, self.nr_shards);
+        self.shards[shard_id].edge(src, dst)
     }
 
     pub(crate) fn edge_window(
         &self,
-        v1: u64,
-        v2: u64,
+        src: u64,
+        dst: u64,
         t_start: i64,
         t_end: i64,
     ) -> Option<EdgeView> {
-        let shard_id = utils::get_shard_id_from_global_vid(v1, self.nr_shards);
-        self.shards[shard_id].edge_window(v1, v2, t_start..t_end)
+        let shard_id = utils::get_shard_id_from_global_vid(src, self.nr_shards);
+        self.shards[shard_id].edge_window(src, dst, t_start..t_end)
     }
 
     pub(crate) fn vertex_edges_window(

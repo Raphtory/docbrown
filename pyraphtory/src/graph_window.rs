@@ -48,8 +48,8 @@ impl WindowedGraph {
         }
     }
 
-    pub fn edge(&self, v1: u64, v2: u64) -> Option<WindowedEdge> {
-        self.graph_w.edge(v1, v2).map(|we| we.into())
+    pub fn edge(&self, src: u64, dst: u64) -> Option<WindowedEdge> {
+        self.graph_w.edge(src, dst).map(|we| we.into())
     }
 }
 

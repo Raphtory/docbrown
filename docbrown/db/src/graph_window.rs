@@ -51,10 +51,10 @@ impl WindowedGraph {
         )
     }
 
-    pub fn edge(&self, v1: u64, v2: u64) -> Option<WindowedEdge> {
+    pub fn edge(&self, src: u64, dst: u64) -> Option<WindowedEdge> {
         let graph_w = self.clone();
         self.graph
-            .edge_window(v1, v2, self.t_start, self.t_end)
+            .edge_window(src, dst, self.t_start, self.t_end)
             .map(|ev| WindowedEdge::from(ev, Arc::new(graph_w.clone())))
     }
 }
