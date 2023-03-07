@@ -19,7 +19,7 @@ on:
         description: 'If true, dry run will not publish the release and will not push anything to PyPi/crates.io. 
         However it will still make a PR and a branch to show you what it changed. '
         type: boolean
-        default: false
+        default: true
         required: true
       skip_waiting_for_test:
         description: 'If true, will skip waiting for the tests to pass before publishing. 
