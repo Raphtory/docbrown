@@ -69,7 +69,7 @@ jobs:
           uses: actions-rs/cargo@v1
           with:
             command: build
-            args: --release --package docbrown
+            args: --release --package docbrown-core --package docbrown-db
         - name: "Push version changes & Make PR"
           uses: peter-evans/create-pull-request@v4
           with:
@@ -278,6 +278,7 @@ jobs:
 #          path: artifacts/
 #          dry_run: true
 #          no-verify: true
+#          ignore-unpublished-changes: true
 
       - name: "Deleting artifacts"
         uses: geekyeggo/delete-artifact@v2
