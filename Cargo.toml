@@ -3,12 +3,12 @@ members = [
 	"docbrown/core",
 	"docbrown/db",
 	"examples/rust",
-	"pyraphtory"
+	"raphtory"
 ]
-default-members = ["docbrown/core", "docbrown/db", "pyraphtory"]
+default-members = ["docbrown/core", "docbrown/db", "raphtory"]
 
 [workspace.package]
-version = "0.0.1"
+version = "0.0.2"
 documentation = "https://docbrown.readthedocs.io/en/latest/"
 repository = "https://github.com/Raphtory/docbrown/"
 license = "AGPL-3.0-only"

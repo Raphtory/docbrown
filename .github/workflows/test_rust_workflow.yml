@@ -5,7 +5,7 @@ on:
       config-path:
         required: false
         type: string
-
+# DO NOT CHANGE NAME OF WORKFLOW, USED IN OTHER WORKFLOWS KEEP "Rust Tests"
 jobs:
   rust-test:
     name: Rust Tests
