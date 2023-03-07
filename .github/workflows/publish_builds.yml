@@ -59,7 +59,7 @@ jobs:
           uses: actions-rs/cargo@v1
           with:
             command: install
-            args: cargo-release -Z install-upgrade
+            args: cargo-release --force
         - name: "Bump version with cargo release and push to remote"
           uses: actions-rs/cargo@v1
           with:
