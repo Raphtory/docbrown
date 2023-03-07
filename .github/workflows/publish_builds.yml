@@ -1,4 +1,4 @@
-name: Publish Rust/PyRaphtory to Github, crates.io and PyPi
+name: Publish Rust/raphtory to Github, crates.io and PyPi
 on:
   workflow_call:
     inputs:
@@ -64,7 +64,7 @@ jobs:
           uses: actions-rs/cargo@v1
           with:
             command: release
-            args: --exclude examples --exclude pyraphtory --execute --no-confirm --no-push --no-publish --no-tag ${{ inputs.version }}
+            args: --exclude examples --exclude raphtory --execute --no-confirm --no-push --no-publish --no-tag ${{ inputs.version }}
         - name: "Build Release crate"
           uses: actions-rs/cargo@v1
           with:
@@ -120,7 +120,7 @@ jobs:
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
-          working-directory: ./pyraphtory
+          working-directory: ./raphtory
           command: build
           target: ${{ matrix.target }}
           args: --release -i python3.10 --out dist
@@ -166,7 +166,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: pyartifacts
-          path: ./pyraphtory/dist
+          path: ./raphtory/dist
   python-windows:
     needs: release-rust
     runs-on: windows-latest
@@ -184,7 +184,7 @@ jobs:
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
-          working-directory: ./pyraphtory
+          working-directory: ./raphtory
           command: build
           target: ${{ matrix.target }}
           args: --release --out dist --find-interpreter
@@ -192,7 +192,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: pyartifacts
-          path: ./pyraphtory/dist
+          path: ./raphtory/dist
   python-macos:
     needs: release-rust
     runs-on: macos-latest
@@ -220,7 +220,7 @@ jobs:
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
-          working-directory: ./pyraphtory
+          working-directory: ./raphtory
           command: build
           target: ${{ matrix.target }}
           args: --release --out dist --find-interpreter
@@ -228,7 +228,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: pyartifacts
-          path: ./pyraphtory/dist
+          path: ./raphtory/dist
   download-release-gh-artifacts:
     needs: [release-rust, python-linux, python-windows, python-macos]
     name: Release
