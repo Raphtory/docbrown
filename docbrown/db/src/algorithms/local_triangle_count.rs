@@ -9,7 +9,6 @@ pub fn local_triangle_count(windowed_graph: &WindowedGraph, v: u64) -> u32 {
     if windowed_graph.has_vertex(v) && vertex.degree() >= 2 {
         windowed_graph
             .neighbours_ids(v, Direction::BOTH)
-            .unique()
             .combinations(2)
             .for_each(|nb| {
                 if windowed_graph.has_edge(nb[0], nb[1]) || (windowed_graph.has_edge(nb[1], nb[0]))

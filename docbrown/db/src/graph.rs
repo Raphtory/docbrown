@@ -12,6 +12,7 @@ use docbrown_core::{
     utils, Direction, Prop,
 };
 
+use itertools::Itertools;
 use rayon::prelude::{IntoParallelRefIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};
 
@@ -247,7 +248,7 @@ impl Graph {
         Self: Sized,
     {
         let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
-        let iter = self.shards[shard_id].neighbours_ids_window(v, t_start..t_end, d);
+        let iter = self.shards[shard_id].neighbours_ids_window(v, t_start..t_end, d).unique();
         Box::new(iter)
     }
 
@@ -301,6 +302,8 @@ mod db_tests {
     use std::fs;
     use std::sync::Arc;
     use uuid::Uuid;
+
+    use crate::algorithms::local_triangle_count::local_triangle_count;
 
     use super::*;
 
@@ -422,6 +425,12 @@ mod db_tests {
         g.add_edge(1, 7, 8, &vec![]);
 
         assert_eq!(g.has_edge(8, 7), false);
+        assert_eq!(g.has_edge(7, 8), true);
+
+        g.add_edge(1, 7, 9, &vec![]);
+
+        assert_eq!(g.has_edge(9, 7), false);
+        assert_eq!(g.has_edge(7, 9), true);
     }
 
     #[test]
@@ -782,7 +791,14 @@ mod db_tests {
     #[ignore]
     #[test]
     fn test_twitter_load_graph() {
-        let g = crate::graph_loader::twitter_graph::twitter_graph(4);
+        let g = crate::graph_loader::twitter_graph::twitter_graph(1);
+        let windowed_graph = g.window(i64::MIN, i64::MAX);
+        let mut i = 0;
+        println!("Starting analysis");
+        windowed_graph.vertex_ids().for_each(|v| {
+            local_triangle_count(&windowed_graph, v);
+            i+=1;
+        });
         assert_eq!(g.edges_len(), 1089147);
         assert_eq!(g.len(), 49467);
     }
