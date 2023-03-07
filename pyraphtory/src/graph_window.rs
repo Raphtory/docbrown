@@ -81,7 +81,7 @@ impl WindowedVertex {
     ) -> WindowedVertex {
         WindowedVertex {
             graph,
-            g_id: vertex.g_id,
+            id: vertex.g_id,
             vertex_w: vertex,
         }
     }
@@ -146,7 +146,7 @@ impl WindowedVertex {
         WindowedVertexIterable {
             graph: self.graph.clone(),
             operations: vec![Operations::Neighbours],
-            start_at: Some(self.g_id),
+            start_at: Some(self.id),
         }
     }
 
@@ -154,7 +154,7 @@ impl WindowedVertex {
         WindowedVertexIterable {
             graph: self.graph.clone(),
             operations: vec![Operations::InNeighbours],
-            start_at: Some(self.g_id),
+            start_at: Some(self.id),
         }
     }
 
@@ -162,7 +162,7 @@ impl WindowedVertex {
         WindowedVertexIterable {
             graph: self.graph.clone(),
             operations: vec![Operations::OutNeighbours],
-            start_at: Some(self.g_id),
+            start_at: Some(self.id),
         }
     }
 
