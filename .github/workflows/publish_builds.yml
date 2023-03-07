@@ -64,7 +64,7 @@ jobs:
           uses: actions-rs/cargo@v1
           with:
             command: release
-            args: --exclude examples --exclude raphtory --execute --no-confirm --no-publish --no-push --no-tag ${{ inputs.version }}
+            args: --execute --no-confirm --no-publish --no-push --no-tag ${{ inputs.version }}
         - name: "Publish docbrown-core to crates.io"
           uses: actions-rs/cargo@v1
           with:
