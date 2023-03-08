@@ -79,7 +79,8 @@ jobs:
           id: set_version
           run: |
               echo "CRATE_VERSION=$(cargo pkgid -p docbrown-db | cut -d# -f2 | cut -d@ -f2)" >> $GITHUB_ENV
-              echo "crate_version=$CRATE_VERSION" >> $GITHUB_OUTPUT
+              echo "crate_version=$(cargo pkgid -p docbrown-db | cut -d# -f2 | cut -d@ -f2)" >> $GITHUB_OUTPUT
+              echo $crate_version
         - name: "Publish docbrown-core to crates.io"
           if: ${{ !inputs.dry_run }}
           uses: actions-rs/cargo@v1
