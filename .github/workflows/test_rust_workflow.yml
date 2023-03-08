@@ -2,12 +2,14 @@ name: Run Rust test
 on:
   workflow_call:
     inputs:
-      config-path:
+      skip_tests:
+        type: boolean
+        default: false
         required: false
-        type: string
 # DO NOT CHANGE NAME OF WORKFLOW, USED IN OTHER WORKFLOWS KEEP "Rust Tests"
 jobs:
   rust-test:
+    if: ${{ !inputs.skip_tests }}
     name: Rust Tests
     runs-on: '${{ matrix.os }}'
     strategy:
@@ -89,6 +91,7 @@ jobs:
           path: ./benchmark-cache
           key: ${{ steps.restore-benchmark-cache.outputs.cache-primary-key }}
   doc-test:
+    if: ${{ !inputs.skip_tests }}
     name: "Doc tests"
     runs-on: '${{ matrix.os }}'
     strategy:
