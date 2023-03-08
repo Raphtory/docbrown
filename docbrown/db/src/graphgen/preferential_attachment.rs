@@ -11,7 +11,7 @@ use std::collections::HashSet;
 /// For this model the neighbours are chosen proportionally based upon their degree, favouring nodes with higher degree (more connections).
 /// This sampling is conducted without replacement.
 ///
-/// **Note:** If a graph is provided which does not have enough nodes or edges from which to initially sample, the minimum number of both will be added before the generation model begins.
+/// **Note:**  If the provided graph doesnt have enough nodes/edges for the initial sample, the min number of both will be added before generation begins.
 ///
 /// # Arguments
 /// * `graph` - The graph you wish to add vertices and edges to
@@ -21,6 +21,7 @@ use std::collections::HashSet;
 ///
 /// ```
 /// use docbrown_db::graphgen::preferential_attachment::ba_preferential_attachment;
+/// use docbrown_db::graph::Graph;
 /// let graph = Graph::new(2);
 //  ba_preferential_attachment(&graph, 1000, 10);
 /// ```

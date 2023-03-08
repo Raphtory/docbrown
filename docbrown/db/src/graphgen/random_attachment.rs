@@ -6,9 +6,9 @@ use rand::seq::SliceRandom;
 ///
 /// Given a graph this function will add a user defined number of vertices, each with a user defined number of edges.
 /// This is an iterative algorithm where at each `step` a vertex is added and its neighbours are chosen from the pool of nodes already within the network.
-/// For this model the neighbours are chosen purely at random, sampling without replacement.
+/// For this model the neighbours are chosen purely at random. This sampling is done without replacement.
 ///
-/// **Note:** If a graph is provided which does not have enough nodes or edges from which to initially sample, the minimum number of both will be added before the generation model begins.
+/// **Note:**  If the provided graph doesnt have enough nodes/edges for the initial sample, the min number of both will be added before generation begins.
 ///
 /// # Arguments
 /// * `graph` - The graph you wish to add vertices and edges to
@@ -18,6 +18,7 @@ use rand::seq::SliceRandom;
 ///
 /// ```
 /// use docbrown_db::graphgen::preferential_attachment::ba_preferential_attachment;
+/// use docbrown_db::graph::Graph;
 /// let graph = Graph::new(2);
 //  ba_preferential_attachment(&graph, 1000, 10);
 /// ```
