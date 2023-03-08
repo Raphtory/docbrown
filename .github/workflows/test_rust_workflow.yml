@@ -5,9 +5,14 @@ on:
       config-path:
         required: false
         type: string
+      skip_waiting_for_test:
+        type: boolean
+        default: false
+        required: false
 # DO NOT CHANGE NAME OF WORKFLOW, USED IN OTHER WORKFLOWS KEEP "Rust Tests"
 jobs:
   rust-test:
+    if: ${{ !inputs.skip_waiting_for_test }}
     name: Rust Tests
     runs-on: '${{ matrix.os }}'
     strategy:
@@ -89,6 +94,7 @@ jobs:
           path: ./benchmark-cache
           key: ${{ steps.restore-benchmark-cache.outputs.cache-primary-key }}
   doc-test:
+    if: ${{ !inputs.skip_waiting_for_test }}
     name: "Doc tests"
     runs-on: '${{ matrix.os }}'
     strategy:
