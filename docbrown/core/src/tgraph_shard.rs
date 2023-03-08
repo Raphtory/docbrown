@@ -10,33 +10,10 @@ use genawaiter::yield_;
 use crate::tgraph::{EdgeView, TemporalGraph, VertexView};
 use crate::{Direction, Prop};
 
-#[derive(Debug)]
-pub struct TEdge {
-    pub edge_id: usize,
-    pub src: u64,
-    pub dst: u64,
-    pub t: Option<i64>,
-    pub is_remote: bool,
-}
-
-impl From<EdgeView> for TEdge {
-    fn from(e: EdgeView) -> Self {
-        Self {
-            edge_id: e.e_meta.edge_meta_id(),
-            src: e.src_g_id,
-            dst: e.dst_g_id,
-            t: e.t,
-            is_remote: !e.e_meta.is_local(),
-        }
-    }
-}
-
 mod lock {
 
     use std::ops::{Deref, DerefMut};
-
     use serde::{Deserialize, Serialize};
-
     #[derive(Serialize, Deserialize, Debug, Default)]
     #[repr(transparent)]
     pub(crate) struct MyLock<T>(parking_lot::RwLock<T>);
@@ -232,8 +209,8 @@ impl TGraphShard {
         iter.into_iter()
     }
 
-    pub fn edge(&self, src: u64, dst: u64) -> Option<EdgeView> {
-        self.read_shard(|tg| tg.edge(src, dst))
+    pub fn edge(&self, v1: u64, v2: u64) -> Option<EdgeView> {
+        self.read_shard(|tg| tg.edge(v1, v2))
     }
 
     pub fn edge_window(&self, v1: u64, v2: u64, w: Range<i64>) -> Option<EdgeView> {
@@ -244,7 +221,7 @@ impl TGraphShard {
         let tgshard = self.rc.clone();
         let iter: GenBoxed<EdgeView> = GenBoxed::new_boxed(|co| async move {
             let g = tgshard.read();
-            let iter = (*g).edges(v, d);
+            let iter = (*g).vertex_edges(v, d);
             for ev in iter {
                 co.yield_(ev).await;
             }
@@ -262,7 +239,7 @@ impl TGraphShard {
         let tgshard = self.clone();
         let iter = gen!({
             let g = tgshard.rc.read();
-            let chunks = (*g).edges_window(v, &w, d).map(|e| e.into());
+            let chunks = (*g).vertex_edges_window(v, &w, d).map(|e| e.into());
             let iter = chunks.into_iter();
             for v_id in iter {
                 yield_!(v_id)
@@ -281,7 +258,7 @@ impl TGraphShard {
         let tgshard = self.clone();
         let iter = gen!({
             let g = tgshard.rc.read();
-            let chunks = (*g).edges_window_t(v, &w, d).map(|e| e.into());
+            let chunks = (*g).vertex_edges_window_t(v, &w, d).map(|e| e.into());
             let iter = chunks.into_iter();
             for v_id in iter {
                 yield_!(v_id)
@@ -681,7 +658,7 @@ mod temporal_graph_partition_test {
         let in_actual = (1..=3)
             .map(|i| {
                 g.vertex_edges_window_t(i, -1..7, Direction::IN)
-                    .map(|e| e.time.unwrap())
+                    .map(|e| e.t.unwrap())
                     .collect::<Vec<_>>()
             })
             .collect::<Vec<_>>();
@@ -690,7 +667,7 @@ mod temporal_graph_partition_test {
         let out_actual = (1..=3)
             .map(|i| {
                 g.vertex_edges_window_t(i, 1..7, Direction::OUT)
-                    .map(|e| e.time.unwrap())
+                    .map(|e| e.t.unwrap())
                     .collect::<Vec<_>>()
             })
             .collect::<Vec<_>>();
@@ -699,7 +676,7 @@ mod temporal_graph_partition_test {
         let both_actual = (1..=3)
             .map(|i| {
                 g.vertex_edges_window_t(i, 0..1, Direction::BOTH)
-                    .map(|e| e.time.unwrap())
+                    .map(|e| e.t.unwrap())
                     .collect::<Vec<_>>()
             })
             .collect::<Vec<_>>();
