@@ -6,7 +6,7 @@ on:
         type: 'string'
         default: 'main'
       version:
-        type: choice
+        type: 'string'
         required: true
         default: patch
       dry_run:
