@@ -131,8 +131,6 @@ jobs:
       matrix:
         target: [x86_64, x86, aarch64, armv7]
     steps:
-      - env:
-          crate_version: ${{needs.release-rust.outputs.crate_version}}
       - name: Set up cargo cache
         uses: actions/cache@v3
         continue-on-error: false
