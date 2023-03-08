@@ -21,9 +21,8 @@ on:
         type: boolean
         default: true
         required: true
-      skip_waiting_for_test:
-        description: 'SKIP WAITING FOR TESTS: If true will continue instead of waiting. 
-        WARNING TESTS MUST PASS BEFORE PUBLISHING else they WILL fail the workflow'
+      skip_tests:
+        description: 'SKIP TESTS: If true will skip tests'
         type: boolean
         default: false
         required: true
@@ -35,7 +34,7 @@ jobs:
     uses: ./.github/workflows/test_rust_workflow.yml
     secrets: inherit
     with:
-        skip_waiting_for_test: ${{ inputs.skip_waiting_for_test }}
+        skip_tests: ${{ inputs.skip_tests }}
   publish-builds-to-cargo-github-pypi:
     uses: ./.github/workflows/publish_builds.yml
     secrets: inherit
@@ -43,4 +42,4 @@ jobs:
         base: ${{ github.event.inputs.base }}
         version: ${{ github.event.inputs.version }}
         dry_run: ${{ inputs.dry_run }}
-        skip_waiting_for_test: ${{ inputs.skip_waiting_for_test }}
+        skip_tests: ${{ inputs.skip_tests }}
