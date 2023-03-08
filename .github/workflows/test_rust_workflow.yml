@@ -2,9 +2,6 @@ name: Run Rust test
 on:
   workflow_call:
     inputs:
-      config-path:
-        required: false
-        type: string
       skip_waiting_for_test:
         type: boolean
         default: false
