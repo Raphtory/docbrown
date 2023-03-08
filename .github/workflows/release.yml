@@ -31,6 +31,7 @@ on:
 
 jobs:
   test-rust-python-workflow:
+    if : ${{ github.event.inputs.dry_run == 'false' }}
     uses: ./.github/workflows/test_rust_workflow.yml
     secrets: inherit
     with:
