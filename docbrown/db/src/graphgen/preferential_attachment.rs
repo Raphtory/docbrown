@@ -6,8 +6,10 @@ use std::collections::HashSet;
 pub fn preferential_attachment(graph:&Graph,vertices_to_add:usize,edges_per_step:usize){
 
     let mut rng = rand::thread_rng();
-    let mut latest_time = graph.latest_time();
-
+    let mut latest_time = match graph.latest_time() {
+        None => {0}
+        Some(time) => {time}
+    };
     let view = graph.window(i64::MIN,i64::MAX);
     let mut ids:Vec<u64> = view.vertex_ids().collect();
     let mut degrees:Vec<usize> = view.vertices().map(|v| v.degree()).collect();

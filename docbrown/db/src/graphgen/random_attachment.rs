@@ -4,7 +4,10 @@ use rand::seq::SliceRandom;
 pub fn random_attachment(graph:&Graph, vertices_to_add:usize,edges_per_step:usize) {
     use rand::seq::IteratorRandom;
     let mut rng = &mut rand::thread_rng();
-    let mut latest_time = graph.latest_time();
+    let mut latest_time = match graph.latest_time() {
+        None => {0}
+        Some(time) => {time}
+    };
     let mut ids:Vec<u64> = graph.vertex_ids_window(i64::MIN,i64::MAX).collect();
     let mut max_id = match ids.iter().max() {
         Some(id) => {*id},
