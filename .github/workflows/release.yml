@@ -37,7 +37,6 @@ jobs:
     with:
         skip_waiting_for_test: ${{ inputs.skip_waiting_for_test }}
   publish-builds-to-cargo-github-pypi:
-    needs: test-rust-python-workflow
     uses: ./.github/workflows/publish_builds.yml
     secrets: inherit
     with:
