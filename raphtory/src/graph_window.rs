@@ -28,6 +28,10 @@ impl WindowedGraph {
         self.graph_w.has_vertex(v)
     }
 
+    pub fn has_edge(&self, src: u64, dst: u64) -> bool {
+        self.graph_w.has_edge(src, dst)
+    }
+
     pub fn vertex(slf: PyRef<'_, Self>, v: u64) -> Option<WindowedVertex> {
         let v = slf.graph_w.vertex(v)?;
         let g: Py<Self> = slf.into();
@@ -40,24 +44,20 @@ impl WindowedGraph {
         }
     }
 
-    pub fn vertices(slf: PyRef<'_, Self>) -> WindowedVertexIterable {
+    pub fn vertices(slf: PyRef<'_, Self>) -> WindowedVertices {
         let g: Py<Self> = slf.into();
-        WindowedVertexIterable {
-            graph: g,
-            operations: vec![],
-            start_at: None,
-        }
+        WindowedVertices { graph: g }
     }
 
-    pub fn edge(&self, v1: u64, v2: u64) -> Option<WindowedEdge> {
-        self.graph_w.edge(v1, v2).map(|we| we.into())
+    pub fn edge(&self, src: u64, dst: u64) -> Option<WindowedEdge> {
+        self.graph_w.edge(src, dst).map(|we| we.into())
     }
 }
 
 #[pyclass]
 pub struct WindowedVertex {
     #[pyo3(get)]
-    pub g_id: u64,
+    pub id: u64,
     pub(crate) graph: Py<WindowedGraph>,
     pub(crate) vertex_w: graph_window::WindowedVertex,
 }
@@ -65,8 +65,8 @@ pub struct WindowedVertex {
 impl WindowedVertex {
     fn from(&self, value: graph_window::WindowedVertex) -> WindowedVertex {
         WindowedVertex {
+            id: value.g_id,
             graph: self.graph.clone(),
-            g_id: value.g_id,
             vertex_w: value,
         }
     }
@@ -77,7 +77,7 @@ impl WindowedVertex {
     ) -> WindowedVertex {
         WindowedVertex {
             graph,
-            g_id: vertex.g_id,
+            id: vertex.g_id,
             vertex_w: vertex,
         }
     }
@@ -142,7 +142,7 @@ impl WindowedVertex {
         WindowedVertexIterable {
             graph: self.graph.clone(),
             operations: vec![Operations::Neighbours],
-            start_at: Some(self.g_id),
+            start_at: Some(self.id),
         }
     }
 
@@ -150,7 +150,7 @@ impl WindowedVertex {
         WindowedVertexIterable {
             graph: self.graph.clone(),
             operations: vec![Operations::InNeighbours],
-            start_at: Some(self.g_id),
+            start_at: Some(self.id),
         }
     }
 
@@ -158,7 +158,7 @@ impl WindowedVertex {
         WindowedVertexIterable {
             graph: self.graph.clone(),
             operations: vec![Operations::OutNeighbours],
-            start_at: Some(self.g_id),
+            start_at: Some(self.id),
         }
     }
 
@@ -179,6 +179,10 @@ impl WindowedVertex {
             iter: Box::new(self.vertex_w.out_neighbours_ids()),
         }
     }
+
+    pub fn __repr__(&self) -> String {
+        format!("Vertex({})", self.id)
+    }
 }
 
 #[pyclass]
@@ -189,8 +193,7 @@ pub struct WindowedEdge {
     #[pyo3(get)]
     pub dst: u64,
     #[pyo3(get)]
-    pub t: Option<i64>,
-    #[pyo3(get)]
+    pub time: Option<i64>,
     pub is_remote: bool,
     pub(crate) edge_w: graph_window::WindowedEdge,
 }
@@ -201,7 +204,7 @@ impl From<graph_window::WindowedEdge> for WindowedEdge {
             edge_id: value.edge_id,
             src: value.src,
             dst: value.dst,
-            t: value.t,
+            time: value.time,
             is_remote: value.is_remote,
             edge_w: value,
         }
