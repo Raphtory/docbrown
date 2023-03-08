@@ -9,10 +9,6 @@ on:
         type: choice
         required: true
         default: patch
-        options:
-          - major
-          - minor
-          - patch
       dry_run:
         type: boolean
         default: true
