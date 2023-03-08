@@ -28,8 +28,14 @@ impl WindowedGraph {
         self.graph_w.has_vertex(v)
     }
 
-    pub fn vertex(&self, v: u64) -> Option<WindowedVertex> {
-        self.graph_w.vertex(v).map(|wv| wv.into())
+    pub fn has_edge(&self, src: u64, dst: u64) -> bool {
+        self.graph_w.has_edge(src, dst)
+    }
+
+    pub fn vertex(slf: PyRef<'_, Self>, v: u64) -> Option<WindowedVertex> {
+        let v = slf.graph_w.vertex(v)?;
+        let g: Py<Self> = slf.into();
+        Some(WindowedVertex::new(g, v))
     }
 
     pub fn vertex_ids(&self) -> VertexIdsIterator {
@@ -38,29 +44,41 @@ impl WindowedGraph {
         }
     }
 
-    pub fn vertices(&self) -> WindowedVertexIterator {
-        WindowedVertexIterator {
-            iter: Box::new(self.graph_w.vertices().map(|wv| wv.into())),
-        }
+    pub fn vertices(slf: PyRef<'_, Self>) -> WindowedVertices {
+        let g: Py<Self> = slf.into();
+        WindowedVertices { graph: g }
     }
 
-    pub fn edge(&self, v1: u64, v2: u64) -> Option<WindowedEdge> {
-        self.graph_w.edge(v1, v2).map(|we| we.into())
+    pub fn edge(&self, src: u64, dst: u64) -> Option<WindowedEdge> {
+        self.graph_w.edge(src, dst).map(|we| we.into())
     }
 }
 
 #[pyclass]
 pub struct WindowedVertex {
     #[pyo3(get)]
-    pub g_id: u64,
+    pub id: u64,
+    pub(crate) graph: Py<WindowedGraph>,
     pub(crate) vertex_w: graph_window::WindowedVertex,
 }
 
-impl From<graph_window::WindowedVertex> for WindowedVertex {
-    fn from(value: graph_window::WindowedVertex) -> WindowedVertex {
+impl WindowedVertex {
+    fn from(&self, value: graph_window::WindowedVertex) -> WindowedVertex {
         WindowedVertex {
-            g_id: value.g_id,
+            id: value.g_id,
+            graph: self.graph.clone(),
             vertex_w: value,
+        }
+    }
+
+    pub(crate) fn new(
+        graph: Py<WindowedGraph>,
+        vertex: graph_window::WindowedVertex,
+    ) -> WindowedVertex {
+        WindowedVertex {
+            graph,
+            id: vertex.g_id,
+            vertex_w: vertex,
         }
     }
 }
@@ -120,21 +138,27 @@ impl WindowedVertex {
         }
     }
 
-    pub fn neighbours(&self) -> WindowedVertexIterator {
-        WindowedVertexIterator {
-            iter: Box::new(self.vertex_w.neighbours().map(|tv| tv.into())),
+    pub fn neighbours(&self) -> WindowedVertexIterable {
+        WindowedVertexIterable {
+            graph: self.graph.clone(),
+            operations: vec![Operations::Neighbours],
+            start_at: Some(self.id),
         }
     }
 
-    pub fn in_neighbours(&self) -> WindowedVertexIterator {
-        WindowedVertexIterator {
-            iter: Box::new(self.vertex_w.in_neighbours().map(|tv| tv.into())),
+    pub fn in_neighbours(&self) -> WindowedVertexIterable {
+        WindowedVertexIterable {
+            graph: self.graph.clone(),
+            operations: vec![Operations::InNeighbours],
+            start_at: Some(self.id),
         }
     }
 
-    pub fn out_neighbours(&self) -> WindowedVertexIterator {
-        WindowedVertexIterator {
-            iter: Box::new(self.vertex_w.out_neighbours().map(|tv| tv.into())),
+    pub fn out_neighbours(&self) -> WindowedVertexIterable {
+        WindowedVertexIterable {
+            graph: self.graph.clone(),
+            operations: vec![Operations::OutNeighbours],
+            start_at: Some(self.id),
         }
     }
 
@@ -155,6 +179,10 @@ impl WindowedVertex {
             iter: Box::new(self.vertex_w.out_neighbours_ids()),
         }
     }
+
+    pub fn __repr__(&self) -> String {
+        format!("Vertex({})", self.id)
+    }
 }
 
 #[pyclass]
@@ -165,8 +193,7 @@ pub struct WindowedEdge {
     #[pyo3(get)]
     pub dst: u64,
     #[pyo3(get)]
-    pub t: Option<i64>,
-    #[pyo3(get)]
+    pub time: Option<i64>,
     pub is_remote: bool,
     pub(crate) edge_w: graph_window::WindowedEdge,
 }
@@ -177,7 +204,7 @@ impl From<graph_window::WindowedEdge> for WindowedEdge {
             edge_id: value.edge_id,
             src: value.src,
             dst: value.dst,
-            t: value.t,
+            time: value.time,
             is_remote: value.is_remote,
             edge_w: value,
         }

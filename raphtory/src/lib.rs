@@ -13,7 +13,7 @@ use crate::graph_gen::random_attachment;
 use crate::graph_gen::ba_preferential_attachment;
 
 #[pymodule]
-fn pyraphtory(py: Python<'_>, m: &PyModule) -> PyResult<()> {
+fn raphtory(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_class::<Direction>()?;
     m.add_class::<Graph>()?;
 
