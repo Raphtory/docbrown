@@ -33,11 +33,40 @@ pub fn random_attachment(graph:&Graph, vertices_to_add:usize,edges_per_step:usiz
 
 #[cfg(test)]
 mod random_graph_test {
+    use crate::graphgen::preferential_attachment::preferential_attachment;
     use super::*;
     #[test]
-    fn graph_size() {
+    fn blank_graph() {
         let graph = Graph::new(2);
-        random_attachment(&graph, 10,1);
-        assert_eq!(graph.edges_len(), 10);
+        random_attachment(&graph, 100,20);
+        assert_eq!(graph.edges_len(), 2000);
+        assert_eq!(graph.len(), 120);
+    }
+
+    #[test]
+    fn only_nodes() {
+        let graph = Graph::new(2);
+        for i in 0..10{
+            graph.add_vertex(i,i as u64,&vec![]);
+        }
+
+        random_attachment(&graph,1000,5);
+        let window = graph.window(i64::MIN,i64::MAX);
+        let mut degree:Vec<usize> =window.vertices()
+            .map(|v| v.degree()).collect();
+        assert_eq!(graph.edges_len(), 5000);
+        assert_eq!(graph.len(),1010);
+    }
+
+    #[test]
+    fn prior_graph() {
+        let graph = Graph::new(2);
+        preferential_attachment(&graph,300,7);
+        random_attachment(&graph,4000,12);
+        let window = graph.window(i64::MIN,i64::MAX);
+        let mut degree:Vec<usize> =window.vertices()
+            .map(|v| v.degree()).collect();
+        assert_eq!(graph.edges_len(), 50106);
+        assert_eq!(graph.len(),4307);
     }
 }
