@@ -10,7 +10,7 @@ use crate::wrappers::Direction;
 use crate::graph::Graph;
 use crate::algorithms::triangle_count;
 use crate::graph_gen::random_attachment;
-use crate::graph_gen::preferential_attachment;
+use crate::graph_gen::ba_preferential_attachment;
 
 #[pymodule]
 fn pyraphtory(py: Python<'_>, m: &PyModule) -> PyResult<()> {
@@ -24,7 +24,7 @@ fn pyraphtory(py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     let graph_gen_module = PyModule::new(py, "graph_gen")?;
     graph_gen_module.add_function(wrap_pyfunction!(random_attachment, graph_gen_module)?)?;
-    graph_gen_module.add_function(wrap_pyfunction!(preferential_attachment, graph_gen_module)?)?;
+    graph_gen_module.add_function(wrap_pyfunction!(ba_preferential_attachment, graph_gen_module)?)?;
     m.add_submodule(graph_gen_module)?;
 
     Ok(())

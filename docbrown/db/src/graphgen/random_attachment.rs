@@ -1,6 +1,26 @@
 use crate::graph::Graph;
 use rand::seq::SliceRandom;
 
+/// This function is a graph generation model based upon:
+/// Callaway, Duncan S., et al. "Are randomly grown graphs really random?." Physical Review E 64.4 (2001): 041902.
+///
+/// Given a graph this function will add a user defined number of vertices, each with a user defined number of edges.
+/// This is an iterative algorithm where at each `step` a vertex is added and its neighbours are chosen from the pool of nodes already within the network.
+/// For this model the neighbours are chosen purely at random, sampling without replacement.
+///
+/// **Note:** If a graph is provided which does not have enough nodes or edges from which to initially sample, the minimum number of both will be added before the generation model begins.
+///
+/// # Arguments
+/// * `graph` - The graph you wish to add vertices and edges to
+/// * `vertices_to_add` - The amount of vertices you wish to add to the graph (steps)
+/// * `edges_per_step` - The amount of edges a joining vertex should add to the graph
+/// # Examples
+///
+/// ```
+/// use docbrown_db::graphgen::preferential_attachment::ba_preferential_attachment;
+/// let graph = Graph::new(2);
+//  ba_preferential_attachment(&graph, 1000, 10);
+/// ```
 pub fn random_attachment(graph:&Graph, vertices_to_add:usize,edges_per_step:usize) {
     use rand::seq::IteratorRandom;
     let mut rng = &mut rand::thread_rng();
@@ -21,7 +41,7 @@ pub fn random_attachment(graph:&Graph, vertices_to_add:usize,edges_per_step:usiz
         ids.push(max_id);
     }
 
-    for i in 0..vertices_to_add {
+    for _ in 0..vertices_to_add {
         let edges = ids.choose_multiple(rng,edges_per_step);
         max_id+=1;
         latest_time+=1;
@@ -36,7 +56,7 @@ pub fn random_attachment(graph:&Graph, vertices_to_add:usize,edges_per_step:usiz
 
 #[cfg(test)]
 mod random_graph_test {
-    use crate::graphgen::preferential_attachment::preferential_attachment;
+    use crate::graphgen::preferential_attachment::ba_preferential_attachment;
     use super::*;
     #[test]
     fn blank_graph() {
@@ -64,7 +84,7 @@ mod random_graph_test {
     #[test]
     fn prior_graph() {
         let graph = Graph::new(2);
-        preferential_attachment(&graph,300,7);
+        ba_preferential_attachment(&graph, 300, 7);
         random_attachment(&graph,4000,12);
         let window = graph.window(i64::MIN,i64::MAX);
         let mut degree:Vec<usize> =window.vertices()
