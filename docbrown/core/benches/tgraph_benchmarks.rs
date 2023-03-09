@@ -64,7 +64,7 @@ fn btree_set_u64(c: &mut Criterion) {
 
 fn bm_tadjset(c: &mut Criterion) {
     let mut group = c.benchmark_group("tadjset");
-    for size in [10, 100, 1000, 10000, 100000].iter() {
+    for size in [10, 100, 1000, 10_000, 100_000, 1_000_000].iter() {
         group.throughput(Throughput::Elements(*size as u64));
 
         let mut rng = rand::thread_rng();
