@@ -31,8 +31,8 @@ impl Graph {
 
     pub fn through_perspectives(&self, mut perspectives: PerspectiveSet) -> GraphWindowSet {
         let timeline = self.timeline().unwrap_or(0..0);
-        perspectives.set_timeline(timeline);
-        GraphWindowSet::new(Arc::new(self.clone()), Box::new(perspectives))
+        let iter = perspectives.build_iter(timeline);
+        GraphWindowSet::new(Arc::new(self.clone()), Box::new(iter))
     }
 
     pub fn through_iter(&self, perspectives: Box<dyn Iterator<Item=Perspective> + Send>) -> GraphWindowSet  {

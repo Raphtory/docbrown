@@ -1,5 +1,5 @@
 [package]
-name = "docbrown-core"
+name = "docbrown_core"
 version.workspace = true
 edition = "2021"
 keywords = ["graph", "temporal-graph", "temporal"]

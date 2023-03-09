@@ -13,47 +13,44 @@ impl Perspective {
             end,   // exclusive
         }
     }
-
     pub fn range(start: i64, end: i64, increment: u64) -> PerspectiveSet {
         PerspectiveSet {
-            cursor: Some(start),
+            start: Some(start),
             end: Some(end),
             increment: increment as i64,
             window: None,
         }
     }
-
     pub fn walk(increment: u64) -> PerspectiveSet {
         PerspectiveSet {
-            cursor: None,
+            start: None,
             end: None,
             increment: increment as i64,
             window: None,
         }
     }
-
     pub fn depart(start: i64, increment: u64) -> PerspectiveSet {
         PerspectiveSet {
-            cursor: Some(start),
+            start: Some(start),
             end: None,
             increment: increment as i64,
             window: None,
         }
     }
-
     pub fn climb(end: i64, increment: u64) -> PerspectiveSet {
         PerspectiveSet {
-            cursor: None,
+            start: None,
             end: Some(end),
             increment: increment as i64,
             window: None,
         }
     }
+    // TODO pub fn weeks(n), days(n), hours(n), minutes(n), seconds(n), millis(n)
 }
 
 #[derive(Clone)]
 pub struct PerspectiveSet {
-    cursor: Option<i64>, // the position of the cursor of this iterator, initially set to the start
+    start: Option<i64>,
     end: Option<i64>,
     increment: i64,
     window: Option<i64>,
@@ -62,34 +59,42 @@ pub struct PerspectiveSet {
 impl PerspectiveSet {
     pub fn window(&self, size: u64) -> PerspectiveSet {
         PerspectiveSet {
-            cursor: self.cursor,
-            end: self.end,
-            increment: self.increment,
-            window: Some(size as i64), // TODO isnt there another syntax like {window, self..} ?
+            window: Some(size as i64),
+            ..self.clone()
         }
     }
-    pub fn set_timeline(self: &mut Self, timeline: Range<i64>) { // TODO this should probably return an iterator...
-        if self.cursor.is_none() {
-            self.cursor = Some(timeline.start + self.increment); // TODO: alignment
-        }
-        if self.end.is_none() {
-            self.end = Some(timeline.end);
+    pub(crate) fn build_iter(&self, timeline: Range<i64>) -> PerspectiveIterator {
+        // TODO: alignment with the epoch for start
+        let start = self.start.unwrap_or(timeline.start + self.increment);
+        let end = self.end.unwrap_or(timeline.end);
+        PerspectiveIterator {
+            cursor: start,
+            end: end,
+            increment: self.increment,
+            window: self.window,
         }
     }
 }
 
-impl Iterator for PerspectiveSet {
+pub(crate) struct PerspectiveIterator {
+    cursor: i64,
+    end: i64,
+    increment: i64,
+    window: Option<i64>,
+}
+
+impl Iterator for PerspectiveIterator {
     type Item = Perspective;
     fn next(&mut self) -> Option<Self::Item> {
         let limit = match self.window {
-            Some(window) => self.cursor? - window,
-            None => self.cursor? - self.increment,
+            Some(window) => self.cursor - window,
+            None => self.cursor - self.increment,
         };
-        if self.end? <= limit {
+        if self.end <= limit {
             None
         } else {
-            let current_cursor = self.cursor?;
-            self.cursor = Some(self.cursor? + self.increment);
+            let current_cursor = self.cursor;
+            self.cursor += self.increment;
             Some(Perspective {
                 start: self.window.map(|w| current_cursor - w),
                 end: Some(current_cursor),
@@ -124,27 +129,34 @@ graph_view.perspectve.start
 
 #[cfg(test)]
 mod perspective_tests {
+    use itertools::Itertools;
     use crate::perspective::{Perspective, PerspectiveSet};
 
     #[test]
     fn perspective_range() {
-        // let set = PerspectiveSet {
-        //     cursor: 100,
-        //     end: 160,
-        //     increment: 50,
-        //     window: Some(20),
-        // }
 
-        let mut range = Perspective::range(100, 160, 50);
+        let range = Perspective::range(100, 200, 50);
+
+        let expected = vec![
+            Perspective::new(None, Some(100)),
+            Perspective::new(None, Some(150)),
+            Perspective::new(None, Some(200))];
+        assert_eq!(range.build_iter(0..0).collect_vec(), expected);
+
         let windows = range.window(20);
+        let expected = vec![
+            Perspective::new(Some(81), Some(100)),
+            Perspective::new(Some(131), Some(150)),
+            Perspective::new(Some(181), Some(200))];
+        assert_eq!(windows.build_iter(0..0).collect_vec(), expected);
 
-        // let current: Vec<Perspective> = set.collect();
-        // let expected: Vec<Perspective> = [Perspective::new(80, 100), Perspective::new(130, 150)].iter().collect();
-        let expected: Vec<Perspective> = vec![Perspective::new(Some(81), Some(100)), Perspective::new(Some(131), Some(150))];
-        // assert_eq!(current, expected)
 
-        for (current, expected) in windows.zip(expected) {//.foreach(|(current, expected)| assert_eq!(current, expected))
-            assert_eq!(current, expected)
-        }
+
+        // let expected: Vec<Perspective> = vec![Perspective::new(Some(81), Some(100)), Perspective::new(Some(131), Some(150))];
+        //
+        //
+        // for (current, expected) in windows.zip(expected) {//.foreach(|(current, expected)| assert_eq!(current, expected))
+        //     assert_eq!(current, expected)
+        // }
     }
 }
