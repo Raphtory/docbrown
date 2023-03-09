@@ -209,12 +209,12 @@ impl TGraphShard {
         iter.into_iter()
     }
 
-    pub fn edge(&self, v1: u64, v2: u64) -> Option<EdgeView> {
-        self.read_shard(|tg| tg.edge(v1, v2))
+    pub fn edge(&self, src: u64, dst: u64) -> Option<EdgeView> {
+        self.read_shard(|tg| tg.edge(src, dst))
     }
 
-    pub fn edge_window(&self, v1: u64, v2: u64, w: Range<i64>) -> Option<EdgeView> {
-        self.read_shard(|tg| tg.edge_window(v1, v2, &w))
+    pub fn edge_window(&self, src: u64, dst: u64, w: Range<i64>) -> Option<EdgeView> {
+        self.read_shard(|tg| tg.edge_window(src, dst, &w))
     }
 
     pub fn vertex_edges(&self, v: u64, d: Direction) -> impl Iterator<Item = EdgeView> {
