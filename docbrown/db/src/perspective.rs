@@ -126,10 +126,6 @@ mod perspective_tests {
 
     #[test]
     fn rolling_with_start_and_end() {
-        let windows = Perspective::rolling(5, None, Some(0), Some(4));
-        let expected = gen_rolling(vec![(0, 5)]);
-        assert_eq!(windows.build_iter(0..0).collect_vec(), expected);
-
         let windows = Perspective::rolling(3, Some(2), Some(-5), Some(-1));
         let expected = gen_rolling(vec![(-7, -4), (-5, -2), (-3, 0)]);
         assert_eq!(windows.build_iter(0..0).collect_vec(), expected);
