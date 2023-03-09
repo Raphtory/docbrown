@@ -25,6 +25,7 @@ impl Graph {
 #[pymethods]
 impl Graph {
     #[new]
+    #[pyo3(signature = (nr_shards=1))]
     pub fn new(nr_shards: usize) -> Self {
         Self {
             graph: graph::Graph::new(nr_shards),
