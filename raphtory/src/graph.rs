@@ -13,6 +13,15 @@ pub struct Graph {
     pub(crate) graph: graph::Graph,
 }
 
+impl Graph {
+
+    pub fn from_db_graph(db_graph: graph::Graph) -> Self {
+        Self {
+            graph: db_graph
+        }
+    }
+}
+
 #[pymethods]
 impl Graph {
     #[new]
@@ -20,6 +29,14 @@ impl Graph {
         Self {
             graph: graph::Graph::new(nr_shards),
         }
+    }
+
+    pub fn earliest_time(&self,) -> Option<i64> {
+        self.graph.earliest_time()
+    }
+
+    pub fn latest_time(&self,) -> Option<i64> {
+        self.graph.latest_time()
     }
 
     pub fn window(&self, t_start: i64, t_end: i64) -> WindowedGraph {
