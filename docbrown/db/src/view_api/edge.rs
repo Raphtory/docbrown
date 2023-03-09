@@ -1,18 +1,19 @@
-use crate::view_api::vertex::VertexView;
+use crate::view_api::vertex::VertexViewMethods;
+use crate::view_api::WrappedIterator;
 use docbrown_core::Prop;
 
-pub trait EdgeView<'a>: Sized {
-    type Vertex: VertexView<'a, Edge = Self>;
+pub trait EdgeViewMethods: Sized {
+    type Vertex: VertexViewMethods<Edge = Self>;
 
     fn prop(&self, name: String) -> Vec<(i64, Prop)>;
     fn src(&self) -> Self::Vertex;
     fn dst(&self) -> Self::Vertex;
 }
 
-pub trait EdgeList<'a>:
-    IntoIterator<Item = Self::Edge, IntoIter = Self::IntoIterType> + FromIterator<Self::Edge>
+pub trait EdgeListMethods:
+    IntoIterator<Item = Self::Edge, IntoIter = Self::IterType> + Sized
 {
-    type Vertex: VertexView<'a, EList = Self>;
-    type Edge: EdgeView<'a, Vertex = Self::Vertex>;
-    type IntoIterType: Iterator<Item = Self::Edge> + 'a;
+    type Vertex: VertexViewMethods;
+    type Edge: EdgeViewMethods<Vertex = Self::Vertex>;
+    type IterType: Iterator<Item = Self::Edge>;
 }

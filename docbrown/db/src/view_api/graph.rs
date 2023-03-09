@@ -1,9 +1,9 @@
-use crate::view_api::edge::EdgeView;
-use crate::view_api::vertex::VertexView;
+use crate::view_api::edge::EdgeViewMethods;
+use crate::view_api::vertex::VertexViewMethods;
 
-pub trait GraphView {
-    type Vertex: for<'a> VertexView<'a, Edge = Self::Edge>;
-    type Edge: for<'a> EdgeView<'a, Vertex = Self::Vertex>;
+pub trait GraphViewMethods {
+    type Vertex: VertexViewMethods<Edge = Self::Edge>;
+    type Edge: EdgeViewMethods<Vertex = Self::Vertex>;
 
     fn len(&self) -> usize;
     fn edges_len(&self) -> usize;

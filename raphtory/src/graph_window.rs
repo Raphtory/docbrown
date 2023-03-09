@@ -3,6 +3,7 @@ use std::{collections::HashMap, sync::Arc};
 use crate::wrappers;
 use crate::{graph::Graph, wrappers::*};
 use docbrown_db::graph_window;
+use docbrown_db::view_api::vertex::{VertexListMethods, VertexViewMethods};
 use itertools::Itertools;
 use pyo3::prelude::*;
 
@@ -172,19 +173,19 @@ impl WindowedVertex {
 
     pub fn neighbours_ids(&self) -> VertexIdsIterator {
         VertexIdsIterator {
-            iter: Box::new(self.vertex_w.neighbours_ids()),
+            iter: Box::new(self.vertex_w.neighbours().id()),
         }
     }
 
     pub fn in_neighbours_ids(&self) -> VertexIdsIterator {
         VertexIdsIterator {
-            iter: Box::new(self.vertex_w.in_neighbours_ids()),
+            iter: Box::new(self.vertex_w.in_neighbours().id()),
         }
     }
 
     pub fn out_neighbours_ids(&self) -> VertexIdsIterator {
         VertexIdsIterator {
-            iter: Box::new(self.vertex_w.out_neighbours_ids()),
+            iter: Box::new(self.vertex_w.out_neighbours().id()),
         }
     }
 

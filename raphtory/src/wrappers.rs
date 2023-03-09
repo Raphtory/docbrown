@@ -6,6 +6,7 @@ use db_c::tgraph_shard;
 use docbrown_core as db_c;
 use docbrown_db as db_db;
 use docbrown_db::graph_window;
+use docbrown_db::view_api::vertex::{VertexListMethods, VertexViewMethods};
 
 use crate::graph_window::{WindowedEdge, WindowedGraph, WindowedVertex};
 
@@ -320,7 +321,7 @@ impl WindowedVertexIterable {
 
         for op in ops_iter {
             iter = match op {
-                Operations::OutNeighbours => Box::new(iter.flat_map(|v| v.out_neighbours())),
+                Operations::OutNeighbours => iter.out_neighbours(),
                 Operations::InNeighbours => Box::new(iter.flat_map(|v| v.in_neighbours())),
                 Operations::Neighbours => Box::new(iter.flat_map(|v| v.neighbours())),
             }
