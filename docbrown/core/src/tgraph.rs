@@ -47,13 +47,6 @@ impl Default for TemporalGraph {
 }
 
 impl TemporalGraph {
-    pub fn timeline(&self) -> Option<Range<i64>> {
-        let mut sorted_keys = self.index.keys().sorted();
-        let start = sorted_keys.next()?.clone();
-        let end = sorted_keys.last()? + 1; // Note that end is exclusive
-        Some(start..end)
-    }
-
     pub(crate) fn len(&self) -> usize {
         self.logical_to_physical.len()
     }

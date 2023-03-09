@@ -8,12 +8,12 @@ use docbrown_core::{
 use std::{collections::HashMap, sync::Arc};
 
 pub struct GraphWindowSet {
-    graph: Arc<Graph>,
+    graph: Graph,
     perspectives: Box<dyn Iterator<Item=Perspective> + Send>,
 }
 
 impl GraphWindowSet {
-    pub fn new(graph: Arc<Graph>, perspectives: Box<dyn Iterator<Item=Perspective> + Send>) -> GraphWindowSet {
+    pub fn new(graph: Graph, perspectives: Box<dyn Iterator<Item=Perspective> + Send>) -> GraphWindowSet {
         GraphWindowSet {
             graph,
             perspectives,

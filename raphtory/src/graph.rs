@@ -82,11 +82,6 @@ impl Graph {
         }
     }
 
-    pub fn timeline(&self) -> Option<(i64, i64)> {
-        let timeline = self.graph.timeline()?;
-        Some((timeline.start, timeline.end))
-    }
-
     pub fn len(&self) -> usize {
         self.graph.len()
     }

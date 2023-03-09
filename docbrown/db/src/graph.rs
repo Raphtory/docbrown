@@ -1,4 +1,5 @@
-use crate::graph_window::WindowedGraph;
+use crate::graph_window::{GraphWindowSet, WindowedGraph};
+use crate::perspective::{Perspective, PerspectiveSet};
 use std::{
     collections::HashMap,
     ops::Range,
@@ -64,13 +65,16 @@ impl Graph {
     }
 
     pub fn through_perspectives(&self, mut perspectives: PerspectiveSet) -> GraphWindowSet {
-        let timeline = self.timeline().unwrap_or(0..0);
+        let timeline = match (self.earliest_time(), self.latest_time()) {
+            (Some(start), Some(end)) => start..end,
+            _ => 0..0,
+        };
         let iter = perspectives.build_iter(timeline);
-        GraphWindowSet::new(Arc::new(self.clone()), Box::new(iter))
+        GraphWindowSet::new(self.clone(), Box::new(iter))
     }
 
     pub fn through_iter(&self, perspectives: Box<dyn Iterator<Item=Perspective> + Send>) -> GraphWindowSet  {
-        GraphWindowSet::new(Arc::new(self.clone()), perspectives)
+        GraphWindowSet::new(self.clone(), perspectives)
     }
 
     pub fn load_from_file<P: AsRef<Path>>(path: P) -> Result<Self, Box<bincode::ErrorKind>> {
@@ -148,13 +152,6 @@ impl Graph {
             self.shards[src_shard_id].add_edge_remote_out(t, src, dst, props);
             self.shards[dst_shard_id].add_edge_remote_into(t, src, dst, props);
         }
-    }
-
-    pub fn timeline(&self) -> Option<Range<i64>> {
-        let ranges: Vec<_> = self.shards.iter().map(|shard| shard.timeline()).collect();
-        let start = ranges.iter().filter_map(|range| Some(range.as_ref()?.start)).min()?;
-        let end = ranges.iter().filter_map(|range| Some(range.as_ref()?.end)).max()?;
-        Some(start..end)
     }
 
     pub fn len(&self) -> usize {
