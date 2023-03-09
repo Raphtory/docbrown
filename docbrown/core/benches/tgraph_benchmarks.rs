@@ -1,8 +1,8 @@
 use std::collections::BTreeSet;
 
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
-use docbrown_core::lsm::LSMSet;
-use rand::{distributions::Uniform, Rng};
+use docbrown_core::{lsm::LSMSet, tgraph::TemporalGraph, Direction};
+use rand::{distributions::Uniform, prelude::Distribution, Rng};
 use sorted_vector_map::SortedVectorSet;
 
 fn btree_set_u64(c: &mut Criterion) {
@@ -61,5 +61,58 @@ fn btree_set_u64(c: &mut Criterion) {
     group.finish();
 }
 
-criterion_group!(benches, btree_set_u64);
+fn bm_tadjset(c: &mut Criterion) {
+    let mut group = c.benchmark_group("tadjset");
+    for size in [10, 100, 1000, 10000, 100000].iter() {
+        group.throughput(Throughput::Elements(*size as u64));
+
+        let mut rng = rand::thread_rng();
+        let range = Uniform::new(0u64, size * 10);
+        let init_srcs: Vec<u64> = (&mut rng)
+            .sample_iter(&range)
+            .take(*size as usize)
+            .collect();
+        let init_dsts: Vec<u64> = (&mut rng)
+            .sample_iter(&range)
+            .take(*size as usize)
+            .collect();
+        let t_range = Uniform::new(0i64, 1000); // epoch year 1 past, 1 future
+        let init_time: Vec<i64> = (&mut rng)
+            .sample_iter(&t_range)
+            .take(*size as usize)
+            .collect();
+
+        let mut tadjset = TAdjSet::default();
+
+        group.bench_with_input(
+            BenchmarkId::new("TAdjSet insert", size),
+            &(init_time, init_srcs, init_dsts),
+            |b, (time, srcs, dsts)| {
+                b.iter(|| {
+                    for i in 0..time.len() {
+                        tadjset.push(time[i], srcs[i], AdjEdge::new(dsts[i]));
+                    }
+                });
+            },
+        );
+
+        group.bench_with_input(
+            BenchmarkId::new("TAdjSet degree window", size),
+            &(tadjset, init_time),
+            |b, (tadjset, time)| {
+                b.iter(|| {
+                    let mut start = t_range.sample(&mut rng);
+                    let mut end = t_range.sample(&mut rng);
+                    if start > end {
+                        std::mem::swap(&mut start, &mut end)
+                    }
+                    tadjset.len_window(&(start..end));
+                });
+            },
+        );
+    }
+    group.finish();
+}
+
+criterion_group!(benches, btree_set_u64, bm_tadjset);
 criterion_main!(benches);
