@@ -1,22 +1,25 @@
 use crate::graph_window::WindowedGraph;
 use docbrown_core::Direction;
 use itertools::Itertools;
+use rayon::prelude::*;
 
-pub fn global_triangle_count(windowed_graph: &WindowedGraph) -> u32 {
-    let mut number_of_triangles: u32 = 0;
+pub fn global_triangle_count(windowed_graph: &WindowedGraph) -> usize {
    
-        windowed_graph.vertex_ids().for_each(|v| {
-            windowed_graph.neighbours_ids(v, Direction::BOTH)
+    let vertex_ids = windowed_graph.vertex_ids().collect::<Vec<_>>();
+
+    vertex_ids.into_par_iter().map(|v| {
+         windowed_graph.neighbours_ids(v, Direction::BOTH)
             .combinations(2)
-            .for_each(|nb| {
+            .map(|nb| {
                 if windowed_graph.has_edge(nb[0], nb[1]) || (windowed_graph.has_edge(nb[1], nb[0]))
                 {
-                    number_of_triangles += 1
+                    1 as usize
+                } else {
+                    0 as usize
                 }
-            })
-        });
-
-    number_of_triangles
+            }).sum::<usize>()
+        }).sum()
+       
 }
 
 #[cfg(test)]

@@ -6,7 +6,7 @@ pub fn local_triangle_count(windowed_graph: &WindowedGraph, v: u64) -> u32 {
     let mut number_of_triangles: u32 = 0;
     let vertex = windowed_graph.vertex(v).unwrap();
 
-    if windowed_graph.has_vertex(v) && vertex.degree() >= 2 {
+    if vertex.degree() >= 2 {
         windowed_graph
             .neighbours_ids(v, Direction::BOTH)
             .combinations(2)
@@ -17,6 +17,7 @@ pub fn local_triangle_count(windowed_graph: &WindowedGraph, v: u64) -> u32 {
                 }
             })
     }
+    
     number_of_triangles
 }
 
