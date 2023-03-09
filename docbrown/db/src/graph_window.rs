@@ -2,7 +2,6 @@ use crate::graph::Graph;
 use crate::perspective::{Perspective, PerspectiveSet};
 use docbrown_core::{
     tgraph::{EdgeView, VertexView},
-    tgraph_shard::TEdge,
     Direction, Prop,
 };
 
@@ -36,13 +35,13 @@ impl Iterator for GraphWindowSet {
 
 #[derive(Debug, Clone)]
 pub struct WindowedGraph {
-    pub(crate) graph: Arc<Graph>,
+    pub(crate) graph: Graph,
     pub t_start: i64,
     pub t_end: i64,
 }
 
 impl WindowedGraph {
-    pub fn new(graph: Arc<Graph>, t_start: i64, t_end: i64) -> Self {
+    pub fn new(graph: Graph, t_start: i64, t_end: i64) -> Self {
         WindowedGraph {
             graph,
             t_start,
@@ -50,13 +49,35 @@ impl WindowedGraph {
         }
     }
 
+    
+    pub fn fold_par<S, F, F2>(&self, f: F, agg: F2) -> Option<S>
+    where
+        S: Send,
+        F: Fn(VertexView) -> S + Send + Sync + Copy,
+        F2: Fn(S, S) -> S + Sync + Send + Copy,
+    {
+        self.graph.fold_par(self.t_start, self.t_end, f, agg)
+    }
+
+    pub fn vertex_window_par<O, F>(
+        &self,
+        f: F,
+    ) -> Box<dyn Iterator<Item = O>>
+    where
+        O: Send + 'static,
+        F: Fn(VertexView) -> O + Send + Sync + Copy,
+    {
+        self.graph.vertex_window_par(self.t_start, self.t_end, f)
+    }
+
     pub fn has_vertex(&self, v: u64) -> bool {
         self.graph.has_vertex_window(v, self.t_start, self.t_end)
     }
 
     pub fn has_edge(&self, src: u64, dst: u64) -> bool {
-        self.graph.has_edge(src, dst)
-    } 
+        self.graph
+            .has_edge_window(src, dst, self.t_start, self.t_end)
+    }
 
     pub fn vertex(&self, v: u64) -> Option<WindowedVertex> {
         let graph_w = self.clone();
@@ -69,6 +90,10 @@ impl WindowedGraph {
         self.graph.vertex_ids_window(self.t_start, self.t_end)
     }
 
+    pub fn neighbours_ids(&self, v: u64, d: Direction) -> Box<dyn Iterator<Item = u64> + Send> {
+        self.graph.neighbours_ids_window(v, self.t_start, self.t_end, d)
+    }
+
     pub fn vertices(&self) -> Box<dyn Iterator<Item = WindowedVertex> + Send> {
         let graph_w = self.clone();
         Box::new(
@@ -78,10 +103,10 @@ impl WindowedGraph {
         )
     }
 
-    pub fn edge(&self, v1: u64, v2: u64) -> Option<WindowedEdge> {
+    pub fn edge(&self, src: u64, dst: u64) -> Option<WindowedEdge> {
         let graph_w = self.clone();
         self.graph
-            .edge_window(v1, v2, self.t_start, self.t_end)
+            .edge_window(src, dst, self.t_start, self.t_end)
             .map(|ev| WindowedEdge::from(ev, Arc::new(graph_w.clone())))
     }
 }
@@ -147,7 +172,7 @@ impl WindowedVertex {
         Box::new(
             self.graph_w
                 .graph
-                .edges_window(
+                .vertex_edges_window(
                     self.g_id,
                     self.graph_w.t_start,
                     self.graph_w.t_end,
@@ -162,7 +187,7 @@ impl WindowedVertex {
         Box::new(
             self.graph_w
                 .graph
-                .edges_window(
+                .vertex_edges_window(
                     self.g_id,
                     self.graph_w.t_start,
                     self.graph_w.t_end,
@@ -177,7 +202,7 @@ impl WindowedVertex {
         Box::new(
             self.graph_w
                 .graph
-                .edges_window(
+                .vertex_edges_window(
                     self.g_id,
                     self.graph_w.t_start,
                     self.graph_w.t_end,
@@ -264,7 +289,7 @@ pub struct WindowedEdge {
     pub edge_id: usize,
     pub src: u64,
     pub dst: u64,
-    pub t: Option<i64>,
+    pub time: Option<i64>,
     pub is_remote: bool,
     pub graph_w: Arc<WindowedGraph>,
 }
@@ -272,11 +297,11 @@ pub struct WindowedEdge {
 impl WindowedEdge {
     fn from(value: EdgeView, graph_w: Arc<WindowedGraph>) -> Self {
         Self {
-            edge_id: value.e_meta.edge_meta_id(),
+            edge_id: value.edge_id,
             src: value.src_g_id,
             dst: value.dst_g_id,
-            t: value.t,
-            is_remote: !value.e_meta.is_local(),
+            time: value.time,
+            is_remote: value.is_remote,
             graph_w,
         }
     }

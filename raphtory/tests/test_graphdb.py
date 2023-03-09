@@ -1,6 +1,6 @@
 import sys
-from pyraphtory import Graph
-from pyraphtory import algorithms
+from raphtory import Graph
+from raphtory import algorithms
 from pyraphtory import Perspective
 
 def create_graph(num_shards):
@@ -32,6 +32,14 @@ def test_graph_len_edge_len():
     assert g.edges_len() == 5
 
 
+def test_graph_has_edge():
+    g = create_graph(2)
+
+    assert not g.window(-1, 1).has_edge(1, 3)
+    assert g.window(-1, 3).has_edge(1, 3)
+    assert not g.window(10, 11).has_edge(1, 3)
+
+
 def test_graph_has_vertex():
     g = create_graph(2)
 
@@ -49,7 +57,7 @@ def test_windowed_graph_get_vertex():
 
     view = g.window(0, sys.maxsize)
 
-    assert view.vertex(1).g_id == 1
+    assert view.vertex(1).id == 1
     assert view.vertex(10) == None
     assert view.vertex(1).degree() == 3
 
@@ -84,10 +92,10 @@ def test_windowed_graph_get_edge():
     view = g.window(min_size, max_size)
 
     assert (view.edge(1, 3).src, view.edge(1, 3).dst) == (1, 3)
-    assert (view.edge(2, 3).src, view.edge(2, 3).dst) == (3, 2)
+    assert view.edge(2, 3) == None
     assert view.edge(6, 5) == None
 
-    assert (view.vertex(1).g_id, view.vertex(3).g_id) == (1, 3)
+    assert (view.vertex(1).id, view.vertex(3).id) == (1, 3)
 
     view = g.window(2, 3)
     assert (view.edge(1, 3).src, view.edge(1, 3).dst) == (1, 3)
@@ -105,43 +113,43 @@ def test_windowed_graph_edges():
     edges = []
     for e_iter in tedges:
         for e in e_iter:
-            edges.append([e.src, e.dst, e.t, e.is_remote])
+            edges.append([e.src, e.dst, e.time])
 
     assert edges == [
-            [1, 1, None, False], 
-            [1, 1, None, False], 
-            [1, 2, None, False], 
-            [1, 3, None, False], 
-            [1, 2, None, False], 
-            [3, 2, None, False], 
-            [1, 3, None, False], 
-            [3, 2, None, False]
+            [1, 1, None],
+            [1, 1, None],
+            [1, 2, None],
+            [1, 3, None],
+            [1, 2, None],
+            [3, 2, None],
+            [1, 3, None],
+            [3, 2, None]
         ]
 
     tedges = [v.in_edges() for v in view.vertices()]
     in_edges = []
     for e_iter in tedges:
         for e in e_iter:
-            in_edges.append([e.src, e.dst, e.t, e.is_remote])
+            in_edges.append([e.src, e.dst, e.time])
 
     assert in_edges == [
-            [1, 1, None, False], 
-            [1, 2, None, False], 
-            [3, 2, None, False], 
-            [1, 3, None, False]
+            [1, 1, None],
+            [1, 2, None],
+            [3, 2, None],
+            [1, 3, None]
         ]
     
     tedges = [v.out_edges() for v in view.vertices()]
     out_edges = []
     for e_iter in tedges:
         for e in e_iter:
-            out_edges.append([e.src, e.dst, e.t, e.is_remote])
+            out_edges.append([e.src, e.dst, e.time])
 
     assert out_edges == [
-            [1, 1, None, False], 
-            [1, 2, None, False], 
-            [1, 3, None, False], 
-            [3, 2, None, False]
+            [1, 1, None],
+            [1, 2, None],
+            [1, 3, None],
+            [3, 2, None]
         ]
 
 
@@ -164,7 +172,7 @@ def test_windowed_graph_vertices():
 
     vertices = []
     for v in view.vertices():
-        vertices.append(v.g_id)
+        vertices.append(v.id)
 
     assert vertices == [1, 2]
 
@@ -179,21 +187,21 @@ def test_windowed_graph_neighbours():
     vertices_w = [v.neighbours() for v in view.vertices()]
     neighbours = []
     for v_iter in vertices_w:
-        neighbours.append([v.g_id for v in v_iter])
+        neighbours.append([v.id for v in v_iter])
 
     assert neighbours == [[1, 2, 1, 2, 3], [1, 3, 1], [1, 2]]
 
     vertices_w = [v.in_neighbours() for v in view.vertices()]
     in_neighbours = []
     for v_iter in vertices_w:
-        in_neighbours.append([v.g_id for v in v_iter])
+        in_neighbours.append([v.id for v in v_iter])
 
     assert in_neighbours == [[1, 2], [1, 3], [1]]
 
     vertices_w = [v.out_neighbours() for v in view.vertices()]
     out_neighbours = []
     for v_iter in vertices_w:
-        out_neighbours.append([v.g_id for v in v_iter])
+        out_neighbours.append([v.id for v in v_iter])
 
     assert out_neighbours == [[1, 2, 3], [1], [2]]
 
