@@ -1,7 +1,10 @@
 use std::collections::BTreeSet;
 
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
-use docbrown_core::{lsm::LSMSet, tgraph::TemporalGraph, Direction};
+use docbrown_core::{
+    lsm::LSMSet,
+    tadjset::{AdjEdge, TAdjSet},
+};
 use rand::{distributions::Uniform, prelude::Distribution, Rng};
 use sorted_vector_map::SortedVectorSet;
 
@@ -12,9 +15,7 @@ fn btree_set_u64(c: &mut Criterion) {
 
         let mut rng = rand::thread_rng();
         let range = Uniform::new(u64::MIN, u64::MAX);
-
         let init_vals: Vec<u64> = (&mut rng).sample_iter(&range).take(*size).collect();
-        let range2 = Uniform::new(usize::MIN, usize::MAX);
 
         group.bench_with_input(
             BenchmarkId::new("BTreeSet with u64", size),
@@ -76,7 +77,7 @@ fn bm_tadjset(c: &mut Criterion) {
             .sample_iter(&range)
             .take(*size as usize)
             .collect();
-        let t_range = Uniform::new(0i64, 1000); // epoch year 1 past, 1 future
+        let t_range = Uniform::new(1646838523i64, 1678374523);
         let init_time: Vec<i64> = (&mut rng)
             .sample_iter(&t_range)
             .take(*size as usize)
@@ -86,11 +87,15 @@ fn bm_tadjset(c: &mut Criterion) {
 
         group.bench_with_input(
             BenchmarkId::new("TAdjSet insert", size),
-            &(init_time, init_srcs, init_dsts),
+            &(init_time.clone(), init_srcs, init_dsts),
             |b, (time, srcs, dsts)| {
                 b.iter(|| {
                     for i in 0..time.len() {
-                        tadjset.push(time[i], srcs[i], AdjEdge::new(dsts[i]));
+                        tadjset.push(
+                            time[i],
+                            srcs[i] as usize,
+                            AdjEdge::new(dsts[i] as usize, false),
+                        );
                     }
                 });
             },
@@ -98,8 +103,8 @@ fn bm_tadjset(c: &mut Criterion) {
 
         group.bench_with_input(
             BenchmarkId::new("TAdjSet degree window", size),
-            &(tadjset, init_time),
-            |b, (tadjset, time)| {
+            &tadjset,
+            |b, tadjset| {
                 b.iter(|| {
                     let mut start = t_range.sample(&mut rng);
                     let mut end = t_range.sample(&mut rng);

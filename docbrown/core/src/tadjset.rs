@@ -262,7 +262,7 @@ pub(crate) struct Edge<V: Clone + PartialEq + Eq + PartialOrd + Ord> {
 pub struct AdjEdge(pub(crate) i64);
 
 impl AdjEdge {
-    pub(crate) fn new(i: usize, local: bool) -> Self {
+    pub fn new(i: usize, local: bool) -> Self {
         if local {
             Self::local(i)
         } else {
