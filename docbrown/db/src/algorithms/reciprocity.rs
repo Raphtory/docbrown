@@ -29,15 +29,14 @@ fn get_reciprocal_edge_count(v: &WindowedVertex) -> usize {
 pub fn global_reciprocity(graph: &WindowedGraph) -> f64 {
     let num_unique_edges = graph
         .vertices()
-        .map(|v|
-            get_unique_out_neighbours(&v).len()
-        ).sum::<usize>();
+        .fold(0, |acc, v|
+            acc + get_unique_out_neighbours(&v).len());
 
     let reciprocal_edges = graph
         .vertices()
-        .map(|v|
-            get_reciprocal_edge_count(&v)
-        ).sum::<usize>();
+        .fold(0, |acc, v|
+            acc + get_reciprocal_edge_count(&v));
+
     (reciprocal_edges as f64 / num_unique_edges as f64)
 }
 
