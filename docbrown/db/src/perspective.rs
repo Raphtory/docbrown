@@ -65,8 +65,6 @@ impl PerspectiveSet {
             // and: perspective.start = perspective.end - window
             // then: cursor - step >= timeline.end + window - step = end
         });
-        println!("generating iterator:");
-        dbg!((start, end, self.step, self.window));
         PerspectiveIterator {
             cursor: start,
             end: end,
@@ -86,12 +84,10 @@ pub(crate) struct PerspectiveIterator {
 impl Iterator for PerspectiveIterator {
     type Item = Perspective;
     fn next(&mut self) -> Option<Self::Item> {
-        if self.cursor - self.step >= self.end { // 1 - 2 >= 2
-            println!("stop iterating with cursor {}", self.cursor);
+        if self.cursor - self.step >= self.end {
             None
         } else {
             let current_cursor = self.cursor;
-            println!("iterating with cursor {current_cursor}");
             self.cursor += self.step;
             Some(Perspective::new_backward(self.window, current_cursor))
         }
