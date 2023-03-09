@@ -147,34 +147,18 @@ impl Perspective {
     }
 
     #[staticmethod]
-    #[pyo3(signature = (start, end, increment))]
-    pub fn range(start: i64, end: i64, increment: u64) -> PerspectiveSet {
+    #[pyo3(signature = (step, start=None, end=None))]
+    fn expanding(step: u64, start: Option<i64>, end: Option<i64>) -> PerspectiveSet {
         PerspectiveSet {
-            ps: perspective::Perspective::range(start, end, increment)
+            ps: perspective::Perspective::expanding(step, start, end)
         }
     }
 
     #[staticmethod]
-    #[pyo3(signature = (increment))]
-    pub fn walk(increment: u64) -> PerspectiveSet {
+    #[pyo3(signature = (window, step=None, start=None, end=None))]
+    fn rolling(window: u64, step: Option<u64>, start: Option<i64>, end: Option<i64>) -> PerspectiveSet {
         PerspectiveSet {
-            ps: perspective::Perspective::walk(increment)
-        }
-    }
-
-    #[staticmethod]
-    #[pyo3(signature = (start, increment))]
-    pub fn depart(start: i64, increment: u64) -> PerspectiveSet {
-        PerspectiveSet {
-            ps: perspective::Perspective::depart(start, increment)
-        }
-    }
-
-    #[staticmethod]
-    #[pyo3(signature = (end, increment))]
-    pub fn climb(end: i64, increment: u64) -> PerspectiveSet {
-        PerspectiveSet {
-            ps: perspective::Perspective::climb(end, increment)
+            ps: perspective::Perspective::rolling(window, step, start, end)
         }
     }
 }
@@ -201,13 +185,4 @@ impl From<Perspective> for perspective::Perspective {
 #[derive(Clone)]
 pub struct PerspectiveSet {
     pub(crate) ps: perspective::PerspectiveSet
-}
-
-#[pymethods]
-impl PerspectiveSet {
-    fn window(&mut self, size: u64) -> PerspectiveSet {
-        PerspectiveSet {
-            ps: self.ps.window(size)
-        }
-    }
 }

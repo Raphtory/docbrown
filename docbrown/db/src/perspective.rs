@@ -1,48 +1,39 @@
+use std::cmp::min;
 use std::ops::Range;
 
 #[derive(Debug, PartialEq)]
 pub struct Perspective {
-    pub start: Option<i64>,
-    pub end: Option<i64>,
+    pub start: Option<i64>, // inclusive
+    pub end: Option<i64>,   // exclusive
 }
 
 impl Perspective {
     pub fn new(start: Option<i64>, end: Option<i64>) -> Perspective {
         Perspective {
-            start, // inclusive
-            end,   // exclusive
+            start,
+            end,
         }
     }
-    pub fn range(start: i64, end: i64, increment: u64) -> PerspectiveSet {
+    pub(crate) fn new_backward(window: Option<i64>, inclusive_end: i64) -> Perspective {
+        Perspective {
+            start: window.map(|w| inclusive_end + 1 - w),
+            end: Some(inclusive_end + 1),
+        }
+    }
+    pub fn expanding(step: u64, start: Option<i64>, end: Option<i64>) -> PerspectiveSet {
         PerspectiveSet {
-            start: Some(start),
-            end: Some(end),
-            increment: increment as i64,
+            start: start,
+            end,
+            step: step as i64,
             window: None,
         }
     }
-    pub fn walk(increment: u64) -> PerspectiveSet {
+    pub fn rolling(window: u64, step: Option<u64>, start: Option<i64>, end: Option<i64>) -> PerspectiveSet {
         PerspectiveSet {
-            start: None,
-            end: None,
-            increment: increment as i64,
-            window: None,
-        }
-    }
-    pub fn depart(start: i64, increment: u64) -> PerspectiveSet {
-        PerspectiveSet {
-            start: Some(start),
-            end: None,
-            increment: increment as i64,
-            window: None,
-        }
-    }
-    pub fn climb(end: i64, increment: u64) -> PerspectiveSet {
-        PerspectiveSet {
-            start: None,
-            end: Some(end),
-            increment: increment as i64,
-            window: None,
+            start: start,
+            end: end,
+            step: step.unwrap_or(window) as i64,
+            window: Some(window as i64),
         }
     }
     // TODO pub fn weeks(n), days(n), hours(n), minutes(n), seconds(n), millis(n)
@@ -52,111 +43,141 @@ impl Perspective {
 pub struct PerspectiveSet {
     start: Option<i64>,
     end: Option<i64>,
-    increment: i64,
+    step: i64,
     window: Option<i64>,
 }
 
 impl PerspectiveSet {
-    pub fn window(&self, size: u64) -> PerspectiveSet {
-        PerspectiveSet {
-            window: Some(size as i64),
-            ..self.clone()
-        }
-    }
     pub(crate) fn build_iter(&self, timeline: Range<i64>) -> PerspectiveIterator {
-        // TODO: alignment with the epoch for start
-        let start = self.start.unwrap_or(timeline.start + self.increment);
-        let end = self.end.unwrap_or(timeline.end);
+        // TODO: alignment with the epoch for start?
+        let auto_offset = min(self.step, self.window.unwrap_or(i64::MAX));
+        // if the user sets a start, we just use it, but if we need to decide where to put the
+        // first window, it doesn't make any sense that it only includes 1 point if the the step is
+        // large. Instead we put the first window such that the previous one ends just before the
+        // start of the timeline, i.e. the previous cursor position = timeline.start - 1
+        let start = self.start.unwrap_or(timeline.start - 1 + self.step);
+        let end = self.end.unwrap_or(match self.window {
+            None => timeline.end,
+            Some(window) => timeline.end + window - self.step,
+            // the iterator returns None when cursor - step >= end and we want to do so when:
+            // perspective.start > timeline.end <==> perspective.start >= timeline.end + 1
+            // as: cursor = perspective.end - 1
+            // and: perspective.start = perspective.end - window
+            // then: cursor - step >= timeline.end + window - step = end
+        });
+        println!("generating iterator:");
+        dbg!((start, end, self.step, self.window));
         PerspectiveIterator {
             cursor: start,
             end: end,
-            increment: self.increment,
+            step: self.step,
             window: self.window,
         }
     }
 }
 
 pub(crate) struct PerspectiveIterator {
-    cursor: i64,
-    end: i64,
-    increment: i64,
+    cursor: i64, // last point to be included in the next perspective
+    end: i64,    // if cursor - step >= end, this iterator returns None
+    step: i64,
     window: Option<i64>,
 }
 
 impl Iterator for PerspectiveIterator {
     type Item = Perspective;
     fn next(&mut self) -> Option<Self::Item> {
-        let limit = match self.window {
-            Some(window) => self.cursor - window,
-            None => self.cursor - self.increment,
-        };
-        if self.end <= limit {
+        if self.cursor - self.step >= self.end { // 1 - 2 >= 2
+            println!("stop iterating with cursor {}", self.cursor);
             None
         } else {
             let current_cursor = self.cursor;
-            self.cursor += self.increment;
-            Some(Perspective {
-                start: self.window.map(|w| current_cursor - w),
-                end: Some(current_cursor),
-            })
+            println!("iterating with cursor {current_cursor}");
+            self.cursor += self.step;
+            Some(Perspective::new_backward(self.window, current_cursor))
         }
     }
 }
 
-/*
-only range, end/alignment, discrete windows, no slicing
-
-NEXT STEPS:
- - walk, climb, depart (solve epoch alignment for walk and climb)
- - alignments
- - time vs discrete windows
-
-
-FUNDAMENTAL DECISIONS:
- - A perspective should have the exact size set by the window, i.e. p.end - p.start = window
-    - This means that either the start or the end of a perspective needs to be exclusive
-       - [?] In the programming context in general, the start should be inclusive and not the end
-       - [?] If we are using end-alignment, one might expect the end to be inclusive
- - The perspectives should be aligned with the start or with the end of the cursor position
-    - [?] start/alignment makes sense for fixed size windows if we use autoalignment
-    - [?] end/alignment makes sense for unbounded windows, i.e. looking to the past
-
-
-API:
-graph.range(start, end, increment).window(size) -> Iterator<Item=GraphView>
-graph_view.perspectve.start
-*/
 
 #[cfg(test)]
 mod perspective_tests {
+    use futures::StreamExt;
     use itertools::Itertools;
     use crate::perspective::{Perspective, PerspectiveSet};
 
+    fn gen_rolling(tuples: Vec<(i64, i64)>) -> Vec<Perspective> {
+        tuples.iter().map(|(start, end)| {
+            Perspective::new(Some(start.clone()), Some(end.clone()))
+        }).collect()
+    }
+
+    fn gen_expanding(tuples: Vec<i64>) -> Vec<Perspective> {
+        tuples.iter().map(|point| {
+            Perspective::new(None, Some(point.clone()))
+        }).collect()
+    }
+
     #[test]
-    fn perspective_range() {
+    fn rolling_with_all_none() {
+        let windows = Perspective::rolling(2, None, None, None);
+        let expected = gen_rolling(vec![(1, 3), (3, 5)]);
+        assert_eq!(windows.build_iter(1..3).collect_vec(), expected);
+    }
 
-        let range = Perspective::range(100, 200, 50);
-
-        let expected = vec![
-            Perspective::new(None, Some(100)),
-            Perspective::new(None, Some(150)),
-            Perspective::new(None, Some(200))];
-        assert_eq!(range.build_iter(0..0).collect_vec(), expected);
-
-        let windows = range.window(20);
-        let expected = vec![
-            Perspective::new(Some(81), Some(100)),
-            Perspective::new(Some(131), Some(150)),
-            Perspective::new(Some(181), Some(200))];
+    #[test]
+    fn rolling_with_start_and_end() {
+        let windows = Perspective::rolling(5, None, Some(0), Some(4));
+        let expected = gen_rolling(vec![(0, 5)]);
         assert_eq!(windows.build_iter(0..0).collect_vec(), expected);
 
+        let windows = Perspective::rolling(3, Some(2), Some(-5), Some(-1));
+        let expected = gen_rolling(vec![(-7, -4), (-5, -2), (-3, 0)]);
+        assert_eq!(windows.build_iter(0..0).collect_vec(), expected);
 
+        let windows = Perspective::rolling(3, Some(2), Some(-5), Some(0));
+        let expected = gen_rolling(vec![(-7, -4), (-5, -2), (-3, 0), (-1, 2)]);
+        assert_eq!(windows.build_iter(0..0).collect_vec(), expected);
+    }
 
-        // let expected: Vec<Perspective> = vec![Perspective::new(Some(81), Some(100)), Perspective::new(Some(131), Some(150))];
-        //
-        //
-        // for (current, expected) in windows.zip(expected) {//.foreach(|(current, expected)| assert_eq!(current, expected))
-        //     assert_eq!(current, expected)
-        // }
+    #[test]
+    fn rolling_with_end() {
+        let windows = Perspective::rolling(3, Some(2), None, Some(4));
+        let expected = gen_rolling(vec![(-1, 2), (1, 4), (3, 6)]);
+        assert_eq!(windows.build_iter(0..2).collect_vec(), expected);
+    }
+
+    #[test]
+    fn rolling_with_start() {
+        let windows = Perspective::rolling(3, Some(2), Some(2), None);
+        let expected = gen_rolling(vec![(0, 3), (2, 5), (4, 7)]);
+        assert_eq!(windows.build_iter(0..4).collect_vec(), expected);
+    }
+
+    #[test]
+    fn expanding_with_all_none() {
+        let windows = Perspective::expanding(2, None, None);
+        let expected = gen_expanding(vec![2, 4, 6]);
+        assert_eq!(windows.build_iter(0..4).collect_vec(), expected);
+    }
+
+    #[test]
+    fn expanding_with_start_and_end() {
+        let windows = Perspective::expanding(2, Some(3), Some(6));
+        let expected = gen_expanding(vec![4, 6, 8]);
+        assert_eq!(windows.build_iter(0..0).collect_vec(), expected);
+    }
+
+    #[test]
+    fn expanding_with_start() {
+        let windows = Perspective::expanding(2, Some(3), None);
+        let expected = gen_expanding(vec![4, 6, 8]);
+        assert_eq!(windows.build_iter(0..6).collect_vec(), expected);
+    }
+
+    #[test]
+    fn expanding_with_end() {
+        let windows = Perspective::expanding(2, None, Some(5));
+        let expected = gen_expanding(vec![2, 4, 6]);
+        assert_eq!(windows.build_iter(0..4).collect_vec(), expected);
     }
 }

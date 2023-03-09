@@ -1,6 +1,7 @@
 import sys
 from pyraphtory import Graph
 from pyraphtory import algorithms
+from pyraphtory import Perspective
 
 def create_graph(num_shards):
     g = Graph(num_shards)
@@ -283,47 +284,14 @@ def test_local_triangle_count():
 def test_perspective_set():
     g = create_graph(1)
 
-    from pyraphtory import Perspective
+    perspectives = [Perspective(start=0, end=2), Perspective(start=4), Perspective(end=6)]
+    views = g.through(perspectives)
+    assert len(list(views)) == 3
 
-    perspectives = [Perspective(start=0, end=2), Perspective(2, 4), Perspective(4, 6)]
+    perspectives = Perspective.rolling(5, start=0, end=4)
+    views = g.through(perspectives)
+    assert len(list(views)) == 2
 
-    for wg in g.through(perspectives):
-        vertices = (wg.vertex_ids())
-        print(vertices)
-
-
-    print(g.timeline())
-
-    perspectives = Perspective.walk(3)
-
-    print(perspectives)
-
-    print('here')
-    for wg in g.through(perspectives):
-        vertices = (wg.vertex_ids())
-        print(list(vertices))
-    print('end')
-
-    # I want to create a set of windowed graphs and apply an algo over all of them:
-
-    # 0:
-    times = [2, 4, 6]
-    windowed_graphs = [g.window(t - 2, t) for t in times]
-    results = [wg.vertex_ids() for wg in windowed_graphs]
-
-    # # 1:
-    # windows = [Perspective(0, 2), Perspective(2, 4), Perspective(4, 6)]
-    # results = [g.window(window).apply_algo(algo) for window in windows]
-
-    # # 2:
-    # windows = [Perspective(0, 2), Perspective(2, 4), Perspective(4, 6)]
-    # windowed_graphs = g.through(windows)
-    # results = windowed_graphs.apply_algo(algo)  # <-- ???
-
-    # 3:
-    perspectives = Perspective.range(start=2, end=6, increment=2)
-    perspectives.window(2)
-    # windows.undirected()
-    for wg in g.through(perspectives):
-        vertices = (wg.vertex_ids())
-        print(vertices)
+    perspectives = Perspective.expanding(5, start=0, end=4)
+    views = g.through(perspectives)
+    assert len(list(views)) == 2
