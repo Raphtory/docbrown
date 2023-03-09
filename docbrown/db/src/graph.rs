@@ -14,6 +14,7 @@ use docbrown_core::{
 
 use itertools::Itertools;
 use rayon::prelude::*;
+use tempdir::TempDir;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -27,6 +28,34 @@ impl Graph {
         Graph {
             nr_shards,
             shards: (0..nr_shards).map(|_| TGraphShard::default()).collect(),
+        }
+    }
+
+    pub fn earliest_time(&self) -> Option<i64> {
+        let min_from_shards = self.shards.iter().map(|shard|shard.earliest_time()).min();
+        match min_from_shards {
+            None => {None}
+            Some(min) => {if min == i64::MAX {
+                None
+            }
+            else {
+               Some(min)
+            }}
+        }
+    }
+
+    pub fn latest_time(&self) -> Option<i64> {
+        let max_from_shards = self.shards.iter().map(|shard|shard.latest_time()).max();
+        match max_from_shards {
+            None => {
+                None
+            },
+            Some(max) => {if max == i64::MIN {
+                None
+            }
+            else {
+                Some(max)
+            }}
         }
     }
 
@@ -62,8 +91,7 @@ impl Graph {
         shards.sort_by_cached_key(|(i, _)| *i);
 
         let shards = shards.into_iter().map(|(_, shard)| shard).collect();
-
-        Ok(Graph { nr_shards, shards })
+        Ok(Graph { nr_shards,shards }) //TODO I need to put in the actual values here
     }
 
     pub fn save_to_file<P: AsRef<Path>>(&self, path: P) -> Result<(), Box<bincode::ErrorKind>> {
@@ -346,10 +374,13 @@ mod db_tests {
     use csv::StringRecord;
     use docbrown_core::utils;
     use itertools::Itertools;
-    use quickcheck::quickcheck;
-    use std::fs;
+    use quickcheck::{quickcheck, TestResult};
+    use rand::Rng;
+    use std::collections::HashMap;
+    use std::{env, fs};
     use std::sync::Arc;
     use uuid::Uuid;
+    use crate::graphgen::random_attachment::random_attachment;
 
     use crate::algorithms::local_triangle_count::local_triangle_count;
 
@@ -428,15 +459,18 @@ mod db_tests {
         }
 
         let rand_dir = Uuid::new_v4();
-        let tmp_docbrown_path = "/tmp/docbrown";
-        let shards_path = format!("{}/{}", tmp_docbrown_path, rand_dir);
+        let tmp_docbrown_path: TempDir = TempDir::new("docbrown").unwrap();
+        let shards_path = format!("{:?}/{}", tmp_docbrown_path.path()
+            .display(), rand_dir).replace("\"", "");
+
+        println!("shards_path: {}", shards_path);
 
         // Save to files
         let mut expected = vec![
             format!("{}/shard_1", shards_path),
             format!("{}/shard_0", shards_path),
             format!("{}/graphdb_nr_shards", shards_path),
-        ];
+        ].iter().map(Path::new).map(PathBuf::from).collect::<Vec<_>>();
 
         expected.sort();
 
@@ -444,7 +478,7 @@ mod db_tests {
             Ok(()) => {
                 let mut actual = fs::read_dir(&shards_path)
                     .unwrap()
-                    .map(|f| f.unwrap().path().display().to_string())
+                    .map(|f| f.unwrap().path())
                     .collect::<Vec<_>>();
 
                 actual.sort();
@@ -463,8 +497,7 @@ mod db_tests {
             Err(e) => panic!("{e}"),
         }
 
-        // Delete all files
-        fs::remove_dir_all(tmp_docbrown_path).unwrap();
+        tmp_docbrown_path.close();
     }
 
     #[test]
@@ -704,6 +737,38 @@ mod db_tests {
             })
             .collect::<Vec<_>>();
         assert_eq!(both_expected, both_actual);
+    }
+
+    #[test]
+    fn time_test() {
+        let g = Graph::new(4);
+
+        assert_eq!(g.latest_time(),None);
+        assert_eq!(g.earliest_time(),None);
+
+        g.add_vertex(5,1,&vec![]);
+
+        assert_eq!(g.latest_time(),Some(5));
+        assert_eq!(g.earliest_time(),Some(5));
+
+        let g = Graph::new(4);
+
+        g.add_edge(10,1, 2,&vec![]);
+        assert_eq!(g.latest_time(),Some(10));
+        assert_eq!(g.earliest_time(),Some(10));
+
+        g.add_vertex(5,1,&vec![]);
+        assert_eq!(g.latest_time(),Some(10));
+        assert_eq!(g.earliest_time(),Some(5));
+
+        g.add_edge(20,3, 4,&vec![]);
+        assert_eq!(g.latest_time(),Some(20));
+        assert_eq!(g.earliest_time(),Some(5));
+
+        random_attachment(&g,100,10);
+        assert_eq!(g.latest_time(),Some(126));
+        assert_eq!(g.earliest_time(),Some(5));
+
     }
 
     #[test]
