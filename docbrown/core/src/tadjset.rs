@@ -55,6 +55,31 @@ impl<
         }
     }
 
+    pub fn len_window(&self, window: &Range<Time>) -> usize {
+        match self {
+            TAdjSet::Empty => 0,
+            TAdjSet::One(t, _, _) => {
+                if window.contains(t) {
+                    1
+                } else {
+                    0
+                }
+            }
+            TAdjSet::Small { t_index, .. } => t_index
+                .range(window.clone())
+                .map(|(_, bs)| bs.iter())
+                .kmerge()
+                .dedup()
+                .count(),
+            TAdjSet::Large { t_index, .. } => t_index
+                .range(window.clone())
+                .map(|(_, bs)| bs.iter())
+                .kmerge()
+                .dedup()
+                .count(),
+        }
+    }
+
     pub fn push(&mut self, t: Time, v: V, e: AdjEdge) {
         match self.borrow() {
             TAdjSet::Empty => {
@@ -123,25 +148,6 @@ impl<
                 Box::new(vs.iter().zip(Box::new(edges.iter().map(|e| *e))))
             }
             TAdjSet::Large { vs, .. } => Box::new(vs.iter().map(|(v, e)| (v, *e))),
-        }
-    }
-
-    pub fn len_window(&self, window: &Range<Time>) -> usize {
-        match self {
-            TAdjSet::Empty => 0,
-            TAdjSet::One(t, _, _) => {
-                if window.contains(t) {
-                    1
-                } else {
-                    0
-                }
-            }
-            TAdjSet::Small { t_index, .. } => {
-                t_index.range(window.clone()).map(|(_, bs)| bs.iter()).kmerge().dedup().count()
-            }
-            TAdjSet::Large { t_index, .. } => {
-                t_index.range(window.clone()).map(|(_, bs)| bs.iter()).kmerge().dedup().count()
-            }
         }
     }
 
