@@ -17,8 +17,6 @@ pub struct Graph {
     pub(crate) graph: graph::Graph,
 }
 
-
-
 #[pymethods]
 impl Graph {
     #[new]
