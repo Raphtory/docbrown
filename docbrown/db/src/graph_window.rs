@@ -5,9 +5,8 @@ use docbrown_core::{
 };
 
 use crate::view_api;
-use crate::view_api::edge::EdgeListMethods;
-use crate::view_api::vertex::{VertexListMethods, VertexViewMethods};
-use crate::view_api::WrappedIterator;
+pub use crate::view_api::edge::EdgeListMethods;
+pub use crate::view_api::vertex::{VertexListMethods, VertexViewMethods};
 use std::{collections::HashMap, sync::Arc};
 
 #[derive(Debug, Clone)]
@@ -331,26 +330,20 @@ impl view_api::edge::EdgeViewMethods for WindowedEdge {
     type Vertex = WindowedVertex;
 
     fn prop(&self, name: String) -> Vec<(i64, Prop)> {
-        todo!()
-    }
-
-    fn src(&self) -> Self::Vertex {
-        todo!()
-    }
-
-    fn dst(&self) -> Self::Vertex {
-        todo!()
-    }
-}
-
-impl WindowedEdge {
-    pub fn prop(&self, name: String) -> Vec<(i64, Prop)> {
         self.graph_w.graph.edge_props_vec_window(
             self.src,
             self.edge_id,
             name,
             self.graph_w.t_start..self.graph_w.t_end,
         )
+    }
+
+    fn src(&self) -> Self::Vertex {
+        self.graph_w.vertex(self.src).expect("src should exist")
+    }
+
+    fn dst(&self) -> Self::Vertex {
+        self.graph_w.vertex(self.dst).expect("dest should exist")
     }
 }
 
@@ -364,9 +357,8 @@ mod views_test {
     use quickcheck::TestResult;
     use rand::Rng;
 
-    use super::WindowedGraph;
+    use super::*;
     use crate::graph::Graph;
-    use crate::view_api::vertex::VertexViewMethods;
 
     #[test]
     fn windowed_graph_vertices_degree() {
