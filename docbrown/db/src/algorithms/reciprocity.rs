@@ -1,62 +1,47 @@
-use std::collections::HashSet;
+use std::iter::Map;
 use futures::StreamExt;
 use itertools::Itertools;
 use crate::graph_window::{WindowedGraph, WindowedVertex};
+use std::collections::HashSet;
 
 
-fn get_unique_out_neighbours(v: &WindowedVertex) -> Vec<u64> {
-    let mut all_out_neighbours: Vec<u64> = v.out_neighbours_ids().collect();
-    // remove self-loop
-    if let Some(pos) = all_out_neighbours.iter().position(|x| *x == v.g_id) {
-        all_out_neighbours.remove(pos);
-    }
-    all_out_neighbours
-}
-
-fn get_unique_in_neighbours(v: &WindowedVertex) -> Vec<u64> {
-    let mut in_neighbours: Vec<u64>  = v.in_neighbours_ids().collect();
-    // remove self-loop
-    if let Some(pos) = in_neighbours.iter().position(|x| *x == v.g_id) {
-        in_neighbours.remove(pos);
-    }
-    in_neighbours
-}
-
-fn get_reciprocal_edge_count(v: &WindowedVertex) -> usize {
-    let out_neighbours: HashSet<u64> = HashSet::from_iter(get_unique_out_neighbours(&v));
-    let in_neighbours: HashSet<u64> = HashSet::from_iter(get_unique_in_neighbours(&v));
-    out_neighbours.intersection(&in_neighbours).count()
+fn get_reciprocal_edge_count(v: &WindowedVertex) -> (u64,u64) {
+    let out_neighbours:HashSet<u64> = v.out_neighbours_ids().filter(|x| *x != v.g_id).collect();
+    let in_neighbours:HashSet<u64>= v.in_neighbours_ids().filter(|x| *x != v.g_id).collect();
+    (out_neighbours.len() as u64, out_neighbours.intersection(&in_neighbours).count() as u64)
 }
 
 pub fn global_reciprocity(graph: &WindowedGraph) -> f64 {
     let edges = graph
         .vertices()
         .fold((0,0), |acc, v| {
-            (acc.0 + get_unique_out_neighbours(&v).len(),
-             acc.1 + get_reciprocal_edge_count(&v))
+            let r_e_c = get_reciprocal_edge_count(&v);
+            (acc.0 + r_e_c.0,
+             acc.1 + r_e_c.1)
         });
     (edges.1 as f64 / edges.0 as f64)
 }
 
-// Returns the reciprocity of every vertex in the grph as a tuple of
+// Returns the reciprocity of every vertex in the graph as a tuple of
 // vector id and the reciprocity
-pub fn all_local_reciprocity(graph: &WindowedGraph) -> Vec<(u64, f64)> {
-    let mut res = graph
+pub fn all_local_reciprocity(graph: &WindowedGraph) -> Vec<(u64,f64)> {
+    graph
         .vertices()
-        .map(|v|
-                 (v.g_id, local_reciprocity(&graph, v.g_id)))
-        .collect::<Vec<(u64, f64)>>();
-    res.sort_by(|a, b| a.0.cmp(&b.0));
-    res
+        .map(|v| (v.g_id, local_reciprocity(&graph, v.g_id)))
+        .collect()
 }
 
 
 // Returns the reciprocity value of a single vertex
 pub fn local_reciprocity(graph: &WindowedGraph, v: u64) -> f64 {
-    let vertex = graph.vertex(v).unwrap();
-    let out_neighbours: Vec<u64> = get_unique_out_neighbours(&vertex);
-    let intersection = get_reciprocal_edge_count(&vertex);
-    (intersection as f64 / out_neighbours.len() as f64)
+    match graph.vertex(v) {
+        None => {0 as f64}
+        Some(vertex) => {
+            let intersection = get_reciprocal_edge_count(&vertex);
+            (intersection.1 as f64 / intersection.0 as f64)
+        }
+    }
+
 }
 
 #[cfg(test)]
@@ -90,6 +75,7 @@ mod reciprocity_test {
             (4, 0.5)
         ];
         let mut actual = all_local_reciprocity(&windowed_graph);
+        actual.sort_by(|a, b| a.0.cmp(&b.0));
         assert_eq!(actual, expected);
 
         let actual = global_reciprocity(&windowed_graph);
