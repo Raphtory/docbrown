@@ -1,7 +1,7 @@
 import sys
 from raphtory import Graph
 from raphtory import algorithms
-from pyraphtory import Perspective
+from raphtory import Perspective
 
 def create_graph(num_shards):
     g = Graph(num_shards)
