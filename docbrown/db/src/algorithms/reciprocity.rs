@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+use futures::StreamExt;
 use itertools::Itertools;
 use crate::graph_window::{WindowedGraph, WindowedVertex};
 
@@ -21,9 +23,9 @@ fn get_unique_in_neighbours(v: &WindowedVertex) -> Vec<u64> {
 }
 
 fn get_reciprocal_edge_count(v: &WindowedVertex) -> usize {
-    let out_neighbours: Vec<u64> = get_unique_out_neighbours(&v);
-    let in_neighbours: Vec<u64> = get_unique_in_neighbours(&v);
-    out_neighbours.iter().filter(|x| in_neighbours.contains(x)).count()
+    let out_neighbours: HashSet<u64> = HashSet::from_iter(get_unique_out_neighbours(&v));
+    let in_neighbours: HashSet<u64> = HashSet::from_iter(get_unique_in_neighbours(&v));
+    out_neighbours.intersection(&in_neighbours).count()
 }
 
 pub fn global_reciprocity(graph: &WindowedGraph) -> f64 {
