@@ -36,8 +36,8 @@ impl Iterator for GraphWindowSet {
 #[derive(Debug, Clone)]
 pub struct WindowedGraph {
     pub(crate) graph: Graph,
-    pub t_start: i64,
-    pub t_end: i64,
+    pub t_start: i64,  // inclusive
+    pub t_end: i64,    // exclusive
 }
 
 impl WindowedGraph {

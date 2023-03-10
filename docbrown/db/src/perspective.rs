@@ -80,6 +80,17 @@ pub(crate) struct PerspectiveIterator {
     window: Option<i64>,
 }
 
+impl PerspectiveIterator {
+    pub(crate) fn empty() -> PerspectiveIterator {
+        PerspectiveIterator {
+            cursor: i64::MAX,
+            end: i64::MIN,
+            step: 1,
+            window: None,
+        }
+    }
+}
+
 impl Iterator for PerspectiveIterator {
     type Item = Perspective;
     fn next(&mut self) -> Option<Self::Item> {
