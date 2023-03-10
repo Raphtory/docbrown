@@ -3,6 +3,7 @@ pub mod graph;
 pub mod graph_window;
 pub mod algorithms;
 pub mod graph_gen;
+pub mod graph_loader;
 
 use pyo3::prelude::*;
 
@@ -10,6 +11,8 @@ use crate::wrappers::Direction;
 use crate::graph::Graph;
 use crate::algorithms::{triangle_count, global_reciprocity, local_reciprocity, all_local_reciprocity};
 use crate::graph_gen::{random_attachment, ba_preferential_attachment};
+use crate::graph_loader::lotr_graph;
+use crate::graph_loader::twitter_graph;
 
 #[pymodule]
 fn raphtory(py: Python<'_>, m: &PyModule) -> PyResult<()> {
@@ -22,6 +25,11 @@ fn raphtory(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     algorithm_module.add_function(wrap_pyfunction!(local_reciprocity, algorithm_module)?)?;
     algorithm_module.add_function(wrap_pyfunction!(all_local_reciprocity, algorithm_module)?)?;
     m.add_submodule(algorithm_module)?;
+
+    let graph_loader_module = PyModule::new(py, "graph_loader")?;
+    graph_loader_module.add_function(wrap_pyfunction!(lotr_graph, graph_loader_module)?)?;
+    graph_loader_module.add_function(wrap_pyfunction!(twitter_graph, graph_loader_module)?)?;
+    m.add_submodule(graph_loader_module)?;
 
     let graph_gen_module = PyModule::new(py, "graph_gen")?;
     graph_gen_module.add_function(wrap_pyfunction!(random_attachment, graph_gen_module)?)?;
