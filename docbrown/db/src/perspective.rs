@@ -97,7 +97,6 @@ impl Iterator for PerspectiveIterator {
 
 #[cfg(test)]
 mod perspective_tests {
-    use futures::StreamExt;
     use itertools::Itertools;
     use crate::perspective::{Perspective, PerspectiveSet};
 
