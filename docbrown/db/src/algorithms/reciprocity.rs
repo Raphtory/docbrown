@@ -3,18 +3,18 @@ use crate::graph_window::{WindowedGraph, WindowedVertex};
 
 
 fn get_unique_out_neighbours(v: &WindowedVertex) -> Vec<u64> {
-    let mut all_out_neighbours: Vec<u64> = v.out_neighbours_ids().unique().collect();
+    let mut all_out_neighbours: Vec<u64> = v.out_neighbours_ids().collect();
     // remove self-loop
-    if let Some(pos) = all_out_neighbours.iter().position(|x| *x == v.g_id) {
+    if let Some(pos) = all_out_neighbours.iter().position(|x| *x == v.id) {
         all_out_neighbours.remove(pos);
     }
     all_out_neighbours
 }
 
 fn get_unique_in_neighbours(v: &WindowedVertex) -> Vec<u64> {
-    let mut in_neighbours: Vec<u64>  = v.in_neighbours_ids().unique().collect();
+    let mut in_neighbours: Vec<u64>  = v.in_neighbours_ids().collect();
     // remove self-loop
-    if let Some(pos) = in_neighbours.iter().position(|x| *x == v.g_id) {
+    if let Some(pos) = in_neighbours.iter().position(|x| *x == v.id) {
         in_neighbours.remove(pos);
     }
     in_neighbours
@@ -42,7 +42,7 @@ pub fn all_local_reciprocity(graph: &WindowedGraph) -> Vec<(u64, f64)> {
     let mut res = graph
         .vertices()
         .map(|v|
-                 (v.g_id, local_reciprocity(&graph, v.g_id)))
+                 (v.id, local_reciprocity(&graph, v.id)))
         .collect::<Vec<(u64, f64)>>();
     res.sort_by(|a, b| a.0.cmp(&b.0));
     res
