@@ -50,7 +50,6 @@ pub struct PerspectiveSet {
 impl PerspectiveSet {
     pub(crate) fn build_iter(&self, timeline: Range<i64>) -> PerspectiveIterator {
         // TODO: alignment with the epoch for start?
-        let auto_offset = min(self.step, self.window.unwrap_or(i64::MAX));
         // if the user sets a start, we just use it, but if we need to decide where to put the
         // first window, it doesn't make any sense that it only includes 1 point if the the step is
         // large. Instead we put the first window such that the previous one ends just before the
