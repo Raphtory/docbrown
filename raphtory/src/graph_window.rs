@@ -3,7 +3,7 @@ use std::{collections::HashMap, sync::Arc};
 use crate::wrappers;
 use crate::{graph::Graph, wrappers::*};
 use docbrown_db::graph_window;
-use docbrown_db::view_api::vertex::{VertexListMethods, VertexViewMethods};
+use docbrown_db::view_api::*;
 use itertools::Itertools;
 use pyo3::prelude::*;
 
@@ -17,11 +17,7 @@ impl WindowedGraph {
     #[new]
     pub fn new(graph: &Graph, t_start: i64, t_end: i64) -> Self {
         Self {
-            graph_w: graph_window::WindowedGraph::new(
-                graph.graph.clone(),
-                t_start,
-                t_end,
-            ),
+            graph_w: graph_window::WindowedGraph::new(graph.graph.clone(), t_start, t_end),
         }
     }
 

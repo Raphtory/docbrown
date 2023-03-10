@@ -1,5 +1,4 @@
 use crate::view_api::edge::{EdgeListMethods, EdgeViewMethods};
-use crate::view_api::WrappedIterator;
 use docbrown_core::Prop;
 use std::collections::HashMap;
 

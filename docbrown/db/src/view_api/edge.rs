@@ -1,5 +1,4 @@
 use crate::view_api::vertex::VertexViewMethods;
-use crate::view_api::WrappedIterator;
 use docbrown_core::Prop;
 
 pub trait EdgeViewMethods: Sized {
