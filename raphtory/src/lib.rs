@@ -26,6 +26,7 @@ use crate::graph_gen::ba_preferential_attachment;
 use crate::graph_loader::lotr_graph;
 use crate::graph_loader::twitter_graph;
 use crate::graph_gen::random_attachment;
+use crate::graph_gen::duplication_divergence_graph;
 
 
 #[pymodule]
@@ -57,6 +58,10 @@ fn raphtory(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     graph_gen_module.add_function(wrap_pyfunction!(random_attachment, graph_gen_module)?)?;
     graph_gen_module.add_function(wrap_pyfunction!(
         ba_preferential_attachment,
+        graph_gen_module
+    )?)?;
+    graph_gen_module.add_function(wrap_pyfunction!(
+        duplication_divergence_graph,
         graph_gen_module
     )?)?;
     m.add_submodule(graph_gen_module)?;
