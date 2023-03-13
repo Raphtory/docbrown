@@ -62,11 +62,11 @@ jobs:
       - name: Install Python dependencies
         run: |
           python -m pip install -q maturin pytest
-      - name: Run Maturin Develop in folder
-        working-directory: raphtory
-        run: |
-          export PATH=$(pwd)/sbt/bin:$PATH
-          maturin develop
+      - name: Build wheels
+        uses: PyO3/maturin-action@v1
+        with:
+          working-directory: ./raphtory
+          command: develop
       - name: Run Python tests
         working-directory: raphtory
         run: |
