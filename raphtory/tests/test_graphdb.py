@@ -247,8 +247,8 @@ def test_windowed_graph_vertex_prop():
 
     view = g.window(min_size, max_size)
 
-    assert view.vertex(1).prop("type") == [(0, 'wallet')]
-    assert view.vertex(1).prop("undefined") == []
+    assert view.vertex(1).property("type") == [(0, 'wallet')]
+    assert view.vertex(1).property("undefined") == []
 
 
 def test_windowed_graph_vertex_props():
@@ -259,7 +259,7 @@ def test_windowed_graph_vertex_props():
 
     view = g.window(min_size, max_size)
 
-    assert view.vertex(1).props() == {
+    assert view.vertex(1).properties() == {
         'cost': [(0, 99.5)], 'type': [(0, 'wallet')]}
 
 
@@ -273,9 +273,9 @@ def test_windowed_graph_edge_prop():
 
     edge = next(view.vertex(1).edges())
 
-    assert edge.prop("prop1") == [(0, 1), (1, 1)]
-    assert edge.prop("prop3") == [(0, 'test'), (1, 'test')]
-    assert edge.prop("undefined") == []
+    assert edge.properties("prop1") == [(0, 1), (1, 1)]
+    assert edge.properties("prop3") == [(0, 'test'), (1, 'test')]
+    assert edge.properties("undefined") == []
 
 
 def test_algorithms():

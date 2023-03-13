@@ -134,7 +134,7 @@ impl WindowedVertex {
 
 #[pymethods]
 impl WindowedVertex {
-    pub fn prop(&self, name: String) -> Vec<(i64, Prop)> {
+    pub fn property(&self, name: String) -> Vec<(i64, Prop)> {
         self.vertex_w
             .prop(name)
             .into_iter()
@@ -142,7 +142,7 @@ impl WindowedVertex {
             .collect_vec()
     }
 
-    pub fn props(&self) -> HashMap<String, Vec<(i64, Prop)>> {
+    pub fn properties(&self) -> HashMap<String, Vec<(i64, Prop)>> {
         self.vertex_w
             .props()
             .into_iter()
@@ -262,7 +262,16 @@ impl From<graph_window::WindowedEdge> for WindowedEdge {
 
 #[pymethods]
 impl WindowedEdge {
-    pub fn prop(&self, name: String) -> Vec<(i64, Prop)> {
+
+    pub fn src(&self) -> u64 {
+        self.edge_w.src
+    }
+
+    pub fn dst(&self) -> u64 {
+        self.edge_w.src
+    }
+
+    pub fn properties(&self, name: String) -> Vec<(i64, Prop)> {
         self.edge_w
             .prop(name)
             .into_iter()
