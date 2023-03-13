@@ -70,11 +70,8 @@ jobs:
           python -m pip install -q pytest 
           python -m pip install target/wheels/raphtory-*.whl
       - name: Run Python tests
-        with:
-          working-directory: ./raphtory
         run: |
-          export PATH=$(pwd)/sbt/bin:$PATH
-          pytest
+          cd raphtory && pytest
       - name: Run benchmark (windows)
         if: "contains(matrix.os, 'Windows')"
         run: cargo bench --bench base -- --output-format=bencher | tee benchmark-result.txt
