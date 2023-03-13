@@ -1,6 +1,3 @@
-use std::iter::Map;
-use futures::StreamExt;
-use itertools::Itertools;
 use crate::graph_window::{WindowedGraph, WindowedVertex};
 use std::collections::HashSet;
 
@@ -19,7 +16,7 @@ pub fn global_reciprocity(graph: &WindowedGraph) -> f64 {
             (acc.0 + r_e_c.0, 
              acc.1 + r_e_c.2)
         });
-    (edges.1 as f64 / edges.0 as f64)
+    edges.1 as f64 / edges.0 as f64
 }
 
 // Returns the reciprocity of every vertex in the graph as a tuple of
@@ -46,7 +43,6 @@ pub fn local_reciprocity(graph: &WindowedGraph, v: u64) -> f64 {
 
 #[cfg(test)]
 mod reciprocity_test {
-    use crate::algorithms::reciprocity;
     use crate::graph::Graph;
     use super::{local_reciprocity, all_local_reciprocity, global_reciprocity};
 
@@ -65,11 +61,11 @@ mod reciprocity_test {
         }
 
         let windowed_graph = g.window(0, 2);
-        let mut expected = 0.0;
-        let mut actual = local_reciprocity(&windowed_graph, 5);
+        let expected = 0.0;
+        let actual = local_reciprocity(&windowed_graph, 5);
         assert_eq!(actual, expected);
 
-        let mut expected: Vec<(u64, f64)> = vec![
+        let expected: Vec<(u64, f64)> = vec![
             (1, 0.4),
             (2, 2.0/3.0),
             (3, 0.5),
