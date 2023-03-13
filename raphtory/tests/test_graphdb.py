@@ -319,3 +319,31 @@ def test_perspective_set():
     perspectives = Perspective.expanding(5, start=0, end=4)
     views = g.through(perspectives)
     assert len(list(views)) == 2
+
+def test_save_load_graph():
+    g = create_graph(1)
+    g.save("test_graph")
+
+    g.add_vertex(1, 11, {"type": "wallet", "balance": 99.5})
+    g.add_vertex(2, 12, {"type": "wallet", "balance": 10.0})
+    g.add_vertex(3, 13, {"type": "wallet", "balance": 76})
+
+    g.add_edge(4, 11, 12, {"prop1": 1, "prop2": 9.8, "prop3": "test"})
+    g.add_edge(5, 12, 13, {"prop1": 1321, "prop2": 9.8, "prop3": "test"})
+    g.add_edge(6, 13, 11, {"prop1": 645, "prop2": 9.8, "prop3": "test"})
+
+    view  = g.window(0,10)
+
+    print(g.has_vertex(13))
+    print(view.vertex(13).in_degree())
+    print(view.vertex(13).out_degree())
+    print(view.vertex(13).degree())
+
+
+
+    triangles  = algorithms.local_triangle_count(view,13) # How many triangles is 13 involved in
+    print(triangles)
+
+
+g2 = Graph.load("test_graph")
+    assert g == g2
