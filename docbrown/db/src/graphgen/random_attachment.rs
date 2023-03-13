@@ -1,4 +1,5 @@
 use crate::graph::Graph;
+use crate::view_api::*;
 use rand::seq::SliceRandom;
 
 /// This function is a graph generation model based upon:

@@ -1,4 +1,5 @@
 use crate::graph_window::WindowedGraph;
+use crate::view_api::*;
 use docbrown_core::Direction;
 use itertools::Itertools;
 use rayon::prelude::*;

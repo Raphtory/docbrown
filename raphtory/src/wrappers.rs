@@ -6,7 +6,7 @@ use db_c::tgraph_shard;
 use docbrown_core as db_c;
 use docbrown_db as db_db;
 use docbrown_db::graph_window;
-use docbrown_db::view_api::vertex::{VertexListMethods, VertexViewMethods};
+use docbrown_db::view_api::*;
 
 use crate::graph_window::{WindowedEdge, WindowedGraph, WindowedVertex};
 

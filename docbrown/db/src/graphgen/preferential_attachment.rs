@@ -1,5 +1,5 @@
 use crate::graph::Graph;
-use crate::view_api::vertex::VertexViewMethods;
+use crate::view_api::*;
 use docbrown_core::Direction;
 use rand::prelude::*;
 use std::collections::HashSet;
