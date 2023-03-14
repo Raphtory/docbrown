@@ -18,6 +18,7 @@ use itertools::Itertools;
 use rayon::prelude::*;
 use tempdir::TempDir;
 use serde::{Deserialize, Serialize};
+use crate::vertex::InputVertex;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Graph {
@@ -139,9 +140,19 @@ impl Graph {
     }
 
     // TODO: Probably add vector reference here like add
-    pub fn add_vertex(&self, t: i64, v: u64, props: &Vec<(String, Prop)>) {
-        let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
-        self.shards[shard_id].add_vertex(t, v, &props);
+    pub fn add_vertex<T: InputVertex>(&self, t: i64, v: T, props: &Vec<(String, Prop)>) {
+        let shard_id = utils::get_shard_id_from_global_vid(v.id(), self.nr_shards);
+        if v.name_prop().is_some() {
+            let new_props = {
+                let mut props_clone = props.clone();
+                props_clone.push(("_id".parse().unwrap(), v.name_prop().unwrap()));
+                props_clone
+            };
+            self.shards[shard_id].add_vertex(t, v.id(), &new_props);
+        }
+        else {
+            self.shards[shard_id].add_vertex(t, v.id(), &props);
+        }
     }
 
     pub fn add_edge(&self, t: i64, src: u64, dst: u64, props: &Vec<(String, Prop)>) {
@@ -162,8 +173,16 @@ impl Graph {
         self.shards.iter().map(|shard| shard.len()).sum()
     }
 
+    pub fn number_of_nodes(&self) -> usize {
+        self.len()
+    }
+
     pub fn edges_len(&self) -> usize {
         self.shards.iter().map(|shard| shard.out_edges_len()).sum()
+    }
+
+    pub fn number_of_edges(&self) -> usize {
+        self.edges_len()
     }
 
     pub fn has_edge(&self, src: u64, dst: u64) -> bool {
@@ -176,14 +195,14 @@ impl Graph {
         self.shards[shard_id].has_edge_window(src, dst, t_start..t_end)
     }
 
-    pub fn has_vertex(&self, v: u64) -> bool {
-        self.shards.iter().any(|shard| shard.has_vertex(v))
+    pub fn has_vertex<T: InputVertex>(&self, v: T) -> bool {
+        self.shards.iter().any(|shard| shard.has_vertex(v.id()))
     }
 
-    pub(crate) fn has_vertex_window(&self, v: u64, t_start: i64, t_end: i64) -> bool {
+    pub(crate) fn has_vertex_window<T: InputVertex>(&self, v: T, t_start: i64, t_end: i64) -> bool {
         self.shards
             .iter()
-            .any(|shard| shard.has_vertex_window(v, t_start..t_end))
+            .any(|shard| shard.has_vertex_window(v.id(), t_start..t_end))
     }
 
     pub(crate) fn vertex(&self, v: u64) -> Option<VertexView> {
@@ -420,12 +439,12 @@ mod db_tests {
     }
 
     #[quickcheck]
-    fn add_vertex_grows_graph_len(vs: Vec<(u8, u8)>) {
+    fn add_vertex_grows_graph_len(vs: Vec<(u8, u64)>) {
         let g = Graph::new(2);
 
         let expected_len = vs.iter().map(|(_, v)| v).sorted().dedup().count();
         for (t, v) in vs {
-            g.add_vertex(t.into(), v.into(), &vec![]);
+            g.add_vertex(t.into(), v, &vec![]);
         }
 
         assert_eq!(g.len(), expected_len)
@@ -946,4 +965,20 @@ mod db_tests {
         assert_eq!(g.edges_len(), 1089147);
         assert_eq!(g.len(), 49467);
     }
+
+    #[test]
+    fn test_add_vertex_with_strings() {
+        let g = Graph::new(1);
+
+        g.add_vertex(0, "haaroon", &vec![]);
+        g.add_vertex(1, "hamza", &vec![]);
+        g.add_vertex(1, 831, &vec![]);
+
+        assert!(g.has_vertex(831));
+        assert!(g.has_vertex("haaroon"));
+        assert!(g.has_vertex("hamza"));
+
+        assert_eq!(g.number_of_nodes(), 3);
+    }
+
 }

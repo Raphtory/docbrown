@@ -106,6 +106,14 @@ impl Graph {
         self.graph.edges_len()
     }
 
+    pub fn number_of_edges(&self) -> usize {
+        self.graph.number_of_edges()
+    }
+
+    pub fn number_of_nodes(&self) -> usize {
+        self.graph.number_of_nodes()
+    }
+
     pub fn has_vertex(&self, v: u64) -> bool {
         self.graph.has_vertex(v)
     }

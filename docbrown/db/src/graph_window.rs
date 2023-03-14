@@ -6,6 +6,7 @@ use docbrown_core::{
 };
 
 use std::{collections::HashMap, sync::Arc};
+use crate::vertex::InputVertex;
 
 pub struct GraphWindowSet {
     graph: Graph,
@@ -70,8 +71,8 @@ impl WindowedGraph {
         self.graph.vertex_window_par(self.t_start, self.t_end, f)
     }
 
-    pub fn has_vertex(&self, v: u64) -> bool {
-        self.graph.has_vertex_window(v, self.t_start, self.t_end)
+    pub fn has_vertex<T: InputVertex>(&self, v: T) -> bool {
+        self.graph.has_vertex_window(v.id(), self.t_start, self.t_end)
     }
 
     pub fn has_edge(&self, src: u64, dst: u64) -> bool {
