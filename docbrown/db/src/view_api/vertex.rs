@@ -1,11 +1,11 @@
-use crate::view_api::edge::{EdgeListMethods, EdgeViewMethods};
+use crate::view_api::edge::{EdgeListOps, EdgeViewOps};
 use docbrown_core::Prop;
 use std::collections::HashMap;
 
-pub trait VertexViewMethods: Sized {
-    type Edge: EdgeViewMethods<Vertex = Self>;
-    type VList: VertexListMethods<Vertex = Self, Edge = Self::Edge, EList = Self::EList>;
-    type EList: EdgeListMethods<Vertex = Self, Edge = Self::Edge>;
+pub trait VertexViewOps: Sized {
+    type Edge: EdgeViewOps<Vertex = Self>;
+    type VList: VertexListOps<Vertex = Self, Edge = Self::Edge, EList = Self::EList>;
+    type EList: EdgeListOps<Vertex = Self, Edge = Self::Edge>;
 
     fn id(&self) -> u64;
 
@@ -32,12 +32,12 @@ pub trait VertexViewMethods: Sized {
     fn out_neighbours(&self) -> Self::VList;
 }
 
-pub trait VertexListMethods:
+pub trait VertexListOps:
     IntoIterator<Item = Self::Vertex, IntoIter = Self::IterType> + Sized
 {
-    type Vertex: VertexViewMethods<Edge = Self::Edge>;
-    type Edge: EdgeViewMethods<Vertex = Self::Vertex>;
-    type EList: EdgeListMethods<Vertex = Self::Vertex, Edge = Self::Edge>;
+    type Vertex: VertexViewOps<Edge = Self::Edge>;
+    type Edge: EdgeViewOps<Vertex = Self::Vertex>;
+    type EList: EdgeListOps<Vertex = Self::Vertex, Edge = Self::Edge>;
     type IterType: Iterator<Item = Self::Vertex>;
     type ValueIterType<U>: IntoIterator<Item = U>;
 

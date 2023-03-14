@@ -58,7 +58,7 @@ pub fn random_attachment(graph: &Graph, vertices_to_add: usize, edges_per_step: 
 mod random_graph_test {
     use super::*;
     use crate::graphgen::preferential_attachment::ba_preferential_attachment;
-    use crate::view_api::vertex::VertexViewMethods;
+    use crate::view_api::vertex::VertexViewOps;
     #[test]
     fn blank_graph() {
         let graph = Graph::new(2);

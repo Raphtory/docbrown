@@ -6,18 +6,21 @@ use docbrown_core::{
 };
 
 use crate::view_api;
-pub use crate::view_api::edge::EdgeListMethods;
-pub use crate::view_api::vertex::{VertexListMethods, VertexViewMethods};
-use crate::view_api::GraphViewMethods;
+pub use crate::view_api::edge::EdgeListOps;
+pub use crate::view_api::vertex::{VertexListOps, VertexViewOps};
+use crate::view_api::GraphViewOps;
 use std::{collections::HashMap, sync::Arc};
 
 pub struct GraphWindowSet {
     graph: Graph,
-    perspectives: Box<dyn Iterator<Item=Perspective> + Send>,
+    perspectives: Box<dyn Iterator<Item = Perspective> + Send>,
 }
 
 impl GraphWindowSet {
-    pub fn new(graph: Graph, perspectives: Box<dyn Iterator<Item=Perspective> + Send>) -> GraphWindowSet {
+    pub fn new(
+        graph: Graph,
+        perspectives: Box<dyn Iterator<Item = Perspective> + Send>,
+    ) -> GraphWindowSet {
         GraphWindowSet {
             graph,
             perspectives,
@@ -40,8 +43,8 @@ impl Iterator for GraphWindowSet {
 #[derive(Debug, Clone)]
 pub struct WindowedGraph {
     pub(crate) graph: Graph,
-    pub t_start: i64,  // inclusive
-    pub t_end: i64,    // exclusive
+    pub t_start: i64, // inclusive
+    pub t_end: i64,   // exclusive
 }
 
 impl WindowedGraph {
@@ -80,7 +83,7 @@ impl WindowedGraph {
     }
 }
 
-impl GraphViewMethods for WindowedGraph {
+impl GraphViewOps for WindowedGraph {
     type Vertex = WindowedVertex;
     type Vertices = Box<dyn Iterator<Item = WindowedVertex> + Send>;
     type Edge = WindowedEdge;
@@ -147,7 +150,7 @@ impl WindowedVertex {
     }
 }
 
-impl VertexListMethods for Box<dyn Iterator<Item = WindowedVertex> + Send> {
+impl VertexListOps for Box<dyn Iterator<Item = WindowedVertex> + Send> {
     type Vertex = WindowedVertex;
     type Edge = WindowedEdge;
     type EList = Box<dyn Iterator<Item = WindowedEdge> + Send>;
@@ -203,13 +206,13 @@ impl VertexListMethods for Box<dyn Iterator<Item = WindowedVertex> + Send> {
     }
 }
 
-impl EdgeListMethods for Box<dyn Iterator<Item = WindowedEdge> + Send> {
+impl EdgeListOps for Box<dyn Iterator<Item = WindowedEdge> + Send> {
     type Vertex = WindowedVertex;
     type Edge = WindowedEdge;
     type IterType = Box<dyn Iterator<Item = WindowedEdge> + Send>;
 }
 
-impl VertexViewMethods for WindowedVertex {
+impl VertexViewOps for WindowedVertex {
     type Edge = WindowedEdge;
     type VList = Box<dyn Iterator<Item = WindowedVertex> + Send>;
     type EList = Box<dyn Iterator<Item = WindowedEdge> + Send>;
@@ -372,7 +375,7 @@ impl WindowedEdge {
     }
 }
 
-impl view_api::edge::EdgeViewMethods for WindowedEdge {
+impl view_api::edge::EdgeViewOps for WindowedEdge {
     type Vertex = WindowedVertex;
 
     fn prop(&self, name: String) -> Vec<(i64, Prop)> {

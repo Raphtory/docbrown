@@ -1,13 +1,16 @@
-use crate::view_api::edge::EdgeViewMethods;
-use crate::view_api::vertex::VertexViewMethods;
+use crate::view_api::edge::EdgeViewOps;
+use crate::view_api::vertex::VertexViewOps;
 
-pub trait GraphViewMethods {
-    type Vertex: VertexViewMethods<Edge = Self::Edge>;
+pub trait GraphViewOps {
+    type Vertex: VertexViewOps<Edge = Self::Edge>;
     type Vertices: IntoIterator<Item = Self::Vertex>;
-    type Edge: EdgeViewMethods<Vertex = Self::Vertex>;
+    type Edge: EdgeViewOps<Vertex = Self::Vertex>;
     type Edges: IntoIterator<Item = Self::Edge>;
 
     fn len(&self) -> usize;
+    fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
     fn edges_len(&self) -> usize;
     fn has_vertex(&self, v: u64) -> bool;
     fn has_edge(&self, src: u64, dst: u64) -> bool;
