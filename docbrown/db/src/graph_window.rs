@@ -126,6 +126,10 @@ impl WindowedVertex {
 }
 
 impl WindowedVertex {
+    pub fn meta(&self, name: &str) -> Option<Prop> {
+        self.graph_w.graph.vertex_meta(self.g_id, name)
+    }
+
     pub fn prop(&self, name: String) -> Vec<(i64, Prop)> {
         self.graph_w.graph.vertex_prop_vec_window(
             self.g_id,
@@ -308,6 +312,10 @@ impl WindowedEdge {
 }
 
 impl WindowedEdge {
+    pub fn meta(&self, name: &str) -> Option<Prop> {
+        self.graph_w.graph.edge_meta(self.src, self.edge_id, name)
+    }
+
     pub fn prop(&self, name: String) -> Vec<(i64, Prop)> {
         self.graph_w.graph.edge_props_vec_window(
             self.src,

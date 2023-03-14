@@ -155,6 +155,11 @@ impl TemporalGraph {
         self.props.upsert_vertex_props(t, index, props);
     }
 
+    pub(crate) fn add_vertex_meta(&mut self, v: u64, data: &Vec<(String, Prop)>) {
+        let index = *self.logical_to_physical.get(&v).expect(&format!("impossible to add metadata to non existing vertex {v}"));
+        self.props.set_vertex_meta(index, data);
+    }
+
     pub fn add_edge(&mut self, t: i64, src: u64, dst: u64) {
         self.add_edge_with_props(t, src, dst, &vec![])
     }
@@ -184,6 +189,18 @@ impl TemporalGraph {
 
         self.props.upsert_edge_props(t, src_edge_meta_id, props)
     }
+
+    // pub(crate) fn add_edge_meta(&mut self, src: u64, dst: u64, data: &Vec<(String, Prop)>) {
+    //     let conv = self.logical_to_physical;
+    //     let (src_pid, dst_pid) = match (*conv.get(src), *conv.get(dst)) {
+    //         (Some(src_pid), Some(dst_pid)) => (src_pid, dst_pid),
+    //         _ => panic!("impossible to add metadata to non existing edge {src} -> {dst}")
+    //     };
+    //
+    //     self.adj_lists[src_pid]
+    //
+    //     self.props.set_vertex_meta(index, data);
+    // }
 
     pub(crate) fn add_edge_remote_out(
         &mut self,
@@ -664,9 +681,10 @@ impl TemporalGraph {
         Box::new(self.neighbours_window(v, w, d).map(|vv| vv.g_id))
     }
 
-    pub fn vertex_meta(&self, id: usize, name: &str) -> Option<Prop> {
-        let meta_id = self.props.meta_ids.get(name)?;
-        self.props.vertices[id].meta.get(id)
+    pub fn vertex_meta(&self, v: u64, name: &str) -> Option<Prop> {
+        let index = *self.logical_to_physical.get(&v)?;
+        let meta_id = *self.props.meta_ids.get(name)?;
+        self.props.vertices[index].meta.get(meta_id)
     }
 
     pub(crate) fn vertex_prop(
@@ -779,9 +797,9 @@ impl TemporalGraph {
         Some(hm) // Don't return "None" if hm.is_empty for Some({}) gets translated as {} in python
     }
 
-    pub fn edge_meta(&self, id: usize, name: &str) -> Option<Prop> {
-        let meta_id = self.props.meta_ids.get(name)?;
-        self.props.edges[id].meta.get(id)
+    pub fn edge_meta(&self, e: usize, name: &str) -> Option<Prop> {
+        let meta_id = *self.props.meta_ids.get(name)?;
+        self.props.edges[e].meta.get(meta_id)
     }
 
     pub fn edge_prop(

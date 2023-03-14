@@ -134,6 +134,10 @@ impl WindowedVertex {
 
 #[pymethods]
 impl WindowedVertex {
+    pub fn meta(&self, name: String) -> Option<Prop> {
+        self.vertex_w.meta(&name).map(|prop| prop.into())
+    }
+
     pub fn prop(&self, name: String) -> Vec<(i64, Prop)> {
         self.vertex_w
             .prop(name)
@@ -262,6 +266,10 @@ impl From<graph_window::WindowedEdge> for WindowedEdge {
 
 #[pymethods]
 impl WindowedEdge {
+    pub fn meta(&self, name: String) -> Option<Prop> {
+        self.edge_w.meta(&name).map(|prop| prop.into())
+    }
+
     pub fn prop(&self, name: String) -> Vec<(i64, Prop)> {
         self.edge_w
             .prop(name)

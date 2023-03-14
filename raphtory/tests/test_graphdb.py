@@ -319,3 +319,13 @@ def test_perspective_set():
     perspectives = Perspective.expanding(5, start=0, end=4)
     views = g.through(perspectives)
     assert len(list(views)) == 2
+
+
+def test_metadata():
+    print("executing thissssss")
+    g = create_graph(1)
+    g.add_edge(0, 1, 2, {})
+    g.add_vertex_meta(1, {"metadata": "value"})
+    view = g.window(-1, 1)
+    meta = view.vertex(1).meta("metadata")
+    assert meta == "value"

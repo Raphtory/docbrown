@@ -133,6 +133,10 @@ impl TGraphShard {
         self.write_shard(|tg| tg.add_vertex_with_props(t, v, props))
     }
 
+    pub fn add_vertex_meta(&self, v: u64, data: &Vec<(String, Prop)>) {
+        self.write_shard(|tg| tg.add_vertex_meta(v, data))
+    }
+
     pub fn add_edge(&self, t: i64, src: u64, dst: u64, props: &Vec<(String, Prop)>) {
         self.write_shard(|tg| tg.add_edge_with_props(t, src, dst, props))
     }
@@ -344,8 +348,8 @@ impl TGraphShard {
         iter.into_iter()
     }
 
-    pub fn vertex_meta(&self, v: usize, name: String) -> Option<Prop> {
-        self.read_shard(|tg| tg.vertex_meta(v, &name))
+    pub fn vertex_meta(&self, v: u64, name: &str) -> Option<Prop> {
+        self.read_shard(|tg| tg.vertex_meta(v, name))
     }
 
     pub fn vertex_prop_vec(&self, v: u64, name: String) -> Vec<(i64, Prop)> {
@@ -373,8 +377,8 @@ impl TGraphShard {
         })
     }
 
-    pub fn edge_meta(&self, e: usize, name: String) -> Option<Prop> {
-        self.read_shard(|tg| tg.edge_meta(e, &name))
+    pub fn edge_meta(&self, e: usize, name: &str) -> Option<Prop> {
+        self.read_shard(|tg| tg.edge_meta(e, name))
     }
 
     pub fn edge_prop_vec(&self, e: usize, name: String) -> Vec<(i64, Prop)> {

@@ -144,6 +144,11 @@ impl Graph {
         self.shards[shard_id].add_vertex(t, v, &props);
     }
 
+    pub fn add_vertex_meta(&self, v: u64, data: &Vec<(String, Prop)>) {
+        let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
+        self.shards[shard_id].add_vertex_meta(v, data)
+    }
+
     pub fn add_edge(&self, t: i64, src: u64, dst: u64, props: &Vec<(String, Prop)>) {
         let src_shard_id = utils::get_shard_id_from_global_vid(src, self.nr_shards);
         let dst_shard_id = utils::get_shard_id_from_global_vid(dst, self.nr_shards);
@@ -346,6 +351,11 @@ impl Graph {
         Box::new(iter)
     }
 
+    pub(crate) fn vertex_meta(&self, v: u64, name: &str) -> Option<Prop> {
+        let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards); // todo shouldnt this be provided by the graph, which already know the number of shards?
+        self.shards[shard_id].vertex_meta(v, name)
+    }
+
     pub(crate) fn vertex_prop_vec(&self, v: u64, name: String) -> Vec<(i64, Prop)> {
         let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
         self.shards[shard_id].vertex_prop_vec(v, name)
@@ -373,6 +383,11 @@ impl Graph {
     ) -> HashMap<String, Vec<(i64, Prop)>> {
         let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
         self.shards[shard_id].vertex_props_window(v, w)
+    }
+
+    pub(crate) fn edge_meta(&self, v: u64, e: usize, name: &str) -> Option<Prop> {
+        let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
+        self.shards[shard_id].edge_meta(e, name)
     }
 
     pub fn edge_props_vec_window(

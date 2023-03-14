@@ -121,6 +121,16 @@ impl Graph {
         )
     }
 
+    pub fn add_vertex_meta(&self, v: u64, data: HashMap<String, Prop>) {
+        self.graph.add_vertex_meta(
+            v,
+            &data
+                .into_iter()
+                .map(|(key, value)| (key, value.into()))
+                .collect::<Vec<(String, dbc::Prop)>>(), // todo put this in a common place
+        )
+    }
+
     pub fn add_edge(&self, t: i64, src: u64, dst: u64, props: HashMap<String, Prop>) {
         self.graph.add_edge(
             t,
