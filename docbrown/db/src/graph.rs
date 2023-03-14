@@ -9,7 +9,7 @@ use std::{
 };
 
 use docbrown_core::{
-    tgraph::{EdgeView, VertexView},
+    tgraph::{EdgeReference, VertexReference},
     tgraph_shard::TGraphShard,
     utils, Direction, Prop,
 };
@@ -189,12 +189,17 @@ impl Graph {
             .any(|shard| shard.has_vertex_window(v, t_start..t_end))
     }
 
-    pub(crate) fn vertex(&self, v: u64) -> Option<VertexView> {
+    pub(crate) fn vertex(&self, v: u64) -> Option<VertexReference> {
         let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
         self.shards[shard_id].vertex(v)
     }
 
-    pub(crate) fn vertex_window(&self, v: u64, t_start: i64, t_end: i64) -> Option<VertexView> {
+    pub(crate) fn vertex_window(
+        &self,
+        v: u64,
+        t_start: i64,
+        t_end: i64,
+    ) -> Option<VertexReference> {
         let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
         self.shards[shard_id].vertex_window(v, t_start..t_end)
     }
@@ -224,7 +229,7 @@ impl Graph {
         &self,
         t_start: i64,
         t_end: i64,
-    ) -> Box<dyn Iterator<Item = VertexView> + Send> {
+    ) -> Box<dyn Iterator<Item = VertexReference> + Send> {
         let shards = self.shards.clone();
         Box::new(
             shards
@@ -237,7 +242,7 @@ impl Graph {
     pub(crate) fn fold_par<S, F, F2>(&self, t_start: i64, t_end: i64, f: F, agg: F2) -> Option<S>
     where
         S: Send,
-        F: Fn(VertexView) -> S + Send + Sync + Copy,
+        F: Fn(VertexReference) -> S + Send + Sync + Copy,
         F2: Fn(S, S) -> S + Sync + Send + Copy,
     {
         let shards = self.shards.clone();
@@ -267,7 +272,7 @@ impl Graph {
     ) -> Box<dyn Iterator<Item = O>>
     where
         O: Send + 'static,
-        F: Fn(VertexView) -> O + Send + Sync + Copy,
+        F: Fn(VertexReference) -> O + Send + Sync + Copy,
     {
         let shards = self.shards.clone();
         let (tx, rx) = flume::unbounded();
@@ -284,7 +289,7 @@ impl Graph {
         Box::new(rx.into_iter())
     }
 
-    pub(crate) fn edge(&self, v1: u64, v2: u64) -> Option<EdgeView> {
+    pub(crate) fn edge(&self, v1: u64, v2: u64) -> Option<EdgeReference> {
         let shard_id = utils::get_shard_id_from_global_vid(v1, self.nr_shards);
         self.shards[shard_id].edge(v1, v2)
     }
@@ -295,7 +300,7 @@ impl Graph {
         dst: u64,
         t_start: i64,
         t_end: i64,
-    ) -> Option<EdgeView> {
+    ) -> Option<EdgeReference> {
         let shard_id = utils::get_shard_id_from_global_vid(src, self.nr_shards);
         self.shards[shard_id].edge_window(src, dst, t_start..t_end)
     }
@@ -306,7 +311,7 @@ impl Graph {
         t_start: i64,
         t_end: i64,
         d: Direction,
-    ) -> Box<dyn Iterator<Item = EdgeView> + Send> {
+    ) -> Box<dyn Iterator<Item = EdgeReference> + Send> {
         let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
         let iter = self.shards[shard_id].vertex_edges_window(v, t_start..t_end, d);
         Box::new(iter)
@@ -318,7 +323,7 @@ impl Graph {
         t_start: i64,
         t_end: i64,
         d: Direction,
-    ) -> Box<dyn Iterator<Item = EdgeView> + Send> {
+    ) -> Box<dyn Iterator<Item = EdgeReference> + Send> {
         let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
         let iter = self.shards[shard_id].vertex_edges_window_t(v, t_start..t_end, d);
         Box::new(iter)
@@ -330,7 +335,7 @@ impl Graph {
         t_start: i64,
         t_end: i64,
         d: Direction,
-    ) -> Box<dyn Iterator<Item = VertexView> + Send> {
+    ) -> Box<dyn Iterator<Item = VertexReference> + Send> {
         let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
         let iter = self.shards[shard_id].neighbours_window(v, t_start..t_end, d);
         Box::new(iter)
@@ -819,31 +824,31 @@ mod db_tests {
         let expected = [
             (
                 vec![
-                    VertexView {
+                    VertexReference {
                         g_id: 1,
                         pid: Some(0),
                     },
-                    VertexView { g_id: 2, pid: None },
+                    VertexReference { g_id: 2, pid: None },
                 ],
                 vec![
-                    VertexView {
+                    VertexReference {
                         g_id: 1,
                         pid: Some(0),
                     },
-                    VertexView {
+                    VertexReference {
                         g_id: 3,
                         pid: Some(1),
                     },
-                    VertexView { g_id: 2, pid: None },
+                    VertexReference { g_id: 2, pid: None },
                 ],
-                vec![VertexView {
+                vec![VertexReference {
                     g_id: 1,
                     pid: Some(0),
                 }],
             ),
-            (vec![VertexView { g_id: 1, pid: None }], vec![], vec![]),
+            (vec![VertexReference { g_id: 1, pid: None }], vec![], vec![]),
             (
-                vec![VertexView {
+                vec![VertexReference {
                     g_id: 1,
                     pid: Some(0),
                 }],

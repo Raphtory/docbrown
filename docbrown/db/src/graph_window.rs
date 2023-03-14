@@ -1,7 +1,7 @@
 use crate::graph::Graph;
 use crate::perspective::{Perspective, PerspectiveSet};
 use docbrown_core::{
-    tgraph::{EdgeView, VertexView},
+    tgraph::{EdgeReference, VertexReference},
     Direction, Prop,
 };
 
@@ -59,7 +59,7 @@ impl WindowedGraph {
     pub fn fold_par<S, F, F2>(&self, f: F, agg: F2) -> Option<S>
     where
         S: Send,
-        F: Fn(VertexView) -> S + Send + Sync + Copy,
+        F: Fn(VertexReference) -> S + Send + Sync + Copy,
         F2: Fn(S, S) -> S + Sync + Send + Copy,
     {
         self.graph.fold_par(self.t_start, self.t_end, f, agg)
@@ -68,7 +68,7 @@ impl WindowedGraph {
     pub fn vertex_window_par<O, F>(&self, f: F) -> Box<dyn Iterator<Item = O>>
     where
         O: Send + 'static,
-        F: Fn(VertexView) -> O + Send + Sync + Copy,
+        F: Fn(VertexReference) -> O + Send + Sync + Copy,
     {
         self.graph.vertex_window_par(self.t_start, self.t_end, f)
     }
@@ -142,7 +142,7 @@ pub struct WindowedVertex {
 }
 
 impl WindowedVertex {
-    fn from(value: VertexView, graph_w: Arc<WindowedGraph>) -> Self {
+    fn from(value: VertexReference, graph_w: Arc<WindowedGraph>) -> Self {
         Self {
             g_id: value.g_id,
             graph_w,
@@ -363,7 +363,7 @@ pub struct WindowedEdge {
 }
 
 impl WindowedEdge {
-    fn from(value: EdgeView, graph_w: Arc<WindowedGraph>) -> Self {
+    fn from(value: EdgeReference, graph_w: Arc<WindowedGraph>) -> Self {
         Self {
             edge_id: value.edge_id,
             src: value.src_g_id,
