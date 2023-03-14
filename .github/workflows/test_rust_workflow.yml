@@ -63,12 +63,11 @@ jobs:
         uses: PyO3/maturin-action@v1
         with:
           working-directory: ./raphtory
-          command: build
+          command: develop
           target: ${{ matrix.target }}
       - name: Install Python dependencies
         run: |
-          python -m pip install -q pytest 
-          python -m pip install target/wheels/raphtory-*.whl
+          python -m pip install -q pytest
       - name: Run Python tests
         run: |
           cd raphtory && pytest
