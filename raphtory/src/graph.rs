@@ -7,6 +7,7 @@ use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use pyo3::types::PyIterator;
+use docbrown_db::vertex::InputVertex;
 
 use crate::graph_window::{GraphWindowSet, WindowedGraph};
 use crate::Perspective;
