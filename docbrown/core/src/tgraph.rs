@@ -664,15 +664,20 @@ impl TemporalGraph {
         Box::new(self.neighbours_window(v, w, d).map(|vv| vv.g_id))
     }
 
+    pub fn vertex_meta(&self, id: usize, name: &str) -> Option<Prop> {
+        let meta_id = self.props.meta_ids.get(name)?;
+        self.props.vertices[id].meta.get(id)
+    }
+
     pub(crate) fn vertex_prop(
         &self,
         v: u64,
         name: &str,
     ) -> Option<Box<dyn Iterator<Item = (&i64, Prop)> + '_>> {
         let index = self.logical_to_physical.get(&v)?;
-        let meta = self.props.vertex_meta.get(*index)?;
-        let prop_id = self.props.prop_ids.get(name)?;
-        Some(meta.iter(*prop_id))
+        let tprops = &self.props.vertices.get(*index)?.tprops;
+        let prop_id = self.props.prop_ids.get(name)?; // todo we have this same code four times
+        Some(tprops.iter(*prop_id))
     }
 
     pub(crate) fn vertex_prop_window(
@@ -682,16 +687,16 @@ impl TemporalGraph {
         w: &Range<i64>,
     ) -> Option<Box<dyn Iterator<Item = (&i64, Prop)> + '_>> {
         let index = self.logical_to_physical.get(&v)?;
-        let meta = self.props.vertex_meta.get(*index)?;
+        let tprops = &self.props.vertices.get(*index)?.tprops;
         let prop_id = self.props.prop_ids.get(name)?;
-        Some(meta.iter_window(*prop_id, w.clone()))
+        Some(tprops.iter_window(*prop_id, w.clone()))
     }
 
     pub(crate) fn vertex_prop_vec(&self, v: u64, name: &str) -> Option<Vec<(i64, Prop)>> {
         let index = self.logical_to_physical.get(&v)?;
-        let meta = self.props.vertex_meta.get(*index)?;
+        let tprops = &self.props.vertices.get(*index)?.tprops;
         let prop_id = self.props.prop_ids.get(name)?;
-        Some(meta.iter(*prop_id).map(|(t, p)| (*t, p)).collect_vec())
+        Some(tprops.iter(*prop_id).map(|(t, p)| (*t, p)).collect_vec())
     }
 
     pub(crate) fn vertex_prop_vec_window(
@@ -701,10 +706,10 @@ impl TemporalGraph {
         w: &Range<i64>,
     ) -> Option<Vec<(i64, Prop)>> {
         let index = self.logical_to_physical.get(&v)?;
-        let meta = self.props.vertex_meta.get(*index)?;
+        let tprops = &self.props.vertices.get(*index)?.tprops;
         let prop_id = self.props.prop_ids.get(name)?;
         Some(
-            meta.iter_window(*prop_id, w.clone())
+            tprops.iter_window(*prop_id, w.clone())
                 .map(|(t, p)| (*t, p))
                 .collect_vec(),
         )
@@ -712,7 +717,7 @@ impl TemporalGraph {
 
     pub(crate) fn vertex_props(&self, v: u64) -> Option<HashMap<String, Vec<(i64, Prop)>>> {
         let index = self.logical_to_physical.get(&v)?;
-        let meta = self.props.vertex_meta.get(*index)?;
+        let tprops = &self.props.vertices.get(*index)?.tprops;
 
         let mut hm: HashMap<String, Vec<(i64, Prop)>> = HashMap::new();
 
@@ -720,13 +725,13 @@ impl TemporalGraph {
             if hm.contains_key(k) {
                 let vs = hm.get_mut(k).unwrap();
                 vs.append(
-                    &mut meta
+                    &mut tprops
                         .iter(*v)
                         .map(|(x, y)| (*x, y.into()))
                         .collect::<Vec<(i64, Prop)>>(),
                 )
             } else {
-                let value = meta
+                let value = tprops
                     .iter(*v)
                     .map(|(x, y)| (*x, y.into()))
                     .collect::<Vec<(i64, Prop)>>();
@@ -746,7 +751,7 @@ impl TemporalGraph {
         w: &Range<i64>,
     ) -> Option<HashMap<String, Vec<(i64, Prop)>>> {
         let index = self.logical_to_physical.get(&v)?;
-        let meta = self.props.vertex_meta.get(*index)?;
+        let tprops = &self.props.vertices.get(*index)?.tprops;
 
         let mut hm: HashMap<String, Vec<(i64, Prop)>> = HashMap::new();
 
@@ -754,13 +759,13 @@ impl TemporalGraph {
             if hm.contains_key(k) {
                 let vs = hm.get_mut(k).unwrap();
                 vs.append(
-                    &mut meta
+                    &mut tprops
                         .iter_window(*v, w.clone())
                         .map(|(x, y)| (*x, y.into()))
                         .collect::<Vec<(i64, Prop)>>(),
                 )
             } else {
-                let value = meta
+                let value = tprops
                     .iter_window(*v, w.clone())
                     .map(|(x, y)| (*x, y.into()))
                     .collect::<Vec<(i64, Prop)>>();
@@ -774,13 +779,18 @@ impl TemporalGraph {
         Some(hm) // Don't return "None" if hm.is_empty for Some({}) gets translated as {} in python
     }
 
+    pub fn edge_meta(&self, id: usize, name: &str) -> Option<Prop> {
+        let meta_id = self.props.meta_ids.get(name)?;
+        self.props.edges[id].meta.get(id)
+    }
+
     pub fn edge_prop(
         &self,
         e: usize,
         name: &str,
     ) -> Option<Box<dyn Iterator<Item = (&i64, Prop)> + '_>> {
         let prop_id = self.props.prop_ids.get(name)?;
-        Some(self.props.edge_meta[e].iter(*prop_id))
+        Some(self.props.edges[e].tprops.iter(*prop_id))
     }
 
     pub fn edge_prop_window(
@@ -790,13 +800,13 @@ impl TemporalGraph {
         w: Range<i64>,
     ) -> Option<Box<dyn Iterator<Item = (&i64, Prop)> + '_>> {
         let prop_id = self.props.prop_ids.get(name)?;
-        Some(self.props.edge_meta[e].iter_window(*prop_id, w))
+        Some(self.props.edges[e].tprops.iter_window(*prop_id, w))
     }
 
     pub fn edge_prop_vec(&self, e: usize, name: &str) -> Option<Vec<(i64, Prop)>> {
         let prop_id = self.props.prop_ids.get(name)?;
         Some(
-            self.props.edge_meta[e]
+            self.props.edges[e].tprops
                 .iter(*prop_id)
                 .map(|(t, p)| (*t, p))
                 .collect_vec(),
@@ -811,7 +821,7 @@ impl TemporalGraph {
     ) -> Option<Vec<(i64, Prop)>> {
         let prop_id = self.props.prop_ids.get(name)?;
         Some(
-            self.props.edge_meta[e]
+            self.props.edges[e].tprops
                 .iter_window(*prop_id, w)
                 .map(|(t, p)| (*t, p))
                 .collect_vec(),
@@ -1054,7 +1064,7 @@ mod graph_test {
         assert!(g.has_vertex(9));
         assert!(g.has_vertex_window(9, &(1..15)));
         assert_eq!(g.vertices().map(|v| v.g_id).collect::<Vec<u64>>(), vec![9]);
-        assert_eq!(g.props.vertex_meta.get(2), None);
+        assert_eq!(g.props.vertices.get(2), None);
     }
 
     #[test]

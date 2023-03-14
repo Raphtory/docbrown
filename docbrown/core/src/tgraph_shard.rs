@@ -344,6 +344,10 @@ impl TGraphShard {
         iter.into_iter()
     }
 
+    pub fn vertex_meta(&self, v: usize, name: String) -> Option<Prop> {
+        self.read_shard(|tg| tg.vertex_meta(v, &name))
+    }
+
     pub fn vertex_prop_vec(&self, v: u64, name: String) -> Vec<(i64, Prop)> {
         self.read_shard(|tg| tg.vertex_prop_vec(v, &name).unwrap_or_else(|| vec![]))
     }
@@ -367,6 +371,10 @@ impl TGraphShard {
             tg.vertex_props_window(v, &w)
                 .unwrap_or_else(|| HashMap::<String, Vec<(i64, Prop)>>::new())
         })
+    }
+
+    pub fn edge_meta(&self, e: usize, name: String) -> Option<Prop> {
+        self.read_shard(|tg| tg.edge_meta(e, &name))
     }
 
     pub fn edge_prop_vec(&self, e: usize, name: String) -> Vec<(i64, Prop)> {

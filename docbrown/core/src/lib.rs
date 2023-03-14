@@ -1,3 +1,5 @@
+use serde::{Deserialize, Serialize};
+
 #[cfg(test)]
 #[macro_use(quickcheck)]
 extern crate quickcheck_macros;
@@ -6,6 +8,7 @@ mod adj;
 mod bitset;
 pub mod tgraph;
 pub mod lsm;
+mod meta;
 mod misc;
 mod props;
 mod sorted_vec_map;
@@ -25,7 +28,7 @@ pub enum Direction {
     BOTH,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub enum Prop {
     Str(String),
     I32(i32),
