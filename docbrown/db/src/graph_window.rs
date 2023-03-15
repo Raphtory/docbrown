@@ -66,7 +66,7 @@ impl GraphViewInternalOps for WindowedGraph {
 
     fn vertices_len_window(&self, t_start: i64, t_end: i64) -> usize {
         self.graph
-            .vertices_len_window(self.actual_start(t_start), self.actual_end(self.t_end))
+            .vertices_len_window(self.actual_start(t_start), self.actual_end(t_end))
     }
 
     fn edges_len(&self) -> usize {
@@ -75,7 +75,7 @@ impl GraphViewInternalOps for WindowedGraph {
 
     fn edges_len_window(&self, t_start: i64, t_end: i64) -> usize {
         self.graph
-            .edges_len_window(self.actual_start(t_start), self.actual_end(self.t_end))
+            .edges_len_window(self.actual_start(t_start), self.actual_end(t_end))
     }
 
     fn has_edge_ref<V1: Into<VertexReference>, V2: Into<VertexReference>>(
