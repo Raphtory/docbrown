@@ -329,7 +329,7 @@ impl TemporalGraph {
         )
     }
 
-    pub(crate) fn vertices(&self) -> Box<dyn Iterator<Item = VertexReference> + Send + '_> {
+    pub fn vertices(&self) -> Box<dyn Iterator<Item = VertexReference> + Send + '_> {
         Box::new(
             self.adj_lists
                 .iter()
@@ -1013,7 +1013,7 @@ impl TemporalGraph {
 }
 
 // helps us track what are we iterating over
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Copy, Clone)]
 pub struct VertexReference {
     pub g_id: u64,
     // `pid` is optional because pid info is unavailable while creating remote vertex view locally.
@@ -1025,9 +1025,18 @@ impl VertexReference {
     pub fn new(g_id: u64, pid: Option<usize>) -> Self {
         Self { g_id, pid }
     }
+    pub fn new_remote(g_id: u64) -> Self {
+        Self { g_id, pid: None }
+    }
 }
 
-#[derive(Debug, PartialEq)]
+impl From<u64> for VertexReference {
+    fn from(value: u64) -> Self {
+        Self::new_remote(value)
+    }
+}
+
+#[derive(Debug, PartialEq, Copy, Clone)]
 pub struct EdgeReference {
     pub edge_id: usize,
     pub src_g_id: u64,

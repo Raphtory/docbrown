@@ -162,9 +162,9 @@ pub fn run_analysis_benchmarks<F>(
 {
     let mut graph = make_graph();
     bench(group, "edges_len", parameter, |b: &mut Bencher| {
-        b.iter(|| graph.edges_len())
+        b.iter(|| graph.num_edges())
     });
     bench(group, "len", parameter, |b: &mut Bencher| {
-        b.iter(|| graph.len())
+        b.iter(|| graph.num_vertices())
     });
 }

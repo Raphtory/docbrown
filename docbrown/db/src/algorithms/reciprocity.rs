@@ -5,17 +5,17 @@ use itertools::Itertools;
 use std::collections::HashSet;
 use std::iter::Map;
 
-fn get_reciprocal_edge_count(v: &WindowedVertex) -> (u64, u64) {
-    let out_neighbours: HashSet<u64> = v.out_neighbours().id().filter(|x| *x != v.g_id).collect();
-    let in_neighbours: HashSet<u64> = v.in_neighbours().id().filter(|x| *x != v.g_id).collect();
+fn get_reciprocal_edge_count<V: VertexViewOps>(v: &V) -> (u64, u64) {
+    let out_neighbours: HashSet<u64> = v.out_neighbours().id().filter(|x| *x != v.id()).collect();
+    let in_neighbours: HashSet<u64> = v.in_neighbours().id().filter(|x| *x != v.id()).collect();
     (
         out_neighbours.len() as u64,
         out_neighbours.intersection(&in_neighbours).count() as u64,
     )
 }
 
-pub fn global_reciprocity(graph: &WindowedGraph) -> f64 {
-    let edges = graph.vertices().fold((0, 0), |acc, v| {
+pub fn global_reciprocity<G: GraphViewOps>(graph: &G) -> f64 {
+    let edges = graph.vertices().into_iter().fold((0, 0), |acc, v| {
         let r_e_c = get_reciprocal_edge_count(&v);
         (acc.0 + r_e_c.0, acc.1 + r_e_c.1)
     });
@@ -24,15 +24,16 @@ pub fn global_reciprocity(graph: &WindowedGraph) -> f64 {
 
 // Returns the reciprocity of every vertex in the graph as a tuple of
 // vector id and the reciprocity
-pub fn all_local_reciprocity(graph: &WindowedGraph) -> Vec<(u64, f64)> {
+pub fn all_local_reciprocity<G: GraphViewOps>(graph: &G) -> Vec<(u64, f64)> {
     graph
         .vertices()
-        .map(|v| (v.g_id, local_reciprocity(&graph, v.g_id)))
+        .into_iter()
+        .map(|v| (v.id(), local_reciprocity(graph, v.id())))
         .collect()
 }
 
 // Returns the reciprocity value of a single vertex
-pub fn local_reciprocity(graph: &WindowedGraph, v: u64) -> f64 {
+pub fn local_reciprocity<G: GraphViewOps>(graph: &G, v: u64) -> f64 {
     match graph.vertex(v) {
         None => 0 as f64,
         Some(vertex) => {
