@@ -14,3 +14,6 @@ jobs:
   call-test-python-workflow-in-local-repo:
     uses: ./.github/workflows/test_python_workflow.yml
     secrets: inherit
+  call-benchmark-workflow-in-local-repo:
+    uses: ./.github/workflows/benchmark.yml
+    secrets: inherit
