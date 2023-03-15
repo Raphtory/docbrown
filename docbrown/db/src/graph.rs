@@ -179,14 +179,14 @@ impl Graph {
         self.edges_len()
     }
 
-    pub fn has_edge(&self, src: u64, dst: u64) -> bool {
-        let shard_id = utils::get_shard_id_from_global_vid(src, self.nr_shards);
-        self.shards[shard_id].has_edge(src, dst)
+    pub fn has_edge<T: InputVertex>(&self, src: T, dst: T) -> bool {
+        let shard_id = utils::get_shard_id_from_global_vid(src.id(), self.nr_shards);
+        self.shards[shard_id].has_edge(src.id(), dst.id())
     }
 
-    pub fn has_edge_window(&self, src: u64, dst: u64, t_start: i64, t_end: i64) -> bool {
-        let shard_id = utils::get_shard_id_from_global_vid(src, self.nr_shards);
-        self.shards[shard_id].has_edge_window(src, dst, t_start..t_end)
+    pub fn has_edge_window<T: InputVertex>(&self, src: T, dst: T, t_start: i64, t_end: i64) -> bool {
+        let shard_id = utils::get_shard_id_from_global_vid(src.id(), self.nr_shards);
+        self.shards[shard_id].has_edge_window(src.id(), dst.id(), t_start..t_end)
     }
 
     pub fn has_vertex<T: InputVertex>(&self, v: T) -> bool {
@@ -543,6 +543,11 @@ mod db_tests {
 
         assert_eq!(g.has_edge(9, 7), false);
         assert_eq!(g.has_edge(7, 9), true);
+
+        g.add_edge(2, "haaroon", "northLondon", &vec![]);
+        assert_eq!(g.has_edge("haaroon", "northLondon"), true);
+
+
     }
 
     #[test]
