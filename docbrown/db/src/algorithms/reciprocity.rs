@@ -1,6 +1,6 @@
 use crate::graph_window::{WindowedGraph, WindowedVertex};
 use std::collections::HashSet;
-
+use std::iter::Map;
 
 fn get_reciprocal_edge_count(v: &WindowedVertex) -> (u64,u64,u64) {
     let out_neighbours:HashSet<u64> = v.out_neighbours_ids().filter(|x| *x != v.g_id).collect();
@@ -21,40 +21,39 @@ pub fn global_reciprocity(graph: &WindowedGraph) -> f64 {
 
 // Returns the reciprocity of every vertex in the graph as a tuple of
 // vector id and the reciprocity
-pub fn all_local_reciprocity(graph: &WindowedGraph) -> Vec<(u64,f64)> {
+pub fn all_local_reciprocity(graph: &WindowedGraph) -> Vec<(u64, f64)> {
     graph
         .vertices()
         .map(|v| (v.g_id, local_reciprocity(&graph, v.g_id)))
         .collect()
 }
 
-
 // Returns the reciprocity value of a single vertex
 pub fn local_reciprocity(graph: &WindowedGraph, v: u64) -> f64 {
     match graph.vertex(v) {
-        None => {0 as f64}
+        None => 0 as f64,
         Some(vertex) => {
             let intersection = get_reciprocal_edge_count(&vertex);
             2.0 * intersection.2 as f64 / (intersection.0 + intersection.1) as f64
         }
     }
-
 }
 
 #[cfg(test)]
 mod reciprocity_test {
     use crate::graph::Graph;
-    use super::{local_reciprocity, all_local_reciprocity, global_reciprocity};
 
     #[test]
     fn check_all_reciprocities() {
         let g = Graph::new(1);
         let vs = vec![
-            (1, 1, 2), (1, 1, 4),
+            (1, 1, 2),
+            (1, 1, 4),
             (1, 2, 3),
             (1, 3, 2), (1, 3, 1),
             (1, 4, 3), (1, 4, 1),
             (1, 1, 5)];
+
 
         for (t, src, dst) in &vs {
             g.add_edge(*t, *src, *dst, &vec![]);
@@ -72,6 +71,7 @@ mod reciprocity_test {
             (4, 2.0/3.0),
             (5, 0.0)
         ];
+
         let mut actual = all_local_reciprocity(&windowed_graph);
         actual.sort_by(|a, b| a.0.cmp(&b.0));
         assert_eq!(actual, expected);
