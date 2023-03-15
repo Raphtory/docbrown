@@ -72,15 +72,15 @@ impl WindowedGraph {
     }
 
     pub fn has_vertex<T: InputVertex>(&self, v: T) -> bool {
-        self.graph.has_vertex_window(v.id(), self.t_start, self.t_end)
+        self.graph.has_vertex_window(v, self.t_start, self.t_end)
     }
 
-    pub fn has_edge(&self, src: u64, dst: u64) -> bool {
+    pub fn has_edge<T: InputVertex>(&self, src: T, dst: T) -> bool {
         self.graph
             .has_edge_window(src, dst, self.t_start, self.t_end)
     }
 
-    pub fn vertex(&self, v: u64) -> Option<WindowedVertex> {
+    pub fn vertex<T: InputVertex>(&self, v: T) -> Option<WindowedVertex> {
         let graph_w = self.clone();
         self.graph
             .vertex_window(v, self.t_start, self.t_end)
@@ -91,7 +91,7 @@ impl WindowedGraph {
         self.graph.vertex_ids_window(self.t_start, self.t_end)
     }
 
-    pub fn neighbours_ids(&self, v: u64, d: Direction) -> Box<dyn Iterator<Item = u64> + Send> {
+    pub fn neighbours_ids<T: InputVertex>(&self, v: T, d: Direction) -> Box<dyn Iterator<Item = u64> + Send> {
         self.graph.neighbours_ids_window(v, self.t_start, self.t_end, d)
     }
 
@@ -104,7 +104,7 @@ impl WindowedGraph {
         )
     }
 
-    pub fn edge(&self, src: u64, dst: u64) -> Option<WindowedEdge> {
+    pub fn edge<T: InputVertex>(&self, src: T, dst: T) -> Option<WindowedEdge> {
         let graph_w = self.clone();
         self.graph
             .edge_window(src, dst, self.t_start, self.t_end)
