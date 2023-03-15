@@ -185,8 +185,6 @@ impl Graph {
     }
 
     pub fn add_edge(&self, t: i64, src: &PyAny, dst: &PyAny, props: HashMap<String, Prop>) {
-        // TODO: Keep same types
-
         if src.extract::<String>().is_ok() && dst.extract::<String>().is_ok() {
             self.graph.add_edge(
                 t,
