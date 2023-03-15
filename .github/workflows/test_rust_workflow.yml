@@ -63,12 +63,11 @@ jobs:
         run: |
           python -m pip install -q pytest 
           python -m pip install target/wheels/raphtory-*.whl
-        working-directory: ./raphtory
       - name: Install Python dependencies (Windows)
         if: "contains(matrix.os, 'Windows')"
         run: |
           python -m pip install -q pytest
-          set folder_path=raphtory/target/wheels/
+          set folder_path=target/wheels/
           for /r "%folder_path%" %%a in (*.whl) do (
               echo Installing %%~na
               pip install "%%a"
