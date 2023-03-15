@@ -1,4 +1,4 @@
-use docbrown_core::{Prop, utils};
+use crate::{Prop, utils};
 
 pub trait InputVertex {
     fn id(&self) -> u64;

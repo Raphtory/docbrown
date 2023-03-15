@@ -319,3 +319,23 @@ def test_perspective_set():
     perspectives = Perspective.expanding(5, start=0, end=4)
     views = g.through(perspectives)
     assert len(list(views)) == 2
+
+def test_add_node_string():
+    g = Graph(1)
+
+    g.add_vertex(0, 1, {})
+    g.add_vertex(1, "haaroon", {})
+
+    assert g.has_vertex(1)
+    assert g.has_vertex("haaroon")
+
+def test_add_edge_string():
+    g = Graph(1)
+
+    g.add_edge(0, 1, 2, {})
+    g.add_edge(1, "haaroon", "ben", {})
+
+    assert g.has_vertex(1)
+    assert g.has_vertex(2)
+    assert g.has_vertex("haaroon")
+    assert g.has_vertex("ben")

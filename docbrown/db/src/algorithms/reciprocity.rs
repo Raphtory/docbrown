@@ -19,7 +19,7 @@ pub fn global_reciprocity(graph: &WindowedGraph) -> f64 {
             (acc.0 + r_e_c.0,
              acc.1 + r_e_c.1)
         });
-    (edges.1 as f64 / edges.0 as f64)
+    edges.1 as f64 / edges.0 as f64
 }
 
 // Returns the reciprocity of every vertex in the graph as a tuple of
@@ -38,7 +38,7 @@ pub fn local_reciprocity(graph: &WindowedGraph, v: u64) -> f64 {
         None => {0 as f64}
         Some(vertex) => {
             let intersection = get_reciprocal_edge_count(&vertex);
-            (intersection.1 as f64 / intersection.0 as f64)
+            intersection.1 as f64 / intersection.0 as f64
         }
     }
 

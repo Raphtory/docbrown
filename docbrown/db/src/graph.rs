@@ -12,13 +12,13 @@ use docbrown_core::{
     tgraph::{EdgeView, VertexView},
     tgraph_shard::TGraphShard,
     utils, Direction, Prop,
+    vertex::InputVertex,
 };
 
 use itertools::Itertools;
 use rayon::prelude::*;
 use tempdir::TempDir;
 use serde::{Deserialize, Serialize};
-use crate::vertex::InputVertex;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Graph {
@@ -142,20 +142,14 @@ impl Graph {
     // TODO: Probably add vector reference here like add
     pub fn add_vertex<T: InputVertex>(&self, t: i64, v: T, props: &Vec<(String, Prop)>) {
         let shard_id = utils::get_shard_id_from_global_vid(v.id(), self.nr_shards);
-        if v.name_prop().is_some() {
-            let new_props = {
-                let mut props_clone = props.clone();
-                props_clone.push(("_id".parse().unwrap(), v.name_prop().unwrap()));
-                props_clone
-            };
-            self.shards[shard_id].add_vertex(t, v.id(), &new_props);
-        }
-        else {
-            self.shards[shard_id].add_vertex(t, v.id(), &props);
-        }
+        self.shards[shard_id].add_vertex(t, v, &props);
     }
 
+    // TODO: Vertex.name which gets ._id property else numba as string
+
     pub fn add_edge<T: InputVertex>(&self, t: i64, src: T, dst: T, props: &Vec<(String, Prop)>) {
+        // TODO: Problem: if the vertex already exists, then this
+        // TODO: wont create a property name if the vertex is a string
         let src_shard_id = utils::get_shard_id_from_global_vid(src.id(), self.nr_shards);
         let dst_shard_id = utils::get_shard_id_from_global_vid(dst.id(), self.nr_shards);
 

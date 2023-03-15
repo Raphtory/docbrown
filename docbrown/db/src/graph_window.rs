@@ -6,7 +6,7 @@ use docbrown_core::{
 };
 
 use std::{collections::HashMap, sync::Arc};
-use crate::vertex::InputVertex;
+use docbrown_core::vertex::InputVertex;
 
 pub struct GraphWindowSet {
     graph: Graph,

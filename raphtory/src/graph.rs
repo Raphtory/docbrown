@@ -7,8 +7,8 @@ use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use pyo3::exceptions::PyTypeError;
-use pyo3::types::{PyIterator, PyString};
-use docbrown_db::vertex::InputVertex;
+use pyo3::types::{PyInt, PyIterator, PyString};
+use docbrown_core::vertex::InputVertex;
 
 use crate::graph_window::{GraphWindowSet, WindowedGraph};
 use crate::Perspective;
@@ -135,7 +135,6 @@ impl Graph {
     }
 
     pub fn add_vertex(&self, t: i64, v: &PyAny, props: HashMap<String, Prop>) {
-
         match v.extract::<String>() {
             Ok(vv) => {
                 self.graph.add_vertex(
@@ -165,34 +164,36 @@ impl Graph {
                 }
             }
         }
-
-        // if let Ok(vv) = v.extract::<String>() {
-        //     Ok(format!("Input is a string: {}", vv))
-        // } else if let Ok(vv) = v.extract::<u64>() {
-        //     Ok(format!("Input is an integer: {}", vv))
-        // } else {
-        //     Err(PyTypeError::new_err("Input must be a string or integer."))
-        // }.expect("panic");
-        //
-        // self.graph.add_vertex(
-        //     t,
-        //     v.extract().unwrap(),
-        //     &props
-        //         .into_iter()
-        //         .map(|(key, value)| (key, value.into()))
-        //         .collect::<Vec<(String, dbc::Prop)>>(),
-        // )
     }
 
-    pub fn add_edge(&self, t: i64, src: u64, dst: u64, props: HashMap<String, Prop>) {
-        self.graph.add_edge(
-            t,
-            src,
-            dst,
-            &props
-                .into_iter()
-                .map(|f| (f.0.clone(), f.1.into()))
-                .collect::<Vec<(String, dbc::Prop)>>(),
-        )
+    pub fn add_edge(&self, t: i64, src: &PyAny, dst: &PyAny, props: HashMap<String, Prop>) {
+        // TODO: Keep same types
+
+        if src.extract::<String>().is_ok() && dst.extract::<String>().is_ok() {
+            self.graph.add_edge(
+                t,
+                src.extract::<String>().unwrap(),
+                dst.extract::<String>().unwrap(),
+                &props
+                    .into_iter()
+                    .map(|f| (f.0.clone(), f.1.into()))
+                    .collect::<Vec<(String, dbc::Prop)>>(),
+            )
+
+        }
+        else if  src.extract::<u64>().is_ok() && dst.extract::<u64>().is_ok() {
+            self.graph.add_edge(
+                t,
+                src.extract::<u64>().unwrap(),
+                dst.extract::<u64>().unwrap(),
+                &props
+                    .into_iter()
+                    .map(|f| (f.0.clone(), f.1.into()))
+                    .collect::<Vec<(String, dbc::Prop)>>(),
+            )
+        }
+        else {
+            panic!("Types of src and dst must be the same (either Int or str)")
+        }
     }
 }

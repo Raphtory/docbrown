@@ -10,4 +10,3 @@ pub mod graph_window;
 pub mod polars_loader;
 pub mod perspective;
 pub mod algorithms;
-pub mod vertex;
