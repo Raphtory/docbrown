@@ -63,11 +63,22 @@ jobs:
         uses: PyO3/maturin-action@v1
         with:
           working-directory: ./raphtory
-          command: develop
+          command: build
           target: ${{ matrix.target }}
-      - name: Install Python dependencies
+      - name: Install Python dependencies (Unix)
+        if: "contains(matrix.os, 'Ubuntu') || contains(matrix.os, 'macOS')"
+        run: |
+          python -m pip install -q pytest 
+          python -m pip install raphtory/target/wheels/raphtory-*.whl
+      - name: Install Python dependencies (Windows)
+        if: "contains(matrix.os, 'Windows')"
         run: |
           python -m pip install -q pytest
+          set folder_path=raphtory/target/wheels/
+          for /r "%folder_path%" %%a in (*.whl) do (
+              echo Installing %%~na
+              pip install "%%a"
+          )
       - name: Run Python tests
         run: |
           cd raphtory && pytest
