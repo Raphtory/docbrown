@@ -41,13 +41,13 @@ jobs:
           toolchain: stable
           override: true
           components: rustfmt, clippy
-#      - name: Run Tests
-#        uses: actions-rs/cargo@v1
-#        env:
-#          RUSTFLAGS: -Awarnings
-#        with:
-#          command: test
-#          args: --no-default-features
+      - name: Run Tests
+        uses: actions-rs/cargo@v1
+        env:
+          RUSTFLAGS: -Awarnings
+        with:
+          command: test
+          args: --no-default-features
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
