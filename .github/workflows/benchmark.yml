@@ -10,7 +10,7 @@ on:
 jobs:
   benchmark:
     if: ${{ !inputs.skip_tests }}
-    name: Rust Tests
+    name: Rust Benchmark
     runs-on: '${{ matrix.os }}'
     strategy:
       matrix:
