@@ -67,11 +67,10 @@ jobs:
         if: "contains(matrix.os, 'Windows')"
         run: |
           python -m pip install -q pytest
-          set folder_path=target/wheels/
-          for /r "%folder_path%" %%a in (*.whl) do (
-              echo Installing %%~na
-              pip install "%%a"
-          )
+          $folder_path = "target/wheels/"
+            Get-ChildItem -Path $folder_path -Recurse -Include *.whl | ForEach-Object {
+            pip install "$($_.FullName)"
+          }
       - name: Run Python tests
         run: |
           cd raphtory && pytest
