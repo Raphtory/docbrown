@@ -1,10 +1,10 @@
 use crate::graph_window::{WindowedGraph, WindowedVertex};
+use crate::view_api::*;
 use std::collections::HashSet;
-use std::iter::Map;
 
 fn get_reciprocal_edge_count(v: &WindowedVertex) -> (u64,u64,u64) {
-    let out_neighbours:HashSet<u64> = v.out_neighbours_ids().filter(|x| *x != v.g_id).collect();
-    let in_neighbours:HashSet<u64>= v.in_neighbours_ids().filter(|x| *x != v.g_id).collect();
+    let out_neighbours:HashSet<u64> = v.out_neighbours().id().filter(|x| *x != v.g_id).collect();
+    let in_neighbours:HashSet<u64>= v.in_neighbours().id().filter(|x| *x != v.g_id).collect();
     (out_neighbours.len() as u64, in_neighbours.len() as u64, out_neighbours.intersection(&in_neighbours).count() as u64)
 }
 
@@ -42,6 +42,7 @@ pub fn local_reciprocity(graph: &WindowedGraph, v: u64) -> f64 {
 #[cfg(test)]
 mod reciprocity_test {
     use crate::graph::Graph;
+    use super::{all_local_reciprocity, global_reciprocity, local_reciprocity};
 
     #[test]
     fn check_all_reciprocities() {
