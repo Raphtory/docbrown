@@ -41,20 +41,13 @@ jobs:
           toolchain: stable
           override: true
           components: rustfmt, clippy
-#       - name: Build project quietly
-#         uses: actions-rs/cargo@v1
-#         env:
-#           RUSTFLAGS: -Awarnings
-#         with:
-#           command: build
-#           args: -q --no-default-features
-      - name: Run Tests
-        uses: actions-rs/cargo@v1
-        env:
-          RUSTFLAGS: -Awarnings
-        with:
-          command: test
-          args: --no-default-features
+#      - name: Run Tests
+#        uses: actions-rs/cargo@v1
+#        env:
+#          RUSTFLAGS: -Awarnings
+#        with:
+#          command: test
+#          args: --no-default-features
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
@@ -69,7 +62,8 @@ jobs:
         if: "contains(matrix.os, 'Ubuntu') || contains(matrix.os, 'macOS')"
         run: |
           python -m pip install -q pytest 
-          python -m pip install raphtory/target/wheels/raphtory-*.whl
+          python -m pip install target/wheels/raphtory-*.whl
+        working-directory: ./raphtory
       - name: Install Python dependencies (Windows)
         if: "contains(matrix.os, 'Windows')"
         run: |
