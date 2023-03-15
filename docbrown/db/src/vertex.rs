@@ -24,3 +24,13 @@ impl <'a> InputVertex for &'a str {
         Some(Prop::Str(self.to_string()))
     }
 }
+
+impl <'a> InputVertex for String {
+    fn id(&self) -> u64 {
+        utils::calculate_hash(self)
+    }
+
+    fn name_prop(&self) -> Option<Prop> {
+        Some(Prop::Str(self.to_string()))
+    }
+}

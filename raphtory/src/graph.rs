@@ -6,7 +6,8 @@ use std::collections::HashMap;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use pyo3::types::PyIterator;
+use pyo3::exceptions::PyTypeError;
+use pyo3::types::{PyIterator, PyString};
 use docbrown_db::vertex::InputVertex;
 
 use crate::graph_window::{GraphWindowSet, WindowedGraph};
@@ -115,19 +116,72 @@ impl Graph {
         self.graph.number_of_nodes()
     }
 
-    pub fn has_vertex(&self, v: u64) -> bool {
-        self.graph.has_vertex(v)
+    pub fn has_vertex(&self, v: &PyAny) -> bool {
+        match v.extract::<String>() {
+            Ok(vv) => {
+                self.graph.has_vertex(vv)
+            }
+            Err(_) => {
+                match v.extract::<u64>(){
+                    Ok(vv) => {
+                        self.graph.has_vertex(vv)
+                    }
+                    Err(_) => {
+                        panic!("Input must be a string or integer.")
+                    }
+                }
+            }
+        }
     }
 
-    pub fn add_vertex(&self, t: i64, v: u64, props: HashMap<String, Prop>) {
-        self.graph.add_vertex(
-            t,
-            v,
-            &props
-                .into_iter()
-                .map(|(key, value)| (key, value.into()))
-                .collect::<Vec<(String, dbc::Prop)>>(),
-        )
+    pub fn add_vertex(&self, t: i64, v: &PyAny, props: HashMap<String, Prop>) {
+
+        match v.extract::<String>() {
+            Ok(vv) => {
+                self.graph.add_vertex(
+                    t,
+                    vv,
+                    &props
+                        .into_iter()
+                        .map(|(key, value)| (key, value.into()))
+                        .collect::<Vec<(String, dbc::Prop)>>(),
+                )
+            }
+            Err(_) => {
+                match v.extract::<u64>(){
+                    Ok(vv) => {
+                        self.graph.add_vertex(
+                            t,
+                            vv,
+                            &props
+                                .into_iter()
+                                .map(|(key, value)| (key, value.into()))
+                                .collect::<Vec<(String, dbc::Prop)>>(),
+                        )
+                    }
+                    Err(_) => {
+                        panic!("Input must be a string or integer.")
+                    }
+                }
+            }
+        }
+
+        // if let Ok(vv) = v.extract::<String>() {
+        //     Ok(format!("Input is a string: {}", vv))
+        // } else if let Ok(vv) = v.extract::<u64>() {
+        //     Ok(format!("Input is an integer: {}", vv))
+        // } else {
+        //     Err(PyTypeError::new_err("Input must be a string or integer."))
+        // }.expect("panic");
+        //
+        // self.graph.add_vertex(
+        //     t,
+        //     v.extract().unwrap(),
+        //     &props
+        //         .into_iter()
+        //         .map(|(key, value)| (key, value.into()))
+        //         .collect::<Vec<(String, dbc::Prop)>>(),
+        // )
     }
 
     pub fn add_edge(&self, t: i64, src: u64, dst: u64, props: HashMap<String, Prop>) {
