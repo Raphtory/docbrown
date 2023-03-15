@@ -69,7 +69,7 @@ jobs:
           python -m pip install -q pytest
           $folder_path = "target/wheels/"
           Get-ChildItem -Path $folder_path -Recurse -Include *.whl | ForEach-Object {
-            pip install "$($_.FullName)"
+            python -m pip install "$($_.FullName)"
           }
       - name: Run Python tests
         run: |
