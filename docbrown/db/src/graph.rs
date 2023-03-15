@@ -199,19 +199,19 @@ impl Graph {
             .any(|shard| shard.has_vertex_window(v.id(), t_start..t_end))
     }
 
-    pub(crate) fn vertex(&self, v: u64) -> Option<VertexView> {
-        let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
-        self.shards[shard_id].vertex(v)
+    pub(crate) fn vertex<T: InputVertex>(&self, v: T) -> Option<VertexView> {
+        let shard_id = utils::get_shard_id_from_global_vid(v.id(), self.nr_shards);
+        self.shards[shard_id].vertex(v.id())
     }
 
-    pub(crate) fn vertex_window(&self, v: u64, t_start: i64, t_end: i64) -> Option<VertexView> {
-        let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
-        self.shards[shard_id].vertex_window(v, t_start..t_end)
+    pub(crate) fn vertex_window<T: InputVertex>(&self, v: T, t_start: i64, t_end: i64) -> Option<VertexView> {
+        let shard_id = utils::get_shard_id_from_global_vid(v.id(), self.nr_shards);
+        self.shards[shard_id].vertex_window(v.id(), t_start..t_end)
     }
 
-    pub(crate) fn degree_window(&self, v: u64, t_start: i64, t_end: i64, d: Direction) -> usize {
-        let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
-        let iter = self.shards[shard_id].degree_window(v, t_start..t_end, d);
+    pub(crate) fn degree_window<T: InputVertex>(&self, v: T, t_start: i64, t_end: i64, d: Direction) -> usize {
+        let shard_id = utils::get_shard_id_from_global_vid(v.id(), self.nr_shards);
+        let iter = self.shards[shard_id].degree_window(v.id(), t_start..t_end, d);
         iter
     }
 
@@ -290,61 +290,61 @@ impl Graph {
         Box::new(rx.into_iter())
     }
 
-    pub(crate) fn edge(&self, v1: u64, v2: u64) -> Option<EdgeView> {
-        let shard_id = utils::get_shard_id_from_global_vid(v1, self.nr_shards);
-        self.shards[shard_id].edge(v1, v2)
+    pub(crate) fn edge<T: InputVertex>(&self, v1: T, v2: T) -> Option<EdgeView> {
+        let shard_id = utils::get_shard_id_from_global_vid(v1.id(), self.nr_shards);
+        self.shards[shard_id].edge(v1.id(), v2.id())
     }
 
-    pub(crate) fn edge_window(
+    pub(crate) fn edge_window<T: InputVertex>(
         &self,
-        src: u64,
-        dst: u64,
+        src: T,
+        dst: T,
         t_start: i64,
         t_end: i64,
     ) -> Option<EdgeView> {
-        let shard_id = utils::get_shard_id_from_global_vid(src, self.nr_shards);
-        self.shards[shard_id].edge_window(src, dst, t_start..t_end)
+        let shard_id = utils::get_shard_id_from_global_vid(src.id(), self.nr_shards);
+        self.shards[shard_id].edge_window(src.id(), dst.id(), t_start..t_end)
     }
 
-    pub(crate) fn vertex_edges_window(
+    pub(crate) fn vertex_edges_window<T: InputVertex>(
         &self,
-        v: u64,
+        v: T,
         t_start: i64,
         t_end: i64,
         d: Direction,
     ) -> Box<dyn Iterator<Item = EdgeView> + Send> {
-        let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
-        let iter = self.shards[shard_id].vertex_edges_window(v, t_start..t_end, d);
+        let shard_id = utils::get_shard_id_from_global_vid(v.id(), self.nr_shards);
+        let iter = self.shards[shard_id].vertex_edges_window(v.id(), t_start..t_end, d);
         Box::new(iter)
     }
 
-    pub(crate) fn vertex_edges_window_t(
+    pub(crate) fn vertex_edges_window_t<T: InputVertex>(
         &self,
-        v: u64,
+        v: T,
         t_start: i64,
         t_end: i64,
         d: Direction,
     ) -> Box<dyn Iterator<Item = EdgeView> + Send> {
-        let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
-        let iter = self.shards[shard_id].vertex_edges_window_t(v, t_start..t_end, d);
+        let shard_id = utils::get_shard_id_from_global_vid(v.id(), self.nr_shards);
+        let iter = self.shards[shard_id].vertex_edges_window_t(v.id(), t_start..t_end, d);
         Box::new(iter)
     }
 
-    pub(crate) fn neighbours_window(
+    pub(crate) fn neighbours_window<T: InputVertex>(
         &self,
-        v: u64,
+        v: T,
         t_start: i64,
         t_end: i64,
         d: Direction,
     ) -> Box<dyn Iterator<Item = VertexView> + Send> {
-        let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
-        let iter = self.shards[shard_id].neighbours_window(v, t_start..t_end, d);
+        let shard_id = utils::get_shard_id_from_global_vid(v.id(), self.nr_shards);
+        let iter = self.shards[shard_id].neighbours_window(v.id(), t_start..t_end, d);
         Box::new(iter)
     }
 
-    pub(crate) fn neighbours_ids_window(
+    pub(crate) fn neighbours_ids_window<T: InputVertex>(
         &self,
-        v: u64,
+        v: T,
         t_start: i64,
         t_end: i64,
         d: Direction,
@@ -352,50 +352,50 @@ impl Graph {
     where
         Self: Sized,
     {
-        let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
+        let shard_id = utils::get_shard_id_from_global_vid(v.id(), self.nr_shards);
         let iter = self.shards[shard_id]
-            .neighbours_ids_window(v, t_start..t_end, d)
+            .neighbours_ids_window(v.id(), t_start..t_end, d)
             .unique();
         Box::new(iter)
     }
 
-    pub(crate) fn vertex_prop_vec(&self, v: u64, name: String) -> Vec<(i64, Prop)> {
-        let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
-        self.shards[shard_id].vertex_prop_vec(v, name)
+    pub(crate) fn vertex_prop_vec<T: InputVertex>(&self, v: T, name: String) -> Vec<(i64, Prop)> {
+        let shard_id = utils::get_shard_id_from_global_vid(v.id(), self.nr_shards);
+        self.shards[shard_id].vertex_prop_vec(v.id(), name)
     }
 
-    pub(crate) fn vertex_prop_vec_window(
+    pub(crate) fn vertex_prop_vec_window<T: InputVertex>(
         &self,
-        v: u64,
+        v: T,
         name: String,
         w: Range<i64>,
     ) -> Vec<(i64, Prop)> {
-        let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
-        self.shards[shard_id].vertex_prop_vec_window(v, name, w)
+        let shard_id = utils::get_shard_id_from_global_vid(v.id(), self.nr_shards);
+        self.shards[shard_id].vertex_prop_vec_window(v.id(), name, w)
     }
 
-    pub(crate) fn vertex_props(&self, v: u64) -> HashMap<String, Vec<(i64, Prop)>> {
-        let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
-        self.shards[shard_id].vertex_props(v)
+    pub(crate) fn vertex_props<T: InputVertex>(&self, v: T) -> HashMap<String, Vec<(i64, Prop)>> {
+        let shard_id = utils::get_shard_id_from_global_vid(v.id(), self.nr_shards);
+        self.shards[shard_id].vertex_props(v.id())
     }
 
-    pub(crate) fn vertex_props_window(
+    pub(crate) fn vertex_props_window<T: InputVertex>(
         &self,
-        v: u64,
+        v: T,
         w: Range<i64>,
     ) -> HashMap<String, Vec<(i64, Prop)>> {
-        let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
-        self.shards[shard_id].vertex_props_window(v, w)
+        let shard_id = utils::get_shard_id_from_global_vid(v.id(), self.nr_shards);
+        self.shards[shard_id].vertex_props_window(v.id(), w)
     }
 
-    pub fn edge_props_vec_window(
+    pub fn edge_props_vec_window<T: InputVertex>(
         &self,
-        v: u64,
+        v: T,
         e: usize,
         name: String,
         w: Range<i64>,
     ) -> Vec<(i64, Prop)> {
-        let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
+        let shard_id = utils::get_shard_id_from_global_vid(v.id(), self.nr_shards);
         self.shards[shard_id].edge_props_vec_window(e, name, w)
     }
 }
