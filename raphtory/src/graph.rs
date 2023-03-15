@@ -134,6 +134,24 @@ impl Graph {
         }
     }
 
+    pub fn has_edge(&self, src: &PyAny, dst: &PyAny) -> bool {
+        if src.extract::<String>().is_ok() && dst.extract::<String>().is_ok() {
+            self.graph.has_edge(
+                src.extract::<String>().unwrap(),
+                dst.extract::<String>().unwrap(),
+            )
+        }
+        else if  src.extract::<u64>().is_ok() && dst.extract::<u64>().is_ok() {
+            self.graph.has_edge(
+                src.extract::<u64>().unwrap(),
+                dst.extract::<u64>().unwrap(),
+            )
+        }
+        else {
+            panic!("Types of src and dst must be the same (either Int or str)")
+        }
+    }
+
     pub fn add_vertex(&self, t: i64, v: &PyAny, props: HashMap<String, Prop>) {
         match v.extract::<String>() {
             Ok(vv) => {

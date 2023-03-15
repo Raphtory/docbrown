@@ -340,4 +340,5 @@ def test_add_edge_string():
     assert g.has_vertex("haaroon")
     assert g.has_vertex("ben")
 
-    # TODO: has_edge
+    assert g.has_edge(1, 2)
+    assert g.has_edge("haaroon", "ben")
