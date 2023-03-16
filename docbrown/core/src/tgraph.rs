@@ -157,7 +157,6 @@ impl TemporalGraph {
     }
 
     pub(crate) fn add_vertex_meta(&mut self, v: u64, data: &Vec<(String, Prop)>) {
-        println!(">>>>>>>> adding vertex meta");
         let index = *self.logical_to_physical.get(&v).expect(&format!("impossible to add metadata to non existing vertex {v}"));
         self.props.set_vertex_meta(index, data);
     }
@@ -684,11 +683,8 @@ impl TemporalGraph {
     }
 
     pub fn vertex_meta(&self, v: u64, name: &str) -> Option<Prop> {
-        println!(">>>>>>> accessing vertex meta");
         let index = *self.logical_to_physical.get(&v)?;
-        println!(">>>>>>> accessing vertex meta 2");
         let meta_id = self.props.get_static_id(name)?;
-        println!(">>>>>>> accessing vertex meta 3");
         match self.props.static_vertex_props(index).get(meta_id) {
             Some(prop) => prop.clone(), // TODO: why is this necessary?
             None => None,

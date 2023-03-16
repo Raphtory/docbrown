@@ -76,7 +76,6 @@ impl Props {
     }
 
     pub(crate) fn static_vertex_props(&self, vertex_id: usize) -> &LazyVec<Option<Prop>> {
-        println!("getting vertex meta");
         if vertex_id >= self.num_vertex_slots {
             panic!("vertex_id {vertex_id} outside static_vertex_props bounds");
         }
@@ -142,7 +141,6 @@ impl Props {
     }
 
     pub(crate) fn get_static_id(&self, name: &str) -> Option<usize> {
-        println!(">>>>>>> getting static id");
         dbg!(&self.prop_ids);
         self.get_id(name, true)
     }
@@ -195,7 +193,6 @@ impl Props {
 
     pub fn set_vertex_meta(&mut self, vertex_id: usize, props: &Vec<(String, Prop)>) -> Result<(), ()> {
         if !props.is_empty() {
-            println!("adding vertex meta");
             let translated_props = self.translate_props(props, true);
             let vertex_slot: &mut LazyVec<Option<Prop>> = Self::grow_and_get_slot(&mut self.static_vertex_props, vertex_id);
             for (prop_id, prop) in translated_props {
