@@ -1,12 +1,14 @@
 use std::{collections::HashMap, sync::Arc};
 
 use crate::wrappers;
+use crate::wrappers::Perspective;
 use crate::{graph::Graph, wrappers::*};
+use docbrown_core::tgraph::EdgeRef;
 use docbrown_db::graph_window;
+use docbrown_db::view_api::*;
 use itertools::Itertools;
 use pyo3::prelude::*;
 use pyo3::types::PyIterator;
-use crate::wrappers::Perspective;
 
 #[pyclass]
 pub struct GraphWindowSet {
@@ -21,9 +23,7 @@ impl From<graph_window::GraphWindowSet> for GraphWindowSet {
 
 impl GraphWindowSet {
     pub fn new(window_set: graph_window::GraphWindowSet) -> GraphWindowSet {
-        GraphWindowSet {
-            window_set,
-        }
+        GraphWindowSet { window_set }
     }
 }
 
@@ -38,7 +38,6 @@ impl GraphWindowSet {
     }
 }
 
-
 #[pyclass]
 pub struct WindowedGraph {
     pub(crate) graph_w: graph_window::WindowedGraph,
@@ -46,9 +45,7 @@ pub struct WindowedGraph {
 
 impl From<graph_window::WindowedGraph> for WindowedGraph {
     fn from(value: graph_window::WindowedGraph) -> Self {
-        WindowedGraph {
-            graph_w: value,
-        }
+        WindowedGraph { graph_w: value }
     }
 }
 
@@ -57,19 +54,15 @@ impl WindowedGraph {
     #[new]
     pub fn new(graph: &Graph, t_start: i64, t_end: i64) -> Self {
         Self {
-            graph_w: graph_window::WindowedGraph::new(
-                graph.graph.clone(),
-                t_start,
-                t_end,
-            ),
+            graph_w: graph_window::WindowedGraph::new(graph.graph.clone(), t_start, t_end),
         }
     }
 
-    pub fn earliest_time(&self,) -> i64 {
+    pub fn earliest_time(&self) -> i64 {
         self.graph_w.t_start
     }
 
-    pub fn latest_time(&self,) -> i64 {
+    pub fn latest_time(&self) -> i64 {
         self.graph_w.t_end
     }
 
@@ -117,7 +110,7 @@ impl WindowedGraph {
 
     pub fn vertex_ids(&self) -> VertexIdsIterator {
         VertexIdsIterator {
-            iter: self.graph_w.vertex_ids(),
+            iter: self.graph_w.vertices().id(),
         }
     }
 
@@ -142,7 +135,7 @@ pub struct WindowedVertex {
 impl WindowedVertex {
     fn from(&self, value: graph_window::WindowedVertex) -> WindowedVertex {
         WindowedVertex {
-            id: value.g_id,
+            id: value.id(),
             graph: self.graph.clone(),
             vertex_w: value,
         }
@@ -154,7 +147,7 @@ impl WindowedVertex {
     ) -> WindowedVertex {
         WindowedVertex {
             graph,
-            id: vertex.g_id,
+            id: vertex.id(),
             vertex_w: vertex,
         }
     }
@@ -241,19 +234,19 @@ impl WindowedVertex {
 
     pub fn neighbours_ids(&self) -> VertexIdsIterator {
         VertexIdsIterator {
-            iter: Box::new(self.vertex_w.neighbours_ids()),
+            iter: Box::new(self.vertex_w.neighbours().id()),
         }
     }
 
     pub fn in_neighbours_ids(&self) -> VertexIdsIterator {
         VertexIdsIterator {
-            iter: Box::new(self.vertex_w.in_neighbours_ids()),
+            iter: Box::new(self.vertex_w.in_neighbours().id()),
         }
     }
 
     pub fn out_neighbours_ids(&self) -> VertexIdsIterator {
         VertexIdsIterator {
-            iter: Box::new(self.vertex_w.out_neighbours_ids()),
+            iter: Box::new(self.vertex_w.out_neighbours().id()),
         }
     }
 
@@ -277,12 +270,14 @@ pub struct WindowedEdge {
 
 impl From<graph_window::WindowedEdge> for WindowedEdge {
     fn from(value: graph_window::WindowedEdge) -> WindowedEdge {
+        let value_ref: EdgeRef = value.as_ref();
+        // FIXME: temporary hack, shouldn't really be copying all these values
         WindowedEdge {
-            edge_id: value.edge_id,
-            src: value.src,
-            dst: value.dst,
-            time: value.time,
-            is_remote: value.is_remote,
+            edge_id: value_ref.edge_id,
+            src: value_ref.src_g_id,
+            dst: value_ref.dst_g_id,
+            time: value_ref.time,
+            is_remote: value_ref.is_remote,
             edge_w: value,
         }
     }
