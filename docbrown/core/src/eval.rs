@@ -23,14 +23,14 @@ pub trait Eval {
         having: PRED,
     ) -> Context
     where
-        FMAP: Fn(&mut EvalVertexView<'a, Self>, &mut Context) -> Vec<VertexRef>,
+        FMAP: Fn(&mut EvalVertexView<'a, Self>, &mut Context) -> Vec<LocalVRef>,
         PRED: Fn(&EvalVertexView<'a, Self>, &mut Context) -> bool,
         Self: Sized + 'a;
 }
 
-pub struct VertexRef(usize);
+pub struct LocalVRef(usize);
 
-impl VertexRef {
+impl LocalVRef {
     fn pid(&self) -> usize {
         self.0
     }
@@ -349,7 +349,7 @@ impl Eval for TemporalGraph {
         having: PRED,
     ) -> Context
     where
-        FMAP: Fn(&mut EvalVertexView<'a, Self>, &mut Context) -> Vec<VertexRef>,
+        FMAP: Fn(&mut EvalVertexView<'a, Self>, &mut Context) -> Vec<LocalVRef>,
         PRED: Fn(&EvalVertexView<'a, Self>, &mut Context) -> bool,
         Self: Sized + 'a,
     {
@@ -429,8 +429,8 @@ impl<'a> EvalVertexView<'a, TemporalGraph> {
         acc.read_prev(&id)
     }
 
-    pub fn as_vertex_ref(&self) -> VertexRef {
-        VertexRef(self.vv.pid.unwrap())
+    pub fn as_vertex_ref(&self) -> LocalVRef {
+        LocalVRef(self.vv.pid.unwrap())
     }
 }
 
