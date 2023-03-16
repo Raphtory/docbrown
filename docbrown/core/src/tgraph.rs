@@ -156,9 +156,9 @@ impl TemporalGraph {
         self.props.upsert_temporal_vertex_props(t, index, props);
     }
 
-    pub(crate) fn add_vertex_meta(&mut self, v: u64, data: &Vec<(String, Prop)>) {
+    pub(crate) fn add_vertex_properties(&mut self, v: u64, data: &Vec<(String, Prop)>) {
         let index = *self.logical_to_physical.get(&v).expect(&format!("impossible to add metadata to non existing vertex {v}"));
-        self.props.set_vertex_meta(index, data);
+        self.props.set_static_vertex_prop(index, data);
     }
 
     pub fn add_edge(&mut self, t: i64, src: u64, dst: u64) {
@@ -191,18 +191,6 @@ impl TemporalGraph {
         self.props.upsert_temporal_edge_props(t, src_edge_meta_id, props).unwrap()
     }
 
-    // pub(crate) fn add_edge_meta(&mut self, src: u64, dst: u64, data: &Vec<(String, Prop)>) {
-    //     let conv = self.logical_to_physical;
-    //     let (src_pid, dst_pid) = match (*conv.get(src), *conv.get(dst)) {
-    //         (Some(src_pid), Some(dst_pid)) => (src_pid, dst_pid),
-    //         _ => panic!("impossible to add metadata to non existing edge {src} -> {dst}")
-    //     };
-    //
-    //     self.adj_lists[src_pid]
-    //
-    //     self.props.set_vertex_meta(index, data);
-    // }
-
     pub(crate) fn add_edge_remote_out(
         &mut self,
         t: i64,
@@ -233,6 +221,18 @@ impl TemporalGraph {
             self.link_inbound_edge(t, dst, src.try_into().unwrap(), dst_pid, true);
 
         self.props.upsert_temporal_edge_props(t, dst_edge_meta_id, props).unwrap()
+    }
+
+    // TODO: this should return a Result
+    pub(crate) fn add_edge_properties(&mut self, src: u64, dst: u64, data: &Vec<(String, Prop)>) {
+        let src_pid = self.logical_to_physical[&src];
+        let dst_pid = self.logical_to_physical[&dst];
+        self.link_edge_properties(src_pid, dst_pid, false, data).unwrap();
+    }
+
+    pub(crate) fn add_remote_out_properties(&mut self, src: u64, dst: u64, data: &Vec<(String, Prop)>) {
+        let src_pid = self.logical_to_physical[&src];
+        self.link_edge_properties(src_pid, dst.try_into().unwrap(), true, data).unwrap();
     }
 
     pub(crate) fn degree(&self, v: u64, d: Direction) -> usize {
@@ -682,9 +682,14 @@ impl TemporalGraph {
         Box::new(self.neighbours_window(v, w, d).map(|vv| vv.g_id))
     }
 
-    pub fn vertex_meta(&self, v: u64, name: &str) -> Option<Prop> {
-        let index = *self.logical_to_physical.get(&v)?;
+    pub fn static_vertex_prop(&self, v: u64, name: &str) -> Option<Prop> {
+        let index = self.logical_to_physical[&v]; // this should panic as this v is not provided by the user
         self.props.static_vertex_prop(index, name)
+    }
+
+    pub fn static_vertex_prop_keys(&self, v: u64) -> Vec<String> {
+        let index = self.logical_to_physical[&v]; // this should panic as this v is not provided by the user
+        self.props.static_vertex_keys(index)
     }
 
     pub(crate) fn vertex_prop(
@@ -755,8 +760,12 @@ impl TemporalGraph {
         Some(hm) // Don't return "None" if hm.is_empty for Some({}) gets translated as {} in python
     }
 
-    pub fn edge_meta(&self, e: usize, name: &str) -> Option<Prop> {
+    pub fn static_edge_prop(&self, e: usize, name: &str) -> Option<Prop> {
         self.props.static_edge_prop(e, name)
+    }
+
+    pub fn static_edge_prop_keys(&self, e: usize) -> Vec<String> {
+        self.props.static_edge_keys(e)
     }
 
     pub fn edge_prop(
@@ -865,6 +874,17 @@ impl TemporalGraph {
                 edge_id
             }
         }
+    }
+
+    fn link_edge_properties(&mut self, src: usize, dst: usize, remote: bool, data: &Vec<(String, Prop)>) -> Result<(), ()> {
+        let edge_id = match &self.adj_lists[src] {
+            Adj::Solo(_) => Err(())?,
+            Adj::List { out, remote_out, .. } => {
+                let list = if remote { remote_out } else { out };
+                list.find(dst).map(|e| e.edge_id()).ok_or(())?
+            },
+        };
+        self.props.set_static_edge_prop(edge_id, data)
     }
 
     fn edges_iter(

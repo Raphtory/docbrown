@@ -177,7 +177,7 @@ impl Props {
         Ok(())
     }
 
-    pub fn set_vertex_meta(&mut self, vertex_id: usize, props: &Vec<(String, Prop)>) -> Result<(), ()> {
+    pub fn set_static_vertex_prop(&mut self, vertex_id: usize, props: &Vec<(String, Prop)>) -> Result<(), ()> {
         if !props.is_empty() {
             let translated_props = self.translate_props(props, true);
             let vertex_slot: &mut LazyVec<Option<Prop>> = Self::grow_and_get_slot(&mut self.static_vertex_props, vertex_id);
@@ -189,7 +189,7 @@ impl Props {
         Ok(())
     }
 
-    pub fn set_edge_meta(&mut self, edge_id: usize, props: &Vec<(String, Prop)>) -> Result<(), ()> {
+    pub fn set_static_edge_prop(&mut self, edge_id: usize, props: &Vec<(String, Prop)>) -> Result<(), ()> {
         Self::assert_valid_edge_id(edge_id);
         if !props.is_empty() {
             let translated_props = self.translate_props(props, true);

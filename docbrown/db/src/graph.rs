@@ -144,9 +144,9 @@ impl Graph {
         self.shards[shard_id].add_vertex(t, v, &props);
     }
 
-    pub fn add_vertex_meta(&self, v: u64, data: &Vec<(String, Prop)>) {
+    pub fn add_vertex_properties(&self, v: u64, data: &Vec<(String, Prop)>) {
         let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
-        self.shards[shard_id].add_vertex_meta(v, data)
+        self.shards[shard_id].add_vertex_properties(v, data)
     }
 
     pub fn add_edge(&self, t: i64, src: u64, dst: u64, props: &Vec<(String, Prop)>) {
@@ -160,6 +160,18 @@ impl Graph {
             // the src partition and dst partition to add a remote edge between both
             self.shards[src_shard_id].add_edge_remote_out(t, src, dst, props);
             self.shards[dst_shard_id].add_edge_remote_into(t, src, dst, props);
+        }
+    }
+
+    pub fn add_edge_properties(&self, src: u64, dst: u64, props: &Vec<(String, Prop)>) {
+        let src_shard_id = utils::get_shard_id_from_global_vid(src, self.nr_shards);
+        let dst_shard_id = utils::get_shard_id_from_global_vid(dst, self.nr_shards);
+
+        if src_shard_id == dst_shard_id {
+            self.shards[src_shard_id].add_edge_properties(src, dst, props)
+        } else {
+            // TODO: we don't add properties to dst shard, but may need to depending on the plans
+            self.shards[src_shard_id].add_remote_out_properties(src, dst, props);
         }
     }
 
@@ -351,9 +363,14 @@ impl Graph {
         Box::new(iter)
     }
 
-    pub(crate) fn vertex_meta(&self, v: u64, name: &str) -> Option<Prop> {
+    pub(crate) fn static_vertex_prop(&self, v: u64, name: &str) -> Option<Prop> {
         let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards); // todo shouldnt this be provided by the graph, which already know the number of shards?
-        self.shards[shard_id].vertex_meta(v, name)
+        self.shards[shard_id].static_vertex_prop(v, name)
+    }
+
+    pub(crate) fn static_vertex_prop_keys(&self, v: u64) -> Vec<String> {
+        let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
+        self.shards[shard_id].static_vertex_prop_keys(v)
     }
 
     pub(crate) fn vertex_prop_vec(&self, v: u64, name: String) -> Vec<(i64, Prop)> {
@@ -385,9 +402,14 @@ impl Graph {
         self.shards[shard_id].vertex_props_window(v, w)
     }
 
-    pub(crate) fn edge_meta(&self, v: u64, e: usize, name: &str) -> Option<Prop> {
+    pub(crate) fn static_edge_prop(&self, v: u64, e: usize, name: &str) -> Option<Prop> {
         let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
-        self.shards[shard_id].edge_meta(e, name)
+        self.shards[shard_id].static_edge_prop(e, name)
+    }
+
+    pub(crate) fn static_edge_prop_keys(&self, v: u64, e: usize) -> Vec<String> {
+        let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
+        self.shards[shard_id].static_edge_prop_keys(e)
     }
 
     pub fn edge_props_vec_window(

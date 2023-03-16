@@ -133,8 +133,8 @@ impl TGraphShard {
         self.write_shard(|tg| tg.add_vertex_with_props(t, v, props))
     }
 
-    pub fn add_vertex_meta(&self, v: u64, data: &Vec<(String, Prop)>) {
-        self.write_shard(|tg| tg.add_vertex_meta(v, data))
+    pub fn add_vertex_properties(&self, v: u64, data: &Vec<(String, Prop)>) {
+        self.write_shard(|tg| tg.add_vertex_properties(v, data))
     }
 
     pub fn add_edge(&self, t: i64, src: u64, dst: u64, props: &Vec<(String, Prop)>) {
@@ -147,6 +147,14 @@ impl TGraphShard {
 
     pub fn add_edge_remote_into(&self, t: i64, src: u64, dst: u64, props: &Vec<(String, Prop)>) {
         self.write_shard(|tg| tg.add_edge_remote_into(t, src, dst, props))
+    }
+
+    pub fn add_edge_properties(&self, src: u64, dst: u64, data: &Vec<(String, Prop)>) {
+        self.write_shard(|tg| tg.add_edge_properties(src, dst, data))
+    }
+
+    pub fn add_remote_out_properties(&self, src: u64, dst: u64, data: &Vec<(String, Prop)>) {
+        self.write_shard(|tg| tg.add_remote_out_properties(src, dst, data))
     }
 
     pub fn degree(&self, v: u64, d: Direction) -> usize {
@@ -348,8 +356,12 @@ impl TGraphShard {
         iter.into_iter()
     }
 
-    pub fn vertex_meta(&self, v: u64, name: &str) -> Option<Prop> {
-        self.read_shard(|tg| tg.vertex_meta(v, name))
+    pub fn static_vertex_prop(&self, v: u64, name: &str) -> Option<Prop> {
+        self.read_shard(|tg| tg.static_vertex_prop(v, name))
+    }
+
+    pub fn static_vertex_prop_keys(&self, v: u64) -> Vec<String> {
+        self.read_shard(|tg| tg.static_vertex_prop_keys(v))
     }
 
     pub fn vertex_prop_vec(&self, v: u64, name: String) -> Vec<(i64, Prop)> {
@@ -377,8 +389,12 @@ impl TGraphShard {
         })
     }
 
-    pub fn edge_meta(&self, e: usize, name: &str) -> Option<Prop> {
-        self.read_shard(|tg| tg.edge_meta(e, name))
+    pub fn static_edge_prop(&self, e: usize, name: &str) -> Option<Prop> {
+        self.read_shard(|tg| tg.static_edge_prop(e, name))
+    }
+
+    pub fn static_edge_prop_keys(&self, e: usize) -> Vec<String> {
+        self.read_shard(|tg| tg.static_edge_prop_keys(e))
     }
 
     pub fn edge_prop_vec(&self, e: usize, name: String) -> Vec<(i64, Prop)> {

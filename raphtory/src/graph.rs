@@ -6,6 +6,7 @@ use std::collections::HashMap;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use itertools::Itertools;
 use pyo3::types::PyIterator;
 
 use crate::graph_window::{GraphWindowSet, WindowedGraph};
@@ -121,14 +122,12 @@ impl Graph {
         )
     }
 
-    pub fn add_vertex_meta(&self, v: u64, data: HashMap<String, Prop>) {
-        self.graph.add_vertex_meta(
-            v,
-            &data
-                .into_iter()
-                .map(|(key, value)| (key, value.into()))
-                .collect::<Vec<(String, dbc::Prop)>>(), // todo put this in a common place
-        )
+    pub fn add_vertex_properties(&self, v: u64, props: HashMap<String, Prop>) {
+        let prop_vec = &props
+            .into_iter()
+            .map(|(key, value)| (key, value.into()))
+            .collect_vec(); // todo put this in a common place
+        self.graph.add_vertex_properties(v, prop_vec);
     }
 
     pub fn add_edge(&self, t: i64, src: u64, dst: u64, props: HashMap<String, Prop>) {
@@ -141,5 +140,13 @@ impl Graph {
                 .map(|f| (f.0.clone(), f.1.into()))
                 .collect::<Vec<(String, dbc::Prop)>>(),
         )
+    }
+
+    pub fn add_edge_properties(&self, src: u64, dst: u64, props: HashMap<String, Prop>) {
+        let prop_vec = &props
+            .into_iter()
+            .map(|(key, value)| (key, value.into()))
+            .collect_vec();
+        self.graph.add_edge_properties(src, dst, prop_vec);
     }
 }
