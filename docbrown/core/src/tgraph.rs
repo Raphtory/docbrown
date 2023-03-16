@@ -684,11 +684,7 @@ impl TemporalGraph {
 
     pub fn vertex_meta(&self, v: u64, name: &str) -> Option<Prop> {
         let index = *self.logical_to_physical.get(&v)?;
-        let meta_id = self.props.get_static_id(name)?;
-        match self.props.static_vertex_props(index).get(meta_id) {
-            Some(prop) => prop.clone(), // TODO: why is this necessary?
-            None => None,
-        }
+        self.props.static_vertex_prop(index, name)
     }
 
     pub(crate) fn vertex_prop(
@@ -697,9 +693,8 @@ impl TemporalGraph {
         name: &str,
     ) -> Option<Box<dyn Iterator<Item = (&i64, Prop)> + '_>> {
         let index = self.logical_to_physical.get(&v)?;
-        let tprops = self.props.temporal_vertex_props(*index);
-        let prop_id = self.props.get_temporal_id(name)?; // todo we have this same code four times
-        Some(tprops.get(prop_id).unwrap_or(&TProp::Empty).iter())
+        let tprop = self.props.temporal_vertex_prop(*index, name);
+        Some(tprop.unwrap_or(&TProp::Empty).iter())
     }
 
     pub(crate) fn vertex_prop_window(
@@ -709,16 +704,14 @@ impl TemporalGraph {
         w: &Range<i64>,
     ) -> Option<Box<dyn Iterator<Item = (&i64, Prop)> + '_>> {
         let index = self.logical_to_physical.get(&v)?;
-        let tprops = self.props.temporal_vertex_props(*index);
-        let prop_id = self.props.get_temporal_id(name)?;
-        Some(tprops.get(prop_id).unwrap_or(&TProp::Empty).iter_window(w.clone()))
+        let tprop = self.props.temporal_vertex_prop(*index, name);
+        Some(tprop.unwrap_or(&TProp::Empty).iter_window(w.clone()))
     }
 
     pub(crate) fn vertex_prop_vec(&self, v: u64, name: &str) -> Option<Vec<(i64, Prop)>> {
         let index = self.logical_to_physical.get(&v)?;
-        let tprops = self.props.temporal_vertex_props(*index);
-        let prop_id = self.props.get_temporal_id(name)?;
-        Some(tprops.get(prop_id).unwrap_or(&TProp::Empty).iter().map(|(t, p)| (*t, p)).collect_vec())
+        let tprop = self.props.temporal_vertex_prop(*index, name);
+        Some(tprop.unwrap_or(&TProp::Empty).iter().map(|(t, p)| (*t, p)).collect_vec())
     }
 
     pub(crate) fn vertex_prop_vec_window(
@@ -728,10 +721,9 @@ impl TemporalGraph {
         w: &Range<i64>,
     ) -> Option<Vec<(i64, Prop)>> {
         let index = self.logical_to_physical.get(&v)?;
-        let tprops = self.props.temporal_vertex_props(*index);
-        let prop_id = self.props.get_temporal_id(name)?;
+        let tprop = self.props.temporal_vertex_prop(*index, name);
         Some(
-            tprops.get(prop_id).unwrap_or(&TProp::Empty).iter_window(w.clone())
+            tprop.unwrap_or(&TProp::Empty).iter_window(w.clone())
                 .map(|(t, p)| (*t, p))
                 .collect_vec(),
         )
@@ -764,11 +756,7 @@ impl TemporalGraph {
     }
 
     pub fn edge_meta(&self, e: usize, name: &str) -> Option<Prop> {
-        let meta_id = self.props.get_static_id(name)?;
-        match self.props.static_edge_props(e).get(meta_id) {
-            Some(prop) => prop.clone(),
-            None => None,
-        }
+        self.props.static_edge_prop(e, name)
     }
 
     pub fn edge_prop(
@@ -776,8 +764,7 @@ impl TemporalGraph {
         e: usize,
         name: &str,
     ) -> Option<Box<dyn Iterator<Item = (&i64, Prop)> + '_>> {
-        let prop_id = self.props.get_temporal_id(name)?;
-        Some(self.props.temporal_edge_props(e).get(prop_id).unwrap_or(&TProp::Empty).iter())
+        Some(self.props.temporal_edge_prop(e, name).unwrap_or(&TProp::Empty).iter())
     }
 
     pub fn edge_prop_window(
@@ -786,15 +773,12 @@ impl TemporalGraph {
         name: &str,
         w: Range<i64>,
     ) -> Option<Box<dyn Iterator<Item = (&i64, Prop)> + '_>> {
-        let prop_id = self.props.get_temporal_id(name)?;
-        Some(self.props.temporal_edge_props(e).get(prop_id).unwrap_or(&TProp::Empty).iter_window(w))
+        Some(self.props.temporal_edge_prop(e, name).unwrap_or(&TProp::Empty).iter_window(w))
     }
 
     pub fn edge_prop_vec(&self, e: usize, name: &str) -> Option<Vec<(i64, Prop)>> {
-        let prop_id = self.props.get_temporal_id(name)?;
         Some(
-            self.props.temporal_edge_props(e)
-                .get(prop_id).unwrap_or(&TProp::Empty)
+            self.props.temporal_edge_prop(e, name)?
                 .iter()
                 .map(|(t, p)| (*t, p))
                 .collect_vec(),
@@ -807,10 +791,8 @@ impl TemporalGraph {
         name: &str,
         w: Range<i64>,
     ) -> Option<Vec<(i64, Prop)>> {
-        let prop_id = self.props.get_temporal_id(name)?;
         Some(
-            self.props.temporal_edge_props(e)
-                .get(prop_id).unwrap_or(&TProp::Empty)
+            self.props.temporal_edge_prop(e, name)?
                 .iter_window(w)
                 .map(|(t, p)| (*t, p))
                 .collect_vec(),
@@ -1054,7 +1036,7 @@ mod graph_test {
         assert!(g.has_vertex(9));
         assert!(g.has_vertex_window(9, &(1..15)));
         assert_eq!(g.vertices().map(|v| v.g_id).collect::<Vec<u64>>(), vec![9]);
-        g.props.temporal_vertex_props(2); // this should panic
+        g.props.temporal_vertex_prop(2, ""); // this should panic
     }
 
     #[test]
@@ -1871,7 +1853,7 @@ mod graph_test {
                     .map(|(mut x, mut y)| {
                         x.append(&mut y);
                         x
-                    });
+                    })
             })
             .flatten()
             .collect::<Vec<_>>();

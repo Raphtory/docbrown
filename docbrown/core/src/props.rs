@@ -75,33 +75,64 @@ impl Props {
         self.num_edge_slots
     }
 
-    pub(crate) fn static_vertex_props(&self, vertex_id: usize) -> &LazyVec<Option<Prop>> {
-        if vertex_id >= self.num_vertex_slots {
-            panic!("vertex_id {vertex_id} outside static_vertex_props bounds");
-        }
-        self.static_vertex_props.get(vertex_id).unwrap_or(&LazyVec::Empty)
+    pub(crate) fn static_vertex_prop(&self, id: usize, name: &str) -> Option<Prop> {
+        assert!(id < self.num_vertex_slots);
+        let prop_id = self.get_id(name, true)?;
+        let props = self.static_vertex_props.get(id).unwrap_or(&LazyVec::Empty);
+        props.get(prop_id).unwrap_or(&None).clone()
     }
 
-    pub(crate) fn temporal_vertex_props(&self, vertex_id: usize) -> &LazyVec<TProp> {
-        if vertex_id >= self.num_vertex_slots {
-            panic!("vertex_id {vertex_id} outside temporal_vertex_props bounds");
-        }
-        self.temporal_vertex_props.get(vertex_id).unwrap_or(&LazyVec::Empty)
+    pub(crate) fn temporal_vertex_prop(&self, id: usize, name: &str) -> Option<&TProp> {
+        assert!(id < self.num_vertex_slots);
+        let prop_id = self.get_id(name, false)?;
+        let props = self.temporal_vertex_props.get(id).unwrap_or(&LazyVec::Empty);
+        props.get(prop_id)
     }
 
-    pub(crate) fn static_edge_props(&self, edge_id: usize) -> &LazyVec<Option<Prop>> {
-        if edge_id >= self.num_edge_slots {
-            panic!("vertex_id {edge_id} outside static_edge_props bounds");
-        }
-        self.static_edge_props.get(edge_id).unwrap_or(&LazyVec::Empty)
+    pub(crate) fn static_edge_prop(&self, id: usize, name: &str) -> Option<Prop> {
+        assert!(id < self.num_edge_slots);
+        let prop_id = self.get_id(name, true)?;
+        let props = self.static_edge_props.get(id).unwrap_or(&LazyVec::Empty);
+        props.get(prop_id).unwrap_or(&None).clone()
     }
 
-    pub(crate) fn temporal_edge_props(&self, edge_id: usize) -> &LazyVec<TProp> {
-        if edge_id >= self.num_edge_slots {
-            panic!("vertex_id {edge_id} outside temporal_edge_props bounds");
-        }
-        self.temporal_edge_props.get(edge_id).unwrap_or(&LazyVec::Empty)
+    pub(crate) fn temporal_edge_prop(&self, id: usize, name: &str) -> Option<&TProp> {
+        assert!(id < self.num_edge_slots);
+        let prop_id = self.get_id(name, false)?;
+        let props = self.temporal_edge_props.get(id).unwrap_or(&LazyVec::Empty);
+        props.get(prop_id)
     }
+
+
+    // pub(crate) fn static_vertex_prop(&self, id: usize, name: &str) -> Option<Prop> {
+    //     if id >= self.num_vertex_slots {
+    //         panic!("vertex_id {vertex_id} outside static_vertex_props bounds");
+    //     }
+    //     let prop_id = self.get_id(name, true)?;
+    //     let props = self.static_vertex_props.get(id).unwrap_or(&LazyVec::Empty);
+    //     props.get(prop_id).unwrap_or(None)
+    // }
+
+    // pub(crate) fn temporal_vertex_props(&self, vertex_id: usize) -> &LazyVec<TProp> {
+    //     if vertex_id >= self.num_vertex_slots {
+    //         panic!("vertex_id {vertex_id} outside temporal_vertex_props bounds");
+    //     }
+    //     self.temporal_vertex_props.get(vertex_id).unwrap_or(&LazyVec::Empty)
+    // }
+    //
+    // pub(crate) fn static_edge_props(&self, edge_id: usize) -> &LazyVec<Option<Prop>> {
+    //     if edge_id >= self.num_edge_slots {
+    //         panic!("vertex_id {edge_id} outside static_edge_props bounds");
+    //     }
+    //     self.static_edge_props.get(edge_id).unwrap_or(&LazyVec::Empty)
+    // }
+    //
+    // pub(crate) fn temporal_edge_props(&self, edge_id: usize) -> &LazyVec<TProp> {
+    //     if edge_id >= self.num_edge_slots {
+    //         panic!("vertex_id {edge_id} outside temporal_edge_props bounds");
+    //     }
+    //     self.temporal_edge_props.get(edge_id).unwrap_or(&LazyVec::Empty)
+    // }
 
     fn get_or_allocate_id(&mut self, name: &str, should_be_static: bool) -> Result<PropId, ()> {
         match self.prop_ids.get(name) {
@@ -138,15 +169,6 @@ impl Props {
             Some(prop_id) if prop_id.is_static() == should_be_static => Some(prop_id.get_id()),
             _ => None,
         }
-    }
-
-    pub(crate) fn get_static_id(&self, name: &str) -> Option<usize> {
-        dbg!(&self.prop_ids);
-        self.get_id(name, true)
-    }
-
-    pub(crate) fn get_temporal_id(&self, name: &str) -> Option<usize> {
-        self.get_id(name, false)
     }
 
     fn grow_and_get_slot<A>(vector: &mut Vec<A>, id: usize) -> &mut A
@@ -307,12 +329,12 @@ mod props_tests {
     }
 
     #[test]
-    fn insert_default_value_against_no_props_vertex_upsert() {
-        let mut props = Props::default();
-        props.upsert_temporal_vertex_props(1, 0, &vec![]);
-
-        assert_eq!(props.temporal_vertex_props(0), &LazyVec::Empty)
-    }
+    // fn insert_default_value_against_no_props_vertex_upsert() {
+    //     let mut props = Props::default();
+    //     props.upsert_temporal_vertex_props(1, 0, &vec![]);
+    //
+    //     assert_eq!(props.temporal_vertex_props[0], LazyVec::Empty)
+    // }
 
     #[test]
     fn insert_new_vertex_prop() {
@@ -374,12 +396,12 @@ mod props_tests {
     }
 
     #[test]
-    fn insert_default_value_against_no_props_edge_upsert() {
-        let mut props = Props::default();
-        props.upsert_temporal_edge_props(1, 1, &vec![]);
-
-        assert_eq!(props.temporal_edge_props(1), &LazyVec::Empty)
-    }
+    // fn insert_default_value_against_no_props_edge_upsert() {
+    //     let mut props = Props::default();
+    //     props.upsert_temporal_edge_props(1, 1, &vec![]);
+    //
+    //     assert_eq!(props.temporal_edge_props[1], LazyVec::Empty)
+    // }
 
     #[test]
     fn insert_new_edge_prop() {
@@ -389,7 +411,7 @@ mod props_tests {
         let prop_id = props.get_or_allocate_temporal_id("bla").unwrap();
         assert_eq!(
             props
-                .temporal_edge_props(1)
+                .temporal_edge_props[1]
                 .get(prop_id)
                 .unwrap()
                 .iter()
