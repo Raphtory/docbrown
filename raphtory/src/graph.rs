@@ -107,11 +107,19 @@ impl Graph {
     }
 
     pub fn number_of_edges(&self) -> usize {
-        self.graph.number_of_edges()
+        self.graph.num_edges()
+    }
+
+    pub fn num_edges(&self) -> usize {
+        self.graph.num_edges()
     }
 
     pub fn number_of_nodes(&self) -> usize {
-        self.graph.number_of_nodes()
+        self.graph.num_vertices()
+    }
+
+    pub fn num_vertices(&self) -> usize {
+        self.graph.num_vertices()
     }
 
     pub fn has_vertex(&self, v: &PyAny) -> bool {
