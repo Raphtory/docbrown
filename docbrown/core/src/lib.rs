@@ -8,7 +8,7 @@ mod adj;
 mod bitset;
 pub mod tgraph;
 pub mod lsm;
-mod meta;
+mod static_props;
 mod misc;
 mod props;
 mod sorted_vec_map;
@@ -16,7 +16,7 @@ pub mod tadjset;
 mod tcell;
 pub mod tgraph_shard;
 mod tprop;
-mod tprop_vec;
+mod lazy_vec;
 pub mod utils;
 pub mod eval;
 

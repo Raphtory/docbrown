@@ -322,10 +322,20 @@ def test_perspective_set():
 
 
 def test_metadata():
-    print("executing thissssss")
     g = create_graph(1)
     g.add_edge(0, 1, 2, {})
+
+
+    # this is what we want:
+    # g.add_vertex(time=1, id=1, temporal_property=, static_property=)
+    # g.add_vertex_property(id=1, property=)
+
     g.add_vertex_meta(1, {"metadata": "value"})
     view = g.window(-1, 1)
     meta = view.vertex(1).meta("metadata")
+
+
+
+
+
     assert meta == "value"
