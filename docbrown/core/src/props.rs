@@ -71,70 +71,60 @@ impl Default for Props {
 }
 
 impl Props {
+
+    // GETTERS:
+
     pub(crate) fn get_next_available_edge_id(&mut self) -> usize {
         self.num_edge_slots
     }
 
+    fn get_prop_id(&self, name: &str, should_be_static: bool) -> Option<usize> {
+        match self.prop_ids.get(name) {
+            Some(prop_id) if prop_id.is_static() == should_be_static => Some(prop_id.get_id()),
+            _ => None,
+        }
+    }
+
     pub(crate) fn static_vertex_prop(&self, id: usize, name: &str) -> Option<Prop> {
         assert!(id < self.num_vertex_slots);
-        let prop_id = self.get_id(name, true)?;
+        let prop_id = self.get_prop_id(name, true)?;
         let props = self.static_vertex_props.get(id).unwrap_or(&LazyVec::Empty);
         props.get(prop_id).unwrap_or(&None).clone()
     }
 
     pub(crate) fn temporal_vertex_prop(&self, id: usize, name: &str) -> Option<&TProp> {
         assert!(id < self.num_vertex_slots);
-        let prop_id = self.get_id(name, false)?;
+        let prop_id = self.get_prop_id(name, false)?;
         let props = self.temporal_vertex_props.get(id).unwrap_or(&LazyVec::Empty);
         props.get(prop_id)
     }
 
     pub(crate) fn static_edge_prop(&self, id: usize, name: &str) -> Option<Prop> {
         assert!(id < self.num_edge_slots);
-        let prop_id = self.get_id(name, true)?;
+        let prop_id = self.get_prop_id(name, true)?;
         let props = self.static_edge_props.get(id).unwrap_or(&LazyVec::Empty);
         props.get(prop_id).unwrap_or(&None).clone()
     }
 
     pub(crate) fn temporal_edge_prop(&self, id: usize, name: &str) -> Option<&TProp> {
         assert!(id < self.num_edge_slots);
-        let prop_id = self.get_id(name, false)?;
+        let prop_id = self.get_prop_id(name, false)?;
         let props = self.temporal_edge_props.get(id).unwrap_or(&LazyVec::Empty);
         props.get(prop_id)
     }
 
+    fn grow_and_get_slot<A>(vector: &mut Vec<A>, id: usize) -> &mut A
+        where
+            A: Default
+    {
+        if vector.len() <= id {
+            vector.resize_with(id + 1, || Default::default());
+        }
+        // now props_storage.len() >= id + 1:
+        vector.get_mut(id).unwrap()
+    }
 
-    // pub(crate) fn static_vertex_prop(&self, id: usize, name: &str) -> Option<Prop> {
-    //     if id >= self.num_vertex_slots {
-    //         panic!("vertex_id {vertex_id} outside static_vertex_props bounds");
-    //     }
-    //     let prop_id = self.get_id(name, true)?;
-    //     let props = self.static_vertex_props.get(id).unwrap_or(&LazyVec::Empty);
-    //     props.get(prop_id).unwrap_or(None)
-    // }
-
-    // pub(crate) fn temporal_vertex_props(&self, vertex_id: usize) -> &LazyVec<TProp> {
-    //     if vertex_id >= self.num_vertex_slots {
-    //         panic!("vertex_id {vertex_id} outside temporal_vertex_props bounds");
-    //     }
-    //     self.temporal_vertex_props.get(vertex_id).unwrap_or(&LazyVec::Empty)
-    // }
-    //
-    // pub(crate) fn static_edge_props(&self, edge_id: usize) -> &LazyVec<Option<Prop>> {
-    //     if edge_id >= self.num_edge_slots {
-    //         panic!("vertex_id {edge_id} outside static_edge_props bounds");
-    //     }
-    //     self.static_edge_props.get(edge_id).unwrap_or(&LazyVec::Empty)
-    // }
-    //
-    // pub(crate) fn temporal_edge_props(&self, edge_id: usize) -> &LazyVec<TProp> {
-    //     if edge_id >= self.num_edge_slots {
-    //         panic!("vertex_id {edge_id} outside temporal_edge_props bounds");
-    //     }
-    //     self.temporal_edge_props.get(edge_id).unwrap_or(&LazyVec::Empty)
-    // }
-
-    fn get_or_allocate_id(&mut self, name: &str, should_be_static: bool) -> Result<PropId, ()> {
+    fn get_or_allocate_id(&mut self, name: &str, should_be_static: bool) -> Result<usize, ()> {
         match self.prop_ids.get(name) {
             None => {
                 let new_prop_id = if should_be_static {
@@ -149,42 +139,16 @@ impl Props {
                 self.prop_ids.insert(name.to_string(), new_prop_id.clone());
                 // we are inserting a new key into the dictionary, so we update the reversed dictionary:
                 self.reverse_ids.insert(new_prop_id.clone(), name.to_string());
-                Ok(new_prop_id)
+                Ok(new_prop_id.get_id())
             },
-            Some(id) if id.is_static() == should_be_static => Ok(id.clone()),
+            Some(id) if id.is_static() == should_be_static => Ok(id.get_id()),
             _ => Err(()),
         }
     }
 
-    fn get_or_allocate_static_id(&mut self, name: &str) -> Result<usize, ()> {
-        self.get_or_allocate_id(name, true).map(|p| p.get_id())
-    }
-
-    fn get_or_allocate_temporal_id(&mut self, name: &str) -> Result<usize, ()> {
-        self.get_or_allocate_id(name, false).map(|p| p.get_id())
-    }
-
-    fn get_id(&self, name: &str,  should_be_static: bool) -> Option<usize> {
-        match self.prop_ids.get(name) {
-            Some(prop_id) if prop_id.is_static() == should_be_static => Some(prop_id.get_id()),
-            _ => None,
-        }
-    }
-
-    fn grow_and_get_slot<A>(vector: &mut Vec<A>, id: usize) -> &mut A
-    where
-        A: Default
-    {
-        if vector.len() <= id {
-            vector.resize_with(id + 1, || Default::default());
-        }
-        // now props_storage.len() >= id + 1:
-        vector.get_mut(id).unwrap()
-    }
-
     fn translate_props(&mut self, props: &Vec<(String, Prop)>, should_be_static: bool) -> Vec<(usize, Prop)> { // TODO: return Result
         props.iter()
-            .map(|(name, prop)| (self.get_or_allocate_id(&name, should_be_static).unwrap().get_id(), prop.clone()))
+            .map(|(name, prop)| (self.get_or_allocate_id(&name, should_be_static).unwrap(), prop.clone()))
             .collect_vec()
     }
 
@@ -239,8 +203,8 @@ impl Props {
 
     pub fn static_vertex_keys(&self, vertex_id: usize) -> Vec<String> {
         match self.static_vertex_props.get(vertex_id) {
-            Some(tprops) => {
-                let ids = tprops.filled_ids();
+            Some(props) => {
+                let ids = props.filled_ids();
                 ids.into_iter()
                     .map(|id| self.reverse_ids.get(&PropId::Static(id)).unwrap().to_string())
                     .collect_vec()
@@ -251,8 +215,8 @@ impl Props {
 
     pub fn static_edge_keys(&self, edge_id: usize) -> Vec<String> {
         match self.static_edge_props.get(edge_id) {
-            Some(tprops) => {
-                let ids = tprops.filled_ids();
+            Some(props) => {
+                let ids = props.filled_ids();
                 ids.into_iter()
                     .map(|id| self.reverse_ids.get(&PropId::Static(id)).unwrap().to_string())
                     .collect_vec()
@@ -318,14 +282,14 @@ mod props_tests {
         props.prop_ids.insert(String::from("key1"), PropId::Temporal(0));
         props.prop_ids.insert(String::from("key2"), PropId::Temporal(1));
 
-        assert_eq!(props.get_or_allocate_temporal_id("key2"), Ok(1));
+        assert_eq!(props.get_or_allocate_id("key2", false), Ok(1));
     }
 
     #[test]
     fn return_new_prop_id_if_prop_name_not_found() {
         let mut props = Props::default();
-        assert_eq!(props.get_or_allocate_temporal_id("key1"), Ok(0));
-        assert_eq!(props.get_or_allocate_temporal_id("key2"), Ok(1));
+        assert_eq!(props.get_or_allocate_id("key1", false), Ok(0));
+        assert_eq!(props.get_or_allocate_id("key2", false), Ok(1));
     }
 
     #[test]
@@ -341,7 +305,7 @@ mod props_tests {
         let mut props = Props::default();
         props.upsert_temporal_vertex_props(1, 0, &vec![("bla".to_string(), Prop::I32(10))]);
 
-        let prop_id = props.get_or_allocate_temporal_id("bla").unwrap();
+        let prop_id = props.get_or_allocate_id("bla", false).unwrap();
         assert_eq!(
             props
                 .temporal_vertex_props
@@ -361,7 +325,7 @@ mod props_tests {
         props.upsert_temporal_vertex_props(1, 0, &vec![("bla".to_string(), Prop::I32(10))]);
         props.upsert_temporal_vertex_props(2, 0, &vec![("bla".to_string(), Prop::I32(10))]);
 
-        let prop_id = props.get_or_allocate_temporal_id("bla").unwrap();
+        let prop_id = props.get_or_allocate_id("bla", false).unwrap();
         assert_eq!(
             props
                 .temporal_vertex_props
@@ -381,7 +345,7 @@ mod props_tests {
         props.upsert_temporal_vertex_props(1, 0, &vec![("bla".to_string(), Prop::I32(10))]);
         props.upsert_temporal_vertex_props(1, 0, &vec![("bla".to_string(), Prop::I32(20))]);
 
-        let prop_id = props.get_or_allocate_temporal_id("bla").unwrap();
+        let prop_id = props.get_or_allocate_id("bla", false).unwrap();
         assert_eq!(
             props
                 .temporal_vertex_props
@@ -408,7 +372,7 @@ mod props_tests {
         let mut props = Props::default();
         props.upsert_temporal_edge_props(1, 1, &vec![("bla".to_string(), Prop::I32(10))]);
 
-        let prop_id = props.get_or_allocate_temporal_id("bla").unwrap();
+        let prop_id = props.get_or_allocate_id("bla", false).unwrap();
         assert_eq!(
             props
                 .temporal_edge_props[1]
@@ -426,7 +390,7 @@ mod props_tests {
         props.upsert_temporal_edge_props(1, 1, &vec![("bla".to_string(), Prop::I32(10))]);
         props.upsert_temporal_edge_props(2, 1, &vec![("bla".to_string(), Prop::I32(10))]);
 
-        let prop_id = props.get_or_allocate_temporal_id("bla").unwrap();
+        let prop_id = props.get_or_allocate_id("bla", false).unwrap();
         assert_eq!(
             props
                 .temporal_edge_props
@@ -446,7 +410,7 @@ mod props_tests {
         props.upsert_temporal_edge_props(1, 1, &vec![("bla".to_string(), Prop::I32(10))]);
         props.upsert_temporal_edge_props(1, 1, &vec![("bla".to_string(), Prop::I32(20))]);
 
-        let prop_id = props.get_or_allocate_temporal_id("bla").unwrap();
+        let prop_id = props.get_or_allocate_id("bla", false).unwrap();
         assert_eq!(
             props
                 .temporal_edge_props

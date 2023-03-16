@@ -748,7 +748,7 @@ impl TemporalGraph {
         let index = self.logical_to_physical.get(&v)?;
         let keys = self.props.temporal_vertex_keys(*index);
         let hm = keys.into_iter()
-            .map(|key| (key.to_string(), self.vertex_prop_vec(v, &key)))
+            .map(|key| (key.to_string(), self.vertex_prop_vec_window(v, &key, w)))
             .filter(|(k, v)| v.is_some())
             .map(|(k, v)| (k, v.unwrap())) // just filtered out None
             .collect();
