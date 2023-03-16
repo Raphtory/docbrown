@@ -67,20 +67,14 @@ impl WindowedGraph {
     }
 
     pub fn has_vertex(&self, v: &PyAny) -> bool {
-        match v.extract::<String>() {
-            Ok(vv) => {
-                self.graph_w.has_vertex(vv)
-            }
-            Err(_) => {
-                match v.extract::<u64>(){
-                    Ok(vv) => {
-                        self.graph_w.has_vertex(vv)
-                    }
-                    Err(_) => {
-                        panic!("Input must be a string or integer.")
-                    }
-                }
-            }
+        if let Ok(v) = v.extract::<String>() {
+            self.graph_w.has_vertex(v)
+        }
+        else if let Ok(v) = v.extract::<u64>(){
+             self.graph_w.has_vertex(v)
+        }
+        else {
+            panic!("Input must be a string or integer.")
         }
     }
 

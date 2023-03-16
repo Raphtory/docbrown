@@ -183,7 +183,7 @@ impl TGraphShard {
         let tgshard = self.rc.clone();
         let iter: GenBoxed<u64> = GenBoxed::new_boxed(|co| async move {
             let g = tgshard.read();
-            let iter = (*g).vertex_ids_window(w).map(|v| v as u64);
+            let iter = (*g).vertex_ids_window(w).map(|v| v.into());
             for v_id in iter {
                 co.yield_(v_id).await;
             }
