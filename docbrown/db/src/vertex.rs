@@ -1,7 +1,7 @@
 use crate::edge::EdgeView;
 use crate::view_api::internal::GraphViewInternalOps;
 use crate::view_api::{VertexListOps, VertexViewOps};
-use docbrown_core::tgraph::VertexReference;
+use docbrown_core::tgraph::VertexRef;
 use docbrown_core::{Direction, Prop};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -9,21 +9,21 @@ use std::sync::Arc;
 pub struct VertexView<G: GraphViewInternalOps> {
     //FIXME: Not sure Arc is good here, maybe this should just own a graph and rely on cheap clone...
     graph: Arc<G>,
-    vertex: VertexReference,
+    vertex: VertexRef,
 }
 
-impl<G: GraphViewInternalOps> Into<VertexReference> for VertexView<G> {
-    fn into(self) -> VertexReference {
+impl<G: GraphViewInternalOps> Into<VertexRef> for VertexView<G> {
+    fn into(self) -> VertexRef {
         self.vertex
     }
 }
 
 impl<G: GraphViewInternalOps> VertexView<G> {
-    pub(crate) fn new(graph: Arc<G>, vertex: VertexReference) -> VertexView<G> {
+    pub(crate) fn new(graph: Arc<G>, vertex: VertexRef) -> VertexView<G> {
         VertexView { graph, vertex }
     }
 
-    pub(crate) fn as_ref(&self) -> VertexReference {
+    pub(crate) fn as_ref(&self) -> VertexRef {
         self.vertex
     }
 }

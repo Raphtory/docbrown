@@ -10,7 +10,7 @@ use std::{
 use rustc_hash::FxHashSet;
 
 use crate::{
-    tgraph::{TemporalGraph, VertexReference},
+    tgraph::{TemporalGraph, VertexRef},
     Direction,
 };
 
@@ -363,7 +363,7 @@ impl Eval for TemporalGraph {
             let iter = if !cur_active_set.is_all() {
                 let active_vertices_iter = cur_active_set.iter().map(|pid| {
                     let g_id = self.adj_lists[*pid].logical();
-                    VertexReference::new(*g_id, Some(*pid))
+                    VertexRef::new(*g_id, Some(*pid))
                 });
                 Box::new(active_vertices_iter)
             } else {
@@ -385,7 +385,7 @@ impl Eval for TemporalGraph {
             // from the next_active_set we apply the PRED
             next_active_set.retain(|pid| {
                 let g_id = self.adj_lists[*pid].logical();
-                let v_view = VertexReference::new(*g_id, Some(*pid));
+                let v_view = VertexRef::new(*g_id, Some(*pid));
                 having(
                     &EvalVertexView {
                         vv: v_view,
@@ -406,7 +406,7 @@ impl Eval for TemporalGraph {
 // view over the vertex
 // this includes the state during the evaluation
 pub struct EvalVertexView<'a, G> {
-    vv: VertexReference,
+    vv: VertexRef,
     pub(crate) g: &'a G,
 }
 

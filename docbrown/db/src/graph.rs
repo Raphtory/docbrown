@@ -9,7 +9,7 @@ use std::{
 };
 
 use docbrown_core::{
-    tgraph::{EdgeReference, VertexReference},
+    tgraph::{EdgeRef, VertexRef},
     tgraph_shard::TGraphShard,
     utils, Direction, Prop,
 };
@@ -59,59 +59,50 @@ impl GraphViewInternalOps for Graph {
             .sum()
     }
 
-    fn has_edge_ref<V1: Into<VertexReference>, V2: Into<VertexReference>>(
-        &self,
-        src: V1,
-        dst: V2,
-    ) -> bool {
-        let src: VertexReference = src.into();
-        let dst: VertexReference = dst.into();
+    fn has_edge_ref<V1: Into<VertexRef>, V2: Into<VertexRef>>(&self, src: V1, dst: V2) -> bool {
+        let src: VertexRef = src.into();
+        let dst: VertexRef = dst.into();
         self.get_shard_from_v(src).has_edge(src.g_id, dst.g_id)
     }
 
-    fn has_edge_ref_window<V1: Into<VertexReference>, V2: Into<VertexReference>>(
+    fn has_edge_ref_window<V1: Into<VertexRef>, V2: Into<VertexRef>>(
         &self,
         src: V1,
         dst: V2,
         t_start: i64,
         t_end: i64,
     ) -> bool {
-        let src: VertexReference = src.into();
-        let dst: VertexReference = dst.into();
+        let src: VertexRef = src.into();
+        let dst: VertexRef = dst.into();
         self.get_shard_from_v(src)
             .has_edge_window(src.g_id, dst.g_id, t_start..t_end)
     }
 
-    fn has_vertex_ref<V: Into<VertexReference>>(&self, v: V) -> bool {
-        let v: VertexReference = v.into();
+    fn has_vertex_ref<V: Into<VertexRef>>(&self, v: V) -> bool {
+        let v: VertexRef = v.into();
         self.get_shard_from_v(v).has_vertex(v.g_id)
     }
 
-    fn has_vertex_ref_window<V: Into<VertexReference>>(
-        &self,
-        v: V,
-        t_start: i64,
-        t_end: i64,
-    ) -> bool {
-        let v: VertexReference = v.into();
+    fn has_vertex_ref_window<V: Into<VertexRef>>(&self, v: V, t_start: i64, t_end: i64) -> bool {
+        let v: VertexRef = v.into();
         self.get_shard_from_v(v)
             .has_vertex_window(v.g_id, t_start..t_end)
     }
 
-    fn degree(&self, v: VertexReference, d: Direction) -> usize {
+    fn degree(&self, v: VertexRef, d: Direction) -> usize {
         self.get_shard_from_v(v).degree(v.g_id, d)
     }
 
-    fn degree_window(&self, v: VertexReference, t_start: i64, t_end: i64, d: Direction) -> usize {
+    fn degree_window(&self, v: VertexRef, t_start: i64, t_end: i64, d: Direction) -> usize {
         self.get_shard_from_v(v)
             .degree_window(v.g_id, t_start..t_end, d)
     }
 
-    fn vertex_ref(&self, v: u64) -> Option<VertexReference> {
+    fn vertex_ref(&self, v: u64) -> Option<VertexRef> {
         self.get_shard_from_id(v).vertex(v)
     }
 
-    fn vertex_ref_window(&self, v: u64, t_start: i64, t_end: i64) -> Option<VertexReference> {
+    fn vertex_ref_window(&self, v: u64, t_start: i64, t_end: i64) -> Option<VertexRef> {
         self.get_shard_from_id(v).vertex_window(v, t_start..t_end)
     }
 
@@ -129,7 +120,7 @@ impl GraphViewInternalOps for Graph {
         )
     }
 
-    fn vertex_refs(&self) -> Box<dyn Iterator<Item = VertexReference> + Send> {
+    fn vertex_refs(&self) -> Box<dyn Iterator<Item = VertexRef> + Send> {
         let shards = self.shards.clone();
         Box::new(shards.into_iter().flat_map(|s| s.vertices()))
     }
@@ -138,7 +129,7 @@ impl GraphViewInternalOps for Graph {
         &self,
         t_start: i64,
         t_end: i64,
-    ) -> Box<dyn Iterator<Item = VertexReference> + Send> {
+    ) -> Box<dyn Iterator<Item = VertexRef> + Send> {
         let shards = self.shards.clone();
         Box::new(
             shards
@@ -150,7 +141,7 @@ impl GraphViewInternalOps for Graph {
     fn vertices_par<O, F>(&self, f: F) -> Box<dyn Iterator<Item = O>>
     where
         O: Send + 'static,
-        F: Fn(VertexReference) -> O + Send + Sync + Copy,
+        F: Fn(VertexRef) -> O + Send + Sync + Copy,
     {
         let (tx, rx) = flume::unbounded();
 
@@ -168,7 +159,7 @@ impl GraphViewInternalOps for Graph {
     fn fold_par<S, F, F2>(&self, f: F, agg: F2) -> Option<S>
     where
         S: Send + 'static,
-        F: Fn(VertexReference) -> S + Send + Sync + Copy,
+        F: Fn(VertexRef) -> S + Send + Sync + Copy,
         F2: Fn(S, S) -> S + Sync + Send + Copy,
     {
         self.shards
@@ -187,7 +178,7 @@ impl GraphViewInternalOps for Graph {
     ) -> Box<dyn Iterator<Item = O>>
     where
         O: Send + 'static,
-        F: Fn(VertexReference) -> O + Send + Sync + Copy,
+        F: Fn(VertexRef) -> O + Send + Sync + Copy,
     {
         let (tx, rx) = flume::unbounded();
 
@@ -205,7 +196,7 @@ impl GraphViewInternalOps for Graph {
     fn fold_window_par<S, F, F2>(&self, t_start: i64, t_end: i64, f: F, agg: F2) -> Option<S>
     where
         S: Send + 'static,
-        F: Fn(VertexReference) -> S + Send + Sync + Copy,
+        F: Fn(VertexRef) -> S + Send + Sync + Copy,
         F2: Fn(S, S) -> S + Sync + Send + Copy,
     {
         self.shards
@@ -222,30 +213,30 @@ impl GraphViewInternalOps for Graph {
             .reduce_with(agg)
     }
 
-    fn edge_ref<V1: Into<VertexReference>, V2: Into<VertexReference>>(
+    fn edge_ref<V1: Into<VertexRef>, V2: Into<VertexRef>>(
         &self,
         src: V1,
         dst: V2,
-    ) -> Option<EdgeReference> {
-        let src: VertexReference = src.into();
-        let dst: VertexReference = dst.into();
+    ) -> Option<EdgeRef> {
+        let src: VertexRef = src.into();
+        let dst: VertexRef = dst.into();
         self.get_shard_from_v(src).edge(src.g_id, dst.g_id)
     }
 
-    fn edge_ref_window<V1: Into<VertexReference>, V2: Into<VertexReference>>(
+    fn edge_ref_window<V1: Into<VertexRef>, V2: Into<VertexRef>>(
         &self,
         src: V1,
         dst: V2,
         t_start: i64,
         t_end: i64,
-    ) -> Option<EdgeReference> {
-        let src: VertexReference = src.into();
-        let dst: VertexReference = dst.into();
+    ) -> Option<EdgeRef> {
+        let src: VertexRef = src.into();
+        let dst: VertexRef = dst.into();
         self.get_shard_from_v(src)
             .edge_window(src.g_id, dst.g_id, t_start..t_end)
     }
 
-    fn edge_refs(&self) -> Box<dyn Iterator<Item = EdgeReference> + Send> {
+    fn edge_refs(&self) -> Box<dyn Iterator<Item = EdgeRef> + Send> {
         //FIXME: needs low-level primitive
         let g = self.clone();
         Box::new(
@@ -258,7 +249,7 @@ impl GraphViewInternalOps for Graph {
         &self,
         t_start: i64,
         t_end: i64,
-    ) -> Box<dyn Iterator<Item = EdgeReference> + Send> {
+    ) -> Box<dyn Iterator<Item = EdgeRef> + Send> {
         //FIXME: needs low-level primitive
         let g = self.clone();
         Box::new(
@@ -267,21 +258,17 @@ impl GraphViewInternalOps for Graph {
         )
     }
 
-    fn vertex_edges(
-        &self,
-        v: VertexReference,
-        d: Direction,
-    ) -> Box<dyn Iterator<Item = EdgeReference> + Send> {
+    fn vertex_edges(&self, v: VertexRef, d: Direction) -> Box<dyn Iterator<Item = EdgeRef> + Send> {
         Box::new(self.get_shard_from_v(v).vertex_edges(v.g_id, d))
     }
 
     fn vertex_edges_window(
         &self,
-        v: VertexReference,
+        v: VertexRef,
         t_start: i64,
         t_end: i64,
         d: Direction,
-    ) -> Box<dyn Iterator<Item = EdgeReference> + Send> {
+    ) -> Box<dyn Iterator<Item = EdgeRef> + Send> {
         Box::new(
             self.get_shard_from_v(v)
                 .vertex_edges_window(v.g_id, t_start..t_end, d),
@@ -290,49 +277,41 @@ impl GraphViewInternalOps for Graph {
 
     fn vertex_edges_window_t(
         &self,
-        v: VertexReference,
+        v: VertexRef,
         t_start: i64,
         t_end: i64,
         d: Direction,
-    ) -> Box<dyn Iterator<Item = EdgeReference> + Send> {
+    ) -> Box<dyn Iterator<Item = EdgeRef> + Send> {
         Box::new(
             self.get_shard_from_v(v)
                 .vertex_edges_window_t(v.g_id, t_start..t_end, d),
         )
     }
 
-    fn neighbours(
-        &self,
-        v: VertexReference,
-        d: Direction,
-    ) -> Box<dyn Iterator<Item = VertexReference> + Send> {
+    fn neighbours(&self, v: VertexRef, d: Direction) -> Box<dyn Iterator<Item = VertexRef> + Send> {
         Box::new(self.get_shard_from_v(v).neighbours(v.g_id, d))
     }
 
     fn neighbours_window(
         &self,
-        v: VertexReference,
+        v: VertexRef,
         t_start: i64,
         t_end: i64,
         d: Direction,
-    ) -> Box<dyn Iterator<Item = VertexReference> + Send> {
+    ) -> Box<dyn Iterator<Item = VertexRef> + Send> {
         Box::new(
             self.get_shard_from_v(v)
                 .neighbours_window(v.g_id, t_start..t_end, d),
         )
     }
 
-    fn neighbours_ids(
-        &self,
-        v: VertexReference,
-        d: Direction,
-    ) -> Box<dyn Iterator<Item = u64> + Send> {
+    fn neighbours_ids(&self, v: VertexRef, d: Direction) -> Box<dyn Iterator<Item = u64> + Send> {
         Box::new(self.get_shard_from_v(v).neighbours_ids(v.g_id, d))
     }
 
     fn neighbours_ids_window(
         &self,
-        v: VertexReference,
+        v: VertexRef,
         t_start: i64,
         t_end: i64,
         d: Direction,
@@ -343,13 +322,13 @@ impl GraphViewInternalOps for Graph {
         )
     }
 
-    fn vertex_prop_vec(&self, v: VertexReference, name: String) -> Vec<(i64, Prop)> {
+    fn vertex_prop_vec(&self, v: VertexRef, name: String) -> Vec<(i64, Prop)> {
         self.get_shard_from_v(v).vertex_prop_vec(v.g_id, name)
     }
 
     fn vertex_prop_vec_window(
         &self,
-        v: VertexReference,
+        v: VertexRef,
         name: String,
         t_start: i64,
         t_end: i64,
@@ -358,13 +337,13 @@ impl GraphViewInternalOps for Graph {
             .vertex_prop_vec_window(v.g_id, name, t_start..t_end)
     }
 
-    fn vertex_props(&self, v: VertexReference) -> HashMap<String, Vec<(i64, Prop)>> {
+    fn vertex_props(&self, v: VertexRef) -> HashMap<String, Vec<(i64, Prop)>> {
         self.get_shard_from_v(v).vertex_props(v.g_id)
     }
 
     fn vertex_props_window(
         &self,
-        v: VertexReference,
+        v: VertexRef,
         t_start: i64,
         t_end: i64,
     ) -> HashMap<String, Vec<(i64, Prop)>> {
@@ -372,13 +351,13 @@ impl GraphViewInternalOps for Graph {
             .vertex_props_window(v.g_id, t_start..t_end)
     }
 
-    fn edge_props_vec(&self, e: EdgeReference, name: String) -> Vec<(i64, Prop)> {
+    fn edge_props_vec(&self, e: EdgeRef, name: String) -> Vec<(i64, Prop)> {
         self.get_shard_from_e(e).edge_prop_vec(e.edge_id, name)
     }
 
     fn edge_props_vec_window(
         &self,
-        e: EdgeReference,
+        e: EdgeRef,
         name: String,
         t_start: i64,
         t_end: i64,
@@ -387,14 +366,14 @@ impl GraphViewInternalOps for Graph {
             .edge_props_vec_window(e.edge_id, name, t_start..t_end)
     }
 
-    fn edge_props(&self, e: EdgeReference) -> HashMap<String, Vec<(i64, Prop)>> {
+    fn edge_props(&self, e: EdgeRef) -> HashMap<String, Vec<(i64, Prop)>> {
         //FIXME: This needs to be implemented in core if we want it
         todo!()
     }
 
     fn edge_props_window(
         &self,
-        e: EdgeReference,
+        e: EdgeRef,
         t_start: i64,
         t_end: i64,
     ) -> HashMap<String, Vec<(i64, Prop)>> {
@@ -450,11 +429,11 @@ impl GraphViewOps for Graph {
 
     fn edge(&self, src: u64, dst: u64) -> Option<Self::Edge> {
         self.edge_ref(
-            VertexReference {
+            VertexRef {
                 g_id: src,
                 pid: None,
             },
-            VertexReference {
+            VertexRef {
                 g_id: dst,
                 pid: None,
             },
@@ -476,11 +455,11 @@ impl Graph {
         &self.shards[self.shard_id(g_id)]
     }
 
-    fn get_shard_from_v(&self, v: VertexReference) -> &TGraphShard {
+    fn get_shard_from_v(&self, v: VertexRef) -> &TGraphShard {
         &self.shards[self.shard_id(v.g_id)]
     }
 
-    fn get_shard_from_e(&self, e: EdgeReference) -> &TGraphShard {
+    fn get_shard_from_e(&self, e: EdgeRef) -> &TGraphShard {
         &self.shards[self.shard_id(e.src_g_id)]
     }
 
@@ -790,7 +769,7 @@ mod db_tests {
         let expected = vec![(2, 3, 1), (1, 0, 0), (1, 0, 0)];
         let actual = (1..=3)
             .map(|i| {
-                let i = VertexReference::new_remote(i);
+                let i = VertexRef::new_remote(i);
                 (
                     g.degree_window(i, -1, 7, Direction::IN),
                     g.degree_window(i, 1, 7, Direction::OUT),
@@ -810,7 +789,7 @@ mod db_tests {
 
         let expected = (1..=3)
             .map(|i| {
-                let i = VertexReference::new_remote(i);
+                let i = VertexRef::new_remote(i);
                 (
                     g.degree_window(i, -1, 7, Direction::IN),
                     g.degree_window(i, 1, 7, Direction::OUT),
@@ -842,7 +821,7 @@ mod db_tests {
         let expected = vec![(2, 3, 2), (1, 0, 0), (1, 0, 0)];
         let actual = (1..=3)
             .map(|i| {
-                let i = VertexReference { g_id: i, pid: None };
+                let i = VertexRef { g_id: i, pid: None };
                 (
                     g.vertex_edges_window(i, -1, 7, Direction::IN)
                         .collect::<Vec<_>>()
@@ -868,7 +847,7 @@ mod db_tests {
 
         let expected = (1..=3)
             .map(|i| {
-                let i = VertexReference { g_id: i, pid: None };
+                let i = VertexRef { g_id: i, pid: None };
                 (
                     g.vertex_edges_window(i, -1, 7, Direction::IN)
                         .collect::<Vec<_>>()
@@ -1025,31 +1004,31 @@ mod db_tests {
         let expected = [
             (
                 vec![
-                    VertexReference {
+                    VertexRef {
                         g_id: 1,
                         pid: Some(0),
                     },
-                    VertexReference { g_id: 2, pid: None },
+                    VertexRef { g_id: 2, pid: None },
                 ],
                 vec![
-                    VertexReference {
+                    VertexRef {
                         g_id: 1,
                         pid: Some(0),
                     },
-                    VertexReference {
+                    VertexRef {
                         g_id: 3,
                         pid: Some(1),
                     },
-                    VertexReference { g_id: 2, pid: None },
+                    VertexRef { g_id: 2, pid: None },
                 ],
-                vec![VertexReference {
+                vec![VertexRef {
                     g_id: 1,
                     pid: Some(0),
                 }],
             ),
-            (vec![VertexReference { g_id: 1, pid: None }], vec![], vec![]),
+            (vec![VertexRef { g_id: 1, pid: None }], vec![], vec![]),
             (
-                vec![VertexReference {
+                vec![VertexRef {
                     g_id: 1,
                     pid: Some(0),
                 }],

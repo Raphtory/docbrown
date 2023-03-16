@@ -1,7 +1,7 @@
 use crate::graph::Graph;
 use crate::perspective::{Perspective, PerspectiveSet};
 use docbrown_core::{
-    tgraph::{EdgeReference, VertexReference},
+    tgraph::{EdgeRef, VertexRef},
     Direction, Prop,
 };
 
@@ -78,16 +78,12 @@ impl GraphViewInternalOps for WindowedGraph {
             .edges_len_window(self.actual_start(t_start), self.actual_end(t_end))
     }
 
-    fn has_edge_ref<V1: Into<VertexReference>, V2: Into<VertexReference>>(
-        &self,
-        src: V1,
-        dst: V2,
-    ) -> bool {
+    fn has_edge_ref<V1: Into<VertexRef>, V2: Into<VertexRef>>(&self, src: V1, dst: V2) -> bool {
         self.graph
             .has_edge_ref_window(src, dst, self.t_start, self.t_end)
     }
 
-    fn has_edge_ref_window<V1: Into<VertexReference>, V2: Into<VertexReference>>(
+    fn has_edge_ref_window<V1: Into<VertexRef>, V2: Into<VertexRef>>(
         &self,
         src: V1,
         dst: V2,
@@ -98,35 +94,30 @@ impl GraphViewInternalOps for WindowedGraph {
             .has_edge_ref_window(src, dst, self.actual_start(t_start), self.actual_end(t_end))
     }
 
-    fn has_vertex_ref<V: Into<VertexReference>>(&self, v: V) -> bool {
+    fn has_vertex_ref<V: Into<VertexRef>>(&self, v: V) -> bool {
         self.graph
             .has_vertex_ref_window(v, self.t_start, self.t_end)
     }
 
-    fn has_vertex_ref_window<V: Into<VertexReference>>(
-        &self,
-        v: V,
-        t_start: i64,
-        t_end: i64,
-    ) -> bool {
+    fn has_vertex_ref_window<V: Into<VertexRef>>(&self, v: V, t_start: i64, t_end: i64) -> bool {
         self.graph
             .has_vertex_ref_window(v, self.actual_start(t_start), self.actual_end(t_end))
     }
 
-    fn degree(&self, v: VertexReference, d: Direction) -> usize {
+    fn degree(&self, v: VertexRef, d: Direction) -> usize {
         self.graph.degree_window(v, self.t_start, self.t_end, d)
     }
 
-    fn degree_window(&self, v: VertexReference, t_start: i64, t_end: i64, d: Direction) -> usize {
+    fn degree_window(&self, v: VertexRef, t_start: i64, t_end: i64, d: Direction) -> usize {
         self.graph
             .degree_window(v, self.actual_start(t_start), self.actual_end(t_end), d)
     }
 
-    fn vertex_ref(&self, v: u64) -> Option<VertexReference> {
+    fn vertex_ref(&self, v: u64) -> Option<VertexRef> {
         self.graph.vertex_ref_window(v, self.t_start, self.t_end)
     }
 
-    fn vertex_ref_window(&self, v: u64, t_start: i64, t_end: i64) -> Option<VertexReference> {
+    fn vertex_ref_window(&self, v: u64, t_start: i64, t_end: i64) -> Option<VertexRef> {
         self.graph
             .vertex_ref_window(v, self.actual_start(t_start), self.actual_end(t_end))
     }
@@ -140,7 +131,7 @@ impl GraphViewInternalOps for WindowedGraph {
             .vertex_ids_window(self.actual_start(t_start), self.actual_end(t_end))
     }
 
-    fn vertex_refs(&self) -> Box<dyn Iterator<Item = VertexReference> + Send> {
+    fn vertex_refs(&self) -> Box<dyn Iterator<Item = VertexRef> + Send> {
         self.graph.vertex_refs_window(self.t_start, self.t_end)
     }
 
@@ -148,7 +139,7 @@ impl GraphViewInternalOps for WindowedGraph {
         &self,
         t_start: i64,
         t_end: i64,
-    ) -> Box<dyn Iterator<Item = VertexReference> + Send> {
+    ) -> Box<dyn Iterator<Item = VertexRef> + Send> {
         self.graph
             .vertex_refs_window(self.actual_start(t_start), self.actual_end(t_end))
     }
@@ -156,7 +147,7 @@ impl GraphViewInternalOps for WindowedGraph {
     fn vertices_par<O, F>(&self, f: F) -> Box<dyn Iterator<Item = O>>
     where
         O: Send + 'static,
-        F: Fn(VertexReference) -> O + Send + Sync + Copy,
+        F: Fn(VertexRef) -> O + Send + Sync + Copy,
     {
         self.graph.vertices_window_par(self.t_start, self.t_end, f)
     }
@@ -164,7 +155,7 @@ impl GraphViewInternalOps for WindowedGraph {
     fn fold_par<S, F, F2>(&self, f: F, agg: F2) -> Option<S>
     where
         S: Send + 'static,
-        F: Fn(VertexReference) -> S + Send + Sync + Copy,
+        F: Fn(VertexRef) -> S + Send + Sync + Copy,
         F2: Fn(S, S) -> S + Sync + Send + Copy,
     {
         self.graph.fold_window_par(self.t_start, self.t_end, f, agg)
@@ -178,7 +169,7 @@ impl GraphViewInternalOps for WindowedGraph {
     ) -> Box<dyn Iterator<Item = O>>
     where
         O: Send + 'static,
-        F: Fn(VertexReference) -> O + Send + Sync + Copy,
+        F: Fn(VertexRef) -> O + Send + Sync + Copy,
     {
         self.graph
             .vertices_window_par(self.actual_start(t_start), self.actual_end(t_end), f)
@@ -187,34 +178,34 @@ impl GraphViewInternalOps for WindowedGraph {
     fn fold_window_par<S, F, F2>(&self, t_start: i64, t_end: i64, f: F, agg: F2) -> Option<S>
     where
         S: Send + 'static,
-        F: Fn(VertexReference) -> S + Send + Sync + Copy,
+        F: Fn(VertexRef) -> S + Send + Sync + Copy,
         F2: Fn(S, S) -> S + Sync + Send + Copy,
     {
         self.graph
             .fold_window_par(self.actual_start(t_start), self.actual_end(t_end), f, agg)
     }
 
-    fn edge_ref<V1: Into<VertexReference>, V2: Into<VertexReference>>(
+    fn edge_ref<V1: Into<VertexRef>, V2: Into<VertexRef>>(
         &self,
         src: V1,
         dst: V2,
-    ) -> Option<EdgeReference> {
+    ) -> Option<EdgeRef> {
         self.graph
             .edge_ref_window(src, dst, self.t_start, self.t_end)
     }
 
-    fn edge_ref_window<V1: Into<VertexReference>, V2: Into<VertexReference>>(
+    fn edge_ref_window<V1: Into<VertexRef>, V2: Into<VertexRef>>(
         &self,
         src: V1,
         dst: V2,
         t_start: i64,
         t_end: i64,
-    ) -> Option<EdgeReference> {
+    ) -> Option<EdgeRef> {
         self.graph
             .edge_ref_window(src, dst, self.actual_start(t_start), self.actual_end(t_end))
     }
 
-    fn edge_refs(&self) -> Box<dyn Iterator<Item = EdgeReference> + Send> {
+    fn edge_refs(&self) -> Box<dyn Iterator<Item = EdgeRef> + Send> {
         self.graph.edge_refs_window(self.t_start, self.t_end)
     }
 
@@ -222,73 +213,61 @@ impl GraphViewInternalOps for WindowedGraph {
         &self,
         t_start: i64,
         t_end: i64,
-    ) -> Box<dyn Iterator<Item = EdgeReference> + Send> {
+    ) -> Box<dyn Iterator<Item = EdgeRef> + Send> {
         self.graph
             .edge_refs_window(self.actual_start(t_start), self.actual_end(t_end))
     }
 
-    fn vertex_edges(
-        &self,
-        v: VertexReference,
-        d: Direction,
-    ) -> Box<dyn Iterator<Item = EdgeReference> + Send> {
+    fn vertex_edges(&self, v: VertexRef, d: Direction) -> Box<dyn Iterator<Item = EdgeRef> + Send> {
         self.graph
             .vertex_edges_window(v, self.t_start, self.t_end, d)
     }
 
     fn vertex_edges_window(
         &self,
-        v: VertexReference,
+        v: VertexRef,
         t_start: i64,
         t_end: i64,
         d: Direction,
-    ) -> Box<dyn Iterator<Item = EdgeReference> + Send> {
+    ) -> Box<dyn Iterator<Item = EdgeRef> + Send> {
         self.graph
             .vertex_edges_window(v, self.actual_start(t_start), self.actual_end(t_end), d)
     }
 
     fn vertex_edges_window_t(
         &self,
-        v: VertexReference,
+        v: VertexRef,
         t_start: i64,
         t_end: i64,
         d: Direction,
-    ) -> Box<dyn Iterator<Item = EdgeReference> + Send> {
+    ) -> Box<dyn Iterator<Item = EdgeRef> + Send> {
         self.graph
             .vertex_edges_window_t(v, self.actual_start(t_start), self.actual_end(t_end), d)
     }
 
-    fn neighbours(
-        &self,
-        v: VertexReference,
-        d: Direction,
-    ) -> Box<dyn Iterator<Item = VertexReference> + Send> {
+    fn neighbours(&self, v: VertexRef, d: Direction) -> Box<dyn Iterator<Item = VertexRef> + Send> {
         self.graph.neighbours_window(v, self.t_start, self.t_end, d)
     }
 
     fn neighbours_window(
         &self,
-        v: VertexReference,
+        v: VertexRef,
         t_start: i64,
         t_end: i64,
         d: Direction,
-    ) -> Box<dyn Iterator<Item = VertexReference> + Send> {
+    ) -> Box<dyn Iterator<Item = VertexRef> + Send> {
         self.graph
             .neighbours_window(v, self.actual_start(t_start), self.actual_end(t_end), d)
     }
 
-    fn neighbours_ids(
-        &self,
-        v: VertexReference,
-        d: Direction,
-    ) -> Box<dyn Iterator<Item = u64> + Send> {
+    fn neighbours_ids(&self, v: VertexRef, d: Direction) -> Box<dyn Iterator<Item = u64> + Send> {
         self.graph
             .neighbours_ids_window(v, self.t_start, self.t_end, d)
     }
 
     fn neighbours_ids_window(
         &self,
-        v: VertexReference,
+        v: VertexRef,
         t_start: i64,
         t_end: i64,
         d: Direction,
@@ -297,14 +276,14 @@ impl GraphViewInternalOps for WindowedGraph {
             .neighbours_ids_window(v, self.actual_start(t_start), self.actual_end(t_end), d)
     }
 
-    fn vertex_prop_vec(&self, v: VertexReference, name: String) -> Vec<(i64, Prop)> {
+    fn vertex_prop_vec(&self, v: VertexRef, name: String) -> Vec<(i64, Prop)> {
         self.graph
             .vertex_prop_vec_window(v, name, self.t_start, self.t_end)
     }
 
     fn vertex_prop_vec_window(
         &self,
-        v: VertexReference,
+        v: VertexRef,
         name: String,
         t_start: i64,
         t_end: i64,
@@ -317,13 +296,13 @@ impl GraphViewInternalOps for WindowedGraph {
         )
     }
 
-    fn vertex_props(&self, v: VertexReference) -> HashMap<String, Vec<(i64, Prop)>> {
+    fn vertex_props(&self, v: VertexRef) -> HashMap<String, Vec<(i64, Prop)>> {
         self.graph.vertex_props_window(v, self.t_start, self.t_end)
     }
 
     fn vertex_props_window(
         &self,
-        v: VertexReference,
+        v: VertexRef,
         t_start: i64,
         t_end: i64,
     ) -> HashMap<String, Vec<(i64, Prop)>> {
@@ -331,14 +310,14 @@ impl GraphViewInternalOps for WindowedGraph {
             .vertex_props_window(v, self.actual_start(t_start), self.actual_end(t_end))
     }
 
-    fn edge_props_vec(&self, e: EdgeReference, name: String) -> Vec<(i64, Prop)> {
+    fn edge_props_vec(&self, e: EdgeRef, name: String) -> Vec<(i64, Prop)> {
         self.graph
             .edge_props_vec_window(e, name, self.t_start, self.t_end)
     }
 
     fn edge_props_vec_window(
         &self,
-        e: EdgeReference,
+        e: EdgeRef,
         name: String,
         t_start: i64,
         t_end: i64,
@@ -351,13 +330,13 @@ impl GraphViewInternalOps for WindowedGraph {
         )
     }
 
-    fn edge_props(&self, e: EdgeReference) -> HashMap<String, Vec<(i64, Prop)>> {
+    fn edge_props(&self, e: EdgeRef) -> HashMap<String, Vec<(i64, Prop)>> {
         self.graph.edge_props_window(e, self.t_start, self.t_end)
     }
 
     fn edge_props_window(
         &self,
-        e: EdgeReference,
+        e: EdgeRef,
         t_start: i64,
         t_end: i64,
     ) -> HashMap<String, Vec<(i64, Prop)>> {

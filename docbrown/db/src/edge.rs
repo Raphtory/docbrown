@@ -1,27 +1,27 @@
 use crate::vertex::VertexView;
 use crate::view_api::internal::GraphViewInternalOps;
 use crate::view_api::{EdgeListOps, EdgeViewOps};
-use docbrown_core::tgraph::{EdgeReference, VertexReference};
+use docbrown_core::tgraph::{EdgeRef, VertexRef};
 use docbrown_core::Prop;
 use std::sync::Arc;
 
 pub struct EdgeView<G: GraphViewInternalOps> {
     graph: Arc<G>,
-    edge: EdgeReference,
+    edge: EdgeRef,
 }
 
 impl<G: GraphViewInternalOps> EdgeView<G> {
-    pub(crate) fn new(graph: Arc<G>, edge: EdgeReference) -> Self {
+    pub(crate) fn new(graph: Arc<G>, edge: EdgeRef) -> Self {
         EdgeView { graph, edge }
     }
 
-    pub fn as_ref(&self) -> EdgeReference {
+    pub fn as_ref(&self) -> EdgeRef {
         self.edge
     }
 }
 
-impl<G: GraphViewInternalOps> Into<EdgeReference> for EdgeView<G> {
-    fn into(self) -> EdgeReference {
+impl<G: GraphViewInternalOps> Into<EdgeRef> for EdgeView<G> {
+    fn into(self) -> EdgeRef {
         self.edge
     }
 }
@@ -35,7 +35,7 @@ impl<G: GraphViewInternalOps + 'static + Send + Sync> EdgeViewOps for EdgeView<G
 
     fn src(&self) -> Self::Vertex {
         //FIXME: Make local ids on EdgeReference optional
-        let vertex = VertexReference {
+        let vertex = VertexRef {
             g_id: self.edge.src_g_id,
             pid: None,
         };
@@ -44,7 +44,7 @@ impl<G: GraphViewInternalOps + 'static + Send + Sync> EdgeViewOps for EdgeView<G
 
     fn dst(&self) -> Self::Vertex {
         //FIXME: Make local ids on EdgeReference optional
-        let vertex = VertexReference {
+        let vertex = VertexRef {
             g_id: self.edge.dst_g_id,
             pid: None,
         };

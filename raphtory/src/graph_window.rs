@@ -3,7 +3,7 @@ use std::{collections::HashMap, sync::Arc};
 use crate::wrappers;
 use crate::wrappers::Perspective;
 use crate::{graph::Graph, wrappers::*};
-use docbrown_core::tgraph::EdgeReference;
+use docbrown_core::tgraph::EdgeRef;
 use docbrown_db::graph_window;
 use docbrown_db::view_api::*;
 use itertools::Itertools;
@@ -242,7 +242,7 @@ pub struct WindowedEdge {
 
 impl From<graph_window::WindowedEdge> for WindowedEdge {
     fn from(value: graph_window::WindowedEdge) -> WindowedEdge {
-        let value_ref: EdgeReference = value.as_ref();
+        let value_ref: EdgeRef = value.as_ref();
         // FIXME: temporary hack, shouldn't really be copying all these values
         WindowedEdge {
             edge_id: value_ref.edge_id,
