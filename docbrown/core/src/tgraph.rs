@@ -117,7 +117,7 @@ impl TemporalGraph {
         self.add_vertex_with_props(t, &v, &vec![])
     }
 
-    pub(crate) fn add_vertex_with_props<T: InputVertex>(&mut self, t: i64, v: &T, props: &Vec<(String, Prop)>) {
+    pub(crate) fn add_vertex_with_props<T: InputVertex>(&mut self, t: i64, v: T, props: &Vec<(String, Prop)>) {
 
         //Updating time - only needs to be here as every other adding function calls this one
         if self.earliest_time > t {
@@ -1084,7 +1084,7 @@ mod graph_test {
 
         let v_id = 1;
         let ts = 1;
-        g.add_vertex_with_props(ts, &v_id, &vec![("type".into(), Prop::Str("wallet".into()))]);
+        g.add_vertex_with_props(ts, v_id, &vec![("type".into(), Prop::Str("wallet".into()))]);
 
         assert!(g.has_vertex(v_id));
         assert!(g.has_vertex_window(v_id, &(1..15)));
@@ -1108,7 +1108,7 @@ mod graph_test {
 
         g.add_vertex_with_props(
             1,
-            &1,
+            1,
             &vec![
                 ("type".into(), Prop::Str("wallet".into())),
                 ("active".into(), Prop::U32(0)),
@@ -1140,7 +1140,7 @@ mod graph_test {
 
         g.add_vertex_with_props(
             1,
-            &1,
+            1,
             &vec![
                 ("type".into(), Prop::Str("wallet".into())),
                 ("active".into(), Prop::U32(0)),
@@ -1149,7 +1149,7 @@ mod graph_test {
 
         g.add_vertex_with_props(
             2,
-            &1,
+            1,
             &vec![
                 ("type".into(), Prop::Str("wallet".into())),
                 ("active".into(), Prop::U32(1)),
@@ -1158,7 +1158,7 @@ mod graph_test {
 
         g.add_vertex_with_props(
             3,
-            &1,
+            1,
             &vec![
                 ("type".into(), Prop::Str("wallet".into())),
                 ("active".into(), Prop::U32(2)),
@@ -1190,18 +1190,18 @@ mod graph_test {
 
         g.add_vertex_with_props(
             1,
-            &1,
+            1,
             &vec![
                 ("type".into(), Prop::Str("wallet".into())),
                 ("active".into(), Prop::U32(0)),
             ],
         );
 
-        g.add_vertex_with_props(2, &1, &vec![("label".into(), Prop::I32(12345))]);
+        g.add_vertex_with_props(2, 1, &vec![("label".into(), Prop::I32(12345))]);
 
         g.add_vertex_with_props(
             3,
-            &1,
+            1,
             &vec![
                 ("origin".into(), Prop::F32(0.1)),
                 ("active".into(), Prop::U32(2)),
