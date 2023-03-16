@@ -152,10 +152,10 @@ impl TemporalGraph {
                 *pid
             }
         };
-        if v.name_prop().is_some() {
+        if let Some(n) = v.name_prop() {
             let new_props: Vec<(String, Prop)> = {
                 let mut props_clone = props.clone();
-                props_clone.push(("_id".parse().unwrap(), v.name_prop().unwrap()));
+                props_clone.push(("_id".to_string(), n));
                 props_clone
             };
             self.props.upsert_vertex_props(t, index, &new_props);
