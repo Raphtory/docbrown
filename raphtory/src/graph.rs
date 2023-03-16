@@ -1,15 +1,15 @@
 use docbrown_core as dbc;
+use docbrown_core::vertex::InputVertex;
 use docbrown_db::view_api::*;
 use docbrown_db::{graph, perspective};
 use pyo3::exceptions;
+use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
+use pyo3::types::{PyInt, PyIterator, PyString};
 use std::collections::HashMap;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use pyo3::exceptions::PyTypeError;
-use pyo3::types::{PyInt, PyIterator, PyString};
-use docbrown_core::vertex::InputVertex;
 
 use crate::graph_window::{GraphWindowSet, WindowedGraph};
 use crate::wrappers::{PerspectiveSet, Prop};
@@ -123,98 +123,75 @@ impl Graph {
     }
 
     pub fn has_vertex(&self, v: &PyAny) -> bool {
-        match v.extract::<String>() {
-            Ok(vv) => {
-                self.graph.has_vertex(vv)
-            }
-            Err(_) => {
-                match v.extract::<u64>(){
-                    Ok(vv) => {
-                        self.graph.has_vertex(vv)
-                    }
-                    Err(_) => {
-                        panic!("Input must be a string or integer.")
-                    }
-                }
-            }
+        if let Ok(v) = v.extract::<String>() {
+            self.graph.has_vertex(v)
+        } else if let Ok(v) = v.extract::<u64>() {
+            self.graph.has_vertex(v)
+        } else {
+            panic!("Input must be a string or integer.")
         }
     }
 
     pub fn has_edge(&self, src: &PyAny, dst: &PyAny) -> bool {
-        if src.extract::<String>().is_ok() && dst.extract::<String>().is_ok() {
+        if let (Ok(src), Ok(dst)) = (src.extract::<String>(), dst.extract::<String>()) {
             self.graph.has_edge(
-                src.extract::<String>().unwrap(),
-                dst.extract::<String>().unwrap(),
+                src,
+                dst,
             )
-        }
-        else if  src.extract::<u64>().is_ok() && dst.extract::<u64>().is_ok() {
-            self.graph.has_edge(
-                src.extract::<u64>().unwrap(),
-                dst.extract::<u64>().unwrap(),
-            )
-        }
-        else {
+        } else if let (Ok(src), Ok(dst)) = (src.extract::<u64>(), dst.extract::<u64>()) {
+            self.graph
+                .has_edge(src, dst)
+        } else {
             panic!("Types of src and dst must be the same (either Int or str)")
         }
     }
 
     pub fn add_vertex(&self, t: i64, v: &PyAny, props: HashMap<String, Prop>) {
-        match v.extract::<String>() {
-            Ok(vv) => {
+        if let Ok(vv) = v.extract::<String>() {
+            self.graph.add_vertex(
+                t,
+                vv,
+                &props
+                    .into_iter()
+                    .map(|(key, value)| (key, value.into()))
+                    .collect::<Vec<(String, dbc::Prop)>>(),
+            )
+        } else {
+            if let Ok(vvv) = v.extract::<u64>() {
                 self.graph.add_vertex(
                     t,
-                    vv,
+                    vvv,
                     &props
                         .into_iter()
                         .map(|(key, value)| (key, value.into()))
                         .collect::<Vec<(String, dbc::Prop)>>(),
                 )
-            }
-            Err(_) => {
-                match v.extract::<u64>(){
-                    Ok(vv) => {
-                        self.graph.add_vertex(
-                            t,
-                            vv,
-                            &props
-                                .into_iter()
-                                .map(|(key, value)| (key, value.into()))
-                                .collect::<Vec<(String, dbc::Prop)>>(),
-                        )
-                    }
-                    Err(_) => {
-                        panic!("Input must be a string or integer.")
-                    }
-                }
-            }
+            } else { panic!("Input must be a string or integer.") }
         }
     }
 
     pub fn add_edge(&self, t: i64, src: &PyAny, dst: &PyAny, props: HashMap<String, Prop>) {
-        if src.extract::<String>().is_ok() && dst.extract::<String>().is_ok() {
+        if let (Ok(src), Ok(dst)) = (src.extract::<String>(), dst.extract::<String>()) {
             self.graph.add_edge(
                 t,
-                src.extract::<String>().unwrap(),
-                dst.extract::<String>().unwrap(),
+                src,
+                dst,
                 &props
                     .into_iter()
                     .map(|f| (f.0.clone(), f.1.into()))
                     .collect::<Vec<(String, dbc::Prop)>>(),
             )
-
-        }
-        else if  src.extract::<u64>().is_ok() && dst.extract::<u64>().is_ok() {
+        } else if let (Ok(src), Ok(dst)) = (src.extract::<u64>(), dst.extract::<u64>()) {
             self.graph.add_edge(
                 t,
-                src.extract::<u64>().unwrap(),
-                dst.extract::<u64>().unwrap(),
+                src,
+                dst,
                 &props
                     .into_iter()
                     .map(|f| (f.0.clone(), f.1.into()))
                     .collect::<Vec<(String, dbc::Prop)>>(),
             )
-        }
-        else {
+        } else {
             panic!("Types of src and dst must be the same (either Int or str)")
         }
     }
