@@ -474,6 +474,10 @@ impl Graph {
         WindowedGraph::new(self.clone(), t_start, t_end)
     }
 
+    pub fn at(&self, end: i64) -> WindowedGraph {
+        self.window(i64::MIN, end.saturating_add(1))
+    }
+
     pub fn through_perspectives(&self, mut perspectives: PerspectiveSet) -> GraphWindowSet {
         let iter = match (self.earliest_time(), self.latest_time()) {
             (Some(start), Some(end)) => perspectives.build_iter(start..end),
@@ -1148,10 +1152,10 @@ mod db_tests {
         let g_at_max = g.at(i64::MAX);
         let g_at_min = g.at(i64::MIN);
 
-        assert_eq!(g_at_empty.len(), 0);
-        assert_eq!(g_at_start.len(), 70);
-        assert_eq!(g_at_another.len(), 123);
-        assert_eq!(g_at_max.len(), 139);
-        assert_eq!(g_at_min.len(), 0);
+        assert_eq!(g_at_empty.num_vertices(), 0);
+        assert_eq!(g_at_start.num_vertices(), 70);
+        assert_eq!(g_at_another.num_vertices(), 123);
+        assert_eq!(g_at_max.num_vertices(), 139);
+        assert_eq!(g_at_min.num_vertices(), 0);
     }
 }
