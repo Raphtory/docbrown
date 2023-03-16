@@ -3,7 +3,6 @@ use crate::Prop;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use itertools::Itertools;
-use crate::static_props::StaticPropVec;
 use crate::tprop::TProp;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash, Clone)]

@@ -8,7 +8,6 @@ mod adj;
 mod bitset;
 pub mod tgraph;
 pub mod lsm;
-mod static_props;
 mod misc;
 mod props;
 mod sorted_vec_map;
