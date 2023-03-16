@@ -87,7 +87,7 @@ impl TGraphShard {
     #[inline(always)]
     pub fn write_shard<A, F>(&self, f: F) -> A
     where
-        F: Fn(&mut TemporalGraph) -> A,
+        F: FnOnce(&mut TemporalGraph) -> A,
     {
         let mut shard = self.rc.write();
         f(&mut shard)
@@ -135,7 +135,7 @@ impl TGraphShard {
     }
 
     pub fn add_vertex<T: InputVertex>(&self, t: i64, v: T, props: &Vec<(String, Prop)>) {
-        self.write_shard(|tg| tg.add_vertex_with_props(t, v, props))
+        self.write_shard(move |tg| tg.add_vertex_with_props(t, v, props))
     }
 
     pub fn add_edge(&self, t: i64, src: u64, dst: u64, props: &Vec<(String, Prop)>) {

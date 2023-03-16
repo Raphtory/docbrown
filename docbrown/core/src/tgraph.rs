@@ -114,7 +114,7 @@ impl TemporalGraph {
     }
 
     pub(crate) fn add_vertex<T: InputVertex>(&mut self, t: i64, v: T) {
-        self.add_vertex_with_props(t, &v, &vec![])
+        self.add_vertex_with_props(t, v, &vec![])
     }
 
     pub(crate) fn add_vertex_with_props<T: InputVertex>(&mut self, t: i64, v: T, props: &Vec<(String, Prop)>) {
