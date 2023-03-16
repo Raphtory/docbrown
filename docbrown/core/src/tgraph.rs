@@ -1861,13 +1861,7 @@ mod graph_test {
                 let label = g
                     .edge_prop(e.edge_id, "label")
                     .map(|x| x.collect::<Vec<_>>());
-
-
-                dbg!(&amount);
-                dbg!(&label);
-
-
-                let result = weight
+                weight
                     .zip(amount)
                     .map(|(mut x, mut y)| {
                         x.append(&mut y);
@@ -1878,8 +1872,6 @@ mod graph_test {
                         x.append(&mut y);
                         x
                     });
-                dbg!(&result);
-                result
             })
             .flatten()
             .collect::<Vec<_>>();
