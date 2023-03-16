@@ -965,10 +965,12 @@ mod db_tests {
         let g_at_start = g.at(7059);
         let g_at_another = g.at(28373);
         let g_at_max = g.at(i64::MAX);
+        let g_at_min = g.at(i64::MIN);
 
         assert_eq!(g_at_empty.len(), 0);
         assert_eq!(g_at_start.len(), 70);
         assert_eq!(g_at_another.len(), 123);
         assert_eq!(g_at_max.len(), 139);
+        assert_eq!(g_at_min.len(), 0);
     }
 }
