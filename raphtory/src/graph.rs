@@ -119,9 +119,7 @@ impl Graph {
         )
     }
 
-    pub fn at(&self, end: i64) -> WindowedGraph {
-        self.window(i64::MIN, end.saturating_add(1))
-    }
+    pub fn at(&self, end: i64) -> WindowedGraph { self.graph.at(end).into() }
 
     pub fn add_edge(&self, t: i64, src: u64, dst: u64, props: HashMap<String, Prop>) {
         self.graph.add_edge(
