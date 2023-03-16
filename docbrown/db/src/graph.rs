@@ -61,6 +61,11 @@ impl Graph {
         }
     }
 
+    // inclusive
+    pub fn at(&self, end: i64) -> WindowedGraph {
+        self.window(i64::MIN, end.saturating_add(1))
+    }
+
     pub fn window(&self, t_start: i64, t_end: i64) -> WindowedGraph {
         WindowedGraph::new(self.clone(), t_start, t_end)
     }
@@ -408,6 +413,7 @@ mod db_tests {
     use uuid::Uuid;
 
     use crate::algorithms::local_triangle_count::local_triangle_count;
+    use crate::view_api::GraphViewOps;
 
     use super::*;
 
@@ -949,5 +955,20 @@ mod db_tests {
         });
         assert_eq!(g.edges_len(), 1089147);
         assert_eq!(g.len(), 49467);
+    }
+
+    #[test]
+    fn test_graph_at() {
+        let g= crate::graph_loader::lotr_graph::lotr_graph(1);
+
+        let g_at_empty = g.at(1);
+        let g_at_start = g.at(7059);
+        let g_at_another = g.at(28373);
+        let g_at_max = g.at(i64::MAX);
+
+        assert_eq!(g_at_empty.len(), 0);
+        assert_eq!(g_at_start.len(), 70);
+        assert_eq!(g_at_another.len(), 123);
+        assert_eq!(g_at_max.len(), 139);
     }
 }
