@@ -3,7 +3,7 @@ members = [
 	"docbrown/core",
 	"docbrown/db",
 	"examples/rust",
-	"raphtory"
+	"python"
 ]
 default-members = ["docbrown/core", "docbrown/db", "raphtory"]
 
