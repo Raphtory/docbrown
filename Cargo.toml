@@ -5,7 +5,7 @@ members = [
 	"examples/rust",
 	"python"
 ]
-default-members = ["docbrown/core", "docbrown/db", "raphtory"]
+default-members = ["docbrown/core", "docbrown/db", "python"]
 
 [workspace.package]
 version = "0.0.6"
