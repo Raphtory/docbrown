@@ -85,32 +85,47 @@ impl Props {
         }
     }
 
-    pub(crate) fn static_vertex_prop(&self, id: usize, name: &str) -> Option<Prop> {
-        // assert!(id < self.num_vertex_slots);
-        let prop_id = self.get_prop_id(name, true)?;
-        let props = self.static_vertex_props.get(id).unwrap_or(&LazyVec::Empty);
-        props.get(prop_id).unwrap_or(&None).clone()
+    fn get_or_default<A>(&self, vector: &Vec<LazyVec<A>>, id: usize, name: &str, should_be_static: bool) -> A
+    where
+        A: PartialEq + Default + Clone,
+    {
+        match self.get_prop_id(name, true) {
+            Some(prop_id) => {
+                let props = vector.get(id).unwrap_or(&LazyVec::Empty);
+                props.get(prop_id).cloned().unwrap_or(Default::default())
+            },
+            None => Default::default()
+        }
     }
 
-    pub(crate) fn temporal_vertex_prop(&self, id: usize, name: &str) -> Option<&TProp> {
-        // assert!(id < self.num_vertex_slots);
-        let prop_id = self.get_prop_id(name, false)?;
-        let props = self.temporal_vertex_props.get(id).unwrap_or(&LazyVec::Empty);
-        props.get(prop_id)
+    pub(crate) fn static_vertex_prop(&self, id: usize, name: &str) -> Option<Prop> {
+        self.get_or_default(&self.static_vertex_props, id, name, true)
+    }
+
+    pub(crate) fn temporal_vertex_prop(&self, id: usize, name: &str) -> &TProp {
+        // TODO: we should be able to use self.get_or_default() here
+        match self.get_prop_id(name, false) {
+            Some(prop_id) => {
+                let props = self.temporal_vertex_props.get(id).unwrap_or(&LazyVec::Empty);
+                props.get(prop_id).unwrap_or(Default::default())
+            },
+            None => Default::default()
+        }
     }
 
     pub(crate) fn static_edge_prop(&self, id: usize, name: &str) -> Option<Prop> {
-        // assert!(id < self.num_edge_slots);
-        let prop_id = self.get_prop_id(name, true)?;
-        let props = self.static_edge_props.get(id).unwrap_or(&LazyVec::Empty);
-        props.get(prop_id).unwrap_or(&None).clone()
+        self.get_or_default(&self.static_edge_props, id, name, true)
     }
 
-    pub(crate) fn temporal_edge_prop(&self, id: usize, name: &str) -> Option<&TProp> {
-        // assert!(id < self.num_edge_slots);
-        let prop_id = self.get_prop_id(name, false)?;
-        let props = self.temporal_edge_props.get(id).unwrap_or(&LazyVec::Empty);
-        props.get(prop_id)
+    pub(crate) fn temporal_edge_prop(&self, id: usize, name: &str) -> &TProp {
+        // TODO: we should be able to use self.get_or_default() here
+        match self.get_prop_id(name, false) {
+            Some(prop_id) => {
+                let props = self.temporal_edge_props.get(id).unwrap_or(&LazyVec::Empty);
+                props.get(prop_id).unwrap_or(Default::default())
+            },
+            None => Default::default()
+        }
     }
 
     pub fn static_vertex_keys(&self, vertex_id: usize) -> Vec<String> {

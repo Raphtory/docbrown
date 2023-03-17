@@ -370,28 +370,19 @@ impl TGraphShard {
     }
 
     pub fn vertex_prop_vec(&self, v: u64, name: String) -> Vec<(i64, Prop)> {
-        self.read_shard(|tg| tg.vertex_prop_vec(v, &name).unwrap_or_else(|| vec![]))
+        self.read_shard(|tg| tg.vertex_prop_vec(v, &name))
     }
 
     pub fn vertex_prop_vec_window(&self, v: u64, name: String, w: Range<i64>) -> Vec<(i64, Prop)> {
-        self.read_shard(|tg| {
-            tg.vertex_prop_vec_window(v, &name, &w)
-                .unwrap_or_else(|| vec![])
-        })
+        self.read_shard(|tg| tg.vertex_prop_vec_window(v, &name, &w))
     }
 
     pub fn vertex_props(&self, v: u64) -> HashMap<String, Vec<(i64, Prop)>> {
-        self.read_shard(|tg| {
-            tg.vertex_props(v)
-                .unwrap_or_else(|| HashMap::<String, Vec<(i64, Prop)>>::new())
-        })
+        self.read_shard(|tg| tg.vertex_props(v))
     }
 
     pub fn vertex_props_window(&self, v: u64, w: Range<i64>) -> HashMap<String, Vec<(i64, Prop)>> {
-        self.read_shard(|tg| {
-            tg.vertex_props_window(v, &w)
-                .unwrap_or_else(|| HashMap::<String, Vec<(i64, Prop)>>::new())
-        })
+        self.read_shard(|tg| tg.vertex_props_window(v, &w))
     }
 
     pub fn static_edge_prop(&self, e: usize, name: String) -> Option<Prop> {
@@ -403,14 +394,11 @@ impl TGraphShard {
     }
 
     pub fn edge_prop_vec(&self, e: usize, name: String) -> Vec<(i64, Prop)> {
-        self.read_shard(|tg| tg.edge_prop_vec(e, &name).unwrap_or_else(|| vec![]))
+        self.read_shard(|tg| tg.edge_prop_vec(e, &name))
     }
 
     pub fn edge_props_vec_window(&self, e: usize, name: String, w: Range<i64>) -> Vec<(i64, Prop)> {
-        self.read_shard(|tg| {
-            tg.edge_prop_vec_window(e, &name, w.clone())
-                .unwrap_or_else(|| vec![])
-        })
+        self.read_shard(|tg| tg.edge_prop_vec_window(e, &name, w.clone()))
     }
 }
 
