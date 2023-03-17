@@ -1047,7 +1047,6 @@ mod graph_test {
     }
 
     #[test]
-    #[should_panic]
     fn add_vertex_at_time_t1() {
         let mut g = TemporalGraph::default();
 
@@ -1056,7 +1055,6 @@ mod graph_test {
         assert!(g.has_vertex(9));
         assert!(g.has_vertex_window(9, &(1..15)));
         assert_eq!(g.vertices().map(|v| v.g_id).collect::<Vec<u64>>(), vec![9]);
-        g.props.temporal_vertex_prop(2, ""); // this should panic
     }
 
     #[test]

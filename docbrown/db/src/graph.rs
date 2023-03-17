@@ -823,7 +823,62 @@ mod db_tests {
         random_attachment(&g,100,10);
         assert_eq!(g.latest_time(),Some(126));
         assert_eq!(g.earliest_time(),Some(5));
+    }
 
+    #[test]
+    fn static_properties() {
+        let g = Graph::new(100); // big enough so all edges are very likely remote
+        g.add_edge(0, 11, 22, &vec![]);
+        g.add_edge(0, 11, 11, &vec![("temp".to_string(), Prop::Bool(true))]);
+        g.add_edge(0, 22, 33, &vec![]);
+        g.add_edge(0, 33, 11, &vec![]);
+        g.add_vertex(0, 11, &vec![("temp".to_string(), Prop::Bool(true))]);
+
+        let edges11 = g.vertex_edges_window(11, 0, 1, Direction::OUT).collect_vec();
+        let edge1122 = edges11.iter().find(|e| e.dst_g_id == 22).unwrap().edge_id;
+        let edge1111 = edges11.iter().find(|e| e.dst_g_id == 11).unwrap().edge_id;
+        let edge2233 = g.vertex_edges_window(22, 0, 1, Direction::OUT).next().unwrap().edge_id;
+        let edge3311 = g.vertex_edges_window(33, 0, 1, Direction::OUT).next().unwrap().edge_id;
+
+        g.add_vertex_properties(11, &vec![("a".to_string(), Prop::U64(11)), ("b".to_string(), Prop::I64(11))]);
+        g.add_vertex_properties(11, &vec![("c".to_string(), Prop::U32(11))]);
+        g.add_vertex_properties(22, &vec![("b".to_string(), Prop::U64(22))]);
+        g.add_edge_properties(11, 11, &vec![("d".to_string(), Prop::U64(1111))]);
+        g.add_edge_properties(33, 11, &vec![("a".to_string(), Prop::U64(3311))]);
+
+        // TODO: add a case where we add properties to a vertex that already had static and/or temporal props
+
+        assert_eq!(g.static_vertex_prop_keys(11), vec!["a", "b", "c"]);
+        assert_eq!(g.static_vertex_prop_keys(22), vec!["b"]);
+        assert!(g.static_vertex_prop_keys(33).is_empty());
+        assert_eq!(g.static_edge_prop_keys(11, edge1111), vec!["d"]);
+        assert_eq!(g.static_edge_prop_keys(33, edge3311), vec!["a"]);
+        assert!(g.static_edge_prop_keys(22, edge2233).is_empty());
+
+        assert_eq!(g.static_vertex_prop(11, "a"), Some(Prop::U64(11)));
+        assert_eq!(g.static_vertex_prop(11, "b"), Some(Prop::I64(11)));
+        assert_eq!(g.static_vertex_prop(11, "c"), Some(Prop::U32(11)));
+        assert_eq!(g.static_vertex_prop(22, "b"), Some(Prop::U64(22)));
+        assert_eq!(g.static_vertex_prop(22, "a"), None);
+        assert_eq!(g.static_edge_prop(11, edge1111, "d"), Some(Prop::U64(1111)));
+        assert_eq!(g.static_edge_prop(33, edge3311, "a"), Some(Prop::U64(3311)));
+        assert_eq!(g.static_edge_prop(22, edge2233, "a"), None);
+    }
+
+    #[test]
+    #[should_panic]
+    fn changing_property_type_for_vertex_panics() {
+        let g = Graph::new(4);
+        g.add_vertex(0, 11, &vec![("test".to_string(), Prop::Bool(true))]);
+        g.add_vertex_properties(11, &vec![("test".to_string(), Prop::Bool(true))]);
+    }
+
+    #[test]
+    #[should_panic]
+    fn changing_property_type_for_edge_panics() {
+        let g = Graph::new(4);
+        g.add_edge(0, 11, 22, &vec![("test".to_string(), Prop::Bool(true))]);
+        g.add_edge_properties(11, 22, &vec![("test".to_string(), Prop::Bool(true))]);
     }
 
     #[test]

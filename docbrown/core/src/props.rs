@@ -57,7 +57,7 @@ impl Default for Props {
             reverse_ids: Default::default(),
             static_vertex_props: Default::default(),
             temporal_vertex_props: Default::default(),
-            num_vertex_slots: 0,
+            num_vertex_slots: 0, // TODO: remove this, not used anymore
             static_edge_props: Default::default(),
             temporal_edge_props: Default::default(),
             // Edge ids refer to the position of properties inside self.props.temporal_edge_props and
@@ -86,119 +86,31 @@ impl Props {
     }
 
     pub(crate) fn static_vertex_prop(&self, id: usize, name: &str) -> Option<Prop> {
-        assert!(id < self.num_vertex_slots);
+        // assert!(id < self.num_vertex_slots);
         let prop_id = self.get_prop_id(name, true)?;
         let props = self.static_vertex_props.get(id).unwrap_or(&LazyVec::Empty);
         props.get(prop_id).unwrap_or(&None).clone()
     }
 
     pub(crate) fn temporal_vertex_prop(&self, id: usize, name: &str) -> Option<&TProp> {
-        assert!(id < self.num_vertex_slots);
+        // assert!(id < self.num_vertex_slots);
         let prop_id = self.get_prop_id(name, false)?;
         let props = self.temporal_vertex_props.get(id).unwrap_or(&LazyVec::Empty);
         props.get(prop_id)
     }
 
     pub(crate) fn static_edge_prop(&self, id: usize, name: &str) -> Option<Prop> {
-        assert!(id < self.num_edge_slots);
+        // assert!(id < self.num_edge_slots);
         let prop_id = self.get_prop_id(name, true)?;
         let props = self.static_edge_props.get(id).unwrap_or(&LazyVec::Empty);
         props.get(prop_id).unwrap_or(&None).clone()
     }
 
     pub(crate) fn temporal_edge_prop(&self, id: usize, name: &str) -> Option<&TProp> {
-        assert!(id < self.num_edge_slots);
+        // assert!(id < self.num_edge_slots);
         let prop_id = self.get_prop_id(name, false)?;
         let props = self.temporal_edge_props.get(id).unwrap_or(&LazyVec::Empty);
         props.get(prop_id)
-    }
-
-    fn grow_and_get_slot<A>(vector: &mut Vec<A>, id: usize) -> &mut A
-        where
-            A: Default
-    {
-        if vector.len() <= id {
-            vector.resize_with(id + 1, || Default::default());
-        }
-        // now props_storage.len() >= id + 1:
-        vector.get_mut(id).unwrap()
-    }
-
-    fn get_or_allocate_id(&mut self, name: &str, should_be_static: bool) -> Result<usize, ()> {
-        match self.prop_ids.get(name) {
-            None => {
-                let new_prop_id = if should_be_static {
-                    let static_prop_ids = self.prop_ids.iter().filter(|&(k, v)| v.is_static());
-                    let new_id = static_prop_ids.count();
-                    PropId::Static(new_id)
-                } else {
-                    let static_prop_ids = self.prop_ids.iter().filter(|&(k, v)| !v.is_static());
-                    let new_id = static_prop_ids.count();
-                    PropId::Temporal(new_id)
-                };
-                self.prop_ids.insert(name.to_string(), new_prop_id.clone());
-                // we are inserting a new key into the dictionary, so we update the reversed dictionary:
-                self.reverse_ids.insert(new_prop_id.clone(), name.to_string());
-                Ok(new_prop_id.get_id())
-            },
-            Some(id) if id.is_static() == should_be_static => Ok(id.get_id()),
-            _ => Err(()),
-        }
-    }
-
-    fn translate_props(&mut self, props: &Vec<(String, Prop)>, should_be_static: bool) -> Vec<(usize, Prop)> { // TODO: return Result
-        props.iter()
-            .map(|(name, prop)| (self.get_or_allocate_id(&name, should_be_static).unwrap(), prop.clone()))
-            .collect_vec()
-    }
-
-    pub fn upsert_temporal_vertex_props(&mut self, t: i64, vertex_id: usize, props: &Vec<(String, Prop)>) -> Result<(), ()> {
-        self.num_vertex_slots += 1;
-        if !props.is_empty() {
-            let translated_props = self.translate_props(props, false);
-            let vertex_slot: &mut LazyVec<TProp> = Self::grow_and_get_slot(&mut self.temporal_vertex_props, vertex_id);
-            for (prop_id, prop) in translated_props {
-                vertex_slot.update_or_set(prop_id, |p| p.set(t, &prop), TProp::from(t, &prop));
-            }
-        }
-        Ok(())
-    }
-
-    pub fn upsert_temporal_edge_props(&mut self, t: i64, edge_id: usize, props: &Vec<(String, Prop)>) -> Result<(), ()>  {
-        self.num_edge_slots += 1;
-        Self::assert_valid_edge_id(edge_id);
-        if !props.is_empty() {
-            let translated_props = self.translate_props(props, false);
-            let edge_slot: &mut LazyVec<TProp> = Self::grow_and_get_slot(&mut self.temporal_edge_props, edge_id);
-            for (prop_id, prop) in translated_props {
-                edge_slot.update_or_set(prop_id, |p| p.set(t, &prop), TProp::from(t, &prop));
-            }
-        }
-        Ok(())
-    }
-
-    pub fn set_static_vertex_prop(&mut self, vertex_id: usize, props: &Vec<(String, Prop)>) -> Result<(), ()> {
-        if !props.is_empty() {
-            let translated_props = self.translate_props(props, true);
-            let vertex_slot: &mut LazyVec<Option<Prop>> = Self::grow_and_get_slot(&mut self.static_vertex_props, vertex_id);
-            for (prop_id, prop) in translated_props {
-                vertex_slot.set(prop_id, Some(prop));
-            }
-            dbg!(vertex_slot);
-        }
-        Ok(())
-    }
-
-    pub fn set_static_edge_prop(&mut self, edge_id: usize, props: &Vec<(String, Prop)>) -> Result<(), ()> {
-        Self::assert_valid_edge_id(edge_id);
-        if !props.is_empty() {
-            let translated_props = self.translate_props(props, true);
-            let edge_slot: &mut LazyVec<Option<Prop>> = Self::grow_and_get_slot(&mut self.static_edge_props, edge_id);
-            for (prop_id, prop) in translated_props {
-                edge_slot.set(prop_id, Some(prop));
-            }
-        }
-        Ok(())
     }
 
     pub fn static_vertex_keys(&self, vertex_id: usize) -> Vec<String> {
@@ -247,6 +159,95 @@ impl Props {
             },
             None => Default::default(),
         }
+    }
+
+    // SETTERS:
+
+    fn grow_and_get_slot<A>(vector: &mut Vec<A>, id: usize) -> &mut A
+        where
+            A: Default
+    {
+        if vector.len() <= id {
+            vector.resize_with(id + 1, || Default::default());
+        }
+        // now props_storage.len() >= id + 1:
+        vector.get_mut(id).unwrap()
+    }
+
+    fn get_or_allocate_id(&mut self, name: &str, should_be_static: bool) -> Result<usize, ()> {
+        match self.prop_ids.get(name) {
+            None => {
+                let new_prop_id = if should_be_static {
+                    let static_prop_ids = self.prop_ids.iter().filter(|&(k, v)| v.is_static());
+                    let new_id = static_prop_ids.count();
+                    PropId::Static(new_id)
+                } else {
+                    let static_prop_ids = self.prop_ids.iter().filter(|&(k, v)| !v.is_static());
+                    let new_id = static_prop_ids.count();
+                    PropId::Temporal(new_id)
+                };
+                self.prop_ids.insert(name.to_string(), new_prop_id.clone());
+                // we are inserting a new key into the dictionary, so we update the reversed dictionary:
+                self.reverse_ids.insert(new_prop_id.clone(), name.to_string());
+                Ok(new_prop_id.get_id())
+            },
+            Some(id) if id.is_static() == should_be_static => Ok(id.get_id()),
+            _ => Err(()),
+        }
+    }
+
+    fn translate_props(&mut self, props: &Vec<(String, Prop)>, should_be_static: bool) -> Vec<(usize, Prop)> { // TODO: return Result
+        props.iter()
+            .map(|(name, prop)| (self.get_or_allocate_id(&name, should_be_static).unwrap(), prop.clone()))
+            .collect_vec()
+    }
+
+    pub fn upsert_temporal_vertex_props(&mut self, t: i64, vertex_id: usize, props: &Vec<(String, Prop)>) -> Result<(), ()> {
+        if !props.is_empty() {
+            let translated_props = self.translate_props(props, false);
+            let vertex_slot: &mut LazyVec<TProp> = Self::grow_and_get_slot(&mut self.temporal_vertex_props, vertex_id);
+            for (prop_id, prop) in translated_props {
+                vertex_slot.update_or_set(prop_id, |p| p.set(t, &prop), TProp::from(t, &prop));
+            }
+        }
+        Ok(())
+    }
+
+    // this method is called every time we create and edge, it's important that that doesn't change though
+    pub fn upsert_temporal_edge_props(&mut self, t: i64, edge_id: usize, props: &Vec<(String, Prop)>) -> Result<(), ()>  {
+        self.num_edge_slots += 1;
+        Self::assert_valid_edge_id(edge_id);
+        if !props.is_empty() {
+            let translated_props = self.translate_props(props, false);
+            let edge_slot: &mut LazyVec<TProp> = Self::grow_and_get_slot(&mut self.temporal_edge_props, edge_id);
+            for (prop_id, prop) in translated_props {
+                edge_slot.update_or_set(prop_id, |p| p.set(t, &prop), TProp::from(t, &prop));
+            }
+        }
+        Ok(())
+    }
+
+    pub fn set_static_vertex_prop(&mut self, vertex_id: usize, props: &Vec<(String, Prop)>) -> Result<(), ()> {
+        if !props.is_empty() {
+            let translated_props = self.translate_props(props, true);
+            let vertex_slot: &mut LazyVec<Option<Prop>> = Self::grow_and_get_slot(&mut self.static_vertex_props, vertex_id);
+            for (prop_id, prop) in translated_props {
+                vertex_slot.set(prop_id, Some(prop));
+            }
+        }
+        Ok(())
+    }
+
+    pub fn set_static_edge_prop(&mut self, edge_id: usize, props: &Vec<(String, Prop)>) -> Result<(), ()> {
+        Self::assert_valid_edge_id(edge_id);
+        if !props.is_empty() {
+            let translated_props = self.translate_props(props, true);
+            let edge_slot: &mut LazyVec<Option<Prop>> = Self::grow_and_get_slot(&mut self.static_edge_props, edge_id);
+            for (prop_id, prop) in translated_props {
+                edge_slot.set(prop_id, Some(prop));
+            }
+        }
+        Ok(())
     }
 
     fn assert_valid_edge_id(edge_id: usize) { // TODO: this should return a result
