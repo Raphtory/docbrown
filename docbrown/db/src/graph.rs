@@ -765,6 +765,7 @@ mod db_tests {
 
         g.add_edge(2, "haaroon", "northLondon", &vec![]);
         assert_eq!(g.has_edge("haaroon", "northLondon"), true);
+        assert_eq!(g.has_edge("haaroon", "southLondon"), false);
     }
 
     #[test]
