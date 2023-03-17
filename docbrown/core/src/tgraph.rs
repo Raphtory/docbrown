@@ -154,21 +154,14 @@ impl TemporalGraph {
             }
         };
         if let Some(n) = v.name_prop() {
-            let new_props: Vec<(String, Prop)> = {
-                let mut props_clone = props.clone();
-                props_clone.push(("_id".to_string(), n));
-                props_clone
-            };
-            self.props.upsert_temporal_vertex_props(t, index, &new_props);
+            self.props.set_static_vertex_props(index, &vec![("_id".to_string(), n)]);
         }
-        else {
-            self.props.upsert_temporal_vertex_props(t, index, props);
-        }
+        self.props.upsert_temporal_vertex_props(t, index, props);
     }
 
     pub(crate) fn add_vertex_properties(&mut self, v: u64, data: &Vec<(String, Prop)>) {
         let index = *self.logical_to_physical.get(&v).expect(&format!("impossible to add metadata to non existing vertex {v}"));
-        self.props.set_static_vertex_prop(index, data);
+        self.props.set_static_vertex_props(index, data);
     }
 
     pub fn add_edge(&mut self, t: i64, src: u64, dst: u64) {
@@ -896,7 +889,7 @@ impl TemporalGraph {
                 list.find(dst).map(|e| e.edge_id()).ok_or(())?
             },
         };
-        self.props.set_static_edge_prop(edge_id, data)
+        self.props.set_static_edge_props(edge_id, data)
     }
 
     fn edges_iter(

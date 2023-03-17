@@ -1051,8 +1051,6 @@ mod db_tests {
         g.add_edge_properties(11, 11, &vec![("d".to_string(), Prop::U64(1111))]);
         g.add_edge_properties(33, 11, &vec![("a".to_string(), Prop::U64(3311))]);
 
-        // TODO: add a case where we add properties to a vertex that already had static and/or temporal props
-
         assert_eq!(g.static_vertex_prop_keys(11.into()), vec!["a", "b", "c"]);
         assert_eq!(g.static_vertex_prop_keys(22.into()), vec!["b"]);
         assert!(g.static_vertex_prop_keys(33.into()).is_empty());
