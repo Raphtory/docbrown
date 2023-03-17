@@ -11,12 +11,15 @@ use docbrown_db::{graph_window, perspective};
 
 use crate::graph_window::{WindowedEdge, WindowedGraph, WindowedVertex};
 
-#[pyclass]
-#[derive(Copy, Clone, PartialEq, Eq)]
-pub enum Direction {
+
+#[derive(Copy, Clone)]
+pub(crate) enum Direction {
     OUT,
     IN,
     BOTH,
+    OUT_WINDOW{t_start: i64, t_end: i64},
+    IN_WINDOW{t_start: i64, t_end: i64},
+    BOTH_WINDOW{t_start: i64, t_end: i64},
 }
 
 impl From<Direction> for db_c::Direction {
@@ -25,6 +28,9 @@ impl From<Direction> for db_c::Direction {
             Direction::OUT => db_c::Direction::OUT,
             Direction::IN => db_c::Direction::IN,
             Direction::BOTH => db_c::Direction::BOTH,
+            Direction::OUT_WINDOW{t_start, t_end} => db_c::Direction::OUT,
+            Direction::IN_WINDOW{t_start, t_end} => db_c::Direction::IN,
+            Direction::BOTH_WINDOW{t_start, t_end} => db_c::Direction::BOTH,
         }
     }
 }
@@ -199,6 +205,21 @@ impl WindowedVertices {
         })
     }
 
+    fn in_degree_window(slf: PyRef<'_, Self>, py: Python, t_start: i64, t_end: i64) -> PyResult<DegreeIterable> {
+        let vertex_iter = Py::new(
+            py,
+            WindowedVertexIterable {
+                graph: slf.graph.clone(),
+                operations: vec![],
+                start_at: None,
+            },
+        )?;
+        Ok(DegreeIterable {
+            vertex_iter,
+            operation: Direction::IN_WINDOW{t_start, t_end},
+        })
+    }
+
     fn out_degree(slf: PyRef<'_, Self>, py: Python) -> PyResult<DegreeIterable> {
         let vertex_iter = Py::new(
             py,
@@ -214,6 +235,21 @@ impl WindowedVertices {
         })
     }
 
+    fn out_degree_window(slf: PyRef<'_, Self>, py: Python, t_start: i64, t_end: i64) -> PyResult<DegreeIterable> {
+        let vertex_iter = Py::new(
+            py,
+            WindowedVertexIterable {
+                graph: slf.graph.clone(),
+                operations: vec![],
+                start_at: None,
+            },
+        )?;
+        Ok(DegreeIterable {
+            vertex_iter,
+            operation: Direction::OUT_WINDOW{t_start, t_end},
+        })
+    }
+
     fn degree(slf: PyRef<'_, Self>, py: Python) -> PyResult<DegreeIterable> {
         let vertex_iter = Py::new(
             py,
@@ -226,6 +262,21 @@ impl WindowedVertices {
         Ok(DegreeIterable {
             vertex_iter,
             operation: Direction::BOTH,
+        })
+    }
+
+    fn degree_window(slf: PyRef<'_, Self>, py: Python, t_start: i64, t_end: i64) -> PyResult<DegreeIterable> {
+        let vertex_iter = Py::new(
+            py,
+            WindowedVertexIterable {
+                graph: slf.graph.clone(),
+                operations: vec![],
+                start_at: None,
+            },
+        )?;
+        Ok(DegreeIterable {
+            vertex_iter,
+            operation: Direction::BOTH_WINDOW{t_start, t_end},
         })
     }
 
@@ -318,6 +369,13 @@ impl WindowedVerticesPath {
         }
     }
 
+    fn in_degree_window(slf: PyRef<'_, Self>, py: Python, t_start: i64, t_end: i64) -> NestedDegreeIterable {
+        NestedDegreeIterable {
+            vertex_iter: slf.into(),
+            operation: Direction::IN_WINDOW{t_start, t_end},
+        }
+    }
+
     fn out_degree(slf: PyRef<'_, Self>, py: Python) -> NestedDegreeIterable {
         NestedDegreeIterable {
             vertex_iter: slf.into(),
@@ -325,10 +383,24 @@ impl WindowedVerticesPath {
         }
     }
 
+    fn out_degree_window(slf: PyRef<'_, Self>, py: Python, t_start: i64, t_end: i64) -> NestedDegreeIterable {
+        NestedDegreeIterable {
+            vertex_iter: slf.into(),
+            operation: Direction::OUT_WINDOW{t_start, t_end},
+        }
+    }
+
     fn degree(slf: PyRef<'_, Self>, py: Python) -> NestedDegreeIterable {
         NestedDegreeIterable {
             vertex_iter: slf.into(),
             operation: Direction::BOTH,
+        }
+    }
+
+    fn degree_window(slf: PyRef<'_, Self>, py: Python, t_start: i64, t_end: i64) -> NestedDegreeIterable {
+        NestedDegreeIterable {
+            vertex_iter: slf.into(),
+            operation: Direction::BOTH_WINDOW{t_start, t_end},
         }
     }
 
@@ -446,6 +518,14 @@ impl WindowedVertexIterable {
         }
     }
 
+    fn in_degree_window(slf: PyRef<'_, Self>, t_start: i64, t_end: i64) -> DegreeIterable {
+        let vertex_iter = slf.into();
+        DegreeIterable {
+            vertex_iter,
+            operation: Direction::IN_WINDOW{t_start, t_end},
+        }
+    }
+
     fn out_degree(slf: PyRef<'_, Self>) -> DegreeIterable {
         let vertex_iter = slf.into();
         DegreeIterable {
@@ -454,11 +534,27 @@ impl WindowedVertexIterable {
         }
     }
 
+    fn out_degree_window(slf: PyRef<'_, Self>, t_start: i64, t_end: i64) -> DegreeIterable {
+        let vertex_iter = slf.into();
+        DegreeIterable {
+            vertex_iter,
+            operation: Direction::OUT_WINDOW{t_start, t_end},
+        }
+    }
+
     fn degree(slf: PyRef<'_, Self>) -> DegreeIterable {
         let vertex_iter = slf.into();
         DegreeIterable {
             vertex_iter,
             operation: Direction::BOTH,
+        }
+    }
+
+    fn degree_window(slf: PyRef<'_, Self>, t_start: i64, t_end: i64) -> DegreeIterable {
+        let vertex_iter = slf.into();
+        DegreeIterable {
+            vertex_iter,
+            operation: Direction::BOTH_WINDOW{t_start, t_end},
         }
     }
 
@@ -542,6 +638,9 @@ impl DegreeIterable {
             Direction::OUT => iter.out_degree(),
             Direction::IN => iter.in_degree(),
             Direction::BOTH => iter.degree(),
+            Direction::OUT_WINDOW { t_start, t_end } => iter.out_degree_window(t_start, t_end),
+            Direction::IN_WINDOW { t_start, t_end } => iter.in_degree_window(t_start, t_end),
+            Direction::BOTH_WINDOW { t_start, t_end } => iter.degree_window(t_start, t_end),
         }
     }
 }

@@ -61,7 +61,6 @@ impl<G: GraphViewInternalOps + 'static + Send + Sync> VertexViewOps for VertexVi
         self.graph.degree_window(self.vertex, t_start, t_end, Direction::IN)
     }
 
-
     fn out_degree(&self) -> usize {
         self.graph.degree(self.vertex, Direction::OUT)
     }

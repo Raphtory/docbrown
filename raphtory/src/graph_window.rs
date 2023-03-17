@@ -176,12 +176,24 @@ impl WindowedVertex {
         self.vertex_w.degree()
     }
 
+    pub fn degree_window(&self, t_start: i64, t_end: i64) -> usize {
+        self.vertex_w.degree_window(t_start, t_end)
+    }
+
     pub fn in_degree(&self) -> usize {
         self.vertex_w.in_degree()
     }
 
+    pub fn in_degree_window(&self, t_start: i64, t_end: i64) -> usize {
+        self.vertex_w.in_degree_window(t_start, t_end)
+    }
+
     pub fn out_degree(&self) -> usize {
         self.vertex_w.out_degree()
+    }
+
+    pub fn out_degree_window(&self, t_start: i64, t_end: i64) -> usize {
+        self.vertex_w.out_degree_window(t_start, t_end)
     }
 
     pub fn edges(&self) -> WindowedEdgeIterator {
