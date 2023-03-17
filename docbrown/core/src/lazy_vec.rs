@@ -91,12 +91,6 @@ where
             None => self.set(id, default).unwrap(),
         }
     }
-
-
-
-    fn handle_illegal_change(id: usize) {
-        panic!("Tried to change meta data for id '{}'", id); // TODO: move this somewhere else and use it for static props
-    }
 }
 
 // TODO: move all these test to Props ?
