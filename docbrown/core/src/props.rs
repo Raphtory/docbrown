@@ -226,7 +226,7 @@ impl Props {
         Ok(())
     }
 
-    // this method is called every time we create and edge, it's important that that doesn't change though
+    // this method is called every time we create an edge, it's important that that doesn't change though
     pub fn upsert_temporal_edge_props(&mut self, t: i64, edge_id: usize, props: &Vec<(String, Prop)>) -> Result<(), ()>  {
         self.num_edge_slots += 1;
         Self::assert_valid_edge_id(edge_id);
