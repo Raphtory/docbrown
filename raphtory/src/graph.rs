@@ -1,17 +1,20 @@
 use docbrown_core as dbc;
+use docbrown_core::vertex::InputVertex;
+use docbrown_db::view_api::*;
 use docbrown_db::{graph, perspective};
 use pyo3::exceptions;
+use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
+use pyo3::types::{PyInt, PyIterator, PyString};
 use std::collections::HashMap;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use itertools::Itertools;
-use pyo3::types::PyIterator;
 
 use crate::graph_window::{GraphWindowSet, WindowedGraph};
-use crate::Perspective;
 use crate::wrappers::{PerspectiveSet, Prop};
+use crate::Perspective;
 
 #[pyclass]
 pub struct Graph {
@@ -19,11 +22,8 @@ pub struct Graph {
 }
 
 impl Graph {
-
     pub fn from_db_graph(db_graph: graph::Graph) -> Self {
-        Self {
-            graph: db_graph
-        }
+        Self { graph: db_graph }
     }
 }
 
@@ -37,11 +37,11 @@ impl Graph {
         }
     }
 
-    pub fn earliest_time(&self,) -> Option<i64> {
+    pub fn earliest_time(&self) -> Option<i64> {
         self.graph.earliest_time()
     }
 
-    pub fn latest_time(&self,) -> Option<i64> {
+    pub fn latest_time(&self) -> Option<i64> {
         self.graph.latest_time()
     }
 
@@ -65,10 +65,10 @@ impl Graph {
         }
 
         let result = match perspectives.extract::<PerspectiveSet>() {
-            Ok(perspective_set) =>  self.graph.through_perspectives(perspective_set.ps),
+            Ok(perspective_set) => self.graph.through_perspectives(perspective_set.ps),
             Err(_) => {
                 let iter = PyPerspectiveIterator {
-                    iter: Py::from(perspectives.iter()?)
+                    iter: Py::from(perspectives.iter()?),
                 };
                 self.graph.through_iter(Box::new(iter))
             }
@@ -100,26 +100,75 @@ impl Graph {
     }
 
     pub fn len(&self) -> usize {
-        self.graph.len()
+        self.graph.num_vertices()
     }
 
     pub fn edges_len(&self) -> usize {
-        self.graph.edges_len()
+        self.graph.num_edges()
     }
 
-    pub fn has_vertex(&self, v: u64) -> bool {
-        self.graph.has_vertex(v)
+    pub fn number_of_edges(&self) -> usize {
+        self.graph.num_edges()
     }
 
-    pub fn add_vertex(&self, t: i64, v: u64, props: HashMap<String, Prop>) {
-        self.graph.add_vertex(
-            t,
-            v,
-            &props
-                .into_iter()
-                .map(|(key, value)| (key, value.into()))
-                .collect::<Vec<(String, dbc::Prop)>>(),
-        )
+    pub fn num_edges(&self) -> usize {
+        self.graph.num_edges()
+    }
+
+    pub fn number_of_nodes(&self) -> usize {
+        self.graph.num_vertices()
+    }
+
+    pub fn num_vertices(&self) -> usize {
+        self.graph.num_vertices()
+    }
+
+    pub fn has_vertex(&self, v: &PyAny) -> bool {
+        if let Ok(v) = v.extract::<String>() {
+            self.graph.has_vertex(v)
+        } else if let Ok(v) = v.extract::<u64>() {
+            self.graph.has_vertex(v)
+        } else {
+            panic!("Input must be a string or integer.")
+        }
+    }
+
+    pub fn has_edge(&self, src: &PyAny, dst: &PyAny) -> bool {
+        if let (Ok(src), Ok(dst)) = (src.extract::<String>(), dst.extract::<String>()) {
+            self.graph.has_edge(
+                src,
+                dst,
+            )
+        } else if let (Ok(src), Ok(dst)) = (src.extract::<u64>(), dst.extract::<u64>()) {
+            self.graph
+                .has_edge(src, dst)
+        } else {
+            panic!("Types of src and dst must be the same (either Int or str)")
+        }
+    }
+
+    pub fn add_vertex(&self, t: i64, v: &PyAny, props: HashMap<String, Prop>) {
+        if let Ok(vv) = v.extract::<String>() {
+            self.graph.add_vertex(
+                t,
+                vv,
+                &props
+                    .into_iter()
+                    .map(|(key, value)| (key, value.into()))
+                    .collect::<Vec<(String, dbc::Prop)>>(),
+            )
+        } else {
+            if let Ok(vvv) = v.extract::<u64>() {
+                self.graph.add_vertex(
+                    t,
+                    vvv,
+                    &props
+                        .into_iter()
+                        .map(|(key, value)| (key, value.into()))
+                        .collect::<Vec<(String, dbc::Prop)>>(),
+                )
+            } else { panic!("Input must be a string or integer.") }
+        }
     }
 
     pub fn add_vertex_properties(&self, v: u64, props: HashMap<String, Prop>) {
@@ -130,16 +179,32 @@ impl Graph {
         self.graph.add_vertex_properties(v, prop_vec);
     }
 
-    pub fn add_edge(&self, t: i64, src: u64, dst: u64, props: HashMap<String, Prop>) {
-        self.graph.add_edge(
-            t,
-            src,
-            dst,
-            &props
-                .into_iter()
-                .map(|f| (f.0.clone(), f.1.into()))
-                .collect::<Vec<(String, dbc::Prop)>>(),
-        )
+    pub fn at(&self, end: i64) -> WindowedGraph { self.graph.at(end).into() }
+
+    pub fn add_edge(&self, t: i64, src: &PyAny, dst: &PyAny, props: HashMap<String, Prop>) {
+        if let (Ok(src), Ok(dst)) = (src.extract::<String>(), dst.extract::<String>()) {
+            self.graph.add_edge(
+                t,
+                src,
+                dst,
+                &props
+                    .into_iter()
+                    .map(|f| (f.0.clone(), f.1.into()))
+                    .collect::<Vec<(String, dbc::Prop)>>(),
+            )
+        } else if let (Ok(src), Ok(dst)) = (src.extract::<u64>(), dst.extract::<u64>()) {
+            self.graph.add_edge(
+                t,
+                src,
+                dst,
+                &props
+                    .into_iter()
+                    .map(|f| (f.0.clone(), f.1.into()))
+                    .collect::<Vec<(String, dbc::Prop)>>(),
+            )
+        } else {
+            panic!("Types of src and dst must be the same (either Int or str)")
+        }
     }
 
     pub fn add_edge_properties(&self, src: u64, dst: u64, props: HashMap<String, Prop>) {

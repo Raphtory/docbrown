@@ -7,7 +7,21 @@ on:
     branches:
       - main
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+
 jobs:
   call-test-rust-workflow-in-local-repo:
+    name: Run Rust tests
     uses: ./.github/workflows/test_rust_workflow.yml
+    secrets: inherit
+  call-test-python-workflow-in-local-repo:
+    name: Run Python tests
+    uses: ./.github/workflows/test_python_workflow.yml
+    secrets: inherit
+  call-benchmark-workflow-in-local-repo:
+    name: Run benchmarks
+    uses: ./.github/workflows/benchmark.yml
     secrets: inherit

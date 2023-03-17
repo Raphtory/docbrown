@@ -2,7 +2,7 @@ import sys
 from raphtory import Graph
 from raphtory import algorithms
 from raphtory import Perspective
-
+import tempfile
 
 def create_graph(num_shards):
     g = Graph(num_shards)
@@ -192,7 +192,7 @@ def test_windowed_graph_neighbours():
     for v_iter in vertices_w:
         neighbours.append([v.id for v in v_iter])
 
-    assert neighbours == [[1, 2, 1, 2, 3], [1, 3, 1], [1, 2]]
+    assert neighbours == [[1, 2, 3], [1, 3], [1, 2]]
 
     vertices_w = [v.in_neighbours() for v in view.vertices()]
     in_neighbours = []
@@ -320,22 +320,65 @@ def test_perspective_set():
     views = g.through(perspectives)
     assert len(list(views)) == 2
 
-
-def test_metadata():
+def test_save_load_graph():
     g = create_graph(1)
+    g.add_vertex(1, 11, {"type": "wallet", "balance": 99.5})
+    g.add_vertex(2, 12, {"type": "wallet", "balance": 10.0})
+    g.add_vertex(3, 13, {"type": "wallet", "balance": 76})
+    g.add_edge(4, 11, 12, {"prop1": 1, "prop2": 9.8, "prop3": "test"})
+    g.add_edge(5, 12, 13, {"prop1": 1321, "prop2": 9.8, "prop3": "test"})
+    g.add_edge(6, 13, 11, {"prop1": 645, "prop2": 9.8, "prop3": "test"})
+
+    tmpdirname = tempfile.TemporaryDirectory()
+    g.save_to_file(tmpdirname.name)
+
+    del(g)
+
+    g = Graph.load_from_file(tmpdirname.name)
+
+    view = g.window(0,10)
+    assert g.has_vertex(13)
+    assert view.vertex(13).in_degree() == 1
+    assert view.vertex(13).out_degree() == 1
+    assert view.vertex(13).degree() == 2
+
+    triangles = algorithms.local_triangle_count(view,13) # How many triangles is 13 involved in
+    assert triangles == 1
+
+    v = view.vertex(11)
+    assert v.props() == {'type': [(1, 'wallet')], 'balance': [(1, 99.5)]}
+
+    tmpdirname.cleanup()
+
+def test_graph_at():
+    g = create_graph(1)
+
+    view = g.at(2)
+    assert view.vertex(1).degree() == 3
+    assert view.vertex(3).degree() == 1
+
+    view = g.at(7)
+    assert view.vertex(3).degree() == 2
+
+def test_add_node_string():
+    g = Graph(1)
+
+    g.add_vertex(0, 1, {})
+    g.add_vertex(1, "haaroon", {})
+
+    assert g.has_vertex(1)
+    assert g.has_vertex("haaroon")
+
+def test_add_edge_string():
+    g = Graph(1)
+
     g.add_edge(0, 1, 2, {})
+    g.add_edge(1, "haaroon", "ben", {})
 
+    assert g.has_vertex(1)
+    assert g.has_vertex(2)
+    assert g.has_vertex("haaroon")
+    assert g.has_vertex("ben")
 
-    # this is what we want:
-    # g.add_vertex(time=1, id=1, temporal_property=, static_property=)
-    # g.add_vertex_property(id=1, property=)
-
-    g.add_vertex_meta(1, {"metadata": "value"})
-    view = g.window(-1, 1)
-    meta = view.vertex(1).meta("metadata")
-
-
-
-
-
-    assert meta == "value"
+    assert g.has_edge(1, 2)
+    assert g.has_edge("haaroon", "ben")
