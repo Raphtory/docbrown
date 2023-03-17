@@ -47,7 +47,7 @@ pub trait VertexViewOps: Sized + Send + Sync {
 
     fn out_neighbours(&self) -> Self::VList;
 
-    fn out_neighbours_window(&self, t_start: i64, t_end: i64) -> Self::VListlf;
+    fn out_neighbours_window(&self, t_start: i64, t_end: i64) -> Self::VList;
 }
 
 pub trait VertexListOps:
@@ -94,6 +94,7 @@ pub trait VertexListOps:
     fn neighbours_window(self, t_start: i64, t_end: i64) -> Self;
 
     fn in_neighbours(self) -> Self;
+
     fn in_neighbours_window(self, t_start: i64, t_end: i64) -> Self;
 
     fn out_neighbours(self) -> Self;

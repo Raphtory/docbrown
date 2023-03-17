@@ -205,7 +205,7 @@ impl<G: GraphViewInternalOps + 'static + Send + Sync> VertexListOps
     }
 
     fn degree_window(self, t_start: i64, t_end: i64) -> Self::ValueIterType<usize> {
-        Box::new(self.map(|v| v.degree_window(t_start, t_end)))
+        Box::new(self.map(move |v| v.degree_window(t_start, t_end)))
     }
 
     fn in_degree(self) -> Self::ValueIterType<usize> {
@@ -213,7 +213,7 @@ impl<G: GraphViewInternalOps + 'static + Send + Sync> VertexListOps
     }
 
     fn in_degree_window(self, t_start: i64, t_end: i64) -> Self::ValueIterType<usize> {
-        Box::new(self.map(|v| v.in_degree_window(t_start, t_end)))
+        Box::new(self.map(move |v| v.in_degree_window(t_start, t_end)))
     }
 
     fn out_degree(self) -> Self::ValueIterType<usize> {
@@ -221,7 +221,7 @@ impl<G: GraphViewInternalOps + 'static + Send + Sync> VertexListOps
     }
 
     fn out_degree_window(self, t_start: i64, t_end: i64) -> Self::ValueIterType<usize> {
-        Box::new(self.map(|v| v.out_degree_window(t_start, t_end)))
+        Box::new(self.map(move |v| v.out_degree_window(t_start, t_end)))
     }
 
     fn edges(self) -> Self::EList {
@@ -229,7 +229,7 @@ impl<G: GraphViewInternalOps + 'static + Send + Sync> VertexListOps
     }
 
     fn edges_window(self, t_start: i64, t_end: i64) -> Self::EList {
-        Box::new(self.flat_map(|v| v.edges_window(t_start, t_end)))
+        Box::new(self.flat_map(move |v| v.edges_window(t_start, t_end)))
     }
 
     fn in_edges(self) -> Self::EList {
@@ -237,7 +237,7 @@ impl<G: GraphViewInternalOps + 'static + Send + Sync> VertexListOps
     }
 
     fn in_edges_window(self, t_start: i64, t_end: i64) -> Self::EList {
-        Box::new(self.flat_map(|v| v.in_edges_window(t_start, t_end)))
+        Box::new(self.flat_map(move |v| v.in_edges_window(t_start, t_end)))
     }
 
     fn out_edges(self) -> Self::EList {
@@ -245,7 +245,7 @@ impl<G: GraphViewInternalOps + 'static + Send + Sync> VertexListOps
     }
 
     fn out_edges_window(self, t_start: i64, t_end: i64) -> Self::EList {
-        Box::new(self.flat_map(|v| v.out_edges_window(t_start, t_end)))
+        Box::new(self.flat_map(move |v| v.out_edges_window(t_start, t_end)))
     }
 
     fn neighbours(self) -> Self {
@@ -253,7 +253,7 @@ impl<G: GraphViewInternalOps + 'static + Send + Sync> VertexListOps
     }
 
     fn neighbours_window(self, t_start: i64, t_end: i64) -> Self {
-        Box::new(self.flat_map(|v| v.neighbours_window(t_start, t_end)))
+        Box::new(self.flat_map(move |v| v.neighbours_window(t_start, t_end)))
     }
 
     fn in_neighbours(self) -> Self {
@@ -261,7 +261,7 @@ impl<G: GraphViewInternalOps + 'static + Send + Sync> VertexListOps
     }
 
     fn in_neighbours_window(self, t_start: i64, t_end: i64) -> Self {
-        Box::new(self.flat_map(|v| v.in_neighbours_window(t_start, t_end)))
+        Box::new(self.flat_map(move |v| v.in_neighbours_window(t_start, t_end)))
     }
 
     fn out_neighbours(self) -> Self {
@@ -269,7 +269,60 @@ impl<G: GraphViewInternalOps + 'static + Send + Sync> VertexListOps
     }
 
     fn out_neighbours_window(self, t_start: i64, t_end: i64) -> Self {
-        Box::new(self.flat_map(|v| v.out_neighbours_window(t_start, t_end)))
+        Box::new(self.flat_map(move |v| v.out_neighbours_window(t_start, t_end)))
+    }
+}
+
+#[cfg(test)]
+mod vertex_test {
+
+    use std::collections::HashMap;
+
+    use super::*;
+    use crate::graph::Graph;
+    use crate::view_api::*;
+    use docbrown_core::Prop;
+    use itertools::Itertools;
+    use quickcheck::TestResult;
+    use rand::Rng;
+
+    #[test]
+    fn test_all_degrees_window() {
+        let g = crate::graph_loader::lotr_graph::lotr_graph(4);
+
+        assert_eq!(g.num_edges(), 701);
+        assert_eq!(g.vertex("Gandalf").unwrap().degree(), 49);
+        assert_eq!(g.vertex("Gandalf").unwrap().degree_window(1356, 24792), 34);
+        assert_eq!(g.vertex("Gandalf").unwrap().in_degree(), 24);
+        assert_eq!(g.vertex("Gandalf").unwrap().in_degree_window(1356, 24792), 16);
+        assert_eq!(g.vertex("Gandalf").unwrap().out_degree(), 35);
+        assert_eq!(g.vertex("Gandalf").unwrap().out_degree_window(1356, 24792), 20);
     }
 
+    #[test]
+    fn test_all_neighbours_window() {
+        let g = crate::graph_loader::lotr_graph::lotr_graph(4);
+
+        assert_eq!(g.num_edges(), 701);
+        assert_eq!(g.vertex("Gandalf").unwrap().neighbours().count(), 49);
+        assert_eq!(g.vertex("Gandalf").unwrap().neighbours_window(1356, 24792).count(), 34);
+        assert_eq!(g.vertex("Gandalf").unwrap().in_neighbours().count(), 24);
+        assert_eq!(g.vertex("Gandalf").unwrap().in_neighbours_window(1356, 24792).count(), 16);
+        assert_eq!(g.vertex("Gandalf").unwrap().out_neighbours().count(), 35);
+        assert_eq!(g.vertex("Gandalf").unwrap().out_neighbours_window(1356, 24792).count(), 20);
+    }
+
+    #[test]
+    fn test_all_edges_window() {
+        let g = crate::graph_loader::lotr_graph::lotr_graph(4);
+
+        assert_eq!(g.num_edges(), 701);
+        assert_eq!(g.vertex("Gandalf").unwrap().edges().count(), 59);
+        assert_eq!(g.vertex("Gandalf").unwrap().edges_window(1356, 24792).count(), 36);
+        assert_eq!(g.vertex("Gandalf").unwrap().in_edges().count(), 24);
+        assert_eq!(g.vertex("Gandalf").unwrap().in_edges_window(1356, 24792).count(), 16);
+        assert_eq!(g.vertex("Gandalf").unwrap().out_edges().count(), 35);
+        assert_eq!(g.vertex("Gandalf").unwrap().out_edges_window(1356, 24792).count(), 20);
+    }
 }
+
