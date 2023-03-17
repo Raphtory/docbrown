@@ -391,4 +391,4 @@ def test_in_neighbours_window():
 
     view = g.at(2)
     v = view.vertex(2)
-    assert v.in_neighbours_window(0, 2) == 1
+    assert list(v.in_neighbours_window(0, 2).id()) == [1]

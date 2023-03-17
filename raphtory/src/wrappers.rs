@@ -34,7 +34,7 @@ pub(crate) enum Operations {
     OutNeighbours,
     InNeighbours,
     Neighbours,
-    InNeighboursWindow,
+    InNeighboursWindow{t_start: u64, t_end: u64},
 }
 
 #[derive(FromPyObject, Debug, Clone)]
@@ -135,8 +135,6 @@ impl WindowedVertices {
                 graph: slf.graph.clone(),
                 operations: vec![],
                 start_at: None,
-                t_start: None,
-                t_end: None,
             },
         )?;
         Ok(IdIterable { vertex_iter })
@@ -146,17 +144,13 @@ impl WindowedVertices {
         WindowedVerticesPath {
             graph: slf.graph.clone(),
             operations: vec![Operations::OutNeighbours],
-            t_start: None,
-            t_end: None,
         }
     }
 
     fn in_neighbours_window(mut slf: PyRefMut<'_, Self>, t_start: u64, t_end: u64) -> WindowedVerticesPath {
         WindowedVerticesPath {
             graph: slf.graph.clone(),
-            operations: vec![Operations::InNeighboursWindow],
-            t_start: Option::from(t_start),
-            t_end: Option::from(t_end),
+            operations: vec![Operations::InNeighboursWindow{t_start, t_end}],
         }
     }
 
@@ -164,8 +158,6 @@ impl WindowedVertices {
         WindowedVerticesPath {
             graph: slf.graph.clone(),
             operations: vec![Operations::InNeighbours],
-            t_start: None,
-            t_end: None
         }
     }
 
@@ -173,8 +165,6 @@ impl WindowedVertices {
         WindowedVerticesPath {
             graph: slf.graph.clone(),
             operations: vec![Operations::Neighbours],
-            t_start: None,
-            t_end: None
         }
     }
 
@@ -185,8 +175,6 @@ impl WindowedVertices {
                 graph: slf.graph.clone(),
                 operations: vec![],
                 start_at: None,
-                t_start: None,
-                t_end: None,
             },
         )?;
         Ok(DegreeIterable {
@@ -202,8 +190,6 @@ impl WindowedVertices {
                 graph: slf.graph.clone(),
                 operations: vec![],
                 start_at: None,
-                t_start: None,
-                t_end: None,
             },
         )?;
         Ok(DegreeIterable {
@@ -219,8 +205,6 @@ impl WindowedVertices {
                 graph: slf.graph.clone(),
                 operations: vec![],
                 start_at: None,
-                t_start: None,
-                t_end: None,
             },
         )?;
         Ok(DegreeIterable {
@@ -248,8 +232,6 @@ impl WindowedVertices {
 pub struct WindowedVerticesPath {
     pub(crate) graph: Py<WindowedGraph>,
     pub(crate) operations: Vec<Operations>,
-    pub(crate) t_start: Option<u64>,
-    pub(crate) t_end: Option<u64>,
 }
 
 impl WindowedVerticesPath {
@@ -260,15 +242,11 @@ impl WindowedVerticesPath {
         let g = self.graph.borrow(py);
         let g_py = self.graph.clone_ref(py);
         let ops = self.operations.clone();
-        let t_start = self.t_start;
-        let t_end = self.t_end;
         // don't capture self inside the closure!
         Box::new(g.graph_w.vertices().map(move |v| WindowedVertexIterable {
             graph: g_py.clone(),
             operations: ops.clone(),
             start_at: Some(v.id()),
-            t_start,
-            t_end,
         }))
     }
 }
@@ -298,9 +276,7 @@ impl WindowedVerticesPath {
     }
 
     fn in_neighbours_window(mut slf: PyRefMut<'_, Self>, t_start: u64, t_end: u64) -> PyRefMut<'_, Self> {
-        slf.operations.push(Operations::InNeighboursWindow);
-        slf.t_start = Option::from(t_start);
-        slf.t_end = Option::from(t_end);
+        slf.operations.push(Operations::InNeighboursWindow{t_start, t_end});
         slf
     }
 
@@ -350,8 +326,6 @@ pub struct WindowedVertexIterable {
     pub(crate) graph: Py<WindowedGraph>,
     pub(crate) operations: Vec<Operations>,
     pub(crate) start_at: Option<u64>,
-    pub(crate) t_start: Option<u64>,
-    pub(crate) t_end: Option<u64>,
 }
 
 impl WindowedVertexIterable {
@@ -361,8 +335,6 @@ impl WindowedVertexIterable {
     ) -> Box<dyn Iterator<Item = graph_window::WindowedVertex> + Send> {
         let g = self.graph.borrow(py);
         let mut ops_iter = self.operations.iter();
-        let t_start = self.t_start.unwrap_or(u64::MIN);
-        let t_end = self.t_end.unwrap_or(u64::MAX);
         let mut iter = match self.start_at {
             None => g.graph_w.vertices(),
             Some(g_id) => {
@@ -374,7 +346,7 @@ impl WindowedVertexIterable {
                     Operations::OutNeighbours => vertex.out_neighbours(),
                     Operations::InNeighbours => vertex.in_neighbours(),
                     Operations::Neighbours => vertex.neighbours(),
-                    Operations::InNeighboursWindow => vertex.in_neighbours_window(t_start as i64, t_end as i64),
+                    Operations::InNeighboursWindow{t_start, t_end} => vertex.in_neighbours_window(*t_start as i64, *t_end as i64),
                 }
             }
         };
@@ -384,7 +356,7 @@ impl WindowedVertexIterable {
                 Operations::OutNeighbours => iter.out_neighbours(),
                 Operations::InNeighbours => iter.in_neighbours(),
                 Operations::Neighbours => iter.neighbours(),
-                Operations::InNeighboursWindow => iter.in_neighbours_window(t_start as i64, t_end as i64),
+                Operations::InNeighboursWindow{t_start, t_end} => iter.in_neighbours_window(*t_start as i64, *t_end as i64),
             }
         }
         iter
@@ -417,9 +389,7 @@ impl WindowedVertexIterable {
     }
 
     fn in_neighbours_window(mut slf: PyRefMut<'_, Self>, t_start: u64, t_end: u64) -> PyRefMut<'_, Self> {
-        slf.operations.push(Operations::InNeighboursWindow);
-        slf.t_start = Some(t_start);
-        slf.t_end = Some(t_end);
+        slf.operations.push(Operations::InNeighboursWindow{t_start, t_end});
         slf
     }
 
