@@ -2,11 +2,11 @@ import sys
 from raphtory import Graph
 from raphtory import algorithms
 from raphtory import Perspective
+from raphtory import graph_loader as gl
 import tempfile
 
 def create_graph(num_shards):
     g = Graph(num_shards)
-
     edges = [
         (1, 1, 2),
         (2, 1, 3),
@@ -383,12 +383,16 @@ def test_add_edge_string():
     assert g.has_edge(1, 2)
     assert g.has_edge("haaroon", "ben")
 
-def test_in_neighbours_window():
-    g = create_graph(1)
+def test_all_neighbours_window():
+    g = Graph(4)
     g.add_edge(1, 1, 2, {})
     g.add_edge(1, 2, 3, {})
     g.add_edge(2, 3, 2, {})
+    g.add_edge(3, 3, 2, {})
+    g.add_edge(4, 2, 4, {})
 
     view = g.at(2)
     v = view.vertex(2)
     assert list(v.in_neighbours_window(0, 2).id()) == [1]
+    assert list(v.out_neighbours_window(0, 2).id()) == [3]
+    assert list(v.neighbours_window(0, 2).id()) == [1, 3]

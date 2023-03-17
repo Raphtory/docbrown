@@ -34,7 +34,9 @@ pub(crate) enum Operations {
     OutNeighbours,
     InNeighbours,
     Neighbours,
-    InNeighboursWindow{t_start: u64, t_end: u64},
+    InNeighboursWindow{t_start: i64, t_end: i64},
+    OutNeighboursWindow{t_start: i64, t_end: i64},
+    NeighboursWindow{t_start: i64, t_end: i64},
 }
 
 #[derive(FromPyObject, Debug, Clone)]
@@ -147,10 +149,10 @@ impl WindowedVertices {
         }
     }
 
-    fn in_neighbours_window(mut slf: PyRefMut<'_, Self>, t_start: u64, t_end: u64) -> WindowedVerticesPath {
+    fn out_neighbours_window(mut slf: PyRefMut<'_, Self>, t_start: i64, t_end: i64) -> WindowedVerticesPath {
         WindowedVerticesPath {
             graph: slf.graph.clone(),
-            operations: vec![Operations::InNeighboursWindow{t_start, t_end}],
+            operations: vec![Operations::OutNeighboursWindow{t_start, t_end}],
         }
     }
 
@@ -161,10 +163,24 @@ impl WindowedVertices {
         }
     }
 
+    fn in_neighbours_window(mut slf: PyRefMut<'_, Self>, t_start: i64, t_end: i64) -> WindowedVerticesPath {
+        WindowedVerticesPath {
+            graph: slf.graph.clone(),
+            operations: vec![Operations::InNeighboursWindow{t_start, t_end}],
+        }
+    }
+
     fn neighbours(mut slf: PyRefMut<'_, Self>) -> WindowedVerticesPath {
         WindowedVerticesPath {
             graph: slf.graph.clone(),
             operations: vec![Operations::Neighbours],
+        }
+    }
+
+    fn neighbours_window(mut slf: PyRefMut<'_, Self>, t_start: i64, t_end: i64) -> WindowedVerticesPath {
+        WindowedVerticesPath {
+            graph: slf.graph.clone(),
+            operations: vec![Operations::NeighboursWindow{t_start, t_end}],
         }
     }
 
@@ -270,18 +286,28 @@ impl WindowedVerticesPath {
         slf
     }
 
+    fn out_neighbours_window(mut slf: PyRefMut<'_, Self>, t_start: i64, t_end: i64) -> PyRefMut<'_, Self> {
+        slf.operations.push(Operations::OutNeighboursWindow{t_start, t_end});
+        slf
+    }
+
     fn in_neighbours(mut slf: PyRefMut<'_, Self>) -> PyRefMut<'_, Self> {
         slf.operations.push(Operations::InNeighbours);
         slf
     }
 
-    fn in_neighbours_window(mut slf: PyRefMut<'_, Self>, t_start: u64, t_end: u64) -> PyRefMut<'_, Self> {
+    fn in_neighbours_window(mut slf: PyRefMut<'_, Self>, t_start: i64, t_end: i64) -> PyRefMut<'_, Self> {
         slf.operations.push(Operations::InNeighboursWindow{t_start, t_end});
         slf
     }
 
     fn neighbours(mut slf: PyRefMut<'_, Self>) -> PyRefMut<'_, Self> {
         slf.operations.push(Operations::Neighbours);
+        slf
+    }
+
+    fn neighbours_window(mut slf: PyRefMut<'_, Self>, t_start: i64, t_end: i64) -> PyRefMut<'_, Self> {
+        slf.operations.push(Operations::NeighboursWindow{t_start, t_end});
         slf
     }
 
@@ -346,7 +372,9 @@ impl WindowedVertexIterable {
                     Operations::OutNeighbours => vertex.out_neighbours(),
                     Operations::InNeighbours => vertex.in_neighbours(),
                     Operations::Neighbours => vertex.neighbours(),
-                    Operations::InNeighboursWindow{t_start, t_end} => vertex.in_neighbours_window(*t_start as i64, *t_end as i64),
+                    Operations::InNeighboursWindow{t_start, t_end} => vertex.in_neighbours_window(*t_start, *t_end),
+                    Operations::OutNeighboursWindow{t_start, t_end} => vertex.out_neighbours_window(*t_start, *t_end),
+                    Operations::NeighboursWindow {t_start, t_end} => vertex.neighbours_window(*t_start, *t_end),
                 }
             }
         };
@@ -356,7 +384,9 @@ impl WindowedVertexIterable {
                 Operations::OutNeighbours => iter.out_neighbours(),
                 Operations::InNeighbours => iter.in_neighbours(),
                 Operations::Neighbours => iter.neighbours(),
-                Operations::InNeighboursWindow{t_start, t_end} => iter.in_neighbours_window(*t_start as i64, *t_end as i64),
+                Operations::InNeighboursWindow{t_start, t_end} => iter.in_neighbours_window(*t_start, *t_end),
+                Operations::OutNeighboursWindow{t_start, t_end} => iter.out_neighbours_window(*t_start, *t_end),
+                Operations::NeighboursWindow {t_start, t_end} => iter.neighbours_window(*t_start, *t_end),
             }
         }
         iter
@@ -383,18 +413,28 @@ impl WindowedVertexIterable {
         slf
     }
 
+    fn out_neighbours_window(mut slf: PyRefMut<'_, Self>, t_start: i64, t_end: i64) -> PyRefMut<'_, Self> {
+        slf.operations.push(Operations::OutNeighboursWindow{t_start, t_end});
+        slf
+    }
+
     fn in_neighbours(mut slf: PyRefMut<'_, Self>) -> PyRefMut<'_, Self> {
         slf.operations.push(Operations::InNeighbours);
         slf
     }
 
-    fn in_neighbours_window(mut slf: PyRefMut<'_, Self>, t_start: u64, t_end: u64) -> PyRefMut<'_, Self> {
+    fn in_neighbours_window(mut slf: PyRefMut<'_, Self>, t_start: i64, t_end: i64) -> PyRefMut<'_, Self> {
         slf.operations.push(Operations::InNeighboursWindow{t_start, t_end});
         slf
     }
 
     fn neighbours(mut slf: PyRefMut<'_, Self>) -> PyRefMut<'_, Self> {
         slf.operations.push(Operations::Neighbours);
+        slf
+    }
+
+    fn neighbours_window(mut slf: PyRefMut<'_, Self>, t_start: i64, t_end: i64) -> PyRefMut<'_, Self> {
+        slf.operations.push(Operations::NeighboursWindow{t_start, t_end});
         slf
     }
 

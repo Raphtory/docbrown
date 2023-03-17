@@ -210,6 +210,14 @@ impl WindowedVertex {
         }
     }
 
+    pub fn neighbours_window(&self, t_start: i64, t_end: i64) -> WindowedVertexIterable {
+        WindowedVertexIterable {
+            graph: self.graph.clone(),
+            operations: vec![Operations::NeighboursWindow{t_start, t_end}],
+            start_at: Some(self.id),
+        }
+    }
+
     pub fn in_neighbours(&self) -> WindowedVertexIterable {
         WindowedVertexIterable {
             graph: self.graph.clone(),
@@ -218,7 +226,7 @@ impl WindowedVertex {
         }
     }
 
-    pub fn in_neighbours_window(&self, t_start: u64, t_end: u64) -> WindowedVertexIterable {
+    pub fn in_neighbours_window(&self, t_start: i64, t_end: i64) -> WindowedVertexIterable {
         WindowedVertexIterable {
             graph: self.graph.clone(),
             operations: vec![Operations::InNeighboursWindow{t_start, t_end}],
@@ -230,6 +238,14 @@ impl WindowedVertex {
         WindowedVertexIterable {
             graph: self.graph.clone(),
             operations: vec![Operations::OutNeighbours],
+            start_at: Some(self.id)
+        }
+    }
+
+    pub fn out_neighbours_window(&self, t_start: i64, t_end: i64) -> WindowedVertexIterable {
+        WindowedVertexIterable {
+            graph: self.graph.clone(),
+            operations: vec![Operations::OutNeighboursWindow{t_start, t_end}],
             start_at: Some(self.id)
         }
     }
