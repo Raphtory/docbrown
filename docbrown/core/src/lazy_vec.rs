@@ -80,7 +80,7 @@ where
 
     pub(crate) fn update_or_set<F>(&mut self, id: usize, mut updater: F, default: A)
     where
-        F: FnMut(&mut A) // TODO: is FnMut right?
+        F: FnOnce(&mut A)
     {
         match self.get_mut(id) {
             Some(value) => updater(value),
