@@ -175,6 +175,17 @@ impl Graph {
         }
     }
 
+    pub fn vertex_ids(&self) -> VertexIdsIterator {
+        VertexIdsIterator {
+            iter: self.graph.vertices().id(),
+        }
+    }
+
+    pub fn vertices(slf: PyRef<'_, Self>) -> Vertices {
+        let g: Py<Self> = slf.into();
+        Vertices { graph: g }
+    }
+
     pub fn has_edge(&self, src: &PyAny, dst: &PyAny) -> bool {
         if let (Ok(src), Ok(dst)) = (src.extract::<String>(), dst.extract::<String>()) {
             self.graph.has_edge(

@@ -1,4 +1,5 @@
 import numpy as np
+import networkx
 
 def draw_nodes(
             graph, 
@@ -23,10 +24,8 @@ def draw_nodes(
             "Matplotlib is required. Please use 'pip install matplotlib' to install."
         ) from e
       
-      node_list = graph.vertices()
+      node_list = graph.vertex_ids()
 
-      if len(node_list) == 0:
-        return mpl.collections.PathCollection(None)
       
       ax = plt.gca()
      
@@ -60,7 +59,7 @@ def draw_nodes(
 
 def draw_edges(
         graph,
-        edge_position,
+      #   edge_position,
         arrow_color,
         width=1.0
 ):
@@ -84,17 +83,17 @@ def draw_edges(
 
       node_list = list(graph.node_indices())
 
-      edge_pos = np.asarray([(edge_position[e[0]], edge_position[e[1]]) for e in edge_list])
+      # edge_pos = np.asarray([(edge_position[e[0]], edge_position[e[1]]) for e in edge_list])
 
-      for i, (src, dst) in enumerate(edge_pos):
-          x, y = src
-          dx, dy = dst
+      # for i, (src, dst) in enumerate(edge_pos):
+      #     x, y = src
+      #     dx, dy = dst
 
       arrow = mpl.patches.Arrow(
-          x,
-          y,
-          dx,
-          dy,
+          1.0,
+          2.0,
+          3.0,
+          4.0,
           width,
           color=arrow_color
       )
@@ -153,8 +152,10 @@ def draw_graph(
       node_kwds = {k: v for k, v in kwds.items() if k in valid_node_kwds}
       edge_kwds = {k: v for k, v in kwds.items() if k in valid_edge_kwds}
 
-      draw_nodes(graph, position, **node_kwds)
-      draw_edges(graph, position, arrows=arrows, **edge_kwds)
+      if position is None:
+          pos = networkx.spring_layout(graph.vertex_ids())  
+      draw_nodes(graph, pos, **node_kwds)
+      # draw_edges(graph, arrow_color= "#000000", **edge_kwds)
 
       plt.draw_if_interactive()
 
