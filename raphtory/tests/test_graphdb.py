@@ -382,3 +382,13 @@ def test_add_edge_string():
 
     assert g.has_edge(1, 2)
     assert g.has_edge("haaroon", "ben")
+
+def test_in_neighbours_window():
+    g = create_graph(1)
+    g.add_edge(1, 1, 2, {})
+    g.add_edge(1, 2, 3, {})
+    g.add_edge(2, 3, 2, {})
+
+    view = g.at(2)
+    v = view.vertex(2)
+    assert v.in_neighbours_window(0, 2) == 1
