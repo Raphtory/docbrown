@@ -49,12 +49,25 @@ impl<G: GraphViewInternalOps + 'static + Send + Sync> VertexViewOps for VertexVi
         self.graph.degree(self.vertex, Direction::BOTH)
     }
 
+    fn degree_window(&self, t_start: i64, t_end: i64) -> usize {
+        self.graph.degree_window(self.vertex, t_start, t_end, Direction::BOTH)
+    }
+
     fn in_degree(&self) -> usize {
         self.graph.degree(self.vertex, Direction::IN)
     }
 
+    fn in_degree_window(&self, t_start: i64, t_end: i64) -> usize {
+        self.graph.degree_window(self.vertex, t_start, t_end, Direction::IN)
+    }
+
+
     fn out_degree(&self) -> usize {
         self.graph.degree(self.vertex, Direction::OUT)
+    }
+
+    fn out_degree_window(&self, t_start: i64, t_end: i64) -> usize {
+        self.graph.degree_window(self.vertex, t_start, t_end, Direction::OUT)
     }
 
     fn edges(&self) -> Self::EList {
@@ -62,6 +75,15 @@ impl<G: GraphViewInternalOps + 'static + Send + Sync> VertexViewOps for VertexVi
         Box::new(
             self.graph
                 .vertex_edges(self.vertex, Direction::BOTH)
+                .map(move |e| Self::Edge::new(g.clone(), e)),
+        )
+    }
+
+    fn edges_window(&self, t_start: i64, t_end: i64) -> Self::EList {
+        let g = self.graph.clone();
+        Box::new(
+            self.graph
+                .vertex_edges_window(self.vertex, t_start, t_end, Direction::BOTH)
                 .map(move |e| Self::Edge::new(g.clone(), e)),
         )
     }
@@ -75,11 +97,29 @@ impl<G: GraphViewInternalOps + 'static + Send + Sync> VertexViewOps for VertexVi
         )
     }
 
+    fn in_edges_window(&self, t_start: i64, t_end: i64) -> Self::EList {
+        let g = self.graph.clone();
+        Box::new(
+            self.graph
+                .vertex_edges_window(self.vertex, t_start, t_end, Direction::IN)
+                .map(move |e| Self::Edge::new(g.clone(), e)),
+        )
+    }
+
     fn out_edges(&self) -> Self::EList {
         let g = self.graph.clone();
         Box::new(
             self.graph
                 .vertex_edges(self.vertex, Direction::OUT)
+                .map(move |e| Self::Edge::new(g.clone(), e)),
+        )
+    }
+
+    fn out_edges_window(&self, t_start: i64, t_end: i64) -> Self::EList {
+        let g = self.graph.clone();
+        Box::new(
+            self.graph
+                .vertex_edges_window(self.vertex, t_start, t_end, Direction::OUT)
                 .map(move |e| Self::Edge::new(g.clone(), e)),
         )
     }
@@ -93,6 +133,15 @@ impl<G: GraphViewInternalOps + 'static + Send + Sync> VertexViewOps for VertexVi
         )
     }
 
+    fn neighbours_window(&self, t_start: i64, t_end: i64) -> Self::VList {
+        let g = self.graph.clone();
+        Box::new(
+            self.graph
+                .neighbours_window(self.vertex, t_start, t_end, Direction::BOTH)
+                .map(move |v| Self::new(g.clone(), v)),
+        )
+    }
+
     fn in_neighbours(&self) -> Self::VList {
         let g = self.graph.clone();
         Box::new(
@@ -102,11 +151,29 @@ impl<G: GraphViewInternalOps + 'static + Send + Sync> VertexViewOps for VertexVi
         )
     }
 
+    fn in_neighbours_window(&self, t_start: i64, t_end: i64) -> Self::VList {
+        let g = self.graph.clone();
+        Box::new(
+            self.graph
+                .neighbours_window(self.vertex, t_start, t_end, Direction::IN)
+                .map(move |v| Self::new(g.clone(), v)),
+        )
+    }
+
     fn out_neighbours(&self) -> Self::VList {
         let g = self.graph.clone();
         Box::new(
             self.graph
                 .neighbours(self.vertex, Direction::OUT)
+                .map(move |v| Self::new(g.clone(), v)),
+        )
+    }
+
+    fn out_neighbours_window(&self, t_start: i64, t_end: i64) -> Self::VList {
+        let g = self.graph.clone();
+        Box::new(
+            self.graph
+                .neighbours_window(self.vertex, t_start, t_end, Direction::OUT)
                 .map(move |v| Self::new(g.clone(), v)),
         )
     }
@@ -137,35 +204,72 @@ impl<G: GraphViewInternalOps + 'static + Send + Sync> VertexListOps
         Box::new(self.map(|v| v.degree()))
     }
 
+    fn degree_window(self, t_start: i64, t_end: i64) -> Self::ValueIterType<usize> {
+        Box::new(self.map(|v| v.degree_window(t_start, t_end)))
+    }
+
     fn in_degree(self) -> Self::ValueIterType<usize> {
         Box::new(self.map(|v| v.in_degree()))
+    }
+
+    fn in_degree_window(self, t_start: i64, t_end: i64) -> Self::ValueIterType<usize> {
+        Box::new(self.map(|v| v.in_degree_window(t_start, t_end)))
     }
 
     fn out_degree(self) -> Self::ValueIterType<usize> {
         Box::new(self.map(|v| v.out_degree()))
     }
 
+    fn out_degree_window(self, t_start: i64, t_end: i64) -> Self::ValueIterType<usize> {
+        Box::new(self.map(|v| v.out_degree_window(t_start, t_end)))
+    }
+
     fn edges(self) -> Self::EList {
         Box::new(self.flat_map(|v| v.edges()))
+    }
+
+    fn edges_window(self, t_start: i64, t_end: i64) -> Self::EList {
+        Box::new(self.flat_map(|v| v.edges_window(t_start, t_end)))
     }
 
     fn in_edges(self) -> Self::EList {
         Box::new(self.flat_map(|v| v.in_edges()))
     }
 
+    fn in_edges_window(self, t_start: i64, t_end: i64) -> Self::EList {
+        Box::new(self.flat_map(|v| v.in_edges_window(t_start, t_end)))
+    }
+
     fn out_edges(self) -> Self::EList {
         Box::new(self.flat_map(|v| v.out_edges()))
+    }
+
+    fn out_edges_window(self, t_start: i64, t_end: i64) -> Self::EList {
+        Box::new(self.flat_map(|v| v.out_edges_window(t_start, t_end)))
     }
 
     fn neighbours(self) -> Self {
         Box::new(self.flat_map(|v| v.neighbours()))
     }
 
+    fn neighbours_window(self, t_start: i64, t_end: i64) -> Self {
+        Box::new(self.flat_map(|v| v.neighbours_window(t_start, t_end)))
+    }
+
     fn in_neighbours(self) -> Self {
         Box::new(self.flat_map(|v| v.in_neighbours()))
+    }
+
+    fn in_neighbours_window(self, t_start: i64, t_end: i64) -> Self {
+        Box::new(self.flat_map(|v| v.in_neighbours_window(t_start, t_end)))
     }
 
     fn out_neighbours(self) -> Self {
         Box::new(self.flat_map(|v| v.out_neighbours()))
     }
+
+    fn out_neighbours_window(self, t_start: i64, t_end: i64) -> Self {
+        Box::new(self.flat_map(|v| v.out_neighbours_window(t_start, t_end)))
+    }
+
 }
