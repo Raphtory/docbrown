@@ -149,69 +149,51 @@ impl Graph {
 
     pub fn add_vertex(&self, t: i64, v: &PyAny, props: HashMap<String, Prop>) {
         if let Ok(vv) = v.extract::<String>() {
-            self.graph.add_vertex(
-                t,
-                vv,
-                &props
-                    .into_iter()
-                    .map(|(key, value)| (key, value.into()))
-                    .collect::<Vec<(String, dbc::Prop)>>(),
-            )
+            self.graph.add_vertex(t, vv, &Self::transform_props(props))
         } else {
             if let Ok(vvv) = v.extract::<u64>() {
-                self.graph.add_vertex(
-                    t,
-                    vvv,
-                    &props
-                        .into_iter()
-                        .map(|(key, value)| (key, value.into()))
-                        .collect::<Vec<(String, dbc::Prop)>>(),
-                )
+                self.graph.add_vertex(t, vvv, &Self::transform_props(props))
             } else { panic!("Input must be a string or integer.") }
         }
     }
 
-    pub fn add_vertex_properties(&self, v: u64, props: HashMap<String, Prop>) {
-        let prop_vec = &props
-            .into_iter()
-            .map(|(key, value)| (key, value.into()))
-            .collect_vec(); // todo put this in a common place
-        self.graph.add_vertex_properties(v, prop_vec);
+    pub fn add_vertex_properties(&self, v: &PyAny, props: HashMap<String, Prop>) {
+        if let Ok(v) = v.extract::<String>() {
+            self.graph.add_vertex_properties(v, &Self::transform_props(props));
+        } else {
+            if let Ok(v) = v.extract::<u64>() {
+                self.graph.add_vertex_properties(v, &Self::transform_props(props));
+            } else { panic!("Input must be a string or integer.") }
+        }
     }
 
     pub fn at(&self, end: i64) -> WindowedGraph { self.graph.at(end).into() }
 
     pub fn add_edge(&self, t: i64, src: &PyAny, dst: &PyAny, props: HashMap<String, Prop>) {
         if let (Ok(src), Ok(dst)) = (src.extract::<String>(), dst.extract::<String>()) {
-            self.graph.add_edge(
-                t,
-                src,
-                dst,
-                &props
-                    .into_iter()
-                    .map(|f| (f.0.clone(), f.1.into()))
-                    .collect::<Vec<(String, dbc::Prop)>>(),
-            )
+            self.graph.add_edge(t, src, dst, &Self::transform_props(props))
         } else if let (Ok(src), Ok(dst)) = (src.extract::<u64>(), dst.extract::<u64>()) {
-            self.graph.add_edge(
-                t,
-                src,
-                dst,
-                &props
-                    .into_iter()
-                    .map(|f| (f.0.clone(), f.1.into()))
-                    .collect::<Vec<(String, dbc::Prop)>>(),
-            )
+            self.graph.add_edge(t, src, dst, &Self::transform_props(props))
         } else {
             panic!("Types of src and dst must be the same (either Int or str)")
         }
     }
 
-    pub fn add_edge_properties(&self, src: u64, dst: u64, props: HashMap<String, Prop>) {
-        let prop_vec = &props
-            .into_iter()
-            .map(|(key, value)| (key, value.into()))
-            .collect_vec();
-        self.graph.add_edge_properties(src, dst, prop_vec);
+    pub fn add_edge_properties(&self, src: &PyAny, dst: &PyAny, props: HashMap<String, Prop>) {
+
+
+        if let (Ok(src), Ok(dst)) = (src.extract::<String>(), dst.extract::<String>()) {
+            self.graph.add_edge_properties(src, dst, &Self::transform_props(props));
+        } else if let (Ok(src), Ok(dst)) = (src.extract::<u64>(), dst.extract::<u64>()) {
+            self.graph.add_edge_properties(src, dst, &Self::transform_props(props));
+        } else {
+            panic!("Types of src and dst must be the same (either Int or str)")
+        }
+    }
+}
+
+impl Graph {
+    fn transform_props(props: HashMap<String, Prop>) -> Vec<(String, dbc::Prop)> {
+        props.into_iter().map(|(key, value)| (key, value.into())).collect_vec()
     }
 }

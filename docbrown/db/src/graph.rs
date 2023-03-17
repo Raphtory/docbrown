@@ -577,9 +577,9 @@ impl Graph {
         self.shards[shard_id].add_vertex(t, v, &props);
     }
 
-    pub fn add_vertex_properties(&self, v: u64, data: &Vec<(String, Prop)>) {
-        let shard_id = utils::get_shard_id_from_global_vid(v, self.nr_shards);
-        self.shards[shard_id].add_vertex_properties(v, data)
+    pub fn add_vertex_properties<T: InputVertex>(&self, v: T, data: &Vec<(String, Prop)>) {
+        let shard_id = utils::get_shard_id_from_global_vid(v.id(), self.nr_shards);
+        self.shards[shard_id].add_vertex_properties(v.id(), data)
     }
 
     // TODO: Vertex.name which gets ._id property else numba as string
@@ -600,15 +600,15 @@ impl Graph {
         }
     }
 
-    pub fn add_edge_properties(&self, src: u64, dst: u64, props: &Vec<(String, Prop)>) {
-        let src_shard_id = utils::get_shard_id_from_global_vid(src, self.nr_shards);
-        let dst_shard_id = utils::get_shard_id_from_global_vid(dst, self.nr_shards);
+    pub fn add_edge_properties<T: InputVertex>(&self, src: T, dst: T, props: &Vec<(String, Prop)>) {
+        let src_shard_id = utils::get_shard_id_from_global_vid(src.id(), self.nr_shards);
+        let dst_shard_id = utils::get_shard_id_from_global_vid(dst.id(), self.nr_shards);
 
         if src_shard_id == dst_shard_id {
-            self.shards[src_shard_id].add_edge_properties(src, dst, props)
+            self.shards[src_shard_id].add_edge_properties(src.id(), dst.id(), props)
         } else {
             // TODO: we don't add properties to dst shard, but may need to depending on the plans
-            self.shards[src_shard_id].add_remote_out_properties(src, dst, props);
+            self.shards[src_shard_id].add_remote_out_properties(src.id(), dst.id(), props);
         }
     }
 }
