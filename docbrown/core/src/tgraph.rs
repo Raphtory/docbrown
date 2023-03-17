@@ -697,7 +697,7 @@ impl TemporalGraph {
         self.props.static_vertex_keys(index)
     }
 
-    pub(crate) fn temp_vertex_prop(
+    pub(crate) fn temporal_vertex_prop(
         &self,
         v: u64,
         name: &str,
@@ -706,7 +706,7 @@ impl TemporalGraph {
         self.props.temporal_vertex_prop(index, name).iter()
     }
 
-    pub(crate) fn temp_vertex_prop_window(
+    pub(crate) fn temporal_vertex_prop_window(
         &self,
         v: u64,
         name: &str,
@@ -716,13 +716,13 @@ impl TemporalGraph {
         self.props.temporal_vertex_prop(index, name).iter_window(w.clone())
     }
 
-    pub(crate) fn temp_vertex_prop_vec(&self, v: u64, name: &str) -> Vec<(i64, Prop)> {
+    pub(crate) fn temporal_vertex_prop_vec(&self, v: u64, name: &str) -> Vec<(i64, Prop)> {
         let index = self.logical_to_physical[&v];
         let tprop = self.props.temporal_vertex_prop(index, name);
         tprop.iter().map(|(t, p)| (*t, p)).collect_vec()
     }
 
-    pub(crate) fn temp_vertex_prop_vec_window(
+    pub(crate) fn temporal_vertex_prop_vec_window(
         &self,
         v: u64,
         name: &str,
@@ -733,16 +733,16 @@ impl TemporalGraph {
         tprop.iter_window(w.clone()).map(|(t, p)| (*t, p)).collect_vec()
     }
 
-    pub(crate) fn temp_vertex_props(&self, v: u64) -> HashMap<String, Vec<(i64, Prop)>> {
+    pub(crate) fn temporal_vertex_props(&self, v: u64) -> HashMap<String, Vec<(i64, Prop)>> {
         let index = self.logical_to_physical[&v];
         let keys = self.props.temporal_vertex_keys(index);
         keys.into_iter()
-            .map(|key| (key.to_string(), self.temp_vertex_prop_vec(v, &key)))
+            .map(|key| (key.to_string(), self.temporal_vertex_prop_vec(v, &key)))
             .filter(|(k, v)| !v.is_empty()) // just filtered out None
             .collect()
     }
 
-    pub(crate) fn temp_vertex_props_window(
+    pub(crate) fn temporal_vertex_props_window(
         &self,
         v: u64,
         w: &Range<i64>,
@@ -750,7 +750,7 @@ impl TemporalGraph {
         let index = self.logical_to_physical[&v];
         let keys = self.props.temporal_vertex_keys(index);
         keys.into_iter()
-            .map(|key| (key.to_string(), self.temp_vertex_prop_vec_window(v, &key, w)))
+            .map(|key| (key.to_string(), self.temporal_vertex_prop_vec_window(v, &key, w)))
             .filter(|(k, v)| !v.is_empty())
             .collect()
     }
@@ -763,7 +763,7 @@ impl TemporalGraph {
         self.props.static_edge_keys(e)
     }
 
-    pub fn temp_edge_prop(
+    pub fn temporal_edge_prop(
         &self,
         e: usize,
         name: &str,
@@ -771,7 +771,7 @@ impl TemporalGraph {
         self.props.temporal_edge_prop(e, name).iter()
     }
 
-    pub fn temp_edge_prop_window(
+    pub fn temporal_edge_prop_window(
         &self,
         e: usize,
         name: &str,
@@ -780,11 +780,11 @@ impl TemporalGraph {
         self.props.temporal_edge_prop(e, name).iter_window(w)
     }
 
-    pub fn temp_edge_prop_vec(&self, e: usize, name: &str) -> Vec<(i64, Prop)> {
+    pub fn temporal_edge_prop_vec(&self, e: usize, name: &str) -> Vec<(i64, Prop)> {
         self.props.temporal_edge_prop(e, name).iter().map(|(t, p)| (*t, p)).collect_vec()
     }
 
-    pub fn temp_edge_prop_vec_window(
+    pub fn temporal_edge_prop_vec_window(
         &self,
         e: usize,
         name: &str,
@@ -1069,7 +1069,7 @@ mod graph_test {
 
         let res = g
             .vertices()
-            .flat_map(|v| g.temp_vertex_prop_vec(v.g_id, "type"))
+            .flat_map(|v| g.temporal_vertex_prop_vec(v.g_id, "type"))
             .collect_vec();
 
         assert_eq!(res, vec![(1i64, Prop::Str("wallet".into()))]);
@@ -1091,8 +1091,8 @@ mod graph_test {
         let res = g
             .vertices()
             .flat_map(|v| {
-                let type_ = g.temp_vertex_prop_vec(v.g_id, "type");
-                let active = g.temp_vertex_prop_vec(v.g_id, "active");
+                let type_ = g.temporal_vertex_prop_vec(v.g_id, "type");
+                let active = g.temporal_vertex_prop_vec(v.g_id, "active");
                 chain!(type_, active)
             })
             .collect_vec();
@@ -1137,8 +1137,8 @@ mod graph_test {
         let res: Vec<(i64, Prop)> = g
             .vertices()
             .flat_map(|v| {
-                let type_ = g.temp_vertex_prop_vec_window(v.g_id, "type", &(2..3));
-                let active = g.temp_vertex_prop_vec_window(v.g_id, "active", &(2..3));
+                let type_ = g.temporal_vertex_prop_vec_window(v.g_id, "type", &(2..3));
+                let active = g.temporal_vertex_prop_vec_window(v.g_id, "active", &(2..3));
                 chain!(type_, active)
             })
             .collect_vec();
@@ -1176,10 +1176,10 @@ mod graph_test {
         let res = g
             .vertices()
             .flat_map(|v| {
-                let type_ = g.temp_vertex_prop_vec_window(v.g_id, "type", &(1..2));
-                let active = g.temp_vertex_prop_vec_window(v.g_id, "active", &(2..5));
-                let label = g.temp_vertex_prop_vec_window(v.g_id, "label", &(2..5));
-                let origin = g.temp_vertex_prop_vec_window(v.g_id, "origin", &(2..5));
+                let type_ = g.temporal_vertex_prop_vec_window(v.g_id, "type", &(1..2));
+                let active = g.temporal_vertex_prop_vec_window(v.g_id, "active", &(2..5));
+                let label = g.temporal_vertex_prop_vec_window(v.g_id, "label", &(2..5));
+                let origin = g.temporal_vertex_prop_vec_window(v.g_id, "origin", &(2..5));
                 chain!(type_, active, label, origin)
             })
             .collect_vec();
@@ -1503,7 +1503,7 @@ mod graph_test {
         let edge_weights = g
             .vertex_edges(11, Direction::OUT)
             .flat_map(|e| {
-                g.temp_edge_prop(e.edge_id, "weight")
+                g.temporal_edge_prop(e.edge_id, "weight")
                     .flat_map(|(t, prop)| match prop {
                         Prop::U32(weight) => Some((t, weight)),
                         _ => None,
@@ -1535,9 +1535,9 @@ mod graph_test {
         let edge_weights = g
             .vertex_edges(11, Direction::OUT)
             .flat_map(|e| {
-                let weight = g.temp_edge_prop(e.edge_id, "weight");
-                let amount = g.temp_edge_prop(e.edge_id, "amount");
-                let label = g.temp_edge_prop(e.edge_id, "label");
+                let weight = g.temporal_edge_prop(e.edge_id, "weight");
+                let amount = g.temporal_edge_prop(e.edge_id, "amount");
+                let label = g.temporal_edge_prop(e.edge_id, "label");
                 weight.chain(amount).chain(label)
             })
             .collect_vec();
@@ -1566,7 +1566,7 @@ mod graph_test {
         let edge_weights = g
             .vertex_edges_window(11, &(4..8), Direction::OUT)
             .flat_map(|e| {
-                g.temp_edge_prop_window(e.edge_id, "amount", 4..8)
+                g.temporal_edge_prop_window(e.edge_id, "amount", 4..8)
                     .flat_map(|(t, prop)| match prop {
                         Prop::U32(weight) => Some((t, weight)),
                         _ => None,
@@ -1579,7 +1579,7 @@ mod graph_test {
         let edge_weights = g
             .vertex_edges_window(22, &(4..8), Direction::IN)
             .flat_map(|e| {
-                g.temp_edge_prop_window(e.edge_id, "amount", 4..8)
+                g.temporal_edge_prop_window(e.edge_id, "amount", 4..8)
                     .flat_map(|(t, prop)| match prop {
                         Prop::U32(weight) => Some((t, weight)),
                         _ => None,
@@ -1637,9 +1637,9 @@ mod graph_test {
         let edge_weights = g
             .vertex_edges_window(11, &(3..5), Direction::OUT)
             .flat_map(|e| {
-                let weight = g.temp_edge_prop_window(e.edge_id, "weight", 3..5);
-                let amount = g.temp_edge_prop_window(e.edge_id, "amount", 3..5);
-                let label = g.temp_edge_prop_window(e.edge_id, "label", 3..5);
+                let weight = g.temporal_edge_prop_window(e.edge_id, "weight", 3..5);
+                let amount = g.temporal_edge_prop_window(e.edge_id, "amount", 3..5);
+                let label = g.temporal_edge_prop_window(e.edge_id, "label", 3..5);
                 weight.chain(amount).chain(label)
             })
             .collect_vec();
@@ -1683,7 +1683,7 @@ mod graph_test {
         let edge_weights_out_11 = g
             .vertex_edges(11, Direction::OUT)
             .flat_map(|e| {
-                g.temp_edge_prop(e.edge_id, "weight")
+                g.temporal_edge_prop(e.edge_id, "weight")
                     .flat_map(|(t, prop)| match prop {
                         Prop::F32(weight) => Some((t, weight)),
                         _ => None,
@@ -1696,7 +1696,7 @@ mod graph_test {
         let edge_weights_into_11 = g
             .vertex_edges(11, Direction::IN)
             .flat_map(|e| {
-                g.temp_edge_prop(e.edge_id, "weight")
+                g.temporal_edge_prop(e.edge_id, "weight")
                     .flat_map(|(t, prop)| match prop {
                         Prop::F32(weight) => Some((t, weight)),
                         _ => None,
@@ -1773,9 +1773,9 @@ mod graph_test {
         let edge_weights = g
             .vertex_edges(11, Direction::OUT)
             .flat_map(|e| {
-                let weight = g.temp_edge_prop(e.edge_id, "weight");
-                let amount = g.temp_edge_prop(e.edge_id, "amount");
-                let label = g.temp_edge_prop(e.edge_id, "label");
+                let weight = g.temporal_edge_prop(e.edge_id, "weight");
+                let amount = g.temporal_edge_prop(e.edge_id, "amount");
+                let label = g.temporal_edge_prop(e.edge_id, "label");
                 weight.chain(amount).chain(label)
             })
             .collect_vec();
