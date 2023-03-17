@@ -42,7 +42,6 @@ pub(crate) struct Props {
     // Vector of vertices properties. Each index represents vertex local (physical) id
     static_vertex_props: Vec<LazyVec<Option<Prop>>>,
     temporal_vertex_props: Vec<LazyVec<TProp>>,
-    num_vertex_slots: usize,
 
     // Vector of edge properties. Each "signed" index represents an edge id
     static_edge_props: Vec<LazyVec<Option<Prop>>>,
@@ -57,7 +56,6 @@ impl Default for Props {
             reverse_ids: Default::default(),
             static_vertex_props: Default::default(),
             temporal_vertex_props: Default::default(),
-            num_vertex_slots: 0, // TODO: remove this, not used anymore
             static_edge_props: Default::default(),
             temporal_edge_props: Default::default(),
             // Edge ids refer to the position of properties inside self.props.temporal_edge_props and

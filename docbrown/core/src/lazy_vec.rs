@@ -8,8 +8,7 @@ use std::ops::Range;
 pub(crate) enum LazyVec<A> {
     #[default]
     Empty,
-    // First tuple value in "TPropVec1" and indices in "TPropVecN" vector denote property id
-    // values from "Props::prop_ids" hashmap
+    // First value in "LazyVec1" and indices in "LazyVecN" vector denote the indices of this vec
     LazyVec1(usize, A),
     LazyVecN(Vec<A>),
 }
