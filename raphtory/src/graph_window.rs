@@ -58,13 +58,17 @@ impl WindowedGraph {
         }
     }
 
-    pub fn earliest_time(&self) -> i64 {
-        self.graph_w.t_start
-    }
+    //******  Metrics APIs ******//
+
+    pub fn earliest_time(&self) -> i64 { self.graph_w.earliest_time().unwrap_or(0) }
 
     pub fn latest_time(&self) -> i64 {
-        self.graph_w.t_end
+        self.graph_w.latest_time().unwrap_or(0)
     }
+
+    pub fn num_edges(&self) -> usize {self.graph_w.num_edges()}
+
+    pub fn num_vertices(&self) -> usize {self.graph_w.num_vertices()}
 
     pub fn has_vertex(&self, v: &PyAny) -> bool {
         if let Ok(v) = v.extract::<String>() {
@@ -96,6 +100,8 @@ impl WindowedGraph {
         }
     }
 
+    //******  Getter APIs ******//
+
     pub fn vertex(slf: PyRef<'_, Self>, v: u64) -> Option<WindowedVertex> {
         let v = slf.graph_w.vertex(v)?;
         let g: Py<Self> = slf.into();
@@ -115,6 +121,12 @@ impl WindowedGraph {
 
     pub fn edge(&self, src: u64, dst: u64) -> Option<WindowedEdge> {
         self.graph_w.edge(src, dst).map(|we| we.into())
+    }
+
+    pub fn edges(&self) -> WindowedEdgeIterator {
+        WindowedEdgeIterator {
+            iter: Box::new(self.graph_w.edges().map(|te| te.into())),
+        }
     }
 }
 
@@ -149,6 +161,7 @@ impl WindowedVertex {
 
 #[pymethods]
 impl WindowedVertex {
+
     pub fn prop(&self, name: String) -> Vec<(i64, Prop)> {
         self.vertex_w
             .prop(name)
