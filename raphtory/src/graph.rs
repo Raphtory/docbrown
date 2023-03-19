@@ -7,12 +7,14 @@ use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
 use pyo3::types::{PyInt, PyIterator, PyString};
 use std::collections::HashMap;
+use std::iter;
 use std::ops::Deref;
+use std::os::unix::raw::time_t;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use crate::graph_window::{GraphWindowSet, WindowedGraph};
-use crate::wrappers::{PerspectiveSet, Prop};
+use crate::graph_window::{GraphWindowSet, WindowedEdge, WindowedGraph, WindowedVertex};
+use crate::wrappers::{PerspectiveSet, Prop, VertexIdsIterator, WindowedEdgeIterator, WindowedVertices};
 use crate::Perspective;
 
 #[pyclass]
@@ -97,6 +99,13 @@ impl Graph {
     }
 
     pub fn at(&self, end: i64) -> WindowedGraph { self.graph.at(end).into() }
+
+    pub fn latest(&self) -> WindowedGraph {
+        match self.latest_time(){
+            None =>  self.at(0),
+            Some(time) => self.at(time)
+        }
+    }
 
     fn through(&self, perspectives: &PyAny) -> PyResult<GraphWindowSet> {
         struct PyPerspectiveIterator {
@@ -194,6 +203,48 @@ impl Graph {
     }
 
     //******  Getter APIs ******//
-    //TODO Implement LatestVertex/Edge?
+    //TODO Implement LatestVertex/Edge
+    //FIXME These are just placeholders for now and do not work because of the pyRef
+//     pub fn vertex(&self, v: u64) -> Option<WindowedVertex> {
+//         match self.latest_time(){
+//             None =>  None,
+//             Some(time) =>self.vertex(v)
+//         }
+//     }
+//
+//     pub fn vertex_ids(&self) -> VertexIdsIterator {
+//         match self.latest_time(){
+//             None =>  { self.at(0).vertex_ids()
+//             },
+//             Some(time) => self.at(time).vertex_ids()
+//         }
+//     }
+//slf: PyRef<'_, Self>
+//     pub fn vertices(&self) -> WindowedVertices {
+//         match self.latest_time(){
+//             None =>  {
+//                 self.at(0).vertices()
+//             },
+//             Some(time) => self.at(time).vertices()
+//         }
+//     }
+//
+//     pub fn edge(&self, src: u64, dst: u64) -> Option<WindowedEdge> {
+//         match self.latest_time(){
+//             None =>  {
+//                 None
+//             },
+//             Some(time) => self.at(time).edge(src,dst)
+//         }
+//     }
+//
+//     pub fn edges(&self) -> WindowedEdgeIterator {
+//         match self.latest_time(){
+//             None =>  {
+//                 self.at(0).edges()
+//             },
+//             Some(time) => self.at(time).edges()
+//         }
+//     }
 
 }

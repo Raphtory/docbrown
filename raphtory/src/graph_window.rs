@@ -294,11 +294,13 @@ impl WindowedEdge {
             .map(|(t, p)| (t, p.into()))
             .collect_vec()
     }
-    fn src(&self) -> WindowedVertex {
-        self.edge_w.src().into()
+    fn src(&self) -> u64 {
+        //FIXME can't currently return the WindowedVertex as can't create a Py<WindowedGraph>
+        self.edge_w.src().id()
     }
 
-    fn dst(&self) -> WindowedVertex {
-        self.edge_w.dst().into()
+    fn dst(&self) -> u64 {
+        //FIXME can't currently return the WindowedVertex as can't create a Py<WindowedGraph>
+        self.edge_w.dst().id()
     }
 }
