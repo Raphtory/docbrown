@@ -93,14 +93,14 @@ def test_windowed_graph_get_edge():
 
     view = g.window(min_size, max_size)
 
-    assert (view.edge(1, 3).src, view.edge(1, 3).dst) == (1, 3)
+    assert (view.edge(1, 3).src(), view.edge(1, 3).dst()) == (1, 3)
     assert view.edge(2, 3) == None
     assert view.edge(6, 5) == None
 
     assert (view.vertex(1).id, view.vertex(3).id) == (1, 3)
 
     view = g.window(2, 3)
-    assert (view.edge(1, 3).src, view.edge(1, 3).dst) == (1, 3)
+    assert (view.edge(1, 3).src(), view.edge(1, 3).dst()) == (1, 3)
 
     view = g.window(3, 7)
     assert view.edge(1, 3) == None
@@ -115,7 +115,7 @@ def test_windowed_graph_edges():
     edges = []
     for e_iter in tedges:
         for e in e_iter:
-            edges.append([e.src, e.dst])
+            edges.append([e.src(), e.dst()])
 
     assert edges == [
             [1, 1],
@@ -132,7 +132,7 @@ def test_windowed_graph_edges():
     in_edges = []
     for e_iter in tedges:
         for e in e_iter:
-            in_edges.append([e.src, e.dst])
+            in_edges.append([e.src(), e.dst()])
 
     assert in_edges == [
             [1, 1],
@@ -145,7 +145,7 @@ def test_windowed_graph_edges():
     out_edges = []
     for e_iter in tedges:
         for e in e_iter:
-            out_edges.append([e.src, e.dst])
+            out_edges.append([e.src(), e.dst()])
 
     assert out_edges == [
             [1, 1],
