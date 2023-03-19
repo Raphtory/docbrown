@@ -85,6 +85,7 @@ impl Graph {
                     .collect::<Vec<(String, dbc::Prop)>>(),
             )
         } else {
+            //FIXME This probably should just throw an error not fully panic
             panic!("Types of src and dst must be the same (either Int or str)")
         }
     }
@@ -187,6 +188,7 @@ impl Graph {
             self.graph
                 .has_edge(src, dst)
         } else {
+            //FIXME This probably should just throw an error not fully panic
             panic!("Types of src and dst must be the same (either Int or str)")
         }
     }

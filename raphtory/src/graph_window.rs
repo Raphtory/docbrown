@@ -96,6 +96,7 @@ impl WindowedGraph {
             )
         }
         else {
+            //FIXME This probably should just throw an error not fully panic
             panic!("Types of src and dst must be the same (either Int or str)")
         }
     }
@@ -137,6 +138,15 @@ pub struct WindowedVertex {
     pub(crate) graph: Py<WindowedGraph>,
     pub(crate) vertex_w: graph_window::WindowedVertex,
 }
+
+//TODO need to implement but would need to change a lot of things
+//Have to rely on internal from for the moment
+// impl From<graph_window::WindowedVertex> for WindowedVertex {
+//     fn from(value: graph_window::WindowedVertex) ->WindowedVertex {
+//
+//     }
+// }
+
 
 impl WindowedVertex {
     fn from(&self, value: graph_window::WindowedVertex) -> WindowedVertex {
@@ -264,27 +274,12 @@ impl WindowedVertex {
 
 #[pyclass]
 pub struct WindowedEdge {
-    pub edge_id: usize,
-    #[pyo3(get)]
-    pub src: u64,
-    #[pyo3(get)]
-    pub dst: u64,
-    #[pyo3(get)]
-    pub time: Option<i64>,
-    pub is_remote: bool,
     pub(crate) edge_w: graph_window::WindowedEdge,
 }
 
 impl From<graph_window::WindowedEdge> for WindowedEdge {
     fn from(value: graph_window::WindowedEdge) -> WindowedEdge {
-        let value_ref: EdgeRef = value.as_ref();
-        // FIXME: temporary hack, shouldn't really be copying all these values
         WindowedEdge {
-            edge_id: value_ref.edge_id,
-            src: value_ref.src_g_id,
-            dst: value_ref.dst_g_id,
-            time: value_ref.time,
-            is_remote: value_ref.is_remote,
             edge_w: value,
         }
     }
@@ -298,5 +293,12 @@ impl WindowedEdge {
             .into_iter()
             .map(|(t, p)| (t, p.into()))
             .collect_vec()
+    }
+    fn src(&self) -> WindowedVertex {
+        self.edge_w.src().into()
+    }
+
+    fn dst(&self) -> WindowedVertex {
+        self.edge_w.dst().into()
     }
 }

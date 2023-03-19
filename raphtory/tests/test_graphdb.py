@@ -30,8 +30,8 @@ def create_graph(num_shards):
 def test_graph_len_edge_len():
     g = create_graph(2)
 
-    assert g.len() == 3
-    assert g.edges_len() == 5
+    assert g.num_vertices() == 3
+    assert g.num_edges() == 5
 
 
 def test_graph_has_edge():
