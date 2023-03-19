@@ -39,55 +39,58 @@ impl Graph {
 
     //******  Graph Updates  ******//
 
-    pub fn add_vertex(&self, t: i64, v: &PyAny, props: HashMap<String, Prop>) {
-        if let Ok(vv) = v.extract::<String>() {
+    pub fn add_vertex(&self, timestamp: i64, id: &PyAny, properties:Option<HashMap<String, Prop>>) {
+        let props = match properties {
+            None => {vec![]}
+            Some(p) => {
+                p.into_iter()
+                    .map(|f| (f.0.clone(), f.1.into()))
+                    .collect::<Vec<(String, dbc::Prop)>>()
+            }
+        };
+        if let Ok(vv) = id.extract::<String>() {
             self.graph.add_vertex(
-                t,
+                timestamp,
                 vv,
                 &props
-                    .into_iter()
-                    .map(|(key, value)| (key, value.into()))
-                    .collect::<Vec<(String, dbc::Prop)>>(),
             )
         } else {
-            if let Ok(vvv) = v.extract::<u64>() {
+            if let Ok(vvv) = id.extract::<u64>() {
                 self.graph.add_vertex(
-                    t,
+                    timestamp,
                     vvv,
                     &props
-                        .into_iter()
-                        .map(|(key, value)| (key, value.into()))
-                        .collect::<Vec<(String, dbc::Prop)>>(),
                 )
-            } else { panic!("Input must be a string or integer.") }
+            } else { println!("Input must be a string or integer.") }
         }
     }
 
 
-    pub fn add_edge(&self, t: i64, src: &PyAny, dst: &PyAny, props: HashMap<String, Prop>) {
+    pub fn add_edge(&self, timestamp: i64, src: &PyAny, dst: &PyAny, properties: Option<HashMap<String, Prop>>) {
+        let props = match properties {
+            None => {vec![]}
+            Some(p) => {
+                p.into_iter()
+                    .map(|f| (f.0.clone(), f.1.into()))
+                    .collect::<Vec<(String, dbc::Prop)>>()
+            }
+        };
         if let (Ok(src), Ok(dst)) = (src.extract::<String>(), dst.extract::<String>()) {
             self.graph.add_edge(
-                t,
+                timestamp,
                 src,
                 dst,
-                &props
-                    .into_iter()
-                    .map(|f| (f.0.clone(), f.1.into()))
-                    .collect::<Vec<(String, dbc::Prop)>>(),
+                &props,
             )
         } else if let (Ok(src), Ok(dst)) = (src.extract::<u64>(), dst.extract::<u64>()) {
             self.graph.add_edge(
-                t,
+                timestamp,
                 src,
                 dst,
                 &props
-                    .into_iter()
-                    .map(|f| (f.0.clone(), f.1.into()))
-                    .collect::<Vec<(String, dbc::Prop)>>(),
             )
         } else {
-            //FIXME This probably should just throw an error not fully panic
-            panic!("Types of src and dst must be the same (either Int or str)")
+            println!("Types of src and dst must be the same (either Int or str)")
         }
     }
 
