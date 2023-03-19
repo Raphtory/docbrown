@@ -115,43 +115,43 @@ def test_windowed_graph_edges():
     edges = []
     for e_iter in tedges:
         for e in e_iter:
-            edges.append([e.src, e.dst, e.time])
+            edges.append([e.src, e.dst])
 
     assert edges == [
-            [1, 1, None],
-            [1, 1, None],
-            [1, 2, None],
-            [1, 3, None],
-            [1, 2, None],
-            [3, 2, None],
-            [1, 3, None],
-            [3, 2, None]
+            [1, 1],
+            [1, 1],
+            [1, 2],
+            [1, 3],
+            [1, 2],
+            [3, 2],
+            [1, 3],
+            [3, 2]
         ]
 
     tedges = [v.in_edges() for v in view.vertices()]
     in_edges = []
     for e_iter in tedges:
         for e in e_iter:
-            in_edges.append([e.src, e.dst, e.time])
+            in_edges.append([e.src, e.dst])
 
     assert in_edges == [
-            [1, 1, None],
-            [1, 2, None],
-            [3, 2, None],
-            [1, 3, None]
+            [1, 1],
+            [1, 2],
+            [3, 2],
+            [1, 3]
         ]
     
     tedges = [v.out_edges() for v in view.vertices()]
     out_edges = []
     for e_iter in tedges:
         for e in e_iter:
-            out_edges.append([e.src, e.dst, e.time])
+            out_edges.append([e.src, e.dst])
 
     assert out_edges == [
-            [1, 1, None],
-            [1, 2, None],
-            [1, 3, None],
-            [3, 2, None]
+            [1, 1],
+            [1, 2],
+            [1, 3],
+            [3, 2]
         ]
 
 

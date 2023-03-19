@@ -9,7 +9,6 @@ use pyo3::types::{PyInt, PyIterator, PyString};
 use std::collections::HashMap;
 use std::iter;
 use std::ops::Deref;
-use std::os::unix::raw::time_t;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
