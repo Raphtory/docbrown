@@ -60,11 +60,9 @@ impl WindowedGraph {
 
     //******  Metrics APIs ******//
 
-    pub fn earliest_time(&self) -> i64 { self.graph_w.earliest_time().unwrap_or(0) }
+    pub fn earliest_time(&self) -> Option<i64> { self.graph_w.earliest_time() }
 
-    pub fn latest_time(&self) -> i64 {
-        self.graph_w.latest_time().unwrap_or(0)
-    }
+    pub fn latest_time(&self) -> Option<i64> { self.graph_w.latest_time() }
 
     pub fn num_edges(&self) -> usize {self.graph_w.num_edges()}
 
