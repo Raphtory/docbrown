@@ -19,13 +19,6 @@ pub(crate) enum TProp {
     Bool(TCell<bool>)
 }
 
-impl Default for &TProp {
-    fn default() -> Self {
-        static DEFAULT: TProp = TProp::Empty;
-        &DEFAULT
-    }
-}
-
 impl TProp {
     pub(crate) fn from(t: i64, prop: &Prop) -> Self {
         match prop {

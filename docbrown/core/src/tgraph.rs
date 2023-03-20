@@ -191,7 +191,7 @@ impl TemporalGraph {
             );
         }
 
-        self.props.upsert_temporal_edge_props(t, src_edge_meta_id, props).unwrap()
+        self.props.upsert_temporal_edge_props(t, src_edge_meta_id, props)
     }
 
     pub(crate) fn add_edge_remote_out(
@@ -206,7 +206,7 @@ impl TemporalGraph {
         let src_edge_meta_id =
             self.link_outbound_edge(t, src, src_pid, dst.try_into().unwrap(), true);
 
-        self.props.upsert_temporal_edge_props(t, src_edge_meta_id, props).unwrap()
+        self.props.upsert_temporal_edge_props(t, src_edge_meta_id, props)
     }
 
     pub(crate) fn add_edge_remote_into(
@@ -223,7 +223,7 @@ impl TemporalGraph {
         let dst_edge_meta_id =
             self.link_inbound_edge(t, dst, src.try_into().unwrap(), dst_pid, true);
 
-        self.props.upsert_temporal_edge_props(t, dst_edge_meta_id, props).unwrap()
+        self.props.upsert_temporal_edge_props(t, dst_edge_meta_id, props)
     }
 
     // TODO: this should return a Result
@@ -703,7 +703,7 @@ impl TemporalGraph {
         name: &str,
     ) -> Box<dyn Iterator<Item = (&i64, Prop)> + '_> {
         let index = self.logical_to_physical[&v];
-        self.props.temporal_vertex_prop(index, name).iter()
+        self.props.temporal_vertex_prop(index, name).unwrap_or(&TProp::Empty).iter()
     }
 
     pub(crate) fn temporal_vertex_prop_window(
@@ -713,12 +713,12 @@ impl TemporalGraph {
         w: &Range<i64>,
     ) -> Box<dyn Iterator<Item = (&i64, Prop)> + '_> {
         let index = self.logical_to_physical[&v];
-        self.props.temporal_vertex_prop(index, name).iter_window(w.clone())
+        self.props.temporal_vertex_prop(index, name).unwrap_or(&TProp::Empty).iter_window(w.clone())
     }
 
     pub(crate) fn temporal_vertex_prop_vec(&self, v: u64, name: &str) -> Vec<(i64, Prop)> {
         let index = self.logical_to_physical[&v];
-        let tprop = self.props.temporal_vertex_prop(index, name);
+        let tprop = self.props.temporal_vertex_prop(index, name).unwrap_or(&TProp::Empty);
         tprop.iter().map(|(t, p)| (*t, p)).collect_vec()
     }
 
@@ -729,7 +729,7 @@ impl TemporalGraph {
         w: &Range<i64>,
     ) -> Vec<(i64, Prop)> {
         let index = self.logical_to_physical[&v];
-        let tprop = self.props.temporal_vertex_prop(index, name);
+        let tprop = self.props.temporal_vertex_prop(index, name).unwrap_or(&TProp::Empty);
         tprop.iter_window(w.clone()).map(|(t, p)| (*t, p)).collect_vec()
     }
 
@@ -768,7 +768,7 @@ impl TemporalGraph {
         e: usize,
         name: &str,
     ) -> Box<dyn Iterator<Item = (&i64, Prop)> + '_> {
-        self.props.temporal_edge_prop(e, name).iter()
+        self.props.temporal_edge_prop(e, name).unwrap_or(&TProp::Empty).iter()
     }
 
     pub fn temporal_edge_prop_window(
@@ -777,11 +777,15 @@ impl TemporalGraph {
         name: &str,
         w: Range<i64>,
     ) -> Box<dyn Iterator<Item = (&i64, Prop)> + '_> {
-        self.props.temporal_edge_prop(e, name).iter_window(w)
+        self.props.temporal_edge_prop(e, name).unwrap_or(&TProp::Empty).iter_window(w)
     }
 
     pub fn temporal_edge_prop_vec(&self, e: usize, name: &str) -> Vec<(i64, Prop)> {
-        self.props.temporal_edge_prop(e, name).iter().map(|(t, p)| (*t, p)).collect_vec()
+        self.props.temporal_edge_prop(e, name)
+            .unwrap_or(&TProp::Empty)
+            .iter()
+            .map(|(t, p)| (*t, p))
+            .collect_vec()
     }
 
     pub fn temporal_edge_prop_vec_window(
@@ -790,7 +794,11 @@ impl TemporalGraph {
         name: &str,
         w: Range<i64>,
     ) -> Vec<(i64, Prop)> {
-        self.props.temporal_edge_prop(e, name).iter_window(w).map(|(t, p)| (*t, p)).collect_vec()
+        self.props.temporal_edge_prop(e, name)
+            .unwrap_or(&TProp::Empty)
+            .iter_window(w)
+            .map(|(t, p)| (*t, p))
+            .collect_vec()
     }
 }
 
@@ -869,7 +877,7 @@ impl TemporalGraph {
                 list.find(dst).map(|e| e.edge_id()).ok_or(())?
             },
         };
-        self.props.set_static_edge_props(edge_id, data)
+        Ok(self.props.set_static_edge_props(edge_id, data))
     }
 
     fn edges_iter(
