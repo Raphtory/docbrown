@@ -146,7 +146,7 @@ pub mod csv {
             let mut csv_reader = self.csv_reader(file_path);
             let mut records_iter = csv_reader.deserialize::<REC>();
 
-            while let Some(rec) = records_iter.next() {
+            for rec in records_iter {
                 let record = rec.map_err(|err| CsvErr(err.into()))?;
                 loader(record, g)
             }
@@ -161,7 +161,8 @@ pub mod csv {
                 .filter(|name| name.ends_with(".gz"))
                 .is_some();
 
-            let f = File::open(&file_path).expect(&format!("Can't open file {file_path:?}"));
+            let f =
+                File::open(&file_path).unwrap_or_else(|_| panic!("Can't open file {file_path:?}"));
             if is_gziped {
                 csv::ReaderBuilder::new()
                     .has_headers(self.header)

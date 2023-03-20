@@ -19,6 +19,7 @@ use std::io::{prelude::*, BufReader, LineWriter};
 use std::time::Instant;
 
 use docbrown_db::graph::Graph;
+use docbrown_db::view_api::internal::GraphViewInternalOps;
 use docbrown_db::view_api::*;
 
 #[derive(Deserialize, std::fmt::Debug)]
@@ -84,7 +85,7 @@ pub fn loader(data_dir: &Path) -> Result<Graph, Box<dyn Error>> {
             let time = sent.time;
 
             g.add_edge(
-                time,
+                time.try_into().unwrap(),
                 src,
                 dst,
                 &vec![("amount".to_owned(), Prop::U64(sent.amount_usd))],
@@ -120,6 +121,88 @@ fn try_main() -> Result<(), Box<dyn Error>> {
     let earliest_time = graph.earliest_time().ok_or(GraphEmptyError)?;
     let latest_time = graph.latest_time().ok_or(GraphEmptyError)?;
     println!("graph time range: {}-{}", earliest_time, latest_time);
+    let now = Instant::now();
+    let window = graph.window(i64::MIN, i64::MAX);
+    println!("Creating window took {} seconds", now.elapsed().as_secs());
+
+    // let now = Instant::now();
+    // let num_windowed_edges: usize = window.vertices().map(|v| v.out_degree()).sum();
+    // println!(
+    //     "Counting edges in window by summing degrees returned {} in {} seconds",
+    //     num_windowed_edges,
+    //     now.elapsed().as_secs()
+    // );
+    //
+    // let now = Instant::now();
+    // let num_windowed_edges2 = window.num_edges();
+    // println!(
+    //     "Window num_edges returned {} in {} seconds",
+    //     num_windowed_edges2,
+    //     now.elapsed().as_secs()
+    // );
+
+    if let Some(missing_edge) = graph
+        .edges()
+        .find(|e| !window.has_edge(e.src().id(), e.dst().id()))
+    {
+        println!("Edge {:?} missing from graph", missing_edge);
+        let count = graph
+            .vertex_edges_window_t(
+                missing_edge.src().into(),
+                i64::MIN,
+                i64::MAX,
+                Direction::OUT,
+            )
+            .filter(|e| e.dst_g_id == missing_edge.dst().id())
+            .count();
+        println!("Missing edge has {} instances", count);
+        println!(
+            "Graph.has_edge({:?})={}",
+            missing_edge,
+            graph.has_edge(missing_edge.src().id(), missing_edge.dst().id())
+        )
+    }
+
+    if let Some(existing_edge) = graph
+        .edges()
+        .find(|e| window.has_edge(e.src().id(), e.dst().id()))
+    {
+        println!("Edge {:?} exist in graph", existing_edge);
+        let count = graph
+            .vertex_edges_window_t(
+                existing_edge.src().into(),
+                i64::MIN,
+                i64::MAX,
+                Direction::OUT,
+            )
+            .filter(|e| e.dst_g_id == existing_edge.dst().id())
+            .count();
+        println!("Existing edge has {} instances", count);
+        println!(
+            "Graph.has_edge({:?})={}",
+            existing_edge,
+            graph.has_edge(existing_edge.src().id(), existing_edge.dst().id())
+        )
+    }
+
+    let count: usize = graph
+        .edges()
+        .filter(|e| !window.has_edge(e.src().id(), e.dst().id()))
+        .take(100)
+        .map(|missing_edge| {
+            graph
+                .vertex_edges_window_t(
+                    missing_edge.src().into(),
+                    i64::MIN,
+                    i64::MAX,
+                    Direction::OUT,
+                )
+                .filter(|e| e.dst_g_id == missing_edge.dst().id())
+                .count()
+        })
+        .sum();
+
+    println!("Missing edges have total of {} instances", count);
     Ok(())
 }
 
