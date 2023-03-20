@@ -202,15 +202,33 @@ impl WindowedVertex {
         }
     }
 
+    pub fn edges_window(&self, t_start: i64, t_end: i64) -> WindowedEdgeIterator {
+        WindowedEdgeIterator {
+            iter: Box::new(self.vertex_w.edges_window(t_start, t_end).map(|te| te.into())),
+        }
+    }
+
     pub fn in_edges(&self) -> WindowedEdgeIterator {
         WindowedEdgeIterator {
             iter: Box::new(self.vertex_w.in_edges().map(|te| te.into())),
         }
     }
 
+    pub fn in_edges_window(&self, t_start: i64, t_end: i64) -> WindowedEdgeIterator {
+        WindowedEdgeIterator {
+            iter: Box::new(self.vertex_w.in_edges_window(t_start, t_end).map(|te| te.into())),
+        }
+    }
+
     pub fn out_edges(&self) -> WindowedEdgeIterator {
         WindowedEdgeIterator {
             iter: Box::new(self.vertex_w.out_edges().map(|te| te.into())),
+        }
+    }
+
+    pub fn out_edges_window(&self, t_start: i64, t_end: i64) -> WindowedEdgeIterator {
+        WindowedEdgeIterator {
+            iter: Box::new(self.vertex_w.out_edges_window(t_start, t_end).map(|te| te.into())),
         }
     }
 
@@ -287,6 +305,7 @@ impl WindowedVertex {
 
 #[pyclass]
 pub struct WindowedEdge {
+    #[pyo3(get)]
     pub edge_id: usize,
     #[pyo3(get)]
     pub src: u64,
@@ -322,4 +341,9 @@ impl WindowedEdge {
             .map(|(t, p)| (t, p.into()))
             .collect_vec()
     }
+
+    pub fn id(&self) {
+        self.edge_w
+    }
+
 }

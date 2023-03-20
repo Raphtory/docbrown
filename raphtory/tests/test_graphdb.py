@@ -398,7 +398,7 @@ def test_all_neighbours_window():
     assert list(v.neighbours_window(0, 2).id()) == [1, 3]
 
 def test_all_degrees_window():
-    g = graph_loader.lotr_graph()
+    g = Graph(4)
     g.add_edge(1, 1, 2, {})
     g.add_edge(1, 2, 3, {})
     g.add_edge(2, 3, 2, {})
@@ -412,3 +412,19 @@ def test_all_degrees_window():
     assert v.in_degree_window(0, 4) == 3
     assert v.out_degree_window(0, 4) == 1
     assert v.degree_window(0, 4) == 3
+
+def test_all_edge_window():
+    g = Graph(4)
+    g.add_edge(1, 1, 2, {})
+    g.add_edge(1, 2, 3, {})
+    g.add_edge(2, 3, 2, {})
+    g.add_edge(3, 3, 2, {})
+    g.add_edge(3, 4, 2, {})
+    g.add_edge(4, 2, 4, {})
+    g.add_edge(5, 2, 1, {})
+
+    view = g.at(4)
+    v = view.vertex(2)
+    assert list(map(lambda e: e.edge_id,  v.in_edges_window(0, 4))) == [1, 3, 4]
+    assert list(map(lambda e: e.edge_id,  v.out_edges_window(0, 4))) == [2]
+    assert list(map(lambda e: e.edge_id,  v.edges_window(0, 4))) == [1, 3, 4, 2]
