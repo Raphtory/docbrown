@@ -425,6 +425,6 @@ def test_all_edge_window():
 
     view = g.at(4)
     v = view.vertex(2)
-    assert list(map(lambda e: e.edge_id,  v.in_edges_window(0, 4))) == [1, 3, 4]
+    assert list(map(lambda e: e.edge_id,  v.in_edges_window(0, 4))) == [1, 3, 5]
     assert list(map(lambda e: e.edge_id,  v.out_edges_window(0, 4))) == [2]
-    assert list(map(lambda e: e.edge_id,  v.edges_window(0, 4))) == [1, 3, 4, 2]
+    assert list(map(lambda e: e.edge_id,  v.edges_window(0, 4))) == [1, 3, 5, 2]

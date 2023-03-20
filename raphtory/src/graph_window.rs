@@ -341,6 +341,11 @@ pub struct WindowedEdge {
 impl From<graph_window::WindowedEdge> for WindowedEdge {
     fn from(value: graph_window::WindowedEdge) -> WindowedEdge {
         WindowedEdge {
+            edge_id: value.id(),
+            src: value.src().id(),
+            dst: value.dst().id(),
+            time: None,
+            is_remote: false,
             edge_w: value,
         }
     }
@@ -356,8 +361,8 @@ impl WindowedEdge {
             .collect_vec()
     }
 
-    pub fn id(&self) {
-        self.edge_w
+    pub fn id(&self) -> usize {
+        self.edge_w.id()
     }
 
     fn src(&self) -> u64 {
