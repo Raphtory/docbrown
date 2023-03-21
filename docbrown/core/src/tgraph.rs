@@ -2,17 +2,81 @@ use std::{
     collections::{BTreeMap, HashMap},
     ops::Range,
 };
+use std::fmt::{Display, Formatter};
 
 use itertools::Itertools;
 use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
 
 use crate::adj::Adj;
-use crate::props::Props;
+use crate::props::{IllegalMutateError, Props};
 use crate::Prop;
 use crate::{bitset::BitSet, tadjset::AdjEdge, Direction};
 use crate::tprop::TProp;
 use crate::vertex::InputVertex;
+
+#[derive(Debug)]
+pub enum PropertyError {
+    EdgeMissing(u64, u64), // src, dst
+    IllegalEdgeChange {
+        src_id: u64,
+        dst_id: u64,
+        name: String,
+        previous_value: Prop,
+        new_value: Prop,
+    },
+    IllegalVertexChange {
+        vertex_id: u64,
+        name: String,
+        previous_value: Prop,
+        new_value: Prop,
+    },
+}
+
+impl PropertyError {
+    pub(crate) fn for_vertex(vertex_id: u64, e: IllegalMutateError) -> PropertyError {
+        PropertyError::IllegalVertexChange {
+            vertex_id,
+            name: e.name,
+            previous_value: e.previous_value,
+            new_value: e.new_value,
+        }
+    }
+    pub(crate) fn for_edge(src_id: u64, dst_id: u64, e: IllegalMutateError) -> PropertyError {
+        PropertyError::IllegalEdgeChange {
+            src_id,
+            dst_id,
+            name: e.name,
+            previous_value: e.previous_value,
+            new_value: e.new_value,
+        }
+    }
+}
+
+impl Display for PropertyError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let error = match self {
+            PropertyError::EdgeMissing(src, dst) => {
+                format!("Impossible to add static property to missing edge {src} -> {dst}")
+            },
+            PropertyError::IllegalEdgeChange{ src_id, dst_id, name, previous_value, new_value} => {
+                format!(
+                    "Impossible to change static property '{name}' for edge {src_id} -> {dst_id} from '{:?}' to '{:?}'",
+                    previous_value,
+                    new_value,
+                )
+            },
+            PropertyError::IllegalVertexChange{ vertex_id, name, previous_value, new_value} => {
+                format!(
+                    "Impossible to change static property '{name}' for vertex {vertex_id} from '{:?}' to '{:?}'",
+                    previous_value,
+                    new_value,
+                )
+            }
+        };
+        write!(f, "{error}")
+    }
+}
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct TemporalGraph {
@@ -114,7 +178,7 @@ impl TemporalGraph {
         }
     }
 
-    pub(crate) fn add_vertex<T: InputVertex>(&mut self, t: i64, v: T) {
+    pub(crate) fn add_vertex<T: InputVertex>(&mut self, t: i64, v: T) -> Result<(), PropertyError> {
         self.add_vertex_with_props(t, v, &vec![])
     }
 
@@ -123,7 +187,7 @@ impl TemporalGraph {
         t: i64,
         v: T,
         props: &Vec<(String, Prop)>,
-    ) {
+    ) -> Result<(), PropertyError> {
         //Updating time - only needs to be here as every other adding function calls this one
         if self.earliest_time > t {
             self.earliest_time = t
@@ -158,14 +222,16 @@ impl TemporalGraph {
             }
         };
         if let Some(n) = v.name_prop() {
-            self.props.set_static_vertex_props(index, &vec![("_id".to_string(), n)]);
+            let result = self.props.set_static_vertex_props(index, &vec![("_id".to_string(), n)]);
+            result.map_err(|e| PropertyError::for_vertex(v.id(), e))?
         }
-        self.props.upsert_temporal_vertex_props(t, index, props);
+        Ok(self.props.upsert_temporal_vertex_props(t, index, props))
     }
 
-    pub(crate) fn add_vertex_properties(&mut self, v: u64, data: &Vec<(String, Prop)>) {
+    pub(crate) fn add_vertex_properties(&mut self, v: u64, data: &Vec<(String, Prop)>) -> Result<(), PropertyError> {
         let index = *self.logical_to_physical.get(&v).expect(&format!("impossible to add metadata to non existing vertex {v}"));
-        self.props.set_static_vertex_props(index, data);
+        let result = self.props.set_static_vertex_props(index, data);
+        result.map_err(|e| PropertyError::for_vertex(v, e)) // TODO: use the name here if exists
     }
 
     pub fn add_edge(&mut self, t: i64, src: u64, dst: u64) {
@@ -230,16 +296,10 @@ impl TemporalGraph {
         self.props.upsert_temporal_edge_props(t, dst_edge_meta_id, props)
     }
 
-    // TODO: this should return a Result
-    pub(crate) fn add_edge_properties(&mut self, src: u64, dst: u64, data: &Vec<(String, Prop)>) {
-        let src_pid = self.logical_to_physical[&src];
-        let dst_pid = self.logical_to_physical[&dst];
-        self.link_edge_properties(src_pid, dst_pid, false, data).unwrap();
-    }
-
-    pub(crate) fn add_remote_out_properties(&mut self, src: u64, dst: u64, data: &Vec<(String, Prop)>) {
-        let src_pid = self.logical_to_physical[&src];
-        self.link_edge_properties(src_pid, dst.try_into().unwrap(), true, data).unwrap();
+    pub(crate) fn add_edge_properties(&mut self, src: u64, dst: u64, data: &Vec<(String, Prop)>) -> Result<(), PropertyError> {
+        let edge_id = self.edge(src, dst).ok_or(PropertyError::EdgeMissing(src, dst))?.edge_id;
+        let result = self.props.set_static_edge_props(edge_id, data);
+        result.map_err(|e| PropertyError::for_edge(src, dst, e))
     }
 
     pub(crate) fn degree(&self, v: u64, d: Direction) -> usize {
@@ -871,17 +931,6 @@ impl TemporalGraph {
                 edge_id
             }
         }
-    }
-
-    fn link_edge_properties(&mut self, src: usize, dst: usize, remote: bool, data: &Vec<(String, Prop)>) -> Result<(), ()> {
-        let edge_id = match &self.adj_lists[src] {
-            Adj::Solo(_) => Err(())?,
-            Adj::List { out, remote_out, .. } => {
-                let list = if remote { remote_out } else { out };
-                list.find(dst).map(|e| e.edge_id()).ok_or(())?
-            },
-        };
-        Ok(self.props.set_static_edge_props(edge_id, data))
     }
 
     fn edges_iter(

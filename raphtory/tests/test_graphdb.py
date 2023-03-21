@@ -365,6 +365,7 @@ def test_add_node_string():
 
     g.add_vertex(0, 1, {})
     g.add_vertex(1, "haaroon", {})
+    g.add_vertex(1, "haaroon", {}) # add same vertex twice used to cause an exception
 
     assert g.has_vertex(1)
     assert g.has_vertex("haaroon")

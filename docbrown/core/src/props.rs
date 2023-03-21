@@ -1,9 +1,28 @@
-use crate::lazy_vec::LazyVec;
+use crate::lazy_vec::{LazyVec, SetError};
 use crate::Prop;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::fmt::Debug;
 use itertools::Itertools;
 use crate::tprop::TProp;
+
+#[derive(Debug, PartialEq)]
+pub(crate) struct IllegalMutateError {
+    pub(crate) name: String,
+    pub(crate) previous_value: Prop,
+    pub(crate) new_value: Prop,
+}
+
+impl IllegalMutateError {
+    fn from(error: SetError<Option<Prop>>, dict: &HashMap<PropId, String>) -> IllegalMutateError {
+        let id = PropId::Static(error.index);
+        IllegalMutateError {
+            name: dict.get(&id).cloned().unwrap_or("<UNKNOWN NAME>".to_string()),
+            previous_value: error.previous_value.unwrap(),
+            new_value: error.new_value.unwrap(),
+        }
+    }
+}
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash, Clone)]
 enum PropId {
@@ -85,7 +104,7 @@ impl Props {
 
     fn get_or_default<A>(&self, vector: &Vec<LazyVec<A>>, id: usize, name: &str, should_be_static: bool) -> A
     where
-        A: PartialEq + Default + Clone,
+        A: PartialEq + Default + Clone + Debug,
     {
         match self.get_prop_id(name, true) {
             Some(prop_id) => {
@@ -120,7 +139,7 @@ impl Props {
 
     fn get_keys<A>(&self, vector: &Vec<LazyVec<A>>, id: usize, should_be_static: bool) -> Vec<String>
     where
-        A: Clone + Default + PartialEq
+        A: Clone + Default + PartialEq + Debug
     {
         match vector.get(id) {
             Some(props) => {
@@ -220,25 +239,31 @@ impl Props {
         }
     }
 
-    pub fn set_static_vertex_props(&mut self, vertex_id: usize, props: &Vec<(String, Prop)>) {
+    pub fn set_static_vertex_props(&mut self, vertex_id: usize, props: &Vec<(String, Prop)>) -> Result<(), IllegalMutateError> {
         if !props.is_empty() {
             let translated_props = self.translate_props(props, true);
             let vertex_slot: &mut LazyVec<Option<Prop>> = Self::grow_and_get_slot(&mut self.static_vertex_props, vertex_id);
             for (prop_id, prop) in translated_props {
-                vertex_slot.set(prop_id, Some(prop));
+                if let Err(e) = vertex_slot.set(prop_id, Some(prop)) {
+                    return Err(IllegalMutateError::from(e, &self.reverse_ids))
+                }
             }
         }
+        Ok(())
     }
 
-    pub fn set_static_edge_props(&mut self, edge_id: usize, props: &Vec<(String, Prop)>) {
+    pub fn set_static_edge_props(&mut self, edge_id: usize, props: &Vec<(String, Prop)>) -> Result<(), IllegalMutateError> {
         Self::assert_valid_edge_id(edge_id);
         if !props.is_empty() {
             let translated_props = self.translate_props(props, true);
             let edge_slot: &mut LazyVec<Option<Prop>> = Self::grow_and_get_slot(&mut self.static_edge_props, edge_id);
             for (prop_id, prop) in translated_props {
-                edge_slot.set(prop_id, Some(prop));
+                if let Err(e) = edge_slot.set(prop_id, Some(prop)) {
+                    return Err(IllegalMutateError::from(e, &self.reverse_ids))
+                }
             }
         }
+        Ok(())
     }
 
     fn assert_valid_edge_id(edge_id: usize) { // TODO: this should return a result
