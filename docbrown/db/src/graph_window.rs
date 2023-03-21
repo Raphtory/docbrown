@@ -679,11 +679,12 @@ mod views_test {
     }
 
     #[test]
-    fn large_edge_in_window() {
+    fn large_vertex_in_window() {
         let g = Graph::new(1);
         for _ in 0..2048 {
-            let t = rand::thread_rng().gen_range(i64::MIN..i64::MAX);
-            g.add_edge(t, 0, 1, &vec![]);
+            let t = 1;
+            let dst: u64 = rand::thread_rng().gen();
+            g.add_edge(t, 0, dst, &vec![]);
         }
         let w = g.window(i64::MIN, i64::MAX);
         assert!(g.edges().all(|e| w.has_edge(e.src().id(), e.dst().id())))
