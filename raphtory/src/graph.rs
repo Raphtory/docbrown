@@ -13,7 +13,7 @@ use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use itertools::Itertools;
-use docbrown_core::tgraph::PropertyError;
+use docbrown_core::tgraph::AddError;
 
 use crate::graph_window::{GraphWindowSet, WindowedEdge, WindowedGraph, WindowedVertex};
 use crate::wrappers::{PerspectiveSet, Prop, VertexIdsIterator, WindowedEdgeIterator, WindowedVertices};
@@ -239,7 +239,7 @@ impl Graph {
         }
     }
 
-    fn adapt_property_err<A>(result: Result<A, PropertyError>) -> PyResult<A> {
+    fn adapt_property_err<A>(result: Result<A, AddError>) -> PyResult<A> {
         result.map_err(|e| PyException::new_err(format!("{e}")))
     }
 }

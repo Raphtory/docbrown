@@ -15,8 +15,10 @@ use crate::{bitset::BitSet, tadjset::AdjEdge, Direction};
 use crate::tprop::TProp;
 use crate::vertex::InputVertex;
 
+pub type AddResult = Result<(), AddError>;
+
 #[derive(Debug)]
-pub enum PropertyError {
+pub enum AddError {
     EdgeMissing(u64, u64), // src, dst
     IllegalEdgeChange {
         src_id: u64,
@@ -33,17 +35,17 @@ pub enum PropertyError {
     },
 }
 
-impl PropertyError {
-    pub(crate) fn for_vertex(vertex_id: u64, e: IllegalMutateError) -> PropertyError {
-        PropertyError::IllegalVertexChange {
+impl AddError {
+    pub(crate) fn for_vertex(vertex_id: u64, e: IllegalMutateError) -> AddError {
+        AddError::IllegalVertexChange {
             vertex_id,
             name: e.name,
             previous_value: e.previous_value,
             new_value: e.new_value,
         }
     }
-    pub(crate) fn for_edge(src_id: u64, dst_id: u64, e: IllegalMutateError) -> PropertyError {
-        PropertyError::IllegalEdgeChange {
+    pub(crate) fn for_edge(src_id: u64, dst_id: u64, e: IllegalMutateError) -> AddError {
+        AddError::IllegalEdgeChange {
             src_id,
             dst_id,
             name: e.name,
@@ -53,20 +55,20 @@ impl PropertyError {
     }
 }
 
-impl Display for PropertyError {
+impl Display for AddError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let error = match self {
-            PropertyError::EdgeMissing(src, dst) => {
+            AddError::EdgeMissing(src, dst) => {
                 format!("Impossible to add static property to missing edge {src} -> {dst}")
             },
-            PropertyError::IllegalEdgeChange{ src_id, dst_id, name, previous_value, new_value} => {
+            AddError::IllegalEdgeChange{ src_id, dst_id, name, previous_value, new_value} => {
                 format!(
                     "Impossible to change static property '{name}' for edge {src_id} -> {dst_id} from '{:?}' to '{:?}'",
                     previous_value,
                     new_value,
                 )
             },
-            PropertyError::IllegalVertexChange{ vertex_id, name, previous_value, new_value} => {
+            AddError::IllegalVertexChange{ vertex_id, name, previous_value, new_value} => {
                 format!(
                     "Impossible to change static property '{name}' for vertex {vertex_id} from '{:?}' to '{:?}'",
                     previous_value,
@@ -178,7 +180,7 @@ impl TemporalGraph {
         }
     }
 
-    pub(crate) fn add_vertex<T: InputVertex>(&mut self, t: i64, v: T) -> Result<(), PropertyError> {
+    pub(crate) fn add_vertex<T: InputVertex>(&mut self, t: i64, v: T) -> AddResult {
         self.add_vertex_with_props(t, v, &vec![])
     }
 
@@ -187,7 +189,7 @@ impl TemporalGraph {
         t: i64,
         v: T,
         props: &Vec<(String, Prop)>,
-    ) -> Result<(), PropertyError> {
+    ) -> AddResult {
         //Updating time - only needs to be here as every other adding function calls this one
         if self.earliest_time > t {
             self.earliest_time = t
@@ -223,15 +225,15 @@ impl TemporalGraph {
         };
         if let Some(n) = v.name_prop() {
             let result = self.props.set_static_vertex_props(index, &vec![("_id".to_string(), n)]);
-            result.map_err(|e| PropertyError::for_vertex(v.id(), e))?
+            result.map_err(|e| AddError::for_vertex(v.id(), e))?
         }
         Ok(self.props.upsert_temporal_vertex_props(t, index, props))
     }
 
-    pub(crate) fn add_vertex_properties(&mut self, v: u64, data: &Vec<(String, Prop)>) -> Result<(), PropertyError> {
+    pub(crate) fn add_vertex_properties(&mut self, v: u64, data: &Vec<(String, Prop)>) -> AddResult {
         let index = *self.logical_to_physical.get(&v).expect(&format!("impossible to add metadata to non existing vertex {v}"));
         let result = self.props.set_static_vertex_props(index, data);
-        result.map_err(|e| PropertyError::for_vertex(v, e)) // TODO: use the name here if exists
+        result.map_err(|e| AddError::for_vertex(v, e)) // TODO: use the name here if exists
     }
 
     pub fn add_edge(&mut self, t: i64, src: u64, dst: u64) {
@@ -296,10 +298,10 @@ impl TemporalGraph {
         self.props.upsert_temporal_edge_props(t, dst_edge_meta_id, props)
     }
 
-    pub(crate) fn add_edge_properties(&mut self, src: u64, dst: u64, data: &Vec<(String, Prop)>) -> Result<(), PropertyError> {
-        let edge_id = self.edge(src, dst).ok_or(PropertyError::EdgeMissing(src, dst))?.edge_id;
+    pub(crate) fn add_edge_properties(&mut self, src: u64, dst: u64, data: &Vec<(String, Prop)>) -> AddResult {
+        let edge_id = self.edge(src, dst).ok_or(AddError::EdgeMissing(src, dst))?.edge_id;
         let result = self.props.set_static_edge_props(edge_id, data);
-        result.map_err(|e| PropertyError::for_edge(src, dst, e))
+        result.map_err(|e| AddError::for_edge(src, dst, e))
     }
 
     pub(crate) fn degree(&self, v: u64, d: Direction) -> usize {
