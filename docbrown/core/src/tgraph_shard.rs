@@ -139,6 +139,10 @@ impl TGraphShard<TemporalGraph> {
         self.write_shard(move |tg| tg.add_vertex_with_props(t, v, props))
     }
 
+    pub fn add_vertex_properties(&self, v: u64, data: &Vec<(String, Prop)>) {
+        self.write_shard(|tg| tg.add_vertex_properties(v, data))
+    }
+
     pub fn add_edge(&self, t: i64, src: u64, dst: u64, props: &Vec<(String, Prop)>) {
         self.write_shard(|tg| tg.add_edge_with_props(t, src, dst, props))
     }
@@ -151,6 +155,14 @@ impl TGraphShard<TemporalGraph> {
         self.write_shard(|tg| tg.add_edge_remote_into(t, src, dst, props))
     }
 
+    pub fn add_edge_properties(&self, src: u64, dst: u64, data: &Vec<(String, Prop)>) {
+        self.write_shard(|tg| tg.add_edge_properties(src, dst, data))
+    }
+
+    pub fn add_remote_out_properties(&self, src: u64, dst: u64, data: &Vec<(String, Prop)>) {
+        self.write_shard(|tg| tg.add_remote_out_properties(src, dst, data))
+    }
+    
     pub fn freeze(&self) -> ImmutableTGraphShard<TemporalGraph> {
         let mut inner = self.rc.write();
         let g = inner.take().unwrap();
