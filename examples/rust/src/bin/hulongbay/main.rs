@@ -79,18 +79,20 @@ pub fn loader(data_dir: &Path) -> Result<Graph, Box<dyn Error>> {
 
         let now = Instant::now();
 
-        CsvLoader::new(data_dir).load_into_graph(&g, |sent: Edge, g: &Graph| {
-            let src = sent.src;
-            let dst = sent.dst;
-            let time = sent.time;
+        CsvLoader::new(data_dir)
+            .with_filter(Regex::new(r".+(\.csv)$")?)
+            .load_into_graph(&g, |sent: Edge, g: &Graph| {
+                let src = sent.src;
+                let dst = sent.dst;
+                let time = sent.time;
 
-            g.add_edge(
-                time.try_into().unwrap(),
-                src,
-                dst,
-                &vec![("amount".to_owned(), Prop::U64(sent.amount_usd))],
-            )
-        })?;
+                g.add_edge(
+                    time,
+                    src,
+                    dst,
+                    &vec![("amount".to_owned(), Prop::U64(sent.amount_usd))],
+                )
+            })?;
 
         println!(
             "Loaded graph from CSV data files {} with {} vertices, {} edges which took {} seconds",
