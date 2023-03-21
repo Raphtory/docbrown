@@ -8,27 +8,30 @@ use genawaiter::sync::{gen, GenBoxed};
 use genawaiter::yield_;
 
 use crate::tgraph::{EdgeRef, TemporalGraph, VertexRef};
-use crate::{Direction, Prop};
 use crate::vertex::InputVertex;
+use crate::{Direction, Prop};
+
+use self::lock::MyLock;
 
 mod lock {
-
     use serde::{Deserialize, Serialize};
     use std::ops::{Deref, DerefMut};
-    #[derive(Serialize, Deserialize, Debug, Default)]
+
+    #[derive(Serialize, Deserialize, Debug)]
     #[repr(transparent)]
-    pub(crate) struct MyLock<T>(parking_lot::RwLock<T>);
+    pub struct MyLock<T>(parking_lot::RwLock<Option<T>>);
 
     impl<T> MyLock<T> {
-        fn new(t: T) -> Self {
-            Self(parking_lot::RwLock::new(t))
+        pub fn new(t: T) -> Self {
+            Self(parking_lot::RwLock::new(Some(t)))
         }
     }
 
     #[repr(transparent)]
-    pub(crate) struct MyReadGuard<'a, T>(parking_lot::RwLockReadGuard<'a, T>);
+    pub struct MyReadGuard<'a, T>(parking_lot::RwLockReadGuard<'a, Option<T>>);
+
     #[repr(transparent)]
-    pub(crate) struct MyWriteGuard<'a, T>(parking_lot::RwLockWriteGuard<'a, T>);
+    pub struct MyWriteGuard<'a, T>(parking_lot::RwLockWriteGuard<'a, Option<T>>);
 
     impl<T> MyLock<T> {
         pub fn read(&self) -> MyReadGuard<T> {
@@ -41,14 +44,14 @@ mod lock {
     }
 
     impl<T> Deref for MyReadGuard<'_, T> {
-        type Target = T;
+        type Target = Option<T>;
         fn deref(&self) -> &Self::Target {
-            self.0.deref()
+            &self.0.deref()
         }
     }
 
     impl<T> Deref for MyWriteGuard<'_, T> {
-        type Target = T;
+        type Target = Option<T>;
         fn deref(&self) -> &Self::Target {
             self.0.deref()
         }
@@ -63,14 +66,42 @@ mod lock {
     unsafe impl<T> Send for MyReadGuard<'_, T> {}
 }
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[repr(transparent)]
-pub struct TGraphShard {
-    rc: Arc<lock::MyLock<TemporalGraph>>,
+pub struct TGraphShard<TemporalGraph> {
+    pub rc: Arc<lock::MyLock<TemporalGraph>>,
 }
 
-impl TGraphShard {
-    pub fn load_from_file<P: AsRef<Path>>(path: P) -> Result<Self, Box<bincode::ErrorKind>> {
+impl Clone for TGraphShard<TemporalGraph> {
+    fn clone(&self) -> Self {
+        Self {
+            rc: self.rc.clone(),
+        }
+    }
+}
+
+impl Default for TGraphShard<TemporalGraph> {
+    fn default() -> Self {
+        Self {
+            rc: Arc::new(lock::MyLock::new(TemporalGraph::default())),
+        }
+    }
+}
+
+impl TGraphShard<TemporalGraph> {
+    fn new() -> TGraphShard<TemporalGraph> {
+        TGraphShard::default()
+    }
+
+    pub fn new_from_tgraph(g: TemporalGraph) -> Self {
+        Self {
+            rc: Arc::new(MyLock::new(g)),
+        }
+    }
+
+    pub fn load_from_file<P: AsRef<Path>>(
+        path: P,
+    ) -> Result<TGraphShard<TemporalGraph>, Box<bincode::ErrorKind>> {
         // use BufReader for better performance
         let f = std::fs::File::open(path).unwrap();
         let mut reader = std::io::BufReader::new(f);
@@ -85,21 +116,45 @@ impl TGraphShard {
     }
 
     #[inline(always)]
-    pub fn write_shard<A, F>(&self, f: F) -> A
+    fn write_shard<A, F>(&self, f: F) -> A
     where
         F: FnOnce(&mut TemporalGraph) -> A,
     {
-        let mut shard = self.rc.write();
+        let mut binding = self.rc.write();
+        let mut shard = binding.as_mut().unwrap();
         f(&mut shard)
     }
 
     #[inline(always)]
-    pub fn read_shard<A, F>(&self, f: F) -> A
+    fn read_shard<A, F>(&self, f: F) -> A
     where
         F: Fn(&TemporalGraph) -> A,
     {
-        let shard = self.rc.read();
+        let binding = self.rc.read();
+        let shard = binding.as_ref().unwrap();
         f(&shard)
+    }
+
+    pub fn add_vertex<T: InputVertex>(&self, t: i64, v: T, props: &Vec<(String, Prop)>) {
+        self.write_shard(move |tg| tg.add_vertex_with_props(t, v, props))
+    }
+
+    pub fn add_edge(&self, t: i64, src: u64, dst: u64, props: &Vec<(String, Prop)>) {
+        self.write_shard(|tg| tg.add_edge_with_props(t, src, dst, props))
+    }
+
+    pub fn add_edge_remote_out(&self, t: i64, src: u64, dst: u64, props: &Vec<(String, Prop)>) {
+        self.write_shard(|tg| tg.add_edge_remote_out(t, src, dst, props))
+    }
+
+    pub fn add_edge_remote_into(&self, t: i64, src: u64, dst: u64, props: &Vec<(String, Prop)>) {
+        self.write_shard(|tg| tg.add_edge_remote_into(t, src, dst, props))
+    }
+
+    pub fn freeze(&self) -> ImmutableTGraphShard<TemporalGraph> {
+        let mut inner = self.rc.write();
+        let g = inner.take().unwrap();
+        ImmutableTGraphShard { rc: Arc::new(g) }
     }
 
     pub fn earliest_time(&self) -> i64 {
@@ -134,22 +189,6 @@ impl TGraphShard {
         self.read_shard(|tg| tg.has_vertex_window(v, &w))
     }
 
-    pub fn add_vertex<T: InputVertex>(&self, t: i64, v: T, props: &Vec<(String, Prop)>) {
-        self.write_shard(move |tg| tg.add_vertex_with_props(t, v, props))
-    }
-
-    pub fn add_edge(&self, t: i64, src: u64, dst: u64, props: &Vec<(String, Prop)>) {
-        self.write_shard(|tg| tg.add_edge_with_props(t, src, dst, props))
-    }
-
-    pub fn add_edge_remote_out(&self, t: i64, src: u64, dst: u64, props: &Vec<(String, Prop)>) {
-        self.write_shard(|tg| tg.add_edge_remote_out(t, src, dst, props))
-    }
-
-    pub fn add_edge_remote_into(&self, t: i64, src: u64, dst: u64, props: &Vec<(String, Prop)>) {
-        self.write_shard(|tg| tg.add_edge_remote_into(t, src, dst, props))
-    }
-
     pub fn degree(&self, v: u64, d: Direction) -> usize {
         self.read_shard(|tg: &TemporalGraph| tg.degree(v, d))
     }
@@ -166,56 +205,60 @@ impl TGraphShard {
         self.read_shard(|tg| tg.vertex_window(v, &w))
     }
 
-    pub fn vertex_ids(&self) -> impl Iterator<Item = u64> {
+    pub fn vertex_ids(&self) -> Box<dyn Iterator<Item = u64> + Send> {
         let tgshard = self.rc.clone();
         let iter: GenBoxed<u64> = GenBoxed::new_boxed(|co| async move {
-            let g = tgshard.read();
+            let binding = tgshard.read();
+            let g = binding.as_ref().unwrap();
             let iter = (*g).vertex_ids();
             for v_id in iter {
                 co.yield_(v_id).await;
             }
         });
 
-        iter.into_iter()
+        Box::new(iter.into_iter())
     }
 
-    pub fn vertex_ids_window(&self, w: Range<i64>) -> impl Iterator<Item = u64> {
+    pub fn vertex_ids_window(&self, w: Range<i64>) -> Box<dyn Iterator<Item = u64> + Send> {
         let tgshard = self.rc.clone();
         let iter: GenBoxed<u64> = GenBoxed::new_boxed(|co| async move {
-            let g = tgshard.read();
+            let binding = tgshard.read();
+            let g = binding.as_ref().unwrap();
             let iter = (*g).vertex_ids_window(w).map(|v| v.into());
             for v_id in iter {
                 co.yield_(v_id).await;
             }
         });
 
-        iter.into_iter()
+        Box::new(iter.into_iter())
     }
 
-    pub fn vertices(&self) -> impl Iterator<Item = VertexRef> {
+    pub fn vertices(&self) -> Box<dyn Iterator<Item = VertexRef> + Send> {
         let tgshard = self.rc.clone();
         let iter: GenBoxed<VertexRef> = GenBoxed::new_boxed(|co| async move {
-            let g = tgshard.read();
+            let binding = tgshard.read();
+            let g = binding.as_ref().unwrap();
             let iter = (*g).vertices();
             for vv in iter {
                 co.yield_(vv).await;
             }
         });
 
-        iter.into_iter()
+        Box::new(iter.into_iter())
     }
 
-    pub fn vertices_window(&self, w: Range<i64>) -> impl Iterator<Item = VertexRef> {
+    pub fn vertices_window(&self, w: Range<i64>) -> Box<dyn Iterator<Item = VertexRef> + Send> {
         let tgshard = self.rc.clone();
         let iter: GenBoxed<VertexRef> = GenBoxed::new_boxed(|co| async move {
-            let g = tgshard.read();
+            let binding = tgshard.read();
+            let g = binding.as_ref().unwrap();
             let iter = (*g).vertices_window(w);
             for vv in iter {
                 co.yield_(vv).await;
             }
         });
 
-        iter.into_iter()
+        Box::new(iter.into_iter())
     }
 
     pub fn edge(&self, src: u64, dst: u64) -> Option<EdgeRef> {
@@ -226,17 +269,18 @@ impl TGraphShard {
         self.read_shard(|tg| tg.edge_window(src, dst, &w))
     }
 
-    pub fn vertex_edges(&self, v: u64, d: Direction) -> impl Iterator<Item = EdgeRef> {
+    pub fn vertex_edges(&self, v: u64, d: Direction) -> Box<dyn Iterator<Item = EdgeRef> + Send> {
         let tgshard = self.rc.clone();
         let iter: GenBoxed<EdgeRef> = GenBoxed::new_boxed(|co| async move {
-            let g = tgshard.read();
+            let binding = tgshard.read();
+            let g = binding.as_ref().unwrap();
             let iter = (*g).vertex_edges(v, d);
             for ev in iter {
                 co.yield_(ev).await;
             }
         });
 
-        iter.into_iter()
+        Box::new(iter.into_iter())
     }
 
     pub fn vertex_edges_window(
@@ -244,10 +288,11 @@ impl TGraphShard {
         v: u64,
         w: Range<i64>,
         d: Direction,
-    ) -> impl Iterator<Item = EdgeRef> {
+    ) -> Box<dyn Iterator<Item = EdgeRef> + Send> {
         let tgshard = self.clone();
         let iter = gen!({
-            let g = tgshard.rc.read();
+            let binding = tgshard.rc.read();
+            let g = binding.as_ref().unwrap();
             let chunks = (*g).vertex_edges_window(v, &w, d).map(|e| e.into());
             let iter = chunks.into_iter();
             for v_id in iter {
@@ -255,7 +300,7 @@ impl TGraphShard {
             }
         });
 
-        iter.into_iter()
+        Box::new(iter.into_iter())
     }
 
     pub fn vertex_edges_window_t(
@@ -263,10 +308,11 @@ impl TGraphShard {
         v: u64,
         w: Range<i64>,
         d: Direction,
-    ) -> impl Iterator<Item = EdgeRef> {
+    ) -> Box<dyn Iterator<Item = EdgeRef> + Send> {
         let tgshard = self.clone();
         let iter = gen!({
-            let g = tgshard.rc.read();
+            let mut binding = tgshard.rc.read();
+            let g = binding.as_ref().unwrap();
             let chunks = (*g).vertex_edges_window_t(v, &w, d).map(|e| e.into());
             let iter = chunks.into_iter();
             for v_id in iter {
@@ -274,13 +320,14 @@ impl TGraphShard {
             }
         });
 
-        iter.into_iter()
+        Box::new(iter.into_iter())
     }
 
-    pub fn neighbours(&self, v: u64, d: Direction) -> impl Iterator<Item = VertexRef> {
+    pub fn neighbours(&self, v: u64, d: Direction) -> Box<dyn Iterator<Item = VertexRef> + Send> {
         let tgshard = self.clone();
         let iter = gen!({
-            let g = tgshard.rc.read();
+            let binding = tgshard.rc.read();
+            let g = binding.as_ref().unwrap();
             let chunks = (*g).neighbours(v, d);
             let iter = chunks.into_iter();
             for v_id in iter {
@@ -288,7 +335,7 @@ impl TGraphShard {
             }
         });
 
-        iter.into_iter()
+        Box::new(iter.into_iter())
     }
 
     pub fn neighbours_window(
@@ -296,10 +343,11 @@ impl TGraphShard {
         v: u64,
         w: Range<i64>,
         d: Direction,
-    ) -> impl Iterator<Item = VertexRef> {
+    ) -> Box<dyn Iterator<Item = VertexRef> + Send> {
         let tgshard = self.clone();
         let iter = gen!({
-            let g = tgshard.rc.read();
+            let binding = tgshard.rc.read();
+            let g = binding.as_ref().unwrap();
             let chunks = (*g).neighbours_window(v, &w, d);
             let iter = chunks.into_iter();
             for v_id in iter {
@@ -307,16 +355,17 @@ impl TGraphShard {
             }
         });
 
-        iter.into_iter()
+        Box::new(iter.into_iter())
     }
 
-    pub fn neighbours_ids(&self, v: u64, d: Direction) -> impl Iterator<Item = u64>
+    pub fn neighbours_ids(&self, v: u64, d: Direction) -> Box<dyn Iterator<Item = u64> + Send>
     where
         Self: Sized,
     {
         let tgshard = self.clone();
         let iter = gen!({
-            let g = tgshard.rc.read();
+            let binding = tgshard.rc.read();
+            let g = binding.as_ref().unwrap();
             let chunks = (*g).neighbours_ids(v, d);
             let iter = chunks.into_iter();
             for v_id in iter {
@@ -324,7 +373,7 @@ impl TGraphShard {
             }
         });
 
-        iter.into_iter()
+        Box::new(iter.into_iter())
     }
 
     pub fn neighbours_ids_window(
@@ -332,13 +381,14 @@ impl TGraphShard {
         v: u64,
         w: Range<i64>,
         d: Direction,
-    ) -> impl Iterator<Item = u64>
+    ) -> Box<dyn Iterator<Item = u64> + Send>
     where
         Self: Sized,
     {
         let tgshard = self.clone();
         let iter = gen!({
-            let g = tgshard.rc.read();
+            let binding = tgshard.rc.read();
+            let g = binding.as_ref().unwrap();
             let chunks = (*g).neighbours_ids_window(v, &w, d);
             let iter = chunks.into_iter();
             for v_id in iter {
@@ -346,7 +396,7 @@ impl TGraphShard {
             }
         });
 
-        iter.into_iter()
+        Box::new(iter.into_iter())
     }
 
     pub fn vertex_prop_vec(&self, v: u64, name: String) -> Vec<(i64, Prop)> {
@@ -386,12 +436,36 @@ impl TGraphShard {
     }
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[repr(transparent)]
+pub struct ImmutableTGraphShard<TemporalGraph> {
+    rc: Arc<TemporalGraph>,
+}
+
+impl Clone for ImmutableTGraphShard<TemporalGraph> {
+    fn clone(&self) -> Self {
+        Self {
+            rc: self.rc.clone(),
+        }
+    }
+}
+
+impl ImmutableTGraphShard<TemporalGraph> {
+    pub fn unfreeze(self) -> Result<TGraphShard<TemporalGraph>, Arc<TemporalGraph>> {
+        let tg = Arc::try_unwrap(self.rc)?;
+        Ok(TGraphShard::new_from_tgraph(tg))
+    }
+
+    pub fn vertices(&self) -> impl Iterator<Item = VertexRef> + Send + '_ {
+        self.rc.vertices()
+    }
+}
+
 #[cfg(test)]
 mod temporal_graph_partition_test {
     use std::{ops::Deref, sync::Arc};
 
-    use super::TGraphShard;
-    use crate::Direction;
+    use crate::{tgraph_shard::TGraphShard, Direction};
     use genawaiter::sync::GenBoxed;
     use itertools::Itertools;
     use parking_lot::RwLock;

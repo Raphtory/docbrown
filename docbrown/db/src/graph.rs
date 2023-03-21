@@ -1,18 +1,20 @@
+use crate::graph_immutable::ImmutableGraph;
 use crate::graph_window::{GraphWindowSet, WindowedGraph};
 use crate::perspective::{Perspective, PerspectiveIterator, PerspectiveSet};
 use std::{
     collections::HashMap,
     iter,
-    ops::Range,
     path::{Path, PathBuf},
     sync::{mpsc, Arc},
 };
 
+use docbrown_core::tgraph::TemporalGraph;
+use docbrown_core::tgraph_shard::TGraphShard;
 use docbrown_core::{
     tgraph::{EdgeRef, VertexRef},
-    tgraph_shard::TGraphShard,
-    utils, Direction, Prop,
+    utils,
     vertex::InputVertex,
+    Direction, Prop,
 };
 
 use crate::edge::EdgeView;
@@ -26,8 +28,8 @@ use tempdir::TempDir;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Graph {
-    nr_shards: usize,
-    pub(crate) shards: Vec<TGraphShard>,
+    pub nr_shards: usize,
+    pub(crate) shards: Vec<TGraphShard<TemporalGraph>>,
 }
 
 impl GraphViewInternalOps for Graph {
@@ -112,7 +114,11 @@ impl GraphViewInternalOps for Graph {
         Box::new(shards.into_iter().flat_map(|s| s.vertex_ids()))
     }
 
-    fn vertex_ids_window(&self, t_start: i64, t_end: i64) -> Box<dyn Iterator<Item = u64> + Send> {
+    fn vertex_ids_window(
+        &self,
+        t_start: i64,
+        t_end: i64,
+    ) -> Box<dyn Iterator<Item = u64> + Send> {
         let shards = self.shards.clone();
         Box::new(
             shards
@@ -137,81 +143,6 @@ impl GraphViewInternalOps for Graph {
                 .into_iter()
                 .flat_map(move |s| s.vertices_window(t_start..t_end)),
         )
-    }
-
-    fn vertices_par<O, F>(&self, f: F) -> Box<dyn Iterator<Item = O>>
-    where
-        O: Send + 'static,
-        F: Fn(VertexRef) -> O + Send + Sync + Copy,
-    {
-        let (tx, rx) = flume::unbounded();
-
-        let arc_tx = Arc::new(tx);
-        self.shards
-            .par_iter()
-            .flat_map(|shard| shard.vertices().par_bridge().map(f))
-            .for_each(move |o| {
-                arc_tx.send(o).unwrap();
-            });
-
-        Box::new(rx.into_iter())
-    }
-
-    fn fold_par<S, F, F2>(&self, f: F, agg: F2) -> Option<S>
-    where
-        S: Send + 'static,
-        F: Fn(VertexRef) -> S + Send + Sync + Copy,
-        F2: Fn(S, S) -> S + Sync + Send + Copy,
-    {
-        self.shards
-            .par_iter()
-            .flat_map(|shard| {
-                shard.read_shard(|tg_core| tg_core.vertices().par_bridge().map(f).reduce_with(agg))
-            })
-            .reduce_with(agg)
-    }
-
-    fn vertices_window_par<O, F>(
-        &self,
-        t_start: i64,
-        t_end: i64,
-        f: F,
-    ) -> Box<dyn Iterator<Item = O>>
-    where
-        O: Send + 'static,
-        F: Fn(VertexRef) -> O + Send + Sync + Copy,
-    {
-        let (tx, rx) = flume::unbounded();
-
-        let arc_tx = Arc::new(tx);
-        self.shards
-            .par_iter()
-            .flat_map(|shard| shard.vertices_window(t_start..t_end).par_bridge().map(f))
-            .for_each(move |o| {
-                arc_tx.send(o).unwrap();
-            });
-
-        Box::new(rx.into_iter())
-    }
-
-    fn fold_window_par<S, F, F2>(&self, t_start: i64, t_end: i64, f: F, agg: F2) -> Option<S>
-    where
-        S: Send + 'static,
-        F: Fn(VertexRef) -> S + Send + Sync + Copy,
-        F2: Fn(S, S) -> S + Sync + Send + Copy,
-    {
-        self.shards
-            .par_iter()
-            .flat_map(|shard| {
-                shard.read_shard(|tg_core| {
-                    tg_core
-                        .vertices_window(t_start..t_end)
-                        .par_bridge()
-                        .map(f)
-                        .reduce_with(agg)
-                })
-            })
-            .reduce_with(agg)
     }
 
     fn edge_ref<V1: Into<VertexRef>, V2: Into<VertexRef>>(
@@ -259,7 +190,11 @@ impl GraphViewInternalOps for Graph {
         )
     }
 
-    fn vertex_edges(&self, v: VertexRef, d: Direction) -> Box<dyn Iterator<Item = EdgeRef> + Send> {
+    fn vertex_edges(
+        &self,
+        v: VertexRef,
+        d: Direction,
+    ) -> Box<dyn Iterator<Item = EdgeRef> + Send> {
         Box::new(self.get_shard_from_v(v).vertex_edges(v.g_id, d))
     }
 
@@ -289,7 +224,11 @@ impl GraphViewInternalOps for Graph {
         )
     }
 
-    fn neighbours(&self, v: VertexRef, d: Direction) -> Box<dyn Iterator<Item = VertexRef> + Send> {
+    fn neighbours(
+        &self,
+        v: VertexRef,
+        d: Direction,
+    ) -> Box<dyn Iterator<Item = VertexRef> + Send> {
         Box::new(self.get_shard_from_v(v).neighbours(v.g_id, d))
     }
 
@@ -306,7 +245,11 @@ impl GraphViewInternalOps for Graph {
         )
     }
 
-    fn neighbours_ids(&self, v: VertexRef, d: Direction) -> Box<dyn Iterator<Item = u64> + Send> {
+    fn neighbours_ids(
+        &self,
+        v: VertexRef,
+        d: Direction,
+    ) -> Box<dyn Iterator<Item = u64> + Send> {
         Box::new(self.get_shard_from_v(v).neighbours_ids(v.g_id, d))
     }
 
@@ -448,26 +391,35 @@ impl GraphViewOps for Graph {
 }
 
 impl Graph {
+    fn freeze(&self) -> ImmutableGraph {
+        ImmutableGraph {
+            nr_shards: self.nr_shards,
+            shards: self.shards.iter().map(|s| s.freeze()).collect_vec(),
+        }
+    }
+
     fn shard_id(&self, g_id: u64) -> usize {
         utils::get_shard_id_from_global_vid(g_id, self.nr_shards)
     }
 
-    fn get_shard_from_id(&self, g_id: u64) -> &TGraphShard {
+    fn get_shard_from_id(&self, g_id: u64) -> &TGraphShard<TemporalGraph> {
         &self.shards[self.shard_id(g_id)]
     }
 
-    fn get_shard_from_v(&self, v: VertexRef) -> &TGraphShard {
+    fn get_shard_from_v(&self, v: VertexRef) -> &TGraphShard<TemporalGraph> {
         &self.shards[self.shard_id(v.g_id)]
     }
 
-    fn get_shard_from_e(&self, e: EdgeRef) -> &TGraphShard {
+    fn get_shard_from_e(&self, e: EdgeRef) -> &TGraphShard<TemporalGraph> {
         &self.shards[self.shard_id(e.src_g_id)]
     }
 
     pub fn new(nr_shards: usize) -> Self {
         Graph {
             nr_shards,
-            shards: (0..nr_shards).map(|_| TGraphShard::default()).collect(),
+            shards: (0..nr_shards)
+                .map(|_| TGraphShard::default())
+                .collect(),
         }
     }
 
@@ -1152,7 +1104,7 @@ mod db_tests {
 
     #[test]
     fn test_graph_at() {
-        let g= crate::graph_loader::lotr_graph::lotr_graph(1);
+        let g = crate::graph_loader::lotr_graph::lotr_graph(1);
 
         let g_at_empty = g.at(1);
         let g_at_start = g.at(7059);
@@ -1181,5 +1133,4 @@ mod db_tests {
 
         assert_eq!(g.num_vertices(), 3);
     }
-
 }

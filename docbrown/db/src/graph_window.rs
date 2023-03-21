@@ -1,5 +1,5 @@
 use crate::graph::Graph;
-use crate::perspective::{Perspective, PerspectiveSet};
+use crate::perspective::Perspective;
 use docbrown_core::{
     tgraph::{EdgeRef, VertexRef},
     Direction, Prop,
@@ -10,9 +10,9 @@ use crate::vertex::VertexView;
 use crate::view_api::internal::GraphViewInternalOps;
 use crate::view_api::GraphViewOps;
 use crate::view_api::*;
+use docbrown_core::vertex::InputVertex;
 use std::cmp::{max, min};
 use std::{collections::HashMap, sync::Arc};
-use docbrown_core::vertex::InputVertex;
 
 pub struct GraphWindowSet {
     graph: Graph,
@@ -143,47 +143,6 @@ impl GraphViewInternalOps for WindowedGraph {
     ) -> Box<dyn Iterator<Item = VertexRef> + Send> {
         self.graph
             .vertex_refs_window(self.actual_start(t_start), self.actual_end(t_end))
-    }
-
-    fn vertices_par<O, F>(&self, f: F) -> Box<dyn Iterator<Item = O>>
-    where
-        O: Send + 'static,
-        F: Fn(VertexRef) -> O + Send + Sync + Copy,
-    {
-        self.graph.vertices_window_par(self.t_start, self.t_end, f)
-    }
-
-    fn fold_par<S, F, F2>(&self, f: F, agg: F2) -> Option<S>
-    where
-        S: Send + 'static,
-        F: Fn(VertexRef) -> S + Send + Sync + Copy,
-        F2: Fn(S, S) -> S + Sync + Send + Copy,
-    {
-        self.graph.fold_window_par(self.t_start, self.t_end, f, agg)
-    }
-
-    fn vertices_window_par<O, F>(
-        &self,
-        t_start: i64,
-        t_end: i64,
-        f: F,
-    ) -> Box<dyn Iterator<Item = O>>
-    where
-        O: Send + 'static,
-        F: Fn(VertexRef) -> O + Send + Sync + Copy,
-    {
-        self.graph
-            .vertices_window_par(self.actual_start(t_start), self.actual_end(t_end), f)
-    }
-
-    fn fold_window_par<S, F, F2>(&self, t_start: i64, t_end: i64, f: F, agg: F2) -> Option<S>
-    where
-        S: Send + 'static,
-        F: Fn(VertexRef) -> S + Send + Sync + Copy,
-        F2: Fn(S, S) -> S + Sync + Send + Copy,
-    {
-        self.graph
-            .fold_window_par(self.actual_start(t_start), self.actual_end(t_end), f, agg)
     }
 
     fn edge_ref<V1: Into<VertexRef>, V2: Into<VertexRef>>(
