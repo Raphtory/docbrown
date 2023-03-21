@@ -54,14 +54,10 @@ impl Graph {
         Self::adapt_property_err(result)
     }
 
-    pub fn add_edge(&self, timestamp: i64, src: &PyAny, dst: &PyAny, properties: Option<HashMap<String, Prop>>) {
-        if let (Ok(src), Ok(dst)) = (src.extract::<String>(), dst.extract::<String>()) {
-            self.graph.add_edge(timestamp, src, dst, &Self::transform_props(properties))
-        } else if let (Ok(src), Ok(dst)) = (src.extract::<u64>(), dst.extract::<u64>()) {
-            self.graph.add_edge(timestamp, src, dst, &Self::transform_props(properties))
-        } else {
-            println!("Types of src and dst must be the same (either Int or str)")
-        }
+    pub fn add_edge(&self, timestamp: i64, src: &PyAny, dst: &PyAny, properties: Option<HashMap<String, Prop>>) -> PyResult<()> {
+        let src = Self::extract_id(src)?;
+        let dst = Self::extract_id(dst)?;
+        Ok(self.graph.add_edge(timestamp, src, dst, &Self::transform_props(properties)))
     }
 
     pub fn add_edge_properties(&self, src: &PyAny, dst: &PyAny, props: HashMap<String, Prop>) -> PyResult<()> {
