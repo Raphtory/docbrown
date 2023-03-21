@@ -1,7 +1,7 @@
 use std::ops::Range;
 
 use serde::{ser::SerializeSeq, Deserialize, Serialize};
-use sorted_vector_map::{map::Entry, SortedVectorMap};
+use sorted_vector_map::{map::Entry, SortedVectorMap, SortedVectorSet};
 
 // wrapper for SortedVectorMap
 #[derive(Debug, PartialEq, Default, Clone)]
@@ -66,5 +66,55 @@ impl<'de, K: Ord + Deserialize<'de>, V: Deserialize<'de>> Deserialize<'de> for S
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         let vec = Vec::<(K, V)>::deserialize(deserializer)?;
         Ok(SVM::from_iter(vec))
+    }
+}
+
+
+#[derive(Debug, PartialEq, Default, Clone)]
+pub struct SVS<T: Ord>(SortedVectorSet<T>);
+
+impl <T:Ord> SVS<T> {
+
+    pub(crate) fn new() -> Self {
+        Self(SortedVectorSet::new())
+    }
+
+    pub(crate) fn insert(&mut self, t: T) -> bool {
+        self.0.insert(t)
+    }
+
+    pub(crate) fn iter(&self) -> impl Iterator<Item = &T> {
+        self.0.iter()
+    }
+
+    pub(crate) fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    pub(crate) fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
+        Self(SortedVectorSet::from_iter(iter))
+    }
+
+    pub(crate) fn find(&self, t: &T) -> Option<&T> {
+        self.0.get(t)
+    }
+}
+
+
+// this implements Serialize for SVS
+impl<T: Ord + Serialize> Serialize for SVS<T> {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let mut seq = serializer.serialize_seq(Some(self.len()))?;
+        for t in self.iter() {
+            seq.serialize_element(&t)?;
+        }
+        seq.end()
+    }
+}
+
+impl<'de, T: Ord + Deserialize<'de>> Deserialize<'de> for SVS<T> {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let vec = Vec::<T>::deserialize(deserializer)?;
+        Ok(SVS::from_iter(vec))
     }
 }

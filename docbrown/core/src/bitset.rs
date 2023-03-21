@@ -4,7 +4,7 @@ use itertools::Itertools;
 use roaring::RoaringTreemap;
 use serde::{Deserialize, Serialize};
 
-use crate::lsm::LSMSet;
+use crate::sorted_vec_map::SVS;
 
 // TODO: use enum_dispatch
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -12,7 +12,7 @@ pub enum BitSet {
     #[default]
     Empty,
     One(usize),
-    Seq(LSMSet<usize>), //FIXME: probably switch to a SortedVec
+    Seq(SVS<usize>), //FIXME: probably switch to a SortedVec
     Roaring(RoaringTreemap),
 }
 
@@ -42,7 +42,7 @@ impl BitSet {
                 *self = BitSet::One(i);
             }
             BitSet::One(i0) => {
-                let mut seq = LSMSet::new();
+                let mut seq = SVS::new();
                 seq.insert(*i0);
                 seq.insert(i);
                 *self = BitSet::Seq(seq);
@@ -82,7 +82,7 @@ impl BitSet {
         match self {
             BitSet::Empty => false,
             BitSet::One(j) => i == j,
-            BitSet::Seq(seq) => seq.find(*i).filter(|res| *res == i).is_some(),
+            BitSet::Seq(seq) => seq.find(i).filter(|res| *res == i).is_some(),
             BitSet::Roaring(bs) => bs.contains((*i).try_into().unwrap()),
         }
     }
