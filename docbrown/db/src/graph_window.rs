@@ -444,17 +444,15 @@ pub type WindowedEdge = EdgeView<WindowedGraph>;
 #[cfg(test)]
 mod views_test {
 
-    use std::collections::HashMap;
-    use std::ops::Range;
-
     use super::*;
     use crate::graph::Graph;
     use crate::view_api::*;
     use docbrown_core::Prop;
     use itertools::Itertools;
     use quickcheck::TestResult;
-    use rand::Rng;
+    use rand::prelude::*;
     use rayon::prelude::*;
+    use std::collections::HashMap;
 
     #[test]
     fn windowed_graph_vertices_degree() {
@@ -678,16 +676,18 @@ mod views_test {
         g.edges().all(|e| w.has_edge(e.src().id(), e.dst().id()))
     }
 
-    #[test]
-    fn large_vertex_in_window() {
+    #[quickcheck]
+    fn large_vertex_in_window(dsts: Vec<u64>) -> bool {
+        let dsts: Vec<u64> = dsts.into_iter().unique().collect();
+        let n = dsts.len();
         let g = Graph::new(1);
-        for _ in 0..2048 {
+
+        for dst in dsts {
             let t = 1;
-            let dst: u64 = rand::thread_rng().gen();
             g.add_edge(t, 0, dst, &vec![]);
         }
         let w = g.window(i64::MIN, i64::MAX);
-        assert!(g.edges().all(|e| w.has_edge(e.src().id(), e.dst().id())))
+        w.num_edges() == n
     }
 
     #[test]
