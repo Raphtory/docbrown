@@ -26,7 +26,6 @@ pub mod csv {
         }
     }
 
-
     impl From<csv::Error> for CsvErr {
         fn from(value: csv::Error) -> Self {
             Self::CsvError(value)
@@ -177,8 +176,7 @@ pub mod csv {
                 .filter(|name| name.ends_with(".gz"))
                 .is_some();
 
-            let f =
-                File::open(&file_path)?;
+            let f = File::open(&file_path)?;
             if is_gziped {
                 Ok(csv::ReaderBuilder::new()
                     .has_headers(self.header)
@@ -191,12 +189,6 @@ pub mod csv {
                     .from_reader(Box::new(f)))
             }
         }
-
-        // pub fn load(&self) -> Result<Graph, CsvErr> {
-        //     let g = Graph::new(2);
-        //     self.load_into(&g)?;
-        //     Ok(g)
-        // }
     }
 }
 
