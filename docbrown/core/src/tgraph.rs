@@ -68,7 +68,10 @@ pub struct TemporalGraph {
     index: BTreeMap<i64, BitSet>,
 
     // Properties abstraction for both vertices and edges
-    pub(crate) props: Props,
+    pub(crate) vertex_props: Props,
+    pub(crate) edge_props: Props,
+
+    num_edges: usize,
 
     //earliest time seen in this graph
     pub(crate) earliest_time: i64,
@@ -83,7 +86,9 @@ impl Default for TemporalGraph {
             logical_to_physical: Default::default(),
             adj_lists: Default::default(),
             index: Default::default(),
-            props: Default::default(),
+            vertex_props: Default::default(),
+            edge_props: Default::default(),
+            num_edges: 1, // TODO: add big comment here
             earliest_time: i64::MAX,
             latest_time: i64::MIN,
         }
@@ -200,15 +205,15 @@ impl TemporalGraph {
             }
         };
         if let Some(n) = v.name_prop() {
-            let result = self.props.set_static_vertex_props(index, &vec![("_id".to_string(), n)]);
+            let result = self.vertex_props.set_static_props(index, &vec![("_id".to_string(), n)]);
             result.map_err(|e| IllegalVertexPropertyChange::new(v.id(), e))?
         }
-        Ok(self.props.upsert_temporal_vertex_props(t, index, props))
+        Ok(self.vertex_props.upsert_temporal_props(t, index, props))
     }
 
     pub(crate) fn add_vertex_properties(&mut self, v: u64, data: &Vec<(String, Prop)>) -> AddVertexResult {
         let index = *self.logical_to_physical.get(&v).expect(&format!("impossible to add metadata to non existing vertex {v}"));
-        let result = self.props.set_static_vertex_props(index, data);
+        let result = self.vertex_props.set_static_props(index, data);
         result.map_err(|e| IllegalVertexPropertyChange::new(v, e)) // TODO: use the name here if exists
     }
 
@@ -239,7 +244,8 @@ impl TemporalGraph {
             );
         }
 
-        self.props.upsert_temporal_edge_props(t, src_edge_meta_id, props)
+        self.edge_props.upsert_temporal_props(t, src_edge_meta_id, props);
+        self.num_edges += 1; // FIXME: we have this in three different places, prone to errors!
     }
 
     pub(crate) fn add_edge_remote_out(
@@ -254,7 +260,8 @@ impl TemporalGraph {
         let src_edge_meta_id =
             self.link_outbound_edge(t, src, src_pid, dst.try_into().unwrap(), true);
 
-        self.props.upsert_temporal_edge_props(t, src_edge_meta_id, props)
+        self.edge_props.upsert_temporal_props(t, src_edge_meta_id, props);
+        self.num_edges += 1;
     }
 
     pub(crate) fn add_edge_remote_into(
@@ -271,12 +278,13 @@ impl TemporalGraph {
         let dst_edge_meta_id =
             self.link_inbound_edge(t, dst, src.try_into().unwrap(), dst_pid, true);
 
-        self.props.upsert_temporal_edge_props(t, dst_edge_meta_id, props)
+        self.edge_props.upsert_temporal_props(t, dst_edge_meta_id, props);
+        self.num_edges += 1;
     }
 
     pub(crate) fn add_edge_properties(&mut self, src: u64, dst: u64, data: &Vec<(String, Prop)>) -> AddEdgeResult {
         let edge_id = self.edge(src, dst).ok_or(AddEdgeError::MissingEdge(src, dst))?.edge_id;
-        let result = self.props.set_static_edge_props(edge_id, data);
+        let result = self.edge_props.set_static_props(edge_id, data);
         result.map_err(|e| AddEdgeError::new(src, dst, e))
     }
 
@@ -731,12 +739,12 @@ impl TemporalGraph {
 
     pub fn static_vertex_prop(&self, v: u64, name: &str) -> Option<Prop> {
         let index = self.logical_to_physical[&v]; // this should panic as this v is not provided by the user
-        self.props.static_vertex_prop(index, name)
+        self.vertex_props.static_prop(index, name)
     }
 
     pub fn static_vertex_prop_keys(&self, v: u64) -> Vec<String> {
         let index = self.logical_to_physical[&v]; // this should panic as this v is not provided by the user
-        self.props.static_vertex_keys(index)
+        self.vertex_props.static_keys(index)
     }
 
     pub(crate) fn temporal_vertex_prop(
@@ -745,7 +753,7 @@ impl TemporalGraph {
         name: &str,
     ) -> Box<dyn Iterator<Item = (&i64, Prop)> + '_> {
         let index = self.logical_to_physical[&v];
-        self.props.temporal_vertex_prop(index, name).unwrap_or(&TProp::Empty).iter()
+        self.vertex_props.temporal_prop(index, name).unwrap_or(&TProp::Empty).iter()
     }
 
     pub(crate) fn temporal_vertex_prop_window(
@@ -755,12 +763,12 @@ impl TemporalGraph {
         w: &Range<i64>,
     ) -> Box<dyn Iterator<Item = (&i64, Prop)> + '_> {
         let index = self.logical_to_physical[&v];
-        self.props.temporal_vertex_prop(index, name).unwrap_or(&TProp::Empty).iter_window(w.clone())
+        self.vertex_props.temporal_prop(index, name).unwrap_or(&TProp::Empty).iter_window(w.clone())
     }
 
     pub(crate) fn temporal_vertex_prop_vec(&self, v: u64, name: &str) -> Vec<(i64, Prop)> {
         let index = self.logical_to_physical[&v];
-        let tprop = self.props.temporal_vertex_prop(index, name).unwrap_or(&TProp::Empty);
+        let tprop = self.vertex_props.temporal_prop(index, name).unwrap_or(&TProp::Empty);
         tprop.iter().map(|(t, p)| (*t, p)).collect_vec()
     }
 
@@ -771,13 +779,13 @@ impl TemporalGraph {
         w: &Range<i64>,
     ) -> Vec<(i64, Prop)> {
         let index = self.logical_to_physical[&v];
-        let tprop = self.props.temporal_vertex_prop(index, name).unwrap_or(&TProp::Empty);
+        let tprop = self.vertex_props.temporal_prop(index, name).unwrap_or(&TProp::Empty);
         tprop.iter_window(w.clone()).map(|(t, p)| (*t, p)).collect_vec()
     }
 
     pub(crate) fn temporal_vertex_props(&self, v: u64) -> HashMap<String, Vec<(i64, Prop)>> {
         let index = self.logical_to_physical[&v];
-        let keys = self.props.temporal_vertex_keys(index);
+        let keys = self.vertex_props.temporal_keys(index);
         keys.into_iter()
             .map(|key| (key.to_string(), self.temporal_vertex_prop_vec(v, &key)))
             .filter(|(k, v)| !v.is_empty()) // just filtered out None
@@ -790,7 +798,7 @@ impl TemporalGraph {
         w: &Range<i64>,
     ) -> HashMap<String, Vec<(i64, Prop)>> {
         let index = self.logical_to_physical[&v];
-        let keys = self.props.temporal_vertex_keys(index);
+        let keys = self.vertex_props.temporal_keys(index);
         keys.into_iter()
             .map(|key| (key.to_string(), self.temporal_vertex_prop_vec_window(v, &key, w)))
             .filter(|(k, v)| !v.is_empty())
@@ -798,11 +806,11 @@ impl TemporalGraph {
     }
 
     pub fn static_edge_prop(&self, e: usize, name: &str) -> Option<Prop> {
-        self.props.static_edge_prop(e, name)
+        self.edge_props.static_prop(e, name)
     }
 
     pub fn static_edge_prop_keys(&self, e: usize) -> Vec<String> {
-        self.props.static_edge_keys(e)
+        self.edge_props.static_keys(e)
     }
 
     pub fn temporal_edge_prop(
@@ -810,7 +818,7 @@ impl TemporalGraph {
         e: usize,
         name: &str,
     ) -> Box<dyn Iterator<Item = (&i64, Prop)> + '_> {
-        self.props.temporal_edge_prop(e, name).unwrap_or(&TProp::Empty).iter()
+        self.edge_props.temporal_prop(e, name).unwrap_or(&TProp::Empty).iter()
     }
 
     pub fn temporal_edge_prop_window(
@@ -819,11 +827,11 @@ impl TemporalGraph {
         name: &str,
         w: Range<i64>,
     ) -> Box<dyn Iterator<Item = (&i64, Prop)> + '_> {
-        self.props.temporal_edge_prop(e, name).unwrap_or(&TProp::Empty).iter_window(w)
+        self.edge_props.temporal_prop(e, name).unwrap_or(&TProp::Empty).iter_window(w)
     }
 
     pub fn temporal_edge_prop_vec(&self, e: usize, name: &str) -> Vec<(i64, Prop)> {
-        self.props.temporal_edge_prop(e, name)
+        self.edge_props.temporal_prop(e, name)
             .unwrap_or(&TProp::Empty)
             .iter()
             .map(|(t, p)| (*t, p))
@@ -836,7 +844,7 @@ impl TemporalGraph {
         name: &str,
         w: Range<i64>,
     ) -> Vec<(i64, Prop)> {
-        self.props.temporal_edge_prop(e, name)
+        self.edge_props.temporal_prop(e, name)
             .unwrap_or(&TProp::Empty)
             .iter_window(w)
             .map(|(t, p)| (*t, p))
@@ -855,7 +863,7 @@ impl TemporalGraph {
     ) -> usize {
         match &mut self.adj_lists[dst_pid] {
             entry @ Adj::Solo(_) => {
-                let edge_id = self.props.get_next_available_edge_id();
+                let edge_id = self.num_edges;
 
                 let edge = AdjEdge::new(edge_id, !remote_edge);
 
@@ -870,7 +878,7 @@ impl TemporalGraph {
                 let edge_id: usize = list
                     .find(src)
                     .map(|e| e.edge_id())
-                    .unwrap_or(self.props.get_next_available_edge_id());
+                    .unwrap_or(self.num_edges);
 
                 list.push(t, src, AdjEdge::new(edge_id, !remote_edge)); // idempotent
                 edge_id
@@ -888,7 +896,7 @@ impl TemporalGraph {
     ) -> usize {
         match &mut self.adj_lists[src_pid] {
             entry @ Adj::Solo(_) => {
-                let edge_id = self.props.get_next_available_edge_id();
+                let edge_id = self.num_edges;
 
                 let edge = AdjEdge::new(edge_id, !remote_edge);
 
@@ -903,7 +911,7 @@ impl TemporalGraph {
                 let edge_id: usize = list
                     .find(dst)
                     .map(|e| e.edge_id())
-                    .unwrap_or(self.props.get_next_available_edge_id());
+                    .unwrap_or(self.num_edges);
 
                 list.push(t, dst, AdjEdge::new(edge_id, !remote_edge));
                 edge_id

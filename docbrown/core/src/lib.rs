@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 #[cfg(test)]
 #[macro_use(quickcheck)]
 extern crate quickcheck_macros;
+extern crate core;
 
 mod adj;
 mod bitset;
@@ -16,6 +17,7 @@ pub mod tadjset;
 mod tcell;
 pub mod tgraph_shard;
 mod tprop;
+mod lazy_table;
 mod lazy_vec;
 pub mod utils;
 pub mod eval;
