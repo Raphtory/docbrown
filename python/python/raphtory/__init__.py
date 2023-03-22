@@ -1,4 +1,4 @@
-from .matplotlib import matplot_draw
+from .matplotlib import mpl_draw
 from .raphtory import *
 
 __doc__ = raphtory.__doc__
