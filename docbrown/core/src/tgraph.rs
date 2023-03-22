@@ -15,6 +15,9 @@ use crate::{bitset::BitSet, tadjset::AdjEdge, Direction};
 use crate::tprop::TProp;
 use crate::vertex::InputVertex;
 
+pub type AddVertexResult = Result<(), IllegalVertexPropertyChange>;
+pub type AddEdgeResult = Result<(), AddEdgeError>;
+
 #[derive(thiserror::Error, Debug)]
 #[error("cannot change property for vertex '{vertex_id}'")]
 pub struct IllegalVertexPropertyChange {
@@ -173,7 +176,7 @@ impl TemporalGraph {
         }
     }
 
-    pub(crate) fn add_vertex<T: InputVertex>(&mut self, t: i64, v: T) -> Result<(), IllegalVertexPropertyChange> {
+    pub(crate) fn add_vertex<T: InputVertex>(&mut self, t: i64, v: T) -> AddVertexResult {
         self.add_vertex_with_props(t, v, &vec![])
     }
 
@@ -182,7 +185,7 @@ impl TemporalGraph {
         t: i64,
         v: T,
         props: &Vec<(String, Prop)>,
-    ) -> Result<(), IllegalVertexPropertyChange> {
+    ) -> AddVertexResult {
         //Updating time - only needs to be here as every other adding function calls this one
         if self.earliest_time > t {
             self.earliest_time = t
@@ -223,7 +226,7 @@ impl TemporalGraph {
         Ok(self.props.upsert_temporal_vertex_props(t, index, props))
     }
 
-    pub(crate) fn add_vertex_properties(&mut self, v: u64, data: &Vec<(String, Prop)>) -> Result<(), IllegalVertexPropertyChange> {
+    pub(crate) fn add_vertex_properties(&mut self, v: u64, data: &Vec<(String, Prop)>) -> AddVertexResult {
         let index = *self.logical_to_physical.get(&v).expect(&format!("impossible to add metadata to non existing vertex {v}"));
         let result = self.props.set_static_vertex_props(index, data);
         result.map_err(|e| IllegalVertexPropertyChange::new(v, e)) // TODO: use the name here if exists
@@ -291,7 +294,7 @@ impl TemporalGraph {
         self.props.upsert_temporal_edge_props(t, dst_edge_meta_id, props)
     }
 
-    pub(crate) fn add_edge_properties(&mut self, src: u64, dst: u64, data: &Vec<(String, Prop)>) -> Result<(), AddEdgeError> {
+    pub(crate) fn add_edge_properties(&mut self, src: u64, dst: u64, data: &Vec<(String, Prop)>) -> AddEdgeResult {
         let edge_id = self.edge(src, dst).ok_or(AddEdgeError::MissingEdge(src, dst))?.edge_id;
         let result = self.props.set_static_edge_props(edge_id, data);
         result.map_err(|e| AddEdgeError::new(src, dst, e))

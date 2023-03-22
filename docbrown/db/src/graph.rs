@@ -9,7 +9,7 @@ use std::{
 };
 
 use docbrown_core::{
-    tgraph::{EdgeRef, VertexRef},
+    tgraph::{AddEdgeResult, AddVertexResult, EdgeRef, VertexRef},
     tgraph_shard::TGraphShard,
     utils,
     vertex::InputVertex,
@@ -574,12 +574,12 @@ impl Graph {
     }
 
     // TODO: Probably add vector reference here like add
-    pub fn add_vertex<T: InputVertex>(&self, t: i64, v: T, props: &Vec<(String, Prop)>) -> Result<(), IllegalVertexPropertyChange> {
+    pub fn add_vertex<T: InputVertex>(&self, t: i64, v: T, props: &Vec<(String, Prop)>) -> AddVertexResult {
         let shard_id = utils::get_shard_id_from_global_vid(v.id(), self.nr_shards);
         self.shards[shard_id].add_vertex(t, v, &props)
     }
 
-    pub fn add_vertex_properties<T: InputVertex>(&self, v: T, data: &Vec<(String, Prop)>) -> Result<(), IllegalVertexPropertyChange> {
+    pub fn add_vertex_properties<T: InputVertex>(&self, v: T, data: &Vec<(String, Prop)>) -> AddVertexResult {
         let shard_id = utils::get_shard_id_from_global_vid(v.id(), self.nr_shards);
         self.shards[shard_id].add_vertex_properties(v.id(), data)
     }
@@ -602,7 +602,7 @@ impl Graph {
         }
     }
 
-    pub fn add_edge_properties<T: InputVertex>(&self, src: T, dst: T, props: &Vec<(String, Prop)>) -> Result<(), AddEdgeError> {
+    pub fn add_edge_properties<T: InputVertex>(&self, src: T, dst: T, props: &Vec<(String, Prop)>) -> AddEdgeResult {
         // TODO: we don't add properties to dst shard, but may need to depending on the plans
         self.get_shard_from_id(src.id()).add_edge_properties(src.id(), dst.id(), props)
     }

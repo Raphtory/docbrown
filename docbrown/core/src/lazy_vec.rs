@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::ops::Range;
 
 #[derive(thiserror::Error, Debug, PartialEq)]
-#[error("cannot set previous value '{:?}' to '{:?}' in position '{index}'", previous_value, new_value)]
+#[error("cannot set previous value '{previous_value:?}' to '{new_value:?}' in position '{index}'")]
 pub struct IllegalSet<A: Debug> {
     pub index: usize,
     pub previous_value: A,
