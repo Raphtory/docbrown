@@ -48,7 +48,7 @@ jobs:
       - name: Run Maturin develop
         uses: PyO3/maturin-action@v1
         with:
-          working-directory: ./raphtory
+          working-directory: ./python
           command: build
           target: ${{ matrix.target }}
       - name: Install Python dependencies (Unix)
