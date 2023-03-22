@@ -66,4 +66,4 @@ jobs:
           }
       - name: Run Python tests
         run: |
-          cd raphtory && pytest
+          cd python && pytest
