@@ -22,15 +22,6 @@ impl<A: Debug> IllegalSet<A> {
     }
 }
 
-// impl Display for IllegalSet<A>
-// where
-//     A: Debug
-// {
-//     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-//         todo!()
-//     }
-// }
-
 #[derive(Default, Debug, PartialEq, Serialize, Deserialize)]
 pub(crate) enum LazyVec<A> {
     #[default]

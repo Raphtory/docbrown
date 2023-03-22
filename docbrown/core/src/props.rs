@@ -13,15 +13,6 @@ pub struct IllegalMutate {
     pub source: IllegalSet<Option<Prop>>,
 }
 
-// impl IllegalMutate {
-//     fn new(name: String, source: IllegalSet<Option<Prop>>) -> IllegalMutate {
-//         IllegalMutate {
-//             name,
-//             source,
-//         }
-//     }
-// }
-
 impl IllegalMutate {
     fn from(source: IllegalSet<Option<Prop>>, dict: &HashMap<PropId, String>) -> IllegalMutate {
         let id = PropId::Static(source.index);

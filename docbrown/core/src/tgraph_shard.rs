@@ -7,7 +7,7 @@ use std::sync::Arc;
 use genawaiter::sync::{gen, GenBoxed};
 use genawaiter::yield_;
 
-use crate::tgraph::{AddEdgeResult, AddVertexResult, EdgeRef, IllegalVertexPropertyChange, TemporalGraph, VertexRef};
+use crate::tgraph::{AddEdgeResult, AddVertexResult, EdgeRef, TemporalGraph, VertexRef};
 use crate::{Direction, Prop};
 use crate::vertex::InputVertex;
 

@@ -56,26 +56,6 @@ impl AddEdgeError {
     }
 }
 
-// impl AddError {
-//     pub(crate) fn for_vertex(vertex_id: u64, e: IllegalMutateError) -> AddError {
-//         AddError::IllegalVertexChange {
-//             vertex_id,
-//             name: e.name,
-//             previous_value: e.previous_value,
-//             new_value: e.new_value,
-//         }
-//     }
-//     pub(crate) fn for_edge(src_id: u64, dst_id: u64, e: IllegalMutateError) -> AddError {
-//         AddError::IllegalEdgeChange {
-//             src_id,
-//             dst_id,
-//             name: e.name,
-//             previous_value: e.previous_value,
-//             new_value: e.new_value,
-//         }
-//     }
-// }
-
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct TemporalGraph {
     // Maps global (logical) id to the local (physical) id which is an index to the adjacency list vector

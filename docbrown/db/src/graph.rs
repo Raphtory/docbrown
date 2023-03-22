@@ -24,7 +24,6 @@ use itertools::Itertools;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use tempdir::TempDir;
-use docbrown_core::tgraph::{AddEdgeError, IllegalVertexPropertyChange};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Graph {
