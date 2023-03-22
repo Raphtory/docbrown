@@ -1,25 +1,33 @@
-use crate::lazy_vec::{LazyVec, SetError};
+use crate::lazy_vec::{LazyVec, IllegalSet};
 use crate::Prop;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::fmt::Debug;
+use std::fmt::{Debug, Display, Formatter};
 use itertools::Itertools;
 use crate::tprop::TProp;
 
-#[derive(Debug, PartialEq)]
-pub(crate) struct IllegalMutateError {
-    pub(crate) name: String,
-    pub(crate) previous_value: Prop,
-    pub(crate) new_value: Prop,
+#[derive(thiserror::Error, Debug)]
+#[error("cannot mutate static property '{name}'")]
+pub struct IllegalMutate {
+    pub name: String,
+    pub source: IllegalSet<Option<Prop>>,
 }
 
-impl IllegalMutateError {
-    fn from(error: SetError<Option<Prop>>, dict: &HashMap<PropId, String>) -> IllegalMutateError {
-        let id = PropId::Static(error.index);
-        IllegalMutateError {
-            name: dict.get(&id).cloned().unwrap_or("<UNKNOWN NAME>".to_string()),
-            previous_value: error.previous_value.unwrap(),
-            new_value: error.new_value.unwrap(),
+// impl IllegalMutate {
+//     fn new(name: String, source: IllegalSet<Option<Prop>>) -> IllegalMutate {
+//         IllegalMutate {
+//             name,
+//             source,
+//         }
+//     }
+// }
+
+impl IllegalMutate {
+    fn from(source: IllegalSet<Option<Prop>>, dict: &HashMap<PropId, String>) -> IllegalMutate {
+        let id = PropId::Static(source.index);
+        IllegalMutate {
+            name: dict.get(&id).cloned().unwrap_or("<UNKNOWN>".to_string()),
+            source
         }
     }
 }
@@ -239,27 +247,27 @@ impl Props {
         }
     }
 
-    pub fn set_static_vertex_props(&mut self, vertex_id: usize, props: &Vec<(String, Prop)>) -> Result<(), IllegalMutateError> {
+    pub fn set_static_vertex_props(&mut self, vertex_id: usize, props: &Vec<(String, Prop)>) -> Result<(), IllegalMutate> {
         if !props.is_empty() {
             let translated_props = self.translate_props(props, true);
             let vertex_slot: &mut LazyVec<Option<Prop>> = Self::grow_and_get_slot(&mut self.static_vertex_props, vertex_id);
             for (prop_id, prop) in translated_props {
                 if let Err(e) = vertex_slot.set(prop_id, Some(prop)) {
-                    return Err(IllegalMutateError::from(e, &self.reverse_ids))
+                    return Err(IllegalMutate::from(e, &self.reverse_ids))
                 }
             }
         }
         Ok(())
     }
 
-    pub fn set_static_edge_props(&mut self, edge_id: usize, props: &Vec<(String, Prop)>) -> Result<(), IllegalMutateError> {
+    pub fn set_static_edge_props(&mut self, edge_id: usize, props: &Vec<(String, Prop)>) -> Result<(), IllegalMutate> {
         Self::assert_valid_edge_id(edge_id);
         if !props.is_empty() {
             let translated_props = self.translate_props(props, true);
             let edge_slot: &mut LazyVec<Option<Prop>> = Self::grow_and_get_slot(&mut self.static_edge_props, edge_id);
             for (prop_id, prop) in translated_props {
                 if let Err(e) = edge_slot.set(prop_id, Some(prop)) {
-                    return Err(IllegalMutateError::from(e, &self.reverse_ids))
+                    return Err(IllegalMutate::from(e, &self.reverse_ids))
                 }
             }
         }

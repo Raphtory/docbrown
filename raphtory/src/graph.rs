@@ -13,7 +13,6 @@ use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use itertools::Itertools;
-use docbrown_core::tgraph::{AddError, AddResult};
 
 use crate::graph_window::{GraphWindowSet, WindowedEdge, WindowedGraph, WindowedVertex};
 use crate::wrappers::{PerspectiveSet, Prop, VertexIdsIterator, WindowedEdgeIterator, WindowedVertices};
@@ -45,13 +44,13 @@ impl Graph {
     pub fn add_vertex(&self, timestamp: i64, id: &PyAny, properties: Option<HashMap<String, Prop>>) -> PyResult<()> {
         let v = Self::extract_id(id)?;
         let result = self.graph.add_vertex(timestamp, v, &Self::transform_props(properties));
-        Self::adapt_property_err(result)
+        Self::adapt_err(result)
     }
 
     pub fn add_vertex_properties(&self, id: &PyAny, props: HashMap<String, Prop>) -> PyResult<()> {
         let v = Self::extract_id(id)?;
         let result = self.graph.add_vertex_properties(v, &Self::transform_props(Some(props)));
-        Self::adapt_property_err(result)
+        Self::adapt_err(result)
     }
 
     pub fn add_edge(&self, timestamp: i64, src: &PyAny, dst: &PyAny, properties: Option<HashMap<String, Prop>>) -> PyResult<()> {
@@ -64,7 +63,7 @@ impl Graph {
         let src = Self::extract_id(src)?;
         let dst = Self::extract_id(dst)?;
         let result = self.graph.add_edge_properties(src, dst, &Self::transform_props(Some(props)));
-        Self::adapt_property_err(result)
+        Self::adapt_err(result)
     }
 
     //******  Perspective APIS  ******//
@@ -239,8 +238,14 @@ impl Graph {
         }
     }
 
-    fn adapt_property_err(result: AddResult) -> PyResult<()> {
-        result.map_err(|e| PyException::new_err(format!("{e}")))
+    fn adapt_err<E>(result: Result<(), E>) -> PyResult<()>
+    where
+        E: std::error::Error
+    {
+        result.map_err(|e| {
+            let error_log = display_error_chain::DisplayErrorChain::new(&e).to_string();
+            PyException::new_err(error_log)
+        })
     }
 }
 

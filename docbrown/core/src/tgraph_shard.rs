@@ -7,7 +7,7 @@ use std::sync::Arc;
 use genawaiter::sync::{gen, GenBoxed};
 use genawaiter::yield_;
 
-use crate::tgraph::{EdgeRef, AddError, AddResult, TemporalGraph, VertexRef};
+use crate::tgraph::{AddEdgeError, EdgeRef, IllegalVertexPropertyChange, TemporalGraph, VertexRef};
 use crate::{Direction, Prop};
 use crate::vertex::InputVertex;
 
@@ -134,11 +134,11 @@ impl TGraphShard {
         self.read_shard(|tg| tg.has_vertex_window(v, &w))
     }
 
-    pub fn add_vertex<T: InputVertex>(&self, t: i64, v: T, props: &Vec<(String, Prop)>) -> AddResult {
+    pub fn add_vertex<T: InputVertex>(&self, t: i64, v: T, props: &Vec<(String, Prop)>) -> Result<(), IllegalVertexPropertyChange> {
         self.write_shard(move |tg| tg.add_vertex_with_props(t, v, props))
     }
 
-    pub fn add_vertex_properties(&self, v: u64, data: &Vec<(String, Prop)>) -> AddResult {
+    pub fn add_vertex_properties(&self, v: u64, data: &Vec<(String, Prop)>) -> Result<(), IllegalVertexPropertyChange> {
         self.write_shard(|tg| tg.add_vertex_properties(v, data))
     }
 
@@ -154,7 +154,7 @@ impl TGraphShard {
         self.write_shard(|tg| tg.add_edge_remote_into(t, src, dst, props))
     }
 
-    pub fn add_edge_properties(&self, src: u64, dst: u64, data: &Vec<(String, Prop)>) -> AddResult {
+    pub fn add_edge_properties(&self, src: u64, dst: u64, data: &Vec<(String, Prop)>) -> Result<(), AddEdgeError> {
         self.write_shard(|tg| tg.add_edge_properties(src, dst, data))
     }
 
