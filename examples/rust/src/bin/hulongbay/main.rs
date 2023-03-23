@@ -146,8 +146,62 @@ fn try_main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
+fn try_main_bm() -> Result<(), Box<dyn Error>> {
+    let args: Vec<String> = env::args().collect();
+    let data_dir = Path::new(args.get(1).ok_or(MissingArgumentError)?);
+
+    let graph = loader(data_dir)?;
+
+    let now = Instant::now();
+    let num_edges: usize = graph.vertices().map(|v| v.out_degree()).sum();
+    println!(
+        "Counting edges by summing degrees returned {} in {} milliseconds",
+        num_edges,
+        now.elapsed().as_millis()
+    );
+    let earliest_time = graph.earliest_time().ok_or(GraphEmptyError)?;
+    let latest_time = graph.latest_time().ok_or(GraphEmptyError)?;
+    println!("graph time range: {}-{}", earliest_time, latest_time);
+
+    let now = Instant::now();
+    let num_edges2 = graph.num_edges();
+    println!(
+        "num_edges returned {} in {} milliseconds",
+        num_edges2,
+        now.elapsed().as_millis()
+    );
+
+    println!("\n Immutable graph metrics:");
+
+    let graph = graph.freeze();
+
+    let now = Instant::now();
+    let num_edges: usize = graph.vertices().map(|v| graph.degree(v, Direction::OUT)).sum();
+
+    println!(
+        "Counting edges by summing degrees returned {} in {} milliseconds",
+        num_edges,
+        now.elapsed().as_millis()
+    );
+
+    let earliest_time = graph.earliest_time().ok_or(GraphEmptyError)?;
+    let latest_time = graph.latest_time().ok_or(GraphEmptyError)?;
+
+    println!("graph time range: {}-{}", earliest_time, latest_time);
+
+    let now = Instant::now();
+    let num_edges2 = graph.num_edges();
+    println!(
+        "num_edges returned {} in {} milliseconds",
+        num_edges2,
+        now.elapsed().as_millis()
+    );
+
+    Ok(())
+}
+
 fn main() {
-    if let Err(e) = try_main() {
+    if let Err(e) = try_main_bm() {
         eprintln!("Failed: {}", e);
         std::process::exit(1)
     }

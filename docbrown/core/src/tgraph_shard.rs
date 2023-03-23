@@ -162,7 +162,7 @@ impl TGraphShard<TemporalGraph> {
     pub fn add_remote_out_properties(&self, src: u64, dst: u64, data: &Vec<(String, Prop)>) {
         self.write_shard(|tg| tg.add_remote_out_properties(src, dst, data))
     }
-    
+
     pub fn freeze(&self) -> ImmutableTGraphShard<TemporalGraph> {
         let mut inner = self.rc.write();
         let g = inner.take().unwrap();
@@ -423,7 +423,12 @@ impl TGraphShard<TemporalGraph> {
         self.read_shard(|tg| tg.temporal_vertex_prop_vec(v, &name))
     }
 
-    pub fn temporal_vertex_prop_vec_window(&self, v: u64, name: String, w: Range<i64>) -> Vec<(i64, Prop)> {
+    pub fn temporal_vertex_prop_vec_window(
+        &self,
+        v: u64,
+        name: String,
+        w: Range<i64>,
+    ) -> Vec<(i64, Prop)> {
         self.read_shard(|tg| tg.temporal_vertex_prop_vec_window(v, &name, &w))
     }
 
@@ -431,7 +436,11 @@ impl TGraphShard<TemporalGraph> {
         self.read_shard(|tg| tg.temporal_vertex_props(v))
     }
 
-    pub fn temporal_vertex_props_window(&self, v: u64, w: Range<i64>) -> HashMap<String, Vec<(i64, Prop)>> {
+    pub fn temporal_vertex_props_window(
+        &self,
+        v: u64,
+        w: Range<i64>,
+    ) -> HashMap<String, Vec<(i64, Prop)>> {
         self.read_shard(|tg| tg.temporal_vertex_props_window(v, &w))
     }
 
@@ -447,7 +456,12 @@ impl TGraphShard<TemporalGraph> {
         self.read_shard(|tg| tg.temporal_edge_prop_vec(e, &name))
     }
 
-    pub fn temporal_edge_props_vec_window(&self, e: usize, name: String, w: Range<i64>) -> Vec<(i64, Prop)> {
+    pub fn temporal_edge_props_vec_window(
+        &self,
+        e: usize,
+        name: String,
+        w: Range<i64>,
+    ) -> Vec<(i64, Prop)> {
         self.read_shard(|tg| tg.temporal_edge_prop_vec_window(e, &name, w.clone()))
     }
 }
@@ -472,8 +486,28 @@ impl ImmutableTGraphShard<TemporalGraph> {
         Ok(TGraphShard::new_from_tgraph(tg))
     }
 
-    pub fn vertices(&self) -> impl Iterator<Item = VertexRef> + Send + '_ {
+    pub fn earliest_time(&self) -> i64 {
+        self.rc.earliest_time
+    }
+
+    pub fn latest_time(&self) -> i64 {
+        self.rc.latest_time
+    }
+
+    pub fn degree(&self, v: u64, d: Direction) -> usize {
+        self.rc.degree(v, d)
+    }
+
+    pub fn vertices(&self) -> Box<dyn Iterator<Item = VertexRef> + Send + '_> {
         self.rc.vertices()
+    }
+
+    pub fn edges(&self, v: u64, d: Direction) -> Box<dyn Iterator<Item = EdgeRef> + Send + '_> {
+        self.rc.vertex_edges(v, d)
+    }
+
+    pub fn out_edges_len(&self) -> usize {
+        self.rc.out_edges_len()
     }
 }
 

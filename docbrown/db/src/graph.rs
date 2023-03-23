@@ -26,11 +26,15 @@ use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use tempdir::TempDir;
 
+pub trait GraphType {}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Graph {
     pub nr_shards: usize,
     pub(crate) shards: Vec<TGraphShard<TemporalGraph>>,
 }
+
+impl GraphType for Graph {}
 
 impl GraphViewInternalOps for Graph {
     fn vertices_len(&self) -> usize {
@@ -383,7 +387,7 @@ impl GraphViewOps for Graph {
     fn vertices(&self) -> Self::Vertices {
         let g = Arc::new(self.clone());
         Box::new(
-            GraphViewInternalOps::vertex_refs(self).map(move |v| Self::Vertex::new(g.clone(), v)),
+            self.vertex_refs().map(move |v| Self::Vertex::new(g.clone(), v)),
         )
     }
 
@@ -407,7 +411,7 @@ impl GraphViewOps for Graph {
 }
 
 impl Graph {
-    fn freeze(&self) -> ImmutableGraph {
+    pub fn freeze(&self) -> ImmutableGraph {
         ImmutableGraph {
             nr_shards: self.nr_shards,
             shards: self.shards.iter().map(|s| s.freeze()).collect_vec(),
