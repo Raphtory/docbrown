@@ -435,15 +435,15 @@ def test_all_edge_window():
 
     view = g.at(4)
     v = view.vertex(2)
-    assert list(map(lambda e: e.edge_id,  v.in_edges(0, 4))) == [1, 3, 5]
-    assert list(map(lambda e: e.edge_id,  v.in_edges(t_end=4))) == [1, 3, 5]
-    assert list(map(lambda e: e.edge_id,  v.in_edges(t_start=2))) == [3, 5]
-    assert list(map(lambda e: e.edge_id,  v.out_edges(0, 4))) == [2]
-    assert list(map(lambda e: e.edge_id,  v.out_edges(t_end=3))) == [2]
-    assert list(map(lambda e: e.edge_id,  v.out_edges(t_start=2))) == [6]
-    assert list(map(lambda e: e.edge_id,  v.edges(0, 4))) == [1, 3, 5, 2]
-    assert list(map(lambda e: e.edge_id,  v.edges(t_end=4))) == [1, 3, 5, 2]
-    assert list(map(lambda e: e.edge_id,  v.edges(t_start=1))) == [1, 3, 5, 2, 6]
+    assert list(map(lambda e: e.id(),  v.in_edges(0, 4))) == [1, 3, 5]
+    assert list(map(lambda e: e.id(),  v.in_edges(t_end=4))) == [1, 3, 5]
+    assert list(map(lambda e: e.id(),  v.in_edges(t_start=2))) == [3, 5]
+    assert list(map(lambda e: e.id(),  v.out_edges(0, 4))) == [2]
+    assert list(map(lambda e: e.id(),  v.out_edges(t_end=3))) == [2]
+    assert list(map(lambda e: e.id(),  v.out_edges(t_start=2))) == [6]
+    assert list(map(lambda e: e.id(),  v.edges(0, 4))) == [1, 3, 5, 2]
+    assert list(map(lambda e: e.id(),  v.edges(t_end=4))) == [1, 3, 5, 2]
+    assert list(map(lambda e: e.id(),  v.edges(t_start=1))) == [1, 3, 5, 2, 6]
 
 def test_static_prop_change():
     # with pytest.raises(Exception):
