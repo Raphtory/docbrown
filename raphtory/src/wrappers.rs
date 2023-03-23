@@ -17,9 +17,9 @@ pub(crate) enum Direction {
     OUT,
     IN,
     BOTH,
-    OUT_WINDOW{t_start: i64, t_end: i64},
-    IN_WINDOW{t_start: i64, t_end: i64},
-    BOTH_WINDOW{t_start: i64, t_end: i64},
+    OutWindow{t_start: i64, t_end: i64},
+    InWindow{t_start: i64, t_end: i64},
+    BothWindow{t_start: i64, t_end: i64},
 }
 
 impl From<Direction> for db_c::Direction {
@@ -28,9 +28,9 @@ impl From<Direction> for db_c::Direction {
             Direction::OUT => db_c::Direction::OUT,
             Direction::IN => db_c::Direction::IN,
             Direction::BOTH => db_c::Direction::BOTH,
-            Direction::OUT_WINDOW{t_start, t_end} => db_c::Direction::OUT,
-            Direction::IN_WINDOW{t_start, t_end} => db_c::Direction::IN,
-            Direction::BOTH_WINDOW{t_start, t_end} => db_c::Direction::BOTH,
+            Direction::OutWindow{t_start, t_end} => db_c::Direction::OUT,
+            Direction::InWindow{t_start, t_end} => db_c::Direction::IN,
+            Direction::BothWindow{t_start, t_end} => db_c::Direction::BOTH,
         }
     }
 }
@@ -216,7 +216,7 @@ impl WindowedVertices {
         )?;
         Ok(DegreeIterable {
             vertex_iter,
-            operation: Direction::IN_WINDOW{t_start, t_end},
+            operation: Direction::InWindow{t_start, t_end},
         })
     }
 
@@ -246,7 +246,7 @@ impl WindowedVertices {
         )?;
         Ok(DegreeIterable {
             vertex_iter,
-            operation: Direction::OUT_WINDOW{t_start, t_end},
+            operation: Direction::OutWindow{t_start, t_end},
         })
     }
 
@@ -276,7 +276,7 @@ impl WindowedVertices {
         )?;
         Ok(DegreeIterable {
             vertex_iter,
-            operation: Direction::BOTH_WINDOW{t_start, t_end},
+            operation: Direction::BothWindow{t_start, t_end},
         })
     }
 
@@ -372,7 +372,7 @@ impl WindowedVerticesPath {
     fn in_degree_window(slf: PyRef<'_, Self>, py: Python, t_start: i64, t_end: i64) -> NestedDegreeIterable {
         NestedDegreeIterable {
             vertex_iter: slf.into(),
-            operation: Direction::IN_WINDOW{t_start, t_end},
+            operation: Direction::InWindow{t_start, t_end},
         }
     }
 
@@ -386,7 +386,7 @@ impl WindowedVerticesPath {
     fn out_degree_window(slf: PyRef<'_, Self>, py: Python, t_start: i64, t_end: i64) -> NestedDegreeIterable {
         NestedDegreeIterable {
             vertex_iter: slf.into(),
-            operation: Direction::OUT_WINDOW{t_start, t_end},
+            operation: Direction::OutWindow{t_start, t_end},
         }
     }
 
@@ -400,7 +400,7 @@ impl WindowedVerticesPath {
     fn degree_window(slf: PyRef<'_, Self>, py: Python, t_start: i64, t_end: i64) -> NestedDegreeIterable {
         NestedDegreeIterable {
             vertex_iter: slf.into(),
-            operation: Direction::BOTH_WINDOW{t_start, t_end},
+            operation: Direction::BothWindow{t_start, t_end},
         }
     }
 
@@ -522,7 +522,7 @@ impl WindowedVertexIterable {
         let vertex_iter = slf.into();
         DegreeIterable {
             vertex_iter,
-            operation: Direction::IN_WINDOW{t_start, t_end},
+            operation: Direction::InWindow{t_start, t_end},
         }
     }
 
@@ -538,7 +538,7 @@ impl WindowedVertexIterable {
         let vertex_iter = slf.into();
         DegreeIterable {
             vertex_iter,
-            operation: Direction::OUT_WINDOW{t_start, t_end},
+            operation: Direction::OutWindow{t_start, t_end},
         }
     }
 
@@ -554,7 +554,7 @@ impl WindowedVertexIterable {
         let vertex_iter = slf.into();
         DegreeIterable {
             vertex_iter,
-            operation: Direction::BOTH_WINDOW{t_start, t_end},
+            operation: Direction::BothWindow{t_start, t_end},
         }
     }
 
@@ -638,9 +638,9 @@ impl DegreeIterable {
             Direction::OUT => iter.out_degree(),
             Direction::IN => iter.in_degree(),
             Direction::BOTH => iter.degree(),
-            Direction::OUT_WINDOW { t_start, t_end } => iter.out_degree_window(t_start, t_end),
-            Direction::IN_WINDOW { t_start, t_end } => iter.in_degree_window(t_start, t_end),
-            Direction::BOTH_WINDOW { t_start, t_end } => iter.degree_window(t_start, t_end),
+            Direction::OutWindow { t_start, t_end } => iter.out_degree_window(t_start, t_end),
+            Direction::InWindow { t_start, t_end } => iter.in_degree_window(t_start, t_end),
+            Direction::BothWindow { t_start, t_end } => iter.degree_window(t_start, t_end),
         }
     }
 }

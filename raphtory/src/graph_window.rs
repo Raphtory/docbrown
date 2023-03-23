@@ -229,15 +229,16 @@ impl WindowedVertex {
         }
     }
 
-    pub fn in_edges(&self) -> WindowedEdgeIterator {
-        WindowedEdgeIterator {
-            iter: Box::new(self.vertex_w.in_edges().map(|te| te.into())),
-        }
-    }
+    // pub fn in_edges(&self) -> WindowedEdgeIterator {
+    //     WindowedEdgeIterator {
+    //         iter: Box::new(self.vertex_w.in_edges().map(|te| te.into())),
+    //     }
+    // }
 
-    pub fn in_edges_window(&self, t_start: i64, t_end: i64) -> WindowedEdgeIterator {
+    #[args(t_start=None, t_end=None)]
+    pub fn in_edges(&self, t_start: Option<i64>, t_end: Option<i64>1) -> WindowedEdgeIterator {
         WindowedEdgeIterator {
-            iter: Box::new(self.vertex_w.in_edges_window(t_start, t_end).map(|te| te.into())),
+            iter: Box::new(self.vertex_w.in_edges_window(t_start.unwrap_or(i64::MIN), t_end.unwrap_or(i64::MAX)).map(|te| te.into())),
         }
     }
 
@@ -276,6 +277,7 @@ impl WindowedVertex {
             start_at: Some(self.id),
         }
     }
+
 
     pub fn in_neighbours_window(&self, t_start: i64, t_end: i64) -> WindowedVertexIterable {
         WindowedVertexIterable {
