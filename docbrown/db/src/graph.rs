@@ -26,15 +26,11 @@ use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use tempdir::TempDir;
 
-pub trait GraphType {}
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Graph {
     pub nr_shards: usize,
     pub(crate) shards: Vec<TGraphShard<TemporalGraph>>,
 }
-
-impl GraphType for Graph {}
 
 impl GraphViewInternalOps for Graph {
     fn vertices_len(&self) -> usize {
