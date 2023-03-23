@@ -9,10 +9,11 @@ use std::{
 };
 
 use docbrown_core::{
-    tgraph::{EdgeRef, VertexRef},
+    tgraph::{AddEdgeResult, AddVertexResult, EdgeRef, VertexRef},
     tgraph_shard::TGraphShard,
-    utils, Direction, Prop,
+    utils,
     vertex::InputVertex,
+    Direction, Prop,
 };
 
 use crate::edge::EdgeView;
@@ -459,7 +460,7 @@ impl GraphViewOps for Graph {
     }
 
     fn edges(&self) -> Self::Edges {
-        todo!()
+        Box::new(self.vertices().flat_map(|v| v.out_edges()))
     }
 }
 
@@ -572,12 +573,12 @@ impl Graph {
     }
 
     // TODO: Probably add vector reference here like add
-    pub fn add_vertex<T: InputVertex>(&self, t: i64, v: T, props: &Vec<(String, Prop)>) {
+    pub fn add_vertex<T: InputVertex>(&self, t: i64, v: T, props: &Vec<(String, Prop)>) -> AddVertexResult {
         let shard_id = utils::get_shard_id_from_global_vid(v.id(), self.nr_shards);
-        self.shards[shard_id].add_vertex(t, v, &props);
+        self.shards[shard_id].add_vertex(t, v, &props)
     }
 
-    pub fn add_vertex_properties<T: InputVertex>(&self, v: T, data: &Vec<(String, Prop)>) {
+    pub fn add_vertex_properties<T: InputVertex>(&self, v: T, data: &Vec<(String, Prop)>) -> AddVertexResult {
         let shard_id = utils::get_shard_id_from_global_vid(v.id(), self.nr_shards);
         self.shards[shard_id].add_vertex_properties(v.id(), data)
     }
@@ -600,16 +601,9 @@ impl Graph {
         }
     }
 
-    pub fn add_edge_properties<T: InputVertex>(&self, src: T, dst: T, props: &Vec<(String, Prop)>) {
-        let src_shard_id = utils::get_shard_id_from_global_vid(src.id(), self.nr_shards);
-        let dst_shard_id = utils::get_shard_id_from_global_vid(dst.id(), self.nr_shards);
-
-        if src_shard_id == dst_shard_id {
-            self.shards[src_shard_id].add_edge_properties(src.id(), dst.id(), props)
-        } else {
-            // TODO: we don't add properties to dst shard, but may need to depending on the plans
-            self.shards[src_shard_id].add_remote_out_properties(src.id(), dst.id(), props);
-        }
+    pub fn add_edge_properties<T: InputVertex>(&self, src: T, dst: T, props: &Vec<(String, Prop)>) -> AddEdgeResult {
+        // TODO: we don't add properties to dst shard, but may need to depending on the plans
+        self.get_shard_from_id(src.id()).add_edge_properties(src.id(), dst.id(), props)
     }
 }
 
@@ -1239,7 +1233,7 @@ mod db_tests {
 
     #[test]
     fn test_graph_at() {
-        let g= crate::graph_loader::lotr_graph::lotr_graph(1);
+        let g = crate::graph_loader::lotr_graph::lotr_graph(1);
 
         let g_at_empty = g.at(1);
         let g_at_start = g.at(7059);
@@ -1268,5 +1262,4 @@ mod db_tests {
 
         assert_eq!(g.num_vertices(), 3);
     }
-
 }
