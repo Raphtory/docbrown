@@ -194,58 +194,92 @@ impl WindowedVertex {
     }
 
     pub fn degree(&self, t_start: Option<i64>, t_end: Option<i64>) -> usize {
-        self.vertex_w
-            .degree_window(t_start.unwrap_or(i64::MIN), t_end.unwrap_or(i64::MAX))
+        match (t_start, t_end) {
+            (None, None) => self.vertex_w.degree(),
+            _ => self
+                .vertex_w
+                .degree_window(t_start.unwrap_or(i64::MIN), t_end.unwrap_or(i64::MAX)),
+        }
     }
 
     pub fn in_degree(&self, t_start: Option<i64>, t_end: Option<i64>) -> usize {
-        self.vertex_w
-            .in_degree_window(t_start.unwrap_or(i64::MIN), t_end.unwrap_or(i64::MAX))
+        match (t_start, t_end) {
+            (None, None) => self.vertex_w.in_degree(),
+            _ => self
+                .vertex_w
+                .in_degree_window(t_start.unwrap_or(i64::MIN), t_end.unwrap_or(i64::MAX)),
+        }
     }
 
     pub fn out_degree(&self, t_start: Option<i64>, t_end: Option<i64>) -> usize {
-        self.vertex_w
-            .out_degree_window(t_start.unwrap_or(i64::MIN), t_end.unwrap_or(i64::MAX))
+        match (t_start, t_end) {
+            (None, None) => self.vertex_w.out_degree(),
+            _ => self
+                .vertex_w
+                .out_degree_window(t_start.unwrap_or(i64::MIN), t_end.unwrap_or(i64::MAX)),
+        }
     }
 
     pub fn edges(&self, t_start: Option<i64>, t_end: Option<i64>) -> WindowedEdgeIterator {
-        WindowedEdgeIterator {
-            iter: Box::new(
-                self.vertex_w
-                    .edges_window(t_start.unwrap_or(i64::MIN), t_end.unwrap_or(i64::MAX))
-                    .map(|te| te.into()),
-            ),
+        match (t_start, t_end) {
+            (None, None) => WindowedEdgeIterator {
+                iter: Box::new(self.vertex_w.edges().map(|te| te.into())),
+            },
+            _ => WindowedEdgeIterator {
+                iter: Box::new(
+                    self.vertex_w
+                        .edges_window(t_start.unwrap_or(i64::MIN), t_end.unwrap_or(i64::MAX))
+                        .map(|te| te.into()),
+                ),
+            },
         }
     }
 
     pub fn in_edges(&self, t_start: Option<i64>, t_end: Option<i64>) -> WindowedEdgeIterator {
-        WindowedEdgeIterator {
-            iter: Box::new(
-                self.vertex_w
-                    .in_edges_window(t_start.unwrap_or(i64::MIN), t_end.unwrap_or(i64::MAX))
-                    .map(|te| te.into()),
-            ),
+        match (t_start, t_end) {
+            (None, None) => WindowedEdgeIterator {
+                iter: Box::new(self.vertex_w.in_edges().map(|te| te.into())),
+            },
+            _ => WindowedEdgeIterator {
+                iter: Box::new(
+                    self.vertex_w
+                        .in_edges_window(t_start.unwrap_or(i64::MIN), t_end.unwrap_or(i64::MAX))
+                        .map(|te| te.into()),
+                ),
+            },
         }
     }
 
     pub fn out_edges(&self, t_start: Option<i64>, t_end: Option<i64>) -> WindowedEdgeIterator {
-        WindowedEdgeIterator {
-            iter: Box::new(
-                self.vertex_w
-                    .out_edges_window(t_start.unwrap_or(i64::MIN), t_end.unwrap_or(i64::MAX))
-                    .map(|te| te.into()),
-            ),
+        match (t_start, t_end) {
+            (None, None) => WindowedEdgeIterator {
+                iter: Box::new(self.vertex_w.out_edges().map(|te| te.into())),
+            },
+            _ => WindowedEdgeIterator {
+                iter: Box::new(
+                    self.vertex_w
+                        .out_edges_window(t_start.unwrap_or(i64::MIN), t_end.unwrap_or(i64::MAX))
+                        .map(|te| te.into()),
+                ),
+            },
         }
     }
 
     pub fn neighbours(&self, t_start: Option<i64>, t_end: Option<i64>) -> WindowedVertexIterable {
-        WindowedVertexIterable {
-            graph: self.graph.clone(),
-            operations: vec![Operations::NeighboursWindow {
-                t_start: t_start.unwrap_or(i64::MIN),
-                t_end: t_end.unwrap_or(i64::MAX),
-            }],
-            start_at: Some(self.id),
+        match (t_start, t_end) {
+            (None, None) => WindowedVertexIterable {
+                graph: self.graph.clone(),
+                operations: vec![Operations::Neighbours],
+                start_at: Some(self.id),
+            },
+            _ => WindowedVertexIterable {
+                graph: self.graph.clone(),
+                operations: vec![Operations::NeighboursWindow {
+                    t_start: t_start.unwrap_or(i64::MIN),
+                    t_end: t_end.unwrap_or(i64::MAX),
+                }],
+                start_at: Some(self.id),
+            },
         }
     }
 
@@ -254,13 +288,20 @@ impl WindowedVertex {
         t_start: Option<i64>,
         t_end: Option<i64>,
     ) -> WindowedVertexIterable {
-        WindowedVertexIterable {
-            graph: self.graph.clone(),
-            operations: vec![Operations::InNeighboursWindow {
-                t_start: t_start.unwrap_or(i64::MIN),
-                t_end: t_end.unwrap_or(i64::MAX),
-            }],
-            start_at: Some(self.id),
+        match (t_start, t_end) {
+            (None, None) => WindowedVertexIterable {
+                graph: self.graph.clone(),
+                operations: vec![Operations::InNeighbours],
+                start_at: Some(self.id),
+            },
+            _ => WindowedVertexIterable {
+                graph: self.graph.clone(),
+                operations: vec![Operations::InNeighboursWindow {
+                    t_start: t_start.unwrap_or(i64::MIN),
+                    t_end: t_end.unwrap_or(i64::MAX),
+                }],
+                start_at: Some(self.id),
+            },
         }
     }
 
@@ -269,33 +310,53 @@ impl WindowedVertex {
         t_start: Option<i64>,
         t_end: Option<i64>,
     ) -> WindowedVertexIterable {
-        WindowedVertexIterable {
-            graph: self.graph.clone(),
-            operations: vec![Operations::OutNeighboursWindow {
-                t_start: t_start.unwrap_or(i64::MIN),
-                t_end: t_end.unwrap_or(i64::MAX),
-            }],
-            start_at: Some(self.id),
+        match (t_start, t_end) {
+            (None, None) => WindowedVertexIterable {
+                graph: self.graph.clone(),
+                operations: vec![Operations::OutNeighbours],
+                start_at: Some(self.id),
+            },
+            _ => WindowedVertexIterable {
+                graph: self.graph.clone(),
+                operations: vec![Operations::OutNeighboursWindow {
+                    t_start: t_start.unwrap_or(i64::MIN),
+                    t_end: t_end.unwrap_or(i64::MAX),
+                }],
+                start_at: Some(self.id),
+            },
         }
     }
 
     pub fn neighbours_ids(&self, t_start: Option<i64>, t_end: Option<i64>) -> VertexIdsIterator {
-        VertexIdsIterator {
-            iter: Box::new(
-                self.vertex_w
-                    .neighbours_window(t_start.unwrap_or(i64::MIN), t_end.unwrap_or(i64::MAX))
-                    .id(),
-            ),
+        match (t_start, t_end) {
+            (None, None) => VertexIdsIterator {
+                iter: Box::new(self.vertex_w.neighbours().id()),
+            },
+            _ => VertexIdsIterator {
+                iter: Box::new(
+                    self.vertex_w
+                        .neighbours_window(t_start.unwrap_or(i64::MIN), t_end.unwrap_or(i64::MAX))
+                        .id(),
+                ),
+            },
         }
     }
 
     pub fn in_neighbours_ids(&self, t_start: Option<i64>, t_end: Option<i64>) -> VertexIdsIterator {
-        VertexIdsIterator {
-            iter: Box::new(
-                self.vertex_w
-                    .in_neighbours_window(t_start.unwrap_or(i64::MIN), t_end.unwrap_or(i64::MAX))
-                    .id(),
-            ),
+        match (t_start, t_end) {
+            (None, None) => VertexIdsIterator {
+                iter: Box::new(self.vertex_w.in_neighbours().id()),
+            },
+            _ => VertexIdsIterator {
+                iter: Box::new(
+                    self.vertex_w
+                        .in_neighbours_window(
+                            t_start.unwrap_or(i64::MIN),
+                            t_end.unwrap_or(i64::MAX),
+                        )
+                        .id(),
+                ),
+            },
         }
     }
 
@@ -304,12 +365,20 @@ impl WindowedVertex {
         t_start: Option<i64>,
         t_end: Option<i64>,
     ) -> VertexIdsIterator {
-        VertexIdsIterator {
-            iter: Box::new(
-                self.vertex_w
-                    .out_neighbours_window(t_start.unwrap_or(i64::MIN), t_end.unwrap_or(i64::MAX))
-                    .id(),
-            ),
+        match (t_start, t_end) {
+            (None, None) => VertexIdsIterator {
+                iter: Box::new(self.vertex_w.out_neighbours().id()),
+            },
+            _ => VertexIdsIterator {
+                iter: Box::new(
+                    self.vertex_w
+                        .out_neighbours_window(
+                            t_start.unwrap_or(i64::MIN),
+                            t_end.unwrap_or(i64::MAX),
+                        )
+                        .id(),
+                ),
+            },
         }
     }
 
