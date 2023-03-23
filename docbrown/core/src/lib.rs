@@ -18,7 +18,6 @@ pub mod tadjset;
 mod tcell;
 pub mod tgraph_shard;
 mod tprop;
-mod lazy_table;
 mod lazy_vec;
 pub mod utils;
 pub mod eval;
