@@ -8,6 +8,7 @@ extern crate core;
 
 mod adj;
 mod bitset;
+mod edge_layer;
 pub mod tgraph;
 pub mod lsm;
 mod misc;

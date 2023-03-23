@@ -9,6 +9,7 @@ use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
 
 use crate::adj::Adj;
+use crate::edge_layer::EdgeLayer;
 use crate::props::{IllegalMutate, Props};
 use crate::Prop;
 use crate::{bitset::BitSet, tadjset::AdjEdge, Direction};
@@ -61,17 +62,15 @@ pub struct TemporalGraph {
     // Maps global (logical) id to the local (physical) id which is an index to the adjacency list vector
     pub(crate) logical_to_physical: FxHashMap<u64, usize>,
 
-    // Vector of adjacency lists
-    pub(crate) adj_lists: Vec<Adj>,
-
     // Time index pointing at the index against adjacency lists.
     index: BTreeMap<i64, BitSet>,
 
     // Properties abstraction for both vertices and edges
-    pub(crate) vertex_props: Props,
-    pub(crate) edge_props: Props,
+    pub(crate) vertex_props: Props, // TODO: rename to vertex props
 
-    num_edges: usize,
+    // Edge layers
+    pub(crate) default_layer: EdgeLayer,
+    // layers:Vec<EdgeLayer>,
 
     //earliest time seen in this graph
     pub(crate) earliest_time: i64,
@@ -82,16 +81,18 @@ pub struct TemporalGraph {
 
 impl Default for TemporalGraph {
     fn default() -> Self {
-        Self {
+        let graph = Self {
             logical_to_physical: Default::default(),
-            adj_lists: Default::default(),
             index: Default::default(),
             vertex_props: Default::default(),
-            edge_props: Default::default(),
-            num_edges: 1, // TODO: add big comment here
+            default_layer: Default::default(),
+            // layers: Default::default(),
             earliest_time: i64::MAX,
             latest_time: i64::MIN,
-        }
+        };
+        // // when we cover the layers, we cover the default layer as well:
+        // graph.layers.push(graph.default_layer);
+        graph
     }
 }
 
@@ -101,17 +102,13 @@ impl TemporalGraph {
     }
 
     pub(crate) fn out_edges_len(&self) -> usize {
-        self.adj_lists
-            .iter()
-            .map(|adj| adj.out_edges_len())
-            .reduce(|s1, s2| s1 + s2)
-            .unwrap_or(0)
+        self.default_layer.out_edges_len()
     }
 
     pub(crate) fn has_edge(&self, src: u64, dst: u64) -> bool {
         let v_pid = self.logical_to_physical[&src];
 
-        match &self.adj_lists[v_pid] {
+        match &self.default_layer.adj_lists[v_pid] {
             Adj::Solo(_) => false,
             Adj::List {
                 out, remote_out, ..
@@ -130,7 +127,7 @@ impl TemporalGraph {
         // First check if v1 exists within the given window
         if self.has_vertex_window(src, w) {
             let src_pid = self.logical_to_physical[&src];
-            match &self.adj_lists[src_pid] {
+            match &self.default_layer.adj_lists[src_pid] {
                 Adj::Solo(_) => false,
                 Adj::List {
                     out, remote_out, ..
@@ -181,8 +178,8 @@ impl TemporalGraph {
 
         let index = match self.logical_to_physical.get(&v.id()) {
             None => {
-                let physical_id: usize = self.adj_lists.len();
-                self.adj_lists.push(Adj::Solo(v.id()));
+                let physical_id: usize = self.default_layer.adj_lists.len();
+                self.default_layer.adj_lists.push(Adj::Solo(v.id()));
 
                 self.logical_to_physical.insert(v.id(), physical_id);
 
@@ -217,6 +214,7 @@ impl TemporalGraph {
         result.map_err(|e| IllegalVertexPropertyChange::new(v, e)) // TODO: use the name here if exists
     }
 
+    // TODO: remove this ???
     pub fn add_edge(&mut self, t: i64, src: u64, dst: u64) {
         self.add_edge_with_props(t, src, dst, &vec![])
     }
@@ -235,17 +233,7 @@ impl TemporalGraph {
         let src_pid = self.logical_to_physical[&src];
         let dst_pid = self.logical_to_physical[&dst];
 
-        let src_edge_meta_id = self.link_outbound_edge(t, src, src_pid, dst_pid, false);
-        let dst_edge_meta_id = self.link_inbound_edge(t, dst, src_pid, dst_pid, false);
-
-        if src_edge_meta_id != dst_edge_meta_id {
-            panic!(
-                "Failure on {src} -> {dst} at time: {t} {src_edge_meta_id} != {dst_edge_meta_id}"
-            );
-        }
-
-        self.edge_props.upsert_temporal_props(t, src_edge_meta_id, props);
-        self.num_edges += 1; // FIXME: we have this in three different places, prone to errors!
+        self.default_layer.add_edge_with_props(t, src, dst, src_pid, dst_pid, props)
     }
 
     pub(crate) fn add_edge_remote_out(
@@ -257,11 +245,7 @@ impl TemporalGraph {
     ) {
         self.add_vertex(t, src);
         let src_pid = self.logical_to_physical[&src];
-        let src_edge_meta_id =
-            self.link_outbound_edge(t, src, src_pid, dst.try_into().unwrap(), true);
-
-        self.edge_props.upsert_temporal_props(t, src_edge_meta_id, props);
-        self.num_edges += 1;
+        self.default_layer.add_edge_remote_out(t, src, dst, src_pid, props)
     }
 
     pub(crate) fn add_edge_remote_into(
@@ -272,26 +256,20 @@ impl TemporalGraph {
         props: &Vec<(String, Prop)>,
     ) {
         self.add_vertex(t, dst);
-
         let dst_pid = self.logical_to_physical[&dst];
-
-        let dst_edge_meta_id =
-            self.link_inbound_edge(t, dst, src.try_into().unwrap(), dst_pid, true);
-
-        self.edge_props.upsert_temporal_props(t, dst_edge_meta_id, props);
-        self.num_edges += 1;
+        self.default_layer.add_edge_remote_into(t, src, dst, dst_pid, props)
     }
 
     pub(crate) fn add_edge_properties(&mut self, src: u64, dst: u64, data: &Vec<(String, Prop)>) -> AddEdgeResult {
         let edge_id = self.edge(src, dst).ok_or(AddEdgeError::MissingEdge(src, dst))?.edge_id;
-        let result = self.edge_props.set_static_props(edge_id, data);
+        let result = self.default_layer.edge_props.set_static_props(edge_id, data);
         result.map_err(|e| AddEdgeError::new(src, dst, e))
     }
 
     pub(crate) fn degree(&self, v: u64, d: Direction) -> usize {
         let v_pid = self.logical_to_physical[&v];
 
-        match &self.adj_lists[v_pid] {
+        match &self.default_layer.adj_lists[v_pid] {
             Adj::List {
                 out,
                 into,
@@ -321,7 +299,7 @@ impl TemporalGraph {
     pub fn degree_window(&self, v: u64, w: &Range<i64>, d: Direction) -> usize {
         let v_pid = self.logical_to_physical[&v];
 
-        match &self.adj_lists[v_pid] {
+        match &self.default_layer.adj_lists[v_pid] {
             Adj::List {
                 out,
                 into,
@@ -348,7 +326,7 @@ impl TemporalGraph {
 
     pub(crate) fn vertex(&self, v: u64) -> Option<VertexRef> {
         let pid = self.logical_to_physical.get(&v)?;
-        Some(match self.adj_lists[*pid] {
+        Some(match self.default_layer.adj_lists[*pid] {
             Adj::Solo(lid) => VertexRef {
                 g_id: lid,
                 pid: Some(*pid),
@@ -366,7 +344,7 @@ impl TemporalGraph {
         let mut vs = self.index.range(w.clone()).flat_map(|(_, vs)| vs.iter());
 
         match vs.contains(&pid) {
-            true => Some(match self.adj_lists[*pid] {
+            true => Some(match self.default_layer.adj_lists[*pid] {
                 Adj::Solo(lid) => VertexRef {
                     g_id: lid,
                     pid: Some(*pid),
@@ -381,7 +359,7 @@ impl TemporalGraph {
     }
 
     pub(crate) fn vertex_ids(&self) -> Box<dyn Iterator<Item = u64> + Send + '_> {
-        Box::new(self.adj_lists.iter().map(|adj| *adj.logical()))
+        Box::new(self.default_layer.adj_lists.iter().map(|adj| *adj.logical()))
     }
 
     pub(crate) fn vertex_ids_window(
@@ -394,7 +372,7 @@ impl TemporalGraph {
                 .map(|(_, vs)| vs.iter())
                 .kmerge()
                 .dedup()
-                .map(move |pid| match self.adj_lists[pid] {
+                .map(move |pid| match self.default_layer.adj_lists[pid] {
                     Adj::Solo(lid) => lid,
                     Adj::List { logical, .. } => logical,
                 }),
@@ -402,7 +380,7 @@ impl TemporalGraph {
     }
 
     pub fn vertices(&self) -> Box<dyn Iterator<Item = VertexRef> + Send + '_> {
-        Box::new(self.adj_lists.iter().enumerate().map(|(pid, v)| VertexRef {
+        Box::new(self.default_layer.adj_lists.iter().enumerate().map(|(pid, v)| VertexRef {
             g_id: *v.logical(),
             pid: Some(pid),
         }))
@@ -419,7 +397,7 @@ impl TemporalGraph {
             .kmerge()
             .dedup();
 
-        let vs = unique_vids.map(move |pid| match self.adj_lists[pid] {
+        let vs = unique_vids.map(move |pid| match self.default_layer.adj_lists[pid] {
             Adj::Solo(lid) => VertexRef {
                 g_id: lid,
                 pid: Some(pid),
@@ -436,7 +414,7 @@ impl TemporalGraph {
     pub(crate) fn edge(&self, src: u64, dst: u64) -> Option<EdgeRef> {
         let src_pid = self.logical_to_physical.get(&src)?;
 
-        match &self.adj_lists[*src_pid] {
+        match &self.default_layer.adj_lists[*src_pid] {
             Adj::Solo(_) => None,
             Adj::List {
                 out, remote_out, ..
@@ -470,10 +448,10 @@ impl TemporalGraph {
     }
 
     pub(crate) fn edge_window(&self, src: u64, dst: u64, w: &Range<i64>) -> Option<EdgeRef> {
-        // First check if v1 exists within the given window
+        // First check if src exists within the given window
         if self.has_vertex_window(src, w) {
             let src_pid = self.logical_to_physical.get(&src)?;
-            match &self.adj_lists[*src_pid] {
+            match &self.default_layer.adj_lists[*src_pid] {
                 Adj::Solo(_) => Option::<EdgeRef>::None,
                 Adj::List {
                     out, remote_out, ..
@@ -806,11 +784,11 @@ impl TemporalGraph {
     }
 
     pub fn static_edge_prop(&self, e: usize, name: &str) -> Option<Prop> {
-        self.edge_props.static_prop(e, name)
+        self.default_layer.edge_props.static_prop(e, name)
     }
 
     pub fn static_edge_prop_keys(&self, e: usize) -> Vec<String> {
-        self.edge_props.static_keys(e)
+        self.default_layer.edge_props.static_keys(e)
     }
 
     pub fn temporal_edge_prop(
@@ -818,7 +796,7 @@ impl TemporalGraph {
         e: usize,
         name: &str,
     ) -> Box<dyn Iterator<Item = (&i64, Prop)> + '_> {
-        self.edge_props.temporal_prop(e, name).unwrap_or(&TProp::Empty).iter()
+        self.default_layer.edge_props.temporal_prop(e, name).unwrap_or(&TProp::Empty).iter()
     }
 
     pub fn temporal_edge_prop_window(
@@ -827,11 +805,11 @@ impl TemporalGraph {
         name: &str,
         w: Range<i64>,
     ) -> Box<dyn Iterator<Item = (&i64, Prop)> + '_> {
-        self.edge_props.temporal_prop(e, name).unwrap_or(&TProp::Empty).iter_window(w)
+        self.default_layer.edge_props.temporal_prop(e, name).unwrap_or(&TProp::Empty).iter_window(w)
     }
 
     pub fn temporal_edge_prop_vec(&self, e: usize, name: &str) -> Vec<(i64, Prop)> {
-        self.edge_props.temporal_prop(e, name)
+        self.default_layer.edge_props.temporal_prop(e, name)
             .unwrap_or(&TProp::Empty)
             .iter()
             .map(|(t, p)| (*t, p))
@@ -844,7 +822,7 @@ impl TemporalGraph {
         name: &str,
         w: Range<i64>,
     ) -> Vec<(i64, Prop)> {
-        self.edge_props.temporal_prop(e, name)
+        self.default_layer.edge_props.temporal_prop(e, name)
             .unwrap_or(&TProp::Empty)
             .iter_window(w)
             .map(|(t, p)| (*t, p))
@@ -853,78 +831,12 @@ impl TemporalGraph {
 }
 
 impl TemporalGraph {
-    fn link_inbound_edge(
-        &mut self,
-        t: i64,
-        dst_gid: u64,
-        src: usize, // may or may not be physical id depending on remote_edge flag
-        dst_pid: usize,
-        remote_edge: bool,
-    ) -> usize {
-        match &mut self.adj_lists[dst_pid] {
-            entry @ Adj::Solo(_) => {
-                let edge_id = self.num_edges;
-
-                let edge = AdjEdge::new(edge_id, !remote_edge);
-
-                *entry = Adj::new_into(dst_gid, src, t, edge);
-
-                edge_id
-            }
-            Adj::List {
-                into, remote_into, ..
-            } => {
-                let list = if remote_edge { remote_into } else { into };
-                let edge_id: usize = list
-                    .find(src)
-                    .map(|e| e.edge_id())
-                    .unwrap_or(self.num_edges);
-
-                list.push(t, src, AdjEdge::new(edge_id, !remote_edge)); // idempotent
-                edge_id
-            }
-        }
-    }
-
-    fn link_outbound_edge(
-        &mut self,
-        t: i64,
-        src_gid: u64,
-        src_pid: usize,
-        dst: usize, // may or may not pe physical id depending on remote_edge flag
-        remote_edge: bool,
-    ) -> usize {
-        match &mut self.adj_lists[src_pid] {
-            entry @ Adj::Solo(_) => {
-                let edge_id = self.num_edges;
-
-                let edge = AdjEdge::new(edge_id, !remote_edge);
-
-                *entry = Adj::new_out(src_gid, dst, t, edge);
-
-                edge_id
-            }
-            Adj::List {
-                out, remote_out, ..
-            } => {
-                let list = if remote_edge { remote_out } else { out };
-                let edge_id: usize = list
-                    .find(dst)
-                    .map(|e| e.edge_id())
-                    .unwrap_or(self.num_edges);
-
-                list.push(t, dst, AdjEdge::new(edge_id, !remote_edge));
-                edge_id
-            }
-        }
-    }
-
     fn edges_iter(
         &self,
         vid: usize,
         d: Direction,
     ) -> Box<dyn Iterator<Item = (&usize, AdjEdge)> + Send + '_> {
-        match &self.adj_lists[vid] {
+        match &self.default_layer.adj_lists[vid] {
             Adj::List {
                 out,
                 into,
@@ -954,7 +866,7 @@ impl TemporalGraph {
         r: &Range<i64>,
         d: Direction,
     ) -> Box<dyn Iterator<Item = (usize, AdjEdge)> + Send + '_> {
-        match &self.adj_lists[vid] {
+        match &self.default_layer.adj_lists[vid] {
             Adj::List {
                 out,
                 into,
@@ -990,7 +902,7 @@ impl TemporalGraph {
         window: &Range<i64>,
         d: Direction,
     ) -> Box<dyn Iterator<Item = (usize, i64, AdjEdge)> + Send + '_> {
-        match &self.adj_lists[vid] {
+        match &self.default_layer.adj_lists[vid] {
             Adj::List {
                 out,
                 into,
@@ -1022,7 +934,7 @@ impl TemporalGraph {
 
     fn v_g_id(&self, v_id: usize, e: AdjEdge) -> u64 {
         if e.is_local() {
-            *self.adj_lists[v_id].logical()
+            *self.default_layer.adj_lists[v_id].logical()
         } else {
             v_id.try_into().unwrap()
         }

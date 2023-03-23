@@ -362,7 +362,7 @@ impl Eval for TemporalGraph {
             // define iterator over the active vertices
             let iter = if !cur_active_set.is_all() {
                 let active_vertices_iter = cur_active_set.iter().map(|pid| {
-                    let g_id = self.adj_lists[*pid].logical();
+                    let g_id = self.default_layer.adj_lists[*pid].logical();
                     VertexRef::new(*g_id, Some(*pid))
                 });
                 Box::new(active_vertices_iter)
@@ -384,7 +384,7 @@ impl Eval for TemporalGraph {
 
             // from the next_active_set we apply the PRED
             next_active_set.retain(|pid| {
-                let g_id = self.adj_lists[*pid].logical();
+                let g_id = self.default_layer.adj_lists[*pid].logical();
                 let v_view = VertexRef::new(*g_id, Some(*pid));
                 having(
                     &EvalVertexView {

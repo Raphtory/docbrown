@@ -51,7 +51,7 @@ impl PropId {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Default, Debug, Serialize, Deserialize, PartialEq)]
 pub(crate) struct Props {
     // Mapping between property name and property id
     prop_ids: HashMap<String, PropId>, // TODO: change name back to prop_ids
@@ -59,16 +59,6 @@ pub(crate) struct Props {
     // Vector of vertices properties. Each index represents vertex local (physical) id
     static_props: Vec<LazyVec<Option<Prop>>>,
     temporal_props: Vec<LazyVec<TProp>>,
-}
-
-impl Default for Props {
-    fn default() -> Self {
-        Self {
-            prop_ids: Default::default(),
-            static_props: Default::default(),
-            temporal_props: Default::default(),
-        }
-    }
 }
 
 impl Props {
