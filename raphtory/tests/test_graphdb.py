@@ -410,8 +410,14 @@ def test_all_degrees_window():
     view = g.at(4)
     v = view.vertex(2)
     assert v.in_degree(0, 4) == 3
+    assert v.in_degree(t_start=2) == 2
+    assert v.in_degree(t_end=3) == 2
     assert v.out_degree(0, 4) == 1
+    assert v.out_degree(t_start=2) == 1
+    assert v.out_degree(t_end=3) == 1
     assert v.degree(0, 4) == 3
+    assert v.degree(t_start=2) == 2
+    assert v.degree(t_end=3) == 2
 
 def test_all_edge_window():
     g = Graph(4)
@@ -427,6 +433,11 @@ def test_all_edge_window():
     v = view.vertex(2)
     assert list(map(lambda e: e.edge_id,  v.in_edges(0, 4))) == [1, 3, 5]
     assert list(map(lambda e: e.edge_id,  v.in_edges(t_end=4))) == [1, 3, 5]
-    assert list(map(lambda e: e.edge_id,  v.in_edges(t_start=1))) == [1, 3, 5]
+    assert list(map(lambda e: e.edge_id,  v.in_edges(t_start=2))) == [3, 5]
     assert list(map(lambda e: e.edge_id,  v.out_edges(0, 4))) == [2]
+    assert list(map(lambda e: e.edge_id,  v.out_edges(t_end=3))) == [2]
+    assert list(map(lambda e: e.edge_id,  v.out_edges(t_start=2))) == [6]
     assert list(map(lambda e: e.edge_id,  v.edges(0, 4))) == [1, 3, 5, 2]
+    assert list(map(lambda e: e.edge_id,  v.edges(t_end=4))) == [1, 3, 5, 2]
+    assert list(map(lambda e: e.edge_id,  v.edges(t_start=1))) == [1, 3, 5, 2, 6]
+
