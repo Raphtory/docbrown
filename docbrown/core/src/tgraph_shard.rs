@@ -19,12 +19,6 @@ mod lock {
     #[repr(transparent)]
     pub(crate) struct MyLock<T>(parking_lot::RwLock<T>);
 
-    impl<T> MyLock<T> {
-        fn new(t: T) -> Self {
-            Self(parking_lot::RwLock::new(t))
-        }
-    }
-
     #[repr(transparent)]
     pub(crate) struct MyReadGuard<'a, T>(parking_lot::RwLockReadGuard<'a, T>);
     #[repr(transparent)]
@@ -424,13 +418,10 @@ impl TGraphShard {
 
 #[cfg(test)]
 mod temporal_graph_partition_test {
-    use std::{ops::Deref, sync::Arc};
 
     use super::TGraphShard;
     use crate::Direction;
-    use genawaiter::sync::GenBoxed;
     use itertools::Itertools;
-    use parking_lot::RwLock;
     use quickcheck::{Arbitrary, TestResult};
     use rand::Rng;
 
@@ -463,7 +454,8 @@ mod temporal_graph_partition_test {
         let rand_vertex = vs.get(rand_index).unwrap().0;
 
         for (v, t) in vs {
-            g.add_vertex(t.into(), v as u64, &vec![]);
+            g.add_vertex(t.into(), v as u64, &vec![])
+                .expect("failed to add vertex");
         }
 
         TestResult::from_bool(g.has_vertex(rand_vertex))
@@ -497,7 +489,8 @@ mod temporal_graph_partition_test {
 
         let expected_len = vs.iter().map(|(_, v)| v).sorted().dedup().count();
         for (t, v) in vs {
-            g.add_vertex(t.into(), v as u64, &vec![]);
+            g.add_vertex(t.into(), v as u64, &vec![])
+                .expect("failed to add vertex");
         }
 
         assert_eq!(g.len(), expected_len)
@@ -583,12 +576,12 @@ mod temporal_graph_partition_test {
     fn get_shard_degree_window() {
         let g = TGraphShard::default();
 
-        g.add_vertex(1, 100, &vec![]);
-        g.add_vertex(2, 101, &vec![]);
-        g.add_vertex(3, 102, &vec![]);
-        g.add_vertex(4, 103, &vec![]);
-        g.add_vertex(5, 104, &vec![]);
-        g.add_vertex(5, 105, &vec![]);
+        g.add_vertex(1, 100, &vec![]).expect("failed to add vertex");
+        g.add_vertex(2, 101, &vec![]).expect("failed to add vertex");
+        g.add_vertex(3, 102, &vec![]).expect("failed to add vertex");
+        g.add_vertex(4, 103, &vec![]).expect("failed to add vertex");
+        g.add_vertex(5, 104, &vec![]).expect("failed to add vertex");
+        g.add_vertex(5, 105, &vec![]).expect("failed to add vertex");
 
         g.add_edge(6, 100, 101, &vec![]);
         g.add_edge(7, 100, 102, &vec![]);

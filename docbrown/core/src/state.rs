@@ -1,6 +1,5 @@
 use std::{any::Any, fmt::Debug};
 
-use rayon::prelude::*;
 use rustc_hash::FxHashMap;
 
 use crate::agg::Accumulator;
@@ -527,22 +526,6 @@ impl<CS: ComputeState + Send> ShardComputeState<CS> {
         }
     }
 
-    fn finalize<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(
-        &mut self,
-        ss: usize,
-        agg_ref: &AccId<A, IN, OUT, ACC>,
-    ) -> Option<Vec<OUT>>
-    where
-        OUT: StateType,
-        A: 'static,
-    {
-        // finalize the accumulator
-        // print the states
-        let state = self.states.get(&agg_ref.id)?;
-        let state_arr = state.finalize::<A, IN, OUT, ACC>(ss);
-        Some(state_arr)
-    }
-
     fn accumulate_into<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(
         &mut self,
         ss: usize,
@@ -557,6 +540,25 @@ impl<CS: ComputeState + Send> ShardComputeState<CS> {
             .entry(agg_ref.id)
             .or_insert_with(|| CS::new_mutable_primitive(ACC::zero()));
         state.agg::<A, IN, OUT, ACC>(ss, a, into);
+    }
+}
+
+#[cfg(test)]
+impl<CS: ComputeState + Send> ShardComputeState<CS> {
+    fn finalize<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(
+        &mut self,
+        ss: usize,
+        agg_ref: &AccId<A, IN, OUT, ACC>,
+    ) -> Option<Vec<OUT>>
+    where
+        OUT: StateType,
+        A: 'static,
+    {
+        // finalize the accumulator
+        // print the states
+        let state = self.states.get(&agg_ref.id)?;
+        let state_arr = state.finalize::<A, IN, OUT, ACC>(ss);
+        Some(state_arr)
     }
 }
 
@@ -620,12 +622,11 @@ impl<CS: ComputeState + Send + Sync> ShuffleComputeState<CS> {
     }
 
     pub fn new(n_parts: usize) -> Self {
-        let mut parts = Vec::with_capacity(n_parts);
-        for i in 0..n_parts {
-            parts.push(ShardComputeState::new())
-        }
         Self {
-            parts,
+            parts: (0..n_parts)
+                .into_iter()
+                .map(|_| ShardComputeState::new())
+                .collect(),
             global: ShardComputeState::new(),
         }
     }
@@ -721,7 +722,10 @@ impl<CS: ComputeState + Send + Sync> ShuffleComputeState<CS> {
             .flat_map(|part| part.read_vec(ss, agg_def))
             .collect()
     }
+}
 
+#[cfg(test)]
+impl<CS: ComputeState + Send> ShuffleComputeState<CS> {
     fn finalize<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(
         &mut self,
         ss: usize,

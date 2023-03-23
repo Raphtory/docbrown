@@ -139,7 +139,7 @@ pub mod csv {
         where
             REC: DeserializeOwned + std::fmt::Debug,
             F: Fn(REC, &G) -> () + Send + Sync,
-            G: std::marker::Sync
+            G: std::marker::Sync,
         {
             let paths = self.files_vec()?;
             paths

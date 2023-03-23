@@ -7,20 +7,19 @@ extern crate quickcheck_macros;
 mod adj;
 pub mod agg;
 mod bitset;
-pub mod tgraph;
+mod lazy_vec;
 pub mod lsm;
 mod misc;
 mod props;
 mod sorted_vec_map;
+pub mod state;
 pub mod tadjset;
 mod tcell;
+pub mod tgraph;
 pub mod tgraph_shard;
 mod tprop;
-mod lazy_vec;
 pub mod utils;
-pub mod eval;
 pub mod vertex;
-pub mod state;
 
 // Denotes edge direction
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -39,5 +38,5 @@ pub enum Prop {
     U64(u64),
     F32(f32),
     F64(f64),
-    Bool(bool)
+    Bool(bool),
 }

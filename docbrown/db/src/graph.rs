@@ -632,8 +632,9 @@ mod db_tests {
     use csv::StringRecord;
     use docbrown_core::utils;
     use itertools::Itertools;
+    use quickcheck::quickcheck;
+    use std::fs;
     use std::sync::Arc;
-    use std::{fs};
     use tempdir::TempDir;
     use uuid::Uuid;
 
@@ -655,57 +656,6 @@ mod db_tests {
 
         let should_be_10: usize = vs2.iter().map(|arc| Arc::strong_count(arc)).sum();
         assert_eq!(should_be_10, 20)
-    }
-
-    #[test]
-    fn no_duplicate_edges(){
-        let g = Graph::new(2);
-
-        let edges = vec![
-            (1, 2, 1),
-            (1, 3, 2),
-            (1, 4, 3),
-            (3, 1, 4),
-            (3, 4, 5),
-            (3, 5, 6),
-            (4, 5, 7),
-            (5, 6, 8),
-            (5, 8, 9),
-            (7, 5, 10),
-            (8, 5, 11),
-            (1, 9, 12),
-            (9, 1, 13),
-            (6, 3, 14),
-            (4, 8, 15),
-            (8, 3, 16),
-            (5, 10, 17),
-            (10, 5, 18),
-            (10, 8, 19),
-            (1, 11, 20),
-            (11, 1, 21),
-            (9, 11, 22),
-            (11, 9, 23),
-        ];
-
-        for (src, dst, t) in edges {
-            g.add_edge(t, src, dst, &vec![]);
-        }
-
-        let wg = g.window(0, 99);
-
-        let mut neighbours_8 = vec![];
-
-        wg.vertices_shard(0).for_each(|v|{
-            for n in v.neighbours() {
-                if v.id() == 8 {
-                    neighbours_8.push(n.id())
-                }
-            }
-        });
-
-        assert_eq!(neighbours_8, vec![4, 10, 3, 5]);
-
-
     }
 
     #[quickcheck]

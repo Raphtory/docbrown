@@ -1,5 +1,4 @@
 use std::{
-    collections::BinaryHeap,
     marker::PhantomData,
     ops::{AddAssign, Div},
 };
@@ -16,7 +15,6 @@ pub trait Accumulator<A, IN, OUT>: Send + Sync {
     fn combine(a1: &mut A, a2: &A);
 
     fn finish(a: &A) -> OUT;
-
 }
 
 pub trait AccDef<A>: Send + Sync {
@@ -148,7 +146,7 @@ where
 }
 
 pub mod set {
-    use roaring::{RoaringTreemap, RoaringBitmap};
+    use roaring::{RoaringBitmap, RoaringTreemap};
     use rustc_hash::FxHashSet;
     use std::hash::Hash;
 
@@ -257,7 +255,7 @@ pub mod topk {
         }
 
         fn combine(a1: &mut TopKHeap<A>, a2: &TopKHeap<A>) {
-            a1.extend(a2.clone());
+            a1.extend(a2.iter().map(|x| x.clone()));
             while a1.len() > N {
                 a1.pop_last();
             }
@@ -272,7 +270,6 @@ pub mod topk {
 #[cfg(test)]
 mod agg_test {
 
-    // use super::*;
     #[test]
     fn avg_def() {
         use crate::agg::topk::TopK;

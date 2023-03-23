@@ -125,7 +125,7 @@ fn try_main() -> Result<(), Box<dyn Error>> {
     let min_time = graph.earliest_time().ok_or(GraphEmptyError)? + 100;
     let max_time = graph.latest_time().ok_or(GraphEmptyError)? - 100;
     let mid_time = (min_time + max_time) / 2;
-    let mut gs = GlobalEvalState::new(graph.clone(), mid_time .. max_time, false);
+    let mut gs = GlobalEvalState::new(graph.clone(), mid_time..max_time, false);
 
     program_s1.run_step(&graph, &mut gs);
 
@@ -139,17 +139,6 @@ fn try_main() -> Result<(), Box<dyn Error>> {
         "Counting triangles took {} seconds",
         now.elapsed().as_secs()
     );
-
-    // let mut program = TriangleCountSlowS2 {};
-
-    // let agg = state::def::sum::<usize>(0);
-    // let mut gs = GlobalEvalState::new(graph.clone(), i64::MIN..i64::MAX);
-
-    // program.run_step(&graph, &mut gs);
-
-    // let actual_tri_count = gs.read_global_state(&agg).map(|v| v / 3);
-
-    // println!("Actual triangle count: {:?}", actual_tri_count);
 
     let now = Instant::now();
     let num_edges: usize = graph.vertices().map(|v| v.out_degree()).sum();
