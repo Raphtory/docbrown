@@ -238,69 +238,78 @@ impl WindowedVertex {
         }
     }
 
-    pub fn neighbours(&self) -> WindowedVertexIterable {
+    pub fn neighbours(&self, t_start: Option<i64>, t_end: Option<i64>) -> WindowedVertexIterable {
         WindowedVertexIterable {
             graph: self.graph.clone(),
-            operations: vec![Operations::Neighbours],
+            operations: vec![Operations::NeighboursWindow {
+                t_start: t_start.unwrap_or(i64::MIN),
+                t_end: t_end.unwrap_or(i64::MAX),
+            }],
             start_at: Some(self.id),
         }
     }
 
-    pub fn neighbours_window(&self, t_start: i64, t_end: i64) -> WindowedVertexIterable {
+    pub fn in_neighbours(
+        &self,
+        t_start: Option<i64>,
+        t_end: Option<i64>,
+    ) -> WindowedVertexIterable {
         WindowedVertexIterable {
             graph: self.graph.clone(),
-            operations: vec![Operations::NeighboursWindow { t_start, t_end }],
+            operations: vec![Operations::InNeighboursWindow {
+                t_start: t_start.unwrap_or(i64::MIN),
+                t_end: t_end.unwrap_or(i64::MAX),
+            }],
             start_at: Some(self.id),
         }
     }
 
-    pub fn in_neighbours(&self) -> WindowedVertexIterable {
+    pub fn out_neighbours(
+        &self,
+        t_start: Option<i64>,
+        t_end: Option<i64>,
+    ) -> WindowedVertexIterable {
         WindowedVertexIterable {
             graph: self.graph.clone(),
-            operations: vec![Operations::InNeighbours],
+            operations: vec![Operations::OutNeighboursWindow {
+                t_start: t_start.unwrap_or(i64::MIN),
+                t_end: t_end.unwrap_or(i64::MAX),
+            }],
             start_at: Some(self.id),
         }
     }
 
-    pub fn in_neighbours_window(&self, t_start: i64, t_end: i64) -> WindowedVertexIterable {
-        WindowedVertexIterable {
-            graph: self.graph.clone(),
-            operations: vec![Operations::InNeighboursWindow { t_start, t_end }],
-            start_at: Some(self.id),
-        }
-    }
-
-    pub fn out_neighbours(&self) -> WindowedVertexIterable {
-        WindowedVertexIterable {
-            graph: self.graph.clone(),
-            operations: vec![Operations::OutNeighbours],
-            start_at: Some(self.id),
-        }
-    }
-
-    pub fn out_neighbours_window(&self, t_start: i64, t_end: i64) -> WindowedVertexIterable {
-        WindowedVertexIterable {
-            graph: self.graph.clone(),
-            operations: vec![Operations::OutNeighboursWindow { t_start, t_end }],
-            start_at: Some(self.id),
-        }
-    }
-
-    pub fn neighbours_ids(&self) -> VertexIdsIterator {
+    pub fn neighbours_ids(&self, t_start: Option<i64>, t_end: Option<i64>) -> VertexIdsIterator {
         VertexIdsIterator {
-            iter: Box::new(self.vertex_w.neighbours().id()),
+            iter: Box::new(
+                self.vertex_w
+                    .neighbours_window(t_start.unwrap_or(i64::MIN), t_end.unwrap_or(i64::MAX))
+                    .id(),
+            ),
         }
     }
 
-    pub fn in_neighbours_ids(&self) -> VertexIdsIterator {
+    pub fn in_neighbours_ids(&self, t_start: Option<i64>, t_end: Option<i64>) -> VertexIdsIterator {
         VertexIdsIterator {
-            iter: Box::new(self.vertex_w.in_neighbours().id()),
+            iter: Box::new(
+                self.vertex_w
+                    .in_neighbours_window(t_start.unwrap_or(i64::MIN), t_end.unwrap_or(i64::MAX))
+                    .id(),
+            ),
         }
     }
 
-    pub fn out_neighbours_ids(&self) -> VertexIdsIterator {
+    pub fn out_neighbours_ids(
+        &self,
+        t_start: Option<i64>,
+        t_end: Option<i64>,
+    ) -> VertexIdsIterator {
         VertexIdsIterator {
-            iter: Box::new(self.vertex_w.out_neighbours().id()),
+            iter: Box::new(
+                self.vertex_w
+                    .out_neighbours_window(t_start.unwrap_or(i64::MIN), t_end.unwrap_or(i64::MAX))
+                    .id(),
+            ),
         }
     }
 

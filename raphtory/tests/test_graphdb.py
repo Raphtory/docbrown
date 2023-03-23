@@ -393,9 +393,9 @@ def test_all_neighbours_window():
 
     view = g.at(2)
     v = view.vertex(2)
-    assert list(v.in_neighbours_window(0, 2).id()) == [1]
-    assert list(v.out_neighbours_window(0, 2).id()) == [3]
-    assert list(v.neighbours_window(0, 2).id()) == [1, 3]
+    assert list(v.in_neighbours(0, 2).id()) == [1]
+    assert list(v.out_neighbours(0, 2).id()) == [3]
+    assert list(v.neighbours(0, 2).id()) == [1, 3]
 
 def test_all_degrees_window():
     g = Graph(4)
