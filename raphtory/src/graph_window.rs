@@ -60,22 +60,28 @@ impl WindowedGraph {
 
     //******  Metrics APIs ******//
 
-    pub fn earliest_time(&self) -> Option<i64> { self.graph_w.earliest_time() }
+    pub fn earliest_time(&self) -> Option<i64> {
+        self.graph_w.earliest_time()
+    }
 
-    pub fn latest_time(&self) -> Option<i64> { self.graph_w.latest_time() }
+    pub fn latest_time(&self) -> Option<i64> {
+        self.graph_w.latest_time()
+    }
 
-    pub fn num_edges(&self) -> usize {self.graph_w.num_edges()}
+    pub fn num_edges(&self) -> usize {
+        self.graph_w.num_edges()
+    }
 
-    pub fn num_vertices(&self) -> usize {self.graph_w.num_vertices()}
+    pub fn num_vertices(&self) -> usize {
+        self.graph_w.num_vertices()
+    }
 
     pub fn has_vertex(&self, v: &PyAny) -> bool {
         if let Ok(v) = v.extract::<String>() {
             self.graph_w.has_vertex(v)
-        }
-        else if let Ok(v) = v.extract::<u64>(){
-             self.graph_w.has_vertex(v)
-        }
-        else {
+        } else if let Ok(v) = v.extract::<u64>() {
+            self.graph_w.has_vertex(v)
+        } else {
             panic!("Input must be a string or integer.")
         }
     }
@@ -86,14 +92,10 @@ impl WindowedGraph {
                 src.extract::<String>().unwrap(),
                 dst.extract::<String>().unwrap(),
             )
-        }
-        else if  src.extract::<u64>().is_ok() && dst.extract::<u64>().is_ok() {
-            self.graph_w.has_edge(
-                src.extract::<u64>().unwrap(),
-                dst.extract::<u64>().unwrap(),
-            )
-        }
-        else {
+        } else if src.extract::<u64>().is_ok() && dst.extract::<u64>().is_ok() {
+            self.graph_w
+                .has_edge(src.extract::<u64>().unwrap(), dst.extract::<u64>().unwrap())
+        } else {
             //FIXME This probably should just throw an error not fully panic
             panic!("Types of src and dst must be the same (either Int or str)")
         }
@@ -145,7 +147,6 @@ pub struct WindowedVertex {
 //     }
 // }
 
-
 impl WindowedVertex {
     fn from(&self, value: graph_window::WindowedVertex) -> WindowedVertex {
         WindowedVertex {
@@ -169,7 +170,6 @@ impl WindowedVertex {
 
 #[pymethods]
 impl WindowedVertex {
-
     pub fn prop(&self, name: String) -> Vec<(i64, Prop)> {
         self.vertex_w
             .prop(name)
@@ -193,64 +193,48 @@ impl WindowedVertex {
             .collect::<HashMap<String, Vec<(i64, Prop)>>>()
     }
 
-    pub fn degree(&self) -> usize {
-        self.vertex_w.degree()
+    pub fn degree(&self, t_start: Option<i64>, t_end: Option<i64>) -> usize {
+        self.vertex_w
+            .degree_window(t_start.unwrap_or(i64::MIN), t_end.unwrap_or(i64::MAX))
     }
 
-    pub fn degree_window(&self, t_start: i64, t_end: i64) -> usize {
-        self.vertex_w.degree_window(t_start, t_end)
+    pub fn in_degree(&self, t_start: Option<i64>, t_end: Option<i64>) -> usize {
+        self.vertex_w
+            .in_degree_window(t_start.unwrap_or(i64::MIN), t_end.unwrap_or(i64::MAX))
     }
 
-    pub fn in_degree(&self) -> usize {
-        self.vertex_w.in_degree()
+    pub fn out_degree(&self, t_start: Option<i64>, t_end: Option<i64>) -> usize {
+        self.vertex_w
+            .out_degree_window(t_start.unwrap_or(i64::MIN), t_end.unwrap_or(i64::MAX))
     }
 
-    pub fn in_degree_window(&self, t_start: i64, t_end: i64) -> usize {
-        self.vertex_w.in_degree_window(t_start, t_end)
-    }
-
-    pub fn out_degree(&self) -> usize {
-        self.vertex_w.out_degree()
-    }
-
-    pub fn out_degree_window(&self, t_start: i64, t_end: i64) -> usize {
-        self.vertex_w.out_degree_window(t_start, t_end)
-    }
-
-    pub fn edges(&self) -> WindowedEdgeIterator {
+    pub fn edges(&self, t_start: Option<i64>, t_end: Option<i64>) -> WindowedEdgeIterator {
         WindowedEdgeIterator {
-            iter: Box::new(self.vertex_w.edges().map(|te| te.into())),
+            iter: Box::new(
+                self.vertex_w
+                    .edges_window(t_start.unwrap_or(i64::MIN), t_end.unwrap_or(i64::MAX))
+                    .map(|te| te.into()),
+            ),
         }
     }
 
-    pub fn edges_window(&self, t_start: i64, t_end: i64) -> WindowedEdgeIterator {
+    pub fn in_edges(&self, t_start: Option<i64>, t_end: Option<i64>) -> WindowedEdgeIterator {
         WindowedEdgeIterator {
-            iter: Box::new(self.vertex_w.edges_window(t_start, t_end).map(|te| te.into())),
+            iter: Box::new(
+                self.vertex_w
+                    .in_edges_window(t_start.unwrap_or(i64::MIN), t_end.unwrap_or(i64::MAX))
+                    .map(|te| te.into()),
+            ),
         }
     }
 
-    // pub fn in_edges(&self) -> WindowedEdgeIterator {
-    //     WindowedEdgeIterator {
-    //         iter: Box::new(self.vertex_w.in_edges().map(|te| te.into())),
-    //     }
-    // }
-
-    #[args(t_start=None, t_end=None)]
-    pub fn in_edges(&self, t_start: Option<i64>, t_end: Option<i64>1) -> WindowedEdgeIterator {
+    pub fn out_edges(&self, t_start: Option<i64>, t_end: Option<i64>) -> WindowedEdgeIterator {
         WindowedEdgeIterator {
-            iter: Box::new(self.vertex_w.in_edges_window(t_start.unwrap_or(i64::MIN), t_end.unwrap_or(i64::MAX)).map(|te| te.into())),
-        }
-    }
-
-    pub fn out_edges(&self) -> WindowedEdgeIterator {
-        WindowedEdgeIterator {
-            iter: Box::new(self.vertex_w.out_edges().map(|te| te.into())),
-        }
-    }
-
-    pub fn out_edges_window(&self, t_start: i64, t_end: i64) -> WindowedEdgeIterator {
-        WindowedEdgeIterator {
-            iter: Box::new(self.vertex_w.out_edges_window(t_start, t_end).map(|te| te.into())),
+            iter: Box::new(
+                self.vertex_w
+                    .out_edges_window(t_start.unwrap_or(i64::MIN), t_end.unwrap_or(i64::MAX))
+                    .map(|te| te.into()),
+            ),
         }
     }
 
@@ -265,7 +249,7 @@ impl WindowedVertex {
     pub fn neighbours_window(&self, t_start: i64, t_end: i64) -> WindowedVertexIterable {
         WindowedVertexIterable {
             graph: self.graph.clone(),
-            operations: vec![Operations::NeighboursWindow{t_start, t_end}],
+            operations: vec![Operations::NeighboursWindow { t_start, t_end }],
             start_at: Some(self.id),
         }
     }
@@ -278,12 +262,11 @@ impl WindowedVertex {
         }
     }
 
-
     pub fn in_neighbours_window(&self, t_start: i64, t_end: i64) -> WindowedVertexIterable {
         WindowedVertexIterable {
             graph: self.graph.clone(),
-            operations: vec![Operations::InNeighboursWindow{t_start, t_end}],
-            start_at: Some(self.id)
+            operations: vec![Operations::InNeighboursWindow { t_start, t_end }],
+            start_at: Some(self.id),
         }
     }
 
@@ -291,15 +274,15 @@ impl WindowedVertex {
         WindowedVertexIterable {
             graph: self.graph.clone(),
             operations: vec![Operations::OutNeighbours],
-            start_at: Some(self.id)
+            start_at: Some(self.id),
         }
     }
 
     pub fn out_neighbours_window(&self, t_start: i64, t_end: i64) -> WindowedVertexIterable {
         WindowedVertexIterable {
             graph: self.graph.clone(),
-            operations: vec![Operations::OutNeighboursWindow{t_start, t_end}],
-            start_at: Some(self.id)
+            operations: vec![Operations::OutNeighboursWindow { t_start, t_end }],
+            start_at: Some(self.id),
         }
     }
 
