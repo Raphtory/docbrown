@@ -12,7 +12,6 @@ use docbrown_core::tgraph::TemporalGraph;
 use docbrown_core::tgraph_shard::TGraphShard;
 use docbrown_core::{
     tgraph::{AddEdgeResult, AddVertexResult, EdgeRef, VertexRef},
-    tgraph_shard::TGraphShard,
     utils,
     vertex::InputVertex,
     Direction, Prop,

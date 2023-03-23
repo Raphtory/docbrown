@@ -10,7 +10,6 @@ use genawaiter::yield_;
 use crate::tgraph::{AddEdgeResult, AddVertexResult, EdgeRef, TemporalGraph, VertexRef};
 use crate::{Direction, Prop};
 use crate::vertex::InputVertex;
-use crate::{Direction, Prop};
 
 use self::lock::MyLock;
 
@@ -196,10 +195,6 @@ impl TGraphShard<TemporalGraph> {
 
     pub fn add_edge_properties(&self, src: u64, dst: u64, data: &Vec<(String, Prop)>) -> AddEdgeResult {
         self.write_shard(|tg| tg.add_edge_properties(src, dst, data))
-    }
-
-    pub fn add_remote_out_properties(&self, src: u64, dst: u64, data: &Vec<(String, Prop)>) {
-        self.write_shard(|tg| tg.add_remote_out_properties(src, dst, data))
     }
 
     pub fn degree(&self, v: u64, d: Direction) -> usize {
