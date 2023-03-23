@@ -7,7 +7,8 @@ use std::sync::Arc;
 use genawaiter::sync::{gen, GenBoxed};
 use genawaiter::yield_;
 
-use crate::tgraph::{EdgeRef, TemporalGraph, VertexRef};
+use crate::tgraph::{AddEdgeResult, AddVertexResult, EdgeRef, TemporalGraph, VertexRef};
+use crate::{Direction, Prop};
 use crate::vertex::InputVertex;
 use crate::{Direction, Prop};
 
@@ -134,35 +135,7 @@ impl TGraphShard<TemporalGraph> {
         let shard = binding.as_ref().unwrap();
         f(&shard)
     }
-
-    pub fn add_vertex<T: InputVertex>(&self, t: i64, v: T, props: &Vec<(String, Prop)>) {
-        self.write_shard(move |tg| tg.add_vertex_with_props(t, v, props))
-    }
-
-    pub fn add_vertex_properties(&self, v: u64, data: &Vec<(String, Prop)>) {
-        self.write_shard(|tg| tg.add_vertex_properties(v, data))
-    }
-
-    pub fn add_edge(&self, t: i64, src: u64, dst: u64, props: &Vec<(String, Prop)>) {
-        self.write_shard(|tg| tg.add_edge_with_props(t, src, dst, props))
-    }
-
-    pub fn add_edge_remote_out(&self, t: i64, src: u64, dst: u64, props: &Vec<(String, Prop)>) {
-        self.write_shard(|tg| tg.add_edge_remote_out(t, src, dst, props))
-    }
-
-    pub fn add_edge_remote_into(&self, t: i64, src: u64, dst: u64, props: &Vec<(String, Prop)>) {
-        self.write_shard(|tg| tg.add_edge_remote_into(t, src, dst, props))
-    }
-
-    pub fn add_edge_properties(&self, src: u64, dst: u64, data: &Vec<(String, Prop)>) {
-        self.write_shard(|tg| tg.add_edge_properties(src, dst, data))
-    }
-
-    pub fn add_remote_out_properties(&self, src: u64, dst: u64, data: &Vec<(String, Prop)>) {
-        self.write_shard(|tg| tg.add_remote_out_properties(src, dst, data))
-    }
-
+    
     pub fn freeze(&self) -> ImmutableTGraphShard<TemporalGraph> {
         let mut inner = self.rc.write();
         let g = inner.take().unwrap();
@@ -199,6 +172,34 @@ impl TGraphShard<TemporalGraph> {
 
     pub fn has_vertex_window(&self, v: u64, w: Range<i64>) -> bool {
         self.read_shard(|tg| tg.has_vertex_window(v, &w))
+    }
+
+    pub fn add_vertex<T: InputVertex>(&self, t: i64, v: T, props: &Vec<(String, Prop)>) -> AddVertexResult {
+        self.write_shard(move |tg| tg.add_vertex_with_props(t, v, props))
+    }
+
+    pub fn add_vertex_properties(&self, v: u64, data: &Vec<(String, Prop)>) -> AddVertexResult {
+        self.write_shard(|tg| tg.add_vertex_properties(v, data))
+    }
+
+    pub fn add_edge(&self, t: i64, src: u64, dst: u64, props: &Vec<(String, Prop)>) {
+        self.write_shard(|tg| tg.add_edge_with_props(t, src, dst, props))
+    }
+
+    pub fn add_edge_remote_out(&self, t: i64, src: u64, dst: u64, props: &Vec<(String, Prop)>) {
+        self.write_shard(|tg| tg.add_edge_remote_out(t, src, dst, props))
+    }
+
+    pub fn add_edge_remote_into(&self, t: i64, src: u64, dst: u64, props: &Vec<(String, Prop)>) {
+        self.write_shard(|tg| tg.add_edge_remote_into(t, src, dst, props))
+    }
+
+    pub fn add_edge_properties(&self, src: u64, dst: u64, data: &Vec<(String, Prop)>) -> AddEdgeResult {
+        self.write_shard(|tg| tg.add_edge_properties(src, dst, data))
+    }
+
+    pub fn add_remote_out_properties(&self, src: u64, dst: u64, data: &Vec<(String, Prop)>) {
+        self.write_shard(|tg| tg.add_remote_out_properties(src, dst, data))
     }
 
     pub fn degree(&self, v: u64, d: Direction) -> usize {
@@ -621,7 +622,7 @@ mod temporal_graph_partition_test {
         let g = TGraphShard::default();
 
         for (v, (t_start, _)) in intervals.0.iter().enumerate() {
-            g.add_vertex(*t_start, v as u64, &vec![])
+            g.add_vertex(*t_start, v as u64, &vec![]).unwrap()
         }
 
         for (v, (t_start, t_end)) in intervals.0.iter().enumerate() {

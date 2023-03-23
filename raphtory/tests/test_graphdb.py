@@ -1,12 +1,15 @@
+import re
 import sys
+
+import pytest
 from raphtory import Graph
 from raphtory import algorithms
 from raphtory import Perspective
+from raphtory import graph_loader
 import tempfile
 
 def create_graph(num_shards):
     g = Graph(num_shards)
-
     edges = [
         (1, 1, 2),
         (2, 1, 3),
@@ -365,6 +368,7 @@ def test_add_node_string():
 
     g.add_vertex(0, 1, {})
     g.add_vertex(1, "haaroon", {})
+    g.add_vertex(1, "haaroon", {}) # add same vertex twice used to cause an exception
 
     assert g.has_vertex(1)
     assert g.has_vertex("haaroon")
@@ -382,3 +386,77 @@ def test_add_edge_string():
 
     assert g.has_edge(1, 2)
     assert g.has_edge("haaroon", "ben")
+
+def test_all_neighbours_window():
+    g = Graph(4)
+    g.add_edge(1, 1, 2, {})
+    g.add_edge(1, 2, 3, {})
+    g.add_edge(2, 3, 2, {})
+    g.add_edge(3, 3, 2, {})
+    g.add_edge(4, 2, 4, {})
+
+    view = g.at(2)
+    v = view.vertex(2)
+    assert list(v.in_neighbours(0, 2).id()) == [1]
+    assert list(v.out_neighbours(0, 2).id()) == [3]
+    assert list(v.neighbours(0, 2).id()) == [1, 3]
+
+def test_all_degrees_window():
+    g = Graph(4)
+    g.add_edge(1, 1, 2, {})
+    g.add_edge(1, 2, 3, {})
+    g.add_edge(2, 3, 2, {})
+    g.add_edge(3, 3, 2, {})
+    g.add_edge(3, 4, 2, {})
+    g.add_edge(4, 2, 4, {})
+    g.add_edge(5, 2, 1, {})
+
+    view = g.at(4)
+    v = view.vertex(2)
+    assert v.in_degree(0, 4) == 3
+    assert v.in_degree(t_start=2) == 2
+    assert v.in_degree(t_end=3) == 2
+    assert v.out_degree(0, 4) == 1
+    assert v.out_degree(t_start=2) == 1
+    assert v.out_degree(t_end=3) == 1
+    assert v.degree(0, 4) == 3
+    assert v.degree(t_start=2) == 2
+    assert v.degree(t_end=3) == 2
+
+def test_all_edge_window():
+    g = Graph(4)
+    g.add_edge(1, 1, 2, {})
+    g.add_edge(1, 2, 3, {})
+    g.add_edge(2, 3, 2, {})
+    g.add_edge(3, 3, 2, {})
+    g.add_edge(3, 4, 2, {})
+    g.add_edge(4, 2, 4, {})
+    g.add_edge(5, 2, 1, {})
+
+    view = g.at(4)
+    v = view.vertex(2)
+    assert list(map(lambda e: e.id(),  v.in_edges(0, 4))) == [1, 3, 5]
+    assert list(map(lambda e: e.id(),  v.in_edges(t_end=4))) == [1, 3, 5]
+    assert list(map(lambda e: e.id(),  v.in_edges(t_start=2))) == [3, 5]
+    assert list(map(lambda e: e.id(),  v.out_edges(0, 4))) == [2]
+    assert list(map(lambda e: e.id(),  v.out_edges(t_end=3))) == [2]
+    assert list(map(lambda e: e.id(),  v.out_edges(t_start=2))) == [6]
+    assert list(map(lambda e: e.id(),  v.edges(0, 4))) == [1, 3, 5, 2]
+    assert list(map(lambda e: e.id(),  v.edges(t_end=4))) == [1, 3, 5, 2]
+    assert list(map(lambda e: e.id(),  v.edges(t_start=1))) == [1, 3, 5, 2, 6]
+
+def test_static_prop_change():
+    # with pytest.raises(Exception):
+    g = Graph(1)
+
+    g.add_edge(0, 1, 2, {})
+    g.add_vertex_properties(1, {"name": "value1"})
+
+    expected_msg = (
+        """cannot change property for vertex '1'\n"""
+        """Caused by:\n"""
+        """  -> cannot mutate static property 'name'\n"""
+        """  -> cannot set previous value 'Some(Str("value1"))' to 'Some(Str("value2"))' in position '0'"""
+    )
+    with pytest.raises(Exception, match=re.escape(expected_msg)):
+        g.add_vertex_properties(1, {"name": "value2"})
