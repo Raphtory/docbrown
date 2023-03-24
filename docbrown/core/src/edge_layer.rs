@@ -2,7 +2,7 @@ use itertools::chain;
 use serde::{Deserialize, Serialize};
 use std::ops::Range;
 
-use crate::Prop;
+use crate::{Direction, Prop};
 use crate::adj::Adj;
 use crate::props::Props;
 use crate::tadjset::AdjEdge;
@@ -27,7 +27,7 @@ impl Default for EdgeLayer {
     }
 }
 
-// Ingestion
+// INGESTION:
 impl EdgeLayer {
     pub(crate) fn add_edge_with_props(
         &mut self,
@@ -82,12 +82,77 @@ impl EdgeLayer {
     }
 }
 
-// ACCESS:
+// PRIVATE INGESTION
 impl EdgeLayer {
-    pub(crate) fn out_edges_len(&self) -> usize {
-        self.adj_lists.iter().map(|adj| adj.out_edges_len()).sum()
+    fn link_inbound_edge(
+        &mut self,
+        t: i64,
+        dst_gid: u64,
+        src: usize, // may or may not be physical id depending on remote_edge flag
+        dst_pid: usize,
+        remote_edge: bool,
+    ) -> usize {
+        match &mut self.adj_lists[dst_pid] {
+            entry @ Adj::Solo(_) => {
+                let edge_id = self.num_edges;
+
+                let edge = AdjEdge::new(edge_id, !remote_edge);
+
+                *entry = Adj::new_into(dst_gid, src, t, edge);
+
+                edge_id
+            }
+            Adj::List {
+                into, remote_into, ..
+            } => {
+                let list = if remote_edge { remote_into } else { into };
+                let edge_id: usize = list
+                    .find(src)
+                    .map(|e| e.edge_id())
+                    .unwrap_or(self.num_edges);
+
+                list.push(t, src, AdjEdge::new(edge_id, !remote_edge)); // idempotent
+                edge_id
+            }
+        }
     }
 
+    fn link_outbound_edge(
+        &mut self,
+        t: i64,
+        src_gid: u64,
+        src_pid: usize,
+        dst: usize, // may or may not pe physical id depending on remote_edge flag
+        remote_edge: bool,
+    ) -> usize {
+        match &mut self.adj_lists[src_pid] {
+            entry @ Adj::Solo(_) => {
+                let edge_id = self.num_edges;
+
+                let edge = AdjEdge::new(edge_id, !remote_edge);
+
+                *entry = Adj::new_out(src_gid, dst, t, edge);
+
+                edge_id
+            }
+            Adj::List {
+                out, remote_out, ..
+            } => {
+                let list = if remote_edge { remote_out } else { out };
+                let edge_id: usize = list
+                    .find(dst)
+                    .map(|e| e.edge_id())
+                    .unwrap_or(self.num_edges);
+
+                list.push(t, dst, AdjEdge::new(edge_id, !remote_edge));
+                edge_id
+            }
+        }
+    }
+}
+
+// SINGLE EDGE ACCESS:
+impl EdgeLayer {
     // TODO reuse function to return edge
     pub(crate) fn has_local_edge(&self, src_pid: usize, dst_pid: usize) -> bool {
         match &self.adj_lists[src_pid] {
@@ -191,70 +256,111 @@ impl EdgeLayer {
     }
 }
 
+// MULTIPLE EDGE ACCESS:
 impl EdgeLayer {
-    fn link_inbound_edge(
-        &mut self,
-        t: i64,
-        dst_gid: u64,
-        src: usize, // may or may not be physical id depending on remote_edge flag
-        dst_pid: usize,
-        remote_edge: bool,
-    ) -> usize {
-        match &mut self.adj_lists[dst_pid] {
-            entry @ Adj::Solo(_) => {
-                let edge_id = self.num_edges;
+    pub(crate) fn out_edges_len(&self) -> usize {
+        self.adj_lists.iter().map(|adj| adj.out_edges_len()).sum()
+    }
 
-                let edge = AdjEdge::new(edge_id, !remote_edge);
-
-                *entry = Adj::new_into(dst_gid, src, t, edge);
-
-                edge_id
-            }
+    pub(crate) fn edges_iter( // TODO: change back to private if appropriate
+        &self,
+        vid: usize,
+        d: Direction,
+    ) -> Box<dyn Iterator<Item = (&usize, AdjEdge)> + Send + '_> {
+        match &self.adj_lists[vid] {
             Adj::List {
-                into, remote_into, ..
+                out,
+                into,
+                remote_out,
+                remote_into,
+                ..
             } => {
-                let list = if remote_edge { remote_into } else { into };
-                let edge_id: usize = list
-                    .find(src)
-                    .map(|e| e.edge_id())
-                    .unwrap_or(self.num_edges);
-
-                list.push(t, src, AdjEdge::new(edge_id, !remote_edge)); // idempotent
-                edge_id
+                match d {
+                    Direction::OUT => Box::new(itertools::chain!(out.iter(), remote_out.iter())),
+                    Direction::IN => Box::new(itertools::chain!(into.iter(), remote_into.iter())),
+                    // This piece of code is only for the sake of symmetry. Not really used.
+                    _ => Box::new(itertools::chain!(
+                        out.iter(),
+                        into.iter(),
+                        remote_out.iter(),
+                        remote_into.iter()
+                    )),
+                }
             }
+            _ => Box::new(std::iter::empty()),
         }
     }
 
-    fn link_outbound_edge(
-        &mut self,
-        t: i64,
-        src_gid: u64,
-        src_pid: usize,
-        dst: usize, // may or may not pe physical id depending on remote_edge flag
-        remote_edge: bool,
-    ) -> usize {
-        match &mut self.adj_lists[src_pid] {
-            entry @ Adj::Solo(_) => {
-                let edge_id = self.num_edges;
-
-                let edge = AdjEdge::new(edge_id, !remote_edge);
-
-                *entry = Adj::new_out(src_gid, dst, t, edge);
-
-                edge_id
-            }
+    pub(crate) fn edges_iter_window( // TODO: change back to private if appropriate
+        &self,
+        vid: usize,
+        r: &Range<i64>,
+        d: Direction,
+    ) -> Box<dyn Iterator<Item = (usize, AdjEdge)> + Send + '_> {
+        match &self.adj_lists[vid] {
             Adj::List {
-                out, remote_out, ..
+                out,
+                into,
+                remote_out,
+                remote_into,
+                ..
             } => {
-                let list = if remote_edge { remote_out } else { out };
-                let edge_id: usize = list
-                    .find(dst)
-                    .map(|e| e.edge_id())
-                    .unwrap_or(self.num_edges);
-
-                list.push(t, dst, AdjEdge::new(edge_id, !remote_edge));
-                edge_id
+                match d {
+                    Direction::OUT => Box::new(itertools::chain!(
+                        out.iter_window(r),
+                        remote_out.iter_window(r)
+                    )),
+                    Direction::IN => Box::new(itertools::chain!(
+                        into.iter_window(r),
+                        remote_into.iter_window(r),
+                    )),
+                    // This piece of code is only for the sake of symmetry. Not really used.
+                    _ => Box::new(itertools::chain!(
+                        out.iter_window(r),
+                        into.iter_window(r),
+                        remote_out.iter_window(r),
+                        remote_into.iter_window(r)
+                    )),
+                }
             }
+            _ => Box::new(std::iter::empty()),
+        }
+    }
+
+    pub(crate) fn edges_iter_window_t( // TODO: change back to private if appropriate
+        &self,
+        vid: usize,
+        window: &Range<i64>,
+        d: Direction,
+    ) -> Box<dyn Iterator<Item = (usize, i64, AdjEdge)> + Send + '_> {
+        match &self.adj_lists[vid] {
+            Adj::List {
+                out,
+                into,
+                remote_out,
+                remote_into,
+                ..
+            } => {
+                match d {
+                    Direction::OUT => Box::new(itertools::chain!(
+                        out.iter_window_t(window),
+                        remote_out.iter_window_t(window)
+                    )),
+                    Direction::IN => Box::new(itertools::chain!(
+                        into.iter_window_t(window),
+                        remote_into.iter_window_t(window),
+                    )),
+                    // This piece of code is only for the sake of symmetry. Not really used.
+                    _ => Box::new(itertools::chain!(
+                        out.iter_window_t(window),
+                        into.iter_window_t(window),
+                        remote_out.iter_window_t(window),
+                        remote_into.iter_window_t(window)
+                    )),
+                }
+            }
+            _ => Box::new(std::iter::empty()),
         }
     }
 }
+

@@ -112,6 +112,7 @@ impl TemporalGraph {
         // TODO: `having the vertex` vs `having a vertex that should live in this shard if it does
         // TODO: exists` are two different questions
         // TODO: we use this function in several places, check all of them for correctnes or perf
+        // TODO: we can instead ask 'should dst belong to this partition' and if so 'do we have it'
         if self.has_vertex(dst) {
             let dst_pid = self.logical_to_physical[&dst];
             self.default_layer.has_local_edge(src_pid, dst_pid)
@@ -435,7 +436,7 @@ impl TemporalGraph {
         let v_pid = self.logical_to_physical[&v];
 
         match d {
-            Direction::OUT => Box::new(self.edges_iter(v_pid, d).map(move |(dst, e)| EdgeRef {
+            Direction::OUT => Box::new(self.default_layer.edges_iter(v_pid, d).map(move |(dst, e)| EdgeRef {
                 edge_id: e.edge_id(),
                 src_g_id: v,
                 dst_g_id: self.v_g_id(*dst, e),
@@ -444,7 +445,7 @@ impl TemporalGraph {
                 time: None,
                 is_remote: !e.is_local(),
             })),
-            Direction::IN => Box::new(self.edges_iter(v_pid, d).map(move |(dst, e)| EdgeRef {
+            Direction::IN => Box::new(self.default_layer.edges_iter(v_pid, d).map(move |(dst, e)| EdgeRef {
                 edge_id: e.edge_id(),
                 src_g_id: self.v_g_id(*dst, e),
                 dst_g_id: v,
@@ -474,7 +475,7 @@ impl TemporalGraph {
         match d {
             Direction::OUT => {
                 Box::new(
-                    self.edges_iter_window(v_pid, w, d)
+                    self.default_layer.edges_iter_window(v_pid, w, d)
                         .map(move |(dst, e)| EdgeRef {
                             edge_id: e.edge_id(),
                             src_g_id: v,
@@ -488,7 +489,7 @@ impl TemporalGraph {
             }
             Direction::IN => {
                 Box::new(
-                    self.edges_iter_window(v_pid, w, d)
+                    self.default_layer.edges_iter_window(v_pid, w, d)
                         .map(move |(dst, e)| EdgeRef {
                             edge_id: e.edge_id(),
                             src_g_id: self.v_g_id(dst, e),
@@ -516,7 +517,7 @@ impl TemporalGraph {
         let v_pid = self.logical_to_physical[&v];
 
         match d {
-            Direction::OUT => Box::new(self.edges_iter_window_t(v_pid, w, d).map(
+            Direction::OUT => Box::new(self.default_layer.edges_iter_window_t(v_pid, w, d).map(
                 move |(dst, t, e)| EdgeRef {
                     edge_id: e.edge_id(),
                     src_g_id: v,
@@ -527,7 +528,7 @@ impl TemporalGraph {
                     is_remote: !e.is_local(),
                 },
             )),
-            Direction::IN => Box::new(self.edges_iter_window_t(v_pid, w, d).map(
+            Direction::IN => Box::new(self.default_layer.edges_iter_window_t(v_pid, w, d).map(
                 move |(dst, t, e)| EdgeRef {
                     edge_id: e.edge_id(),
                     src_g_id: self.v_g_id(dst, e),
@@ -766,107 +767,6 @@ impl TemporalGraph {
 }
 
 impl TemporalGraph {
-    fn edges_iter(
-        &self,
-        vid: usize,
-        d: Direction,
-    ) -> Box<dyn Iterator<Item = (&usize, AdjEdge)> + Send + '_> {
-        match &self.default_layer.adj_lists[vid] {
-            Adj::List {
-                out,
-                into,
-                remote_out,
-                remote_into,
-                ..
-            } => {
-                match d {
-                    Direction::OUT => Box::new(itertools::chain!(out.iter(), remote_out.iter())),
-                    Direction::IN => Box::new(itertools::chain!(into.iter(), remote_into.iter())),
-                    // This piece of code is only for the sake of symmetry. Not really used.
-                    _ => Box::new(itertools::chain!(
-                        out.iter(),
-                        into.iter(),
-                        remote_out.iter(),
-                        remote_into.iter()
-                    )),
-                }
-            }
-            _ => Box::new(std::iter::empty()),
-        }
-    }
-
-    fn edges_iter_window(
-        &self,
-        vid: usize,
-        r: &Range<i64>,
-        d: Direction,
-    ) -> Box<dyn Iterator<Item = (usize, AdjEdge)> + Send + '_> {
-        match &self.default_layer.adj_lists[vid] {
-            Adj::List {
-                out,
-                into,
-                remote_out,
-                remote_into,
-                ..
-            } => {
-                match d {
-                    Direction::OUT => Box::new(itertools::chain!(
-                        out.iter_window(r),
-                        remote_out.iter_window(r)
-                    )),
-                    Direction::IN => Box::new(itertools::chain!(
-                        into.iter_window(r),
-                        remote_into.iter_window(r),
-                    )),
-                    // This piece of code is only for the sake of symmetry. Not really used.
-                    _ => Box::new(itertools::chain!(
-                        out.iter_window(r),
-                        into.iter_window(r),
-                        remote_out.iter_window(r),
-                        remote_into.iter_window(r)
-                    )),
-                }
-            }
-            _ => Box::new(std::iter::empty()),
-        }
-    }
-
-    fn edges_iter_window_t(
-        &self,
-        vid: usize,
-        window: &Range<i64>,
-        d: Direction,
-    ) -> Box<dyn Iterator<Item = (usize, i64, AdjEdge)> + Send + '_> {
-        match &self.default_layer.adj_lists[vid] {
-            Adj::List {
-                out,
-                into,
-                remote_out,
-                remote_into,
-                ..
-            } => {
-                match d {
-                    Direction::OUT => Box::new(itertools::chain!(
-                        out.iter_window_t(window),
-                        remote_out.iter_window_t(window)
-                    )),
-                    Direction::IN => Box::new(itertools::chain!(
-                        into.iter_window_t(window),
-                        remote_into.iter_window_t(window),
-                    )),
-                    // This piece of code is only for the sake of symmetry. Not really used.
-                    _ => Box::new(itertools::chain!(
-                        out.iter_window_t(window),
-                        into.iter_window_t(window),
-                        remote_out.iter_window_t(window),
-                        remote_into.iter_window_t(window)
-                    )),
-                }
-            }
-            _ => Box::new(std::iter::empty()),
-        }
-    }
-
     fn v_g_id(&self, v_id: usize, e: AdjEdge) -> u64 {
         if e.is_local() {
             *self.default_layer.adj_lists[v_id].logical()
@@ -2117,7 +2017,7 @@ mod graph_test {
             .collect_vec();
         assert_eq!(actual, vec![22]);
 
-        let actual = g1
+        let actual = g1.default_layer
             .edges_iter_window(0, &(1..3), Direction::OUT)
             .map(|(id, edge)| (id, edge.is_local()))
             .collect_vec();
