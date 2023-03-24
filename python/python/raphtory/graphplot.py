@@ -1,3 +1,8 @@
+# This code is modified version of the original code from both
+# rustworkx and networkx
+# Modifications are made to allow for the plotting of raphtory graphs
+# Thus this script maintains the original license see below
+
 # This code is licensed under the Apache License, Version 2.0. You may
 # obtain a copy of this license in the LICENSE.txt file in the root directory
 # of this source tree or at http://www.apache.org/licenses/LICENSE-2.0.
@@ -42,12 +47,12 @@
 #   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 #   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
-# This code is forked from networkx's networkx_pylab.py module and adapted to
-# work with rustworkx instead. The original source can be found at:
+# This code is forked from rustworkx's matplotlib.py module and adapted to
+# work with raphtory instead. The original source can be found at:
 #
 # https://github.com/rustworkx/rustworkx/blob/80b1afa2ae50314a8312998c214a8c1a356adcf1/rustworkx/drawing/rustworkx_pylab.py
 
-"""Draw a rustworkx graph with matplotlib."""
+"""Draw a raphtory graph with matplotlib."""
 
 from collections.abc import Iterable
 from itertools import islice, cycle
@@ -59,7 +64,7 @@ import sys
 import numpy as np
 
 __all__ = [
-    "mpl_draw",
+    "draw",
 ]
 
 
@@ -68,21 +73,18 @@ def draw(graph, at=None, pos=None, ax=None, arrows=True, with_labels=False, **kw
 
     .. note::
 
-        Matplotlib is an optional dependency and will not be installed with
-        rustworkx by default. If you intend to use this function make sure that
-        you install matplotlib with either ``pip install matplotlib`` or
-        ``pip install 'rustworkx[mpl]'``
+        Matplotlib is an required dependency.
+        If you intend to use this function make sure that
+        you install matplotlib with either ``pip install matplotlib``
 
-    :param graph: A rustworkx graph, either a :class:`~rustworkx.PyGraph` or a
-        :class:`~rustworkx.PyDiGraph`.
-    :param dict pos: An optional dictionary (or
-        a :class:`~rustworkx.Pos2DMapping` object) with nodes as keys and
+    :param graph: A raphtory graph.
+    :param dict pos: An optional dictionary with nodes as keys and
         positions as values. If not specified a spring layout positioning will
         be computed. See `layout_functions` for functions that compute
         node positions.
     :param matplotlib.Axes ax: An optional Matplotlib Axes object to draw the
         graph in.
-    :param bool arrows: For :class:`~rustworkx.PyDiGraph` objects if ``True``
+    :param bool arrows: if ``True``
         draw arrowheads. (defaults to ``True``) Note, that the Arrows will
         be the same color as edges.
     :param str arrowstyle: An optional string for directed graphs to choose
@@ -186,21 +188,26 @@ def draw(graph, at=None, pos=None, ax=None, arrows=True, with_labels=False, **kw
 
     .. jupyter-execute::
 
-        import matplotlib.pyplot as plt
+        from raphtory import Graph
+        from raphtory import algorithms
+        from raphtory import Perspective
+        from raphtory import plot
 
-        import rustworkx as rx
-        from rustworkx.visualization import mpl_draw
+        g = Graph(4)
+        g.add_edge(1, 1, 2, {})
+        g.add_edge(1, 2, 3, {})
+        g.add_edge(1, 3, 4, {})
 
-        G = rx.generators.directed_path_graph(25)
-        mpl_draw(G)
-        plt.draw()
+        view = g.at(1)
+        v = view.vertex(2)
+        plot.draw(g, 4, with_labels=True)
     """
     try:
         import matplotlib.pyplot as plt
     except ImportError as e:
         raise ImportError(
             "matplotlib needs to be installed prior to running "
-            "rustworkx.visualization.mpl_draw(). You can install "
+            "raphtory.plot.draw(). You can install "
             "matplotlib with:\n'pip install matplotlib'"
         ) from e
     if ax is None:
@@ -233,14 +240,11 @@ def draw_graph(graph, at=None, pos=None, arrows=True, with_labels=False, **kwds)
 
     Parameters
     ----------
-    graph: A rustworkx :class:`~rustworkx.PyDiGraph` or
-        :class:`~rustworkx.PyGraph`
+    graph: A raphtory graph
 
     pos : dictionary, optional
         A dictionary with nodes as keys and positions as values.
         If not specified a spring layout positioning will be computed.
-        See :mod:`rustworkx.drawing.layout` for functions that
-        compute node positions.
 
 
     Notes
@@ -254,7 +258,7 @@ def draw_graph(graph, at=None, pos=None, arrows=True, with_labels=False, **kwds)
     except ImportError as e:
         raise ImportError(
             "matplotlib needs to be installed prior to running "
-            "rustworkx.visualization.mpl_draw(). You can install "
+            "raphtory.plot.draw(). You can install "
             "matplotlib with:\n'pip install matplotlib'"
         ) from e
 
@@ -379,8 +383,7 @@ def draw_nodes(
 
     This draws only the nodes of the graph.
 
-    :param graph: A rustworkx graph, either a :class:`~rustworkx.PyGraph` or a
-        :class:`~rustworkx.PyDiGraph`.
+    :param graph: A raphtory graph.
 
     :param dict pos: A dictionary with nodes as keys and positions as values.
         Positions should be sequences of length 2.
@@ -439,7 +442,7 @@ def draw_nodes(
     except ImportError as e:
         raise ImportError(
             "matplotlib needs to be installed prior to running "
-            "rustworkx.visualization.mpl_draw(). You can install "
+            "raphtory.plot.draw(). You can install "
             "matplotlib with:\n'pip install matplotlib'"
         ) from e
     
@@ -523,7 +526,7 @@ def draw_edges(
 
     Parameters
     ----------
-    graph: A rustworkx graph
+    graph: A raphtory graph
 
     pos : dictionary
         A dictionary with nodes as keys and positions as values.
@@ -621,7 +624,7 @@ def draw_edges(
     except ImportError as e:
         raise ImportError(
             "matplotlib needs to be installed prior to running "
-            "rustworkx.visualization.mpl_draw(). You can install "
+            "raphtory.plot.draw(). You can install "
             "matplotlib with:\n'pip install matplotlib'"
         ) from e
 
@@ -686,11 +689,11 @@ def draw_edges(
     mutation_scale = arrow_size  # scale factor of arrow head
 
     # compute view
-    mirustworkx = np.amin(np.ravel(edge_pos[:, :, 0]))
+    miview = np.amin(np.ravel(edge_pos[:, :, 0]))
     maxx = np.amax(np.ravel(edge_pos[:, :, 0]))
     miny = np.amin(np.ravel(edge_pos[:, :, 1]))
     maxy = np.amax(np.ravel(edge_pos[:, :, 1]))
-    w = maxx - mirustworkx
+    w = maxx - miview
     h = maxy - miny
 
     base_connectionstyle = mpl.patches.ConnectionStyle(connectionstyle)
@@ -788,7 +791,7 @@ def draw_edges(
 
     # update view
     padx, pady = 0.05 * w, 0.05 * h
-    corners = (mirustworkx - padx, miny - pady), (maxx + padx, maxy + pady)
+    corners = (miview - padx, miny - pady), (maxx + padx, maxy + pady)
     ax.update_datalim(corners)
     ax.autoscale_view()
 
@@ -824,7 +827,7 @@ def draw_labels(
 
     Parameters
     ----------
-    graph: A rustworkx graph
+    graph: A raphtory graph
 
     pos : dictionary
         A dictionary with nodes as keys and positions as values.
@@ -876,7 +879,7 @@ def draw_labels(
     except ImportError as e:
         raise ImportError(
             "matplotlib needs to be installed prior to running "
-            "rustworkx.visualization.mpl_draw(). You can install "
+            "raphtory.plot.draw(). You can install "
             "matplotlib with:\n'pip install matplotlib'"
         ) from e
 
@@ -946,7 +949,7 @@ def draw_edge_labels(
 
     Parameters
     ----------
-    graph: A rustworkx graph
+    graph: A raphtory graph
 
     pos : dictionary
         A dictionary with nodes as keys and positions as values.
@@ -1004,7 +1007,7 @@ def draw_edge_labels(
     except ImportError as e:
         raise ImportError(
             "matplotlib needs to be installed prior to running "
-            "rustworkx.visualization.mpl_draw(). You can install "
+            "raphtory.plot.draw(). You can install "
             "matplotlib with:\n'pip install matplotlib'"
         ) from e
 
@@ -1092,8 +1095,7 @@ def apply_alpha(colors, alpha, elem_list, cmap=None, vmin=None, vmax=None):
         if it is an array, the elements of alpha will be applied to the colors
         in order (cycling through alpha multiple times if necessary).
 
-    elem_list : array of rustworkx objects
-        The list of elements which are being colored. These could be nodes,
+    elem_list : The list of elements which are being colored. These could be nodes,
         edges or labels.
 
     cmap : matplotlib colormap
@@ -1117,7 +1119,7 @@ def apply_alpha(colors, alpha, elem_list, cmap=None, vmin=None, vmax=None):
     except ImportError as e:
         raise ImportError(
             "matplotlib needs to be installed prior to running "
-            "rustworkx.visualization.mpl_draw(). You can install "
+            "raphtory.plot.draw(). You can install "
             "matplotlib with:\n'pip install matplotlib'"
         ) from e
 
