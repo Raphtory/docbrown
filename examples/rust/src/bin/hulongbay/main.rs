@@ -12,6 +12,7 @@ use docbrown_core::tgraph::TemporalGraph;
 use docbrown_core::{state, utils};
 use docbrown_core::{Direction, Prop};
 use docbrown_db::csv_loader::csv::CsvLoader;
+use docbrown_db::program::algo::connected_components;
 use docbrown_db::program::{
     GlobalEvalState, Program, TriangleCountS1, TriangleCountS2, TriangleCountSlowS2,
 };
@@ -116,28 +117,34 @@ fn try_main() -> Result<(), Box<dyn Error>> {
 
     let graph = loader(data_dir)?;
 
-    let mut program_s1 = TriangleCountS1 {};
-    let mut program_s2 = TriangleCountS2 {};
-    let agg = state::def::sum::<usize>(1);
+    // let mut program_s1 = TriangleCountS1 {};
+    // let mut program_s2 = TriangleCountS2 {};
+    // let agg = state::def::sum::<usize>(1);
 
-    let now = Instant::now();
+    // let now = Instant::now();
 
     let min_time = graph.earliest_time().ok_or(GraphEmptyError)? + 100;
     let max_time = graph.latest_time().ok_or(GraphEmptyError)? - 100;
     let mid_time = (min_time + max_time) / 2;
-    let mut gs = GlobalEvalState::new(graph.clone(), mid_time..max_time, false);
+    // let mut gs = GlobalEvalState::new(graph.clone(), mid_time..max_time, false);
 
-    program_s1.run_step(&graph, &mut gs);
+    // program_s1.run_step(&graph, &mut gs);
 
-    program_s2.run_step(&graph, &mut gs);
+    // program_s2.run_step(&graph, &mut gs);
 
-    let actual_tri_count = gs.read_global_state(&agg);
+    // let actual_tri_count = gs.read_global_state(&agg);
 
-    println!("Actual triangle count: {:?}", actual_tri_count);
+    // println!("Actual triangle count: {:?}", actual_tri_count);
 
-    println!(
-        "Counting triangles took {} seconds",
-        now.elapsed().as_secs()
+    // println!(
+    //     "Counting triangles took {} seconds",
+    //     now.elapsed().as_secs()
+    // );
+
+    connected_components(
+        &graph,
+        graph.earliest_time().unwrap()..graph.latest_time().unwrap(),
+        5,
     );
 
     let now = Instant::now();
