@@ -106,43 +106,30 @@ impl TemporalGraph {
     }
 
     pub(crate) fn has_edge(&self, src: u64, dst: u64) -> bool {
-        let v_pid = self.logical_to_physical[&src];
+        // TODO: src may be user input, cannot assume we have it
+        let src_pid = self.logical_to_physical[&src];
 
-        match &self.default_layer.adj_lists[v_pid] {
-            Adj::Solo(_) => false,
-            Adj::List {
-                out, remote_out, ..
-            } => {
-                if !self.has_vertex(dst) {
-                    remote_out.find(dst as usize).is_some()
-                } else {
-                    let dst_pid = self.logical_to_physical[&dst];
-                    out.find(dst_pid).is_some()
-                }
-            }
+        if self.has_vertex(dst) {
+            let dst_pid = self.logical_to_physical[&dst];
+            self.default_layer.has_local_edge(src_pid, dst_pid)
+        } else {
+            self.default_layer.has_remote_edge(src_pid, dst)
         }
     }
 
     pub(crate) fn has_edge_window(&self, src: u64, dst: u64, w: &Range<i64>) -> bool {
         // First check if v1 exists within the given window
-        if self.has_vertex_window(src, w) {
+        self.has_vertex_window(src, w) && {
             let src_pid = self.logical_to_physical[&src];
-            match &self.default_layer.adj_lists[src_pid] {
-                Adj::Solo(_) => false,
-                Adj::List {
-                    out, remote_out, ..
-                } => {
-                    // Then check if v2 exists in the given window while sharing an edge with v1
-                    if !self.has_vertex_window(dst, &w) {
-                        remote_out.find_window(dst as usize, &w).is_some()
-                    } else {
-                        let dst_pid = self.logical_to_physical[&dst];
-                        out.find_window(dst_pid, w).is_some()
-                    }
+            if self.has_vertex(dst) { // has_vertex_window -> false doesnt mean dst is remote!!
+                // If dst is local then first check if it exists in the given window
+                self.has_vertex_window(dst, &w) && {
+                    let dst_pid = self.logical_to_physical[&dst];
+                    self.default_layer.has_local_edge_window(src_pid, dst_pid, w)
                 }
+            } else {
+                self.default_layer.has_remote_edge_window(src_pid, dst, w)
             }
-        } else {
-            false
         }
     }
 

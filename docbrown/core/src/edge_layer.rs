@@ -86,6 +86,35 @@ impl EdgeLayer {
     pub(crate) fn out_edges_len(&self) -> usize {
         self.adj_lists.iter().map(|adj| adj.out_edges_len()).sum()
     }
+
+    // TODO reuse function to return edge
+    pub(crate) fn has_local_edge(&self, src_pid: usize, dst_pid: usize) -> bool {
+        match &self.adj_lists[src_pid] {
+            Adj::Solo(_) => false,
+            Adj::List { out, .. } => out.find(dst_pid).is_some()
+        }
+    }
+
+    pub(crate) fn has_local_edge_window(&self, src_pid: usize, dst_pid: usize, w: &Range<i64>) -> bool {
+        match &self.adj_lists[src_pid] {
+            Adj::Solo(_) => false,
+            Adj::List { out, .. } => out.find_window(dst_pid, w).is_some()
+        }
+    }
+
+    pub(crate) fn has_remote_edge(&self, src_pid: usize, dst: u64) -> bool {
+        match &self.adj_lists[src_pid] {
+            Adj::Solo(_) => false,
+            Adj::List { remote_out, .. } => remote_out.find(dst as usize).is_some()
+        }
+    }
+
+    pub(crate) fn has_remote_edge_window(&self, src_pid: usize, dst: u64, w: &Range<i64>) -> bool {
+        match &self.adj_lists[src_pid] {
+            Adj::Solo(_) => false,
+            Adj::List { remote_out, .. } => remote_out.find_window(dst as usize, w).is_some()
+        }
+    }
 }
 
 impl EdgeLayer {
