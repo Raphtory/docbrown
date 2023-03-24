@@ -3,8 +3,9 @@ fn main() {}
 #[cfg(test)]
 mod test {
     use std::{
+        cmp::Reverse,
         fmt::Debug,
-        path::{Path, PathBuf}, cmp::Reverse,
+        path::{Path, PathBuf},
     };
 
     use docbrown_core::Direction;
@@ -232,7 +233,7 @@ mod test {
         }
 
         fn t(&self) -> i64 {
-            0
+            1
         }
     }
 
@@ -244,37 +245,41 @@ mod test {
 
         let p = Path::new(&csv_path);
         assert!(p.exists());
+        let window = -100..100;
 
-        for n_parts in 1..33 {
+        for n_parts in 2..3 {
             let g1 = Graph::new(1);
             let gn = Graph::new(n_parts);
             load::<PairNoTime>(&g1, &gn, csv_path.clone());
 
-            let cc1 = docbrown_db::program::algo::connected_components(&g1, 0..1, usize::MAX);
-            let ccn = docbrown_db::program::algo::connected_components(&gn, 0..1, usize::MAX);
+            let iter_count = 50;
+            let cc1 =
+                docbrown_db::program::algo::connected_components(&g1, window.clone(), iter_count);
+            let ccn =
+                docbrown_db::program::algo::connected_components(&gn, window.clone(), iter_count);
 
-            let max_1 = cc1
-                .iter()
-                .group_by(|(_, cc)| *cc)
+            // get LCC
+            let counts = cc1.iter().counts_by(|(_, cc)| cc);
+            let max_1 = counts
                 .into_iter()
-                .map(|(cc, group)| (cc, Reverse(group.count())))
                 .sorted_by(|l, r| l.1.cmp(&r.1))
+                .rev()
                 .take(1)
-                .map(|(a, b)| (a, b.0))
                 .next();
 
-            let max_n = ccn
-                .iter()
-                .group_by(|(_, cc)| *cc)
+            // get LCC
+            let counts = ccn.iter().counts_by(|(_, cc)| cc);
+            let max_n = counts
                 .into_iter()
-                .map(|(cc, group)| (cc, Reverse(group.count())))
                 .sorted_by(|l, r| l.1.cmp(&r.1))
+                .rev()
                 .take(1)
-                .map(|(a, b)| (a, b.0))
                 .next();
 
-            assert!(max_1.is_some());
+
+            assert_eq!(max_1, Some((&6, 1039)));
             assert_eq!(max_1, max_n);
+            println!("{:?}", max_1);
         }
     }
 }

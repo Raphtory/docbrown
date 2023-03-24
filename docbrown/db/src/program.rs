@@ -178,12 +178,13 @@ impl GlobalEvalState {
         OUT: StateType,
         A: 'static,
     {
+        // println!("read_vec_partitions: {:#?}", self.states);
         self.states
             .iter()
             .map(|state| {
                 let state = state.read();
                 let state = state.as_ref().unwrap();
-                state.read_vec_partition::<A, IN, OUT, ACC>(0, agg)
+                state.read_vec_partition::<A, IN, OUT, ACC>(self.ss, agg)
             })
             .collect()
     }
@@ -656,7 +657,7 @@ impl Program for SimpleConnectedComponents {
         })
     }
 
-    fn produce_output(&self, g: &Graph, window: Range<i64>, gs: &GlobalEvalState) -> Self::Out
+    fn produce_output(&self, g: &Graph, _window: Range<i64>, gs: &GlobalEvalState) -> Self::Out
     where
         Self: Sync,
     {
@@ -804,10 +805,13 @@ impl Program for TriangleCountSlowS2 {
 
 #[cfg(test)]
 mod program {
+    use std::{cmp::Reverse, iter::once};
+
     use crate::program::algo::{connected_components, triangle_counting_fast};
 
     use super::*;
     use docbrown_core::state;
+    use itertools::chain;
     use pretty_assertions::assert_eq;
     use rustc_hash::FxHashMap;
 
@@ -1091,5 +1095,136 @@ mod program {
             .into_iter()
             .collect::<FxHashMap<u64, u64>>()
         );
+    }
+
+    #[test]
+    fn simple_connected_components_2() {
+        let graph = Graph::new(2);
+
+        let edges = vec![
+            (1, 2, 1),
+            (1, 3, 2),
+            (1, 4, 3),
+            (3, 1, 4),
+            (3, 4, 5),
+            (3, 5, 6),
+            (4, 5, 7),
+            (5, 6, 8),
+            (5, 8, 9),
+            (7, 5, 10),
+            (8, 5, 11),
+            (1, 9, 12),
+            (9, 1, 13),
+            (6, 3, 14),
+            (4, 8, 15),
+            (8, 3, 16),
+            (5, 10, 17),
+            (10, 5, 18),
+            (10, 8, 19),
+            (1, 11, 20),
+            (11, 1, 21),
+            (9, 11, 22),
+            (11, 9, 23),
+        ];
+
+        for (src, dst, ts) in edges {
+            graph.add_edge(ts, src, dst, &vec![]);
+        }
+
+        let window = 0..25;
+
+        let results: FxHashMap<u64, u64> = connected_components(&graph, window, usize::MAX)
+            .into_iter()
+            .map(|(k, v)| (k, v as u64))
+            .collect();
+
+        assert_eq!(
+            results,
+            vec![
+                (1, 1),
+                (2, 1),
+                (3, 1),
+                (4, 1),
+                (5, 1),
+                (6, 1),
+                (7, 1),
+                (8, 1),
+                (9, 1),
+                (10, 1),
+                (11, 1),
+            ]
+            .into_iter()
+            .collect::<FxHashMap<u64, u64>>()
+        );
+    }
+
+    // connected components on a graph with 1 node and a self loop
+    #[test]
+    fn simple_connected_components_3() {
+        let graph = Graph::new(2);
+
+        let edges = vec![(1, 1, 1)];
+
+        for (src, dst, ts) in edges {
+            graph.add_edge(ts, src, dst, &vec![]);
+        }
+
+        let window = 0..25;
+
+        let results: FxHashMap<u64, u64> = connected_components(&graph, window, usize::MAX);
+
+        assert_eq!(
+            results,
+            vec![(1, 1),].into_iter().collect::<FxHashMap<u64, u64>>()
+        );
+    }
+
+    #[quickcheck]
+    fn circle_graph_the_smallest_value_is_the_cc(vs: Vec<u64>) {
+        if vs.len() > 0 {
+            let vs = vs.into_iter().unique().collect::<Vec<u64>>();
+
+            let smallest = vs.iter().min().unwrap();
+
+            let first = vs[0];
+            // pairs of vertices from vs one after the next
+            let edges = vs
+                .iter()
+                .zip(chain!(vs.iter().skip(1), once(&first)))
+                .map(|(a, b)| (*a, *b))
+                .collect::<Vec<(u64, u64)>>();
+
+            assert_eq!(edges[0].0, first);
+            assert_eq!(edges.last().unwrap().1, first);
+
+            let graph = Graph::new(2);
+
+            for (src, dst) in edges.iter() {
+                graph.add_edge(0, *src, *dst, &vec![]);
+            }
+
+            // now we do connected components over window 0..1
+
+            let window = 0..1;
+
+            let components: FxHashMap<u64, u64> = connected_components(&graph, window, usize::MAX);
+
+            let actual = components
+                .iter()
+                .group_by(|(_, cc)| *cc)
+                .into_iter()
+                .map(|(cc, group)| (cc, Reverse(group.count())))
+                .sorted_by(|l, r| l.1.cmp(&r.1))
+                .map(|(cc, count)| (*cc, count.0))
+                .take(1)
+                .next();
+
+            assert_eq!(
+                actual,
+                Some((*smallest, edges.len())),
+                "actual: {:?}",
+                actual
+            );
+        }
     }
 }

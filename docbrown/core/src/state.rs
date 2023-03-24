@@ -217,7 +217,7 @@ pub trait StateType: PartialEq + Clone + Debug + Send + Sync + 'static {}
 #[derive(Debug)]
 pub struct ComputeStateMap(Box<dyn DynArray + 'static>);
 
-pub trait ComputeState: Debug {
+pub trait ComputeState: Debug + Clone{
     fn clone_current_into_other(&mut self, ss: usize);
 
     fn new_mutable_primitive<T: StateType>(zero: T) -> Self;
@@ -440,7 +440,7 @@ pub struct ShardComputeState<CS: ComputeState + Send> {
     states: FxHashMap<u32, CS>,
 }
 
-impl<CS: ComputeState + Send> ShardComputeState<CS> {
+impl<CS: ComputeState + Send + Clone> ShardComputeState<CS> {
     fn copy_over_next_ss(&mut self, ss: usize) {
         for (_, state) in self.states.iter_mut() {
             state.clone_current_into_other(ss);
@@ -487,11 +487,16 @@ impl<CS: ComputeState + Send> ShardComputeState<CS> {
     ) where
         A: StateType,
     {
-        if let Some(self_cs) = self.states.get_mut(&agg_ref.id) {
-            if let Some(other_cs) = other.states.get(&agg_ref.id) {
+        match (self.states.get_mut(&agg_ref.id), other.states.get(&agg_ref.id)) {
+            (Some(self_cs), Some(other_cs)) => {
                 self_cs.merge::<A, IN, OUT, ACC, CS>(other_cs, ss);
             }
+            (None, Some(other_cs)) => {
+                self.states.insert(agg_ref.id, other_cs.clone());
+            }
+            _ => {}
         }
+
     }
 
     fn read<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(
