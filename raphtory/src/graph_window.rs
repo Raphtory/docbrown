@@ -93,6 +93,19 @@ impl WindowedGraph {
        }
     }
 
+    pub fn __getitem__(slf: PyRef<'_, Self>, id: &PyAny) -> PyResult<Option<WindowedVertex>> {
+        let v = Graph::extract_id(id)?;
+        match slf.graph_w.vertex(v) {
+            None => {Ok(None)}
+            Some(v) => {
+                let g: Py<Self> = slf.into();
+                Ok(Some(WindowedVertex::new(g, v)))
+            }
+        }
+    }
+
+
+
     pub fn vertex_ids(&self) -> VertexIdsIterator {
         VertexIdsIterator {
             iter: self.graph_w.vertices().id(),
@@ -157,6 +170,10 @@ impl WindowedVertex {
 
 #[pymethods]
 impl WindowedVertex {
+
+    pub fn __getitem__(&self, name: String) -> Vec<(i64, Prop)> {
+        self.prop(name)
+    }
 
     pub fn prop(&self, name: String) -> Vec<(i64, Prop)> {
         self.vertex_w
