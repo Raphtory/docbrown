@@ -49,15 +49,16 @@ impl From<graph_window::WindowedGraph> for WindowedGraph {
     }
 }
 
-#[pymethods]
 impl WindowedGraph {
-    #[new]
     pub fn new(graph: &Graph, t_start: i64, t_end: i64) -> Self {
         Self {
             graph_w: graph_window::WindowedGraph::new(graph.graph.clone(), t_start, t_end),
         }
     }
+}
 
+#[pymethods]
+impl WindowedGraph {
     //******  Metrics APIs ******//
 
     pub fn earliest_time(&self) -> Option<i64> { self.graph_w.earliest_time() }
@@ -68,43 +69,28 @@ impl WindowedGraph {
 
     pub fn num_vertices(&self) -> usize {self.graph_w.num_vertices()}
 
-    pub fn has_vertex(&self, v: &PyAny) -> bool {
-        if let Ok(v) = v.extract::<String>() {
-            self.graph_w.has_vertex(v)
-        }
-        else if let Ok(v) = v.extract::<u64>(){
-             self.graph_w.has_vertex(v)
-        }
-        else {
-            panic!("Input must be a string or integer.")
-        }
+    pub fn has_vertex(&self, id: &PyAny) -> PyResult<bool> {
+        let v = Graph::extract_id(id)?;
+        Ok(self.graph_w.has_vertex(v))
     }
 
-    pub fn has_edge(&self, src: &PyAny, dst: &PyAny) -> bool {
-        if src.extract::<String>().is_ok() && dst.extract::<String>().is_ok() {
-            self.graph_w.has_edge(
-                src.extract::<String>().unwrap(),
-                dst.extract::<String>().unwrap(),
-            )
-        }
-        else if  src.extract::<u64>().is_ok() && dst.extract::<u64>().is_ok() {
-            self.graph_w.has_edge(
-                src.extract::<u64>().unwrap(),
-                dst.extract::<u64>().unwrap(),
-            )
-        }
-        else {
-            //FIXME This probably should just throw an error not fully panic
-            panic!("Types of src and dst must be the same (either Int or str)")
-        }
+    pub fn has_edge(&self, src: &PyAny, dst: &PyAny) -> PyResult<bool> {
+        let src = Graph::extract_id(src)?;
+        let dst = Graph::extract_id(dst)?;
+        Ok(self.graph_w.has_edge(src, dst))
     }
 
     //******  Getter APIs ******//
 
-    pub fn vertex(slf: PyRef<'_, Self>, v: u64) -> Option<WindowedVertex> {
-        let v = slf.graph_w.vertex(v)?;
-        let g: Py<Self> = slf.into();
-        Some(WindowedVertex::new(g, v))
+    pub fn vertex(slf: PyRef<'_, Self>, id: &PyAny) -> PyResult<Option<WindowedVertex>> {
+        let v = Graph::extract_id(id)?;
+       match slf.graph_w.vertex(v) {
+           None => {Ok(None)}
+           Some(v) => {
+               let g: Py<Self> = slf.into();
+               Ok(Some(WindowedVertex::new(g, v)))
+           }
+       }
     }
 
     pub fn vertex_ids(&self) -> VertexIdsIterator {
@@ -118,8 +104,10 @@ impl WindowedGraph {
         WindowedVertices { graph: g }
     }
 
-    pub fn edge(&self, src: u64, dst: u64) -> Option<WindowedEdge> {
-        self.graph_w.edge(src, dst).map(|we| we.into())
+    pub fn edge(&self, src: &PyAny, dst: &PyAny) -> PyResult<Option<WindowedEdge>> {
+        let src = Graph::extract_id(src)?;
+        let dst = Graph::extract_id(dst)?;
+        Ok(self.graph_w.edge(src, dst).map(|we| we.into()))
     }
 
     pub fn edges(&self) -> WindowedEdgeIterator {

@@ -518,7 +518,8 @@ impl Graph {
     pub fn load_from_file<P: AsRef<Path>>(path: P) -> Result<Self, Box<bincode::ErrorKind>> {
         // use BufReader for better performance
 
-        println!("loading from {:?}", path.as_ref());
+        //TODO turn to logging?
+        //println!("loading from {:?}", path.as_ref());
         let mut p = PathBuf::from(path.as_ref());
         p.push("graphdb_nr_shards");
 
@@ -556,7 +557,8 @@ impl Graph {
         for i in 0..self.nr_shards {
             let mut p = PathBuf::from(path.as_ref());
             p.push(format!("shard_{}", i));
-            println!("saving shard {} to {:?}", i, p);
+            //TODO turn to logging?
+            //println!("saving shard {} to {:?}", i, p);
             shard_paths.push((i, p));
         }
         shard_paths
