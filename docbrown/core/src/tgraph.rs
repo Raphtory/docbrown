@@ -434,31 +434,7 @@ impl TemporalGraph {
         Self: Sized,
     {
         let v_pid = self.logical_to_physical[&v];
-
-        match d {
-            Direction::OUT => Box::new(self.default_layer.edges_iter(v_pid, d).map(move |(dst, e)| EdgeRef {
-                edge_id: e.edge_id(),
-                src_g_id: v,
-                dst_g_id: self.v_g_id(*dst, e),
-                src_id: v_pid,
-                dst_id: *dst,
-                time: None,
-                is_remote: !e.is_local(),
-            })),
-            Direction::IN => Box::new(self.default_layer.edges_iter(v_pid, d).map(move |(dst, e)| EdgeRef {
-                edge_id: e.edge_id(),
-                src_g_id: self.v_g_id(*dst, e),
-                dst_g_id: v,
-                src_id: *dst,
-                dst_id: v_pid,
-                time: None,
-                is_remote: !e.is_local(),
-            })),
-            Direction::BOTH => Box::new(itertools::chain!(
-                self.vertex_edges(v, Direction::IN),
-                self.vertex_edges(v, Direction::OUT)
-            )),
-        }
+        self.default_layer.vertex_edges(v, v_pid, d)
     }
 
     pub(crate) fn vertex_edges_window(
@@ -471,41 +447,7 @@ impl TemporalGraph {
         Self: Sized,
     {
         let v_pid = self.logical_to_physical[&v];
-
-        match d {
-            Direction::OUT => {
-                Box::new(
-                    self.default_layer.edges_iter_window(v_pid, w, d)
-                        .map(move |(dst, e)| EdgeRef {
-                            edge_id: e.edge_id(),
-                            src_g_id: v,
-                            dst_g_id: self.v_g_id(dst, e),
-                            src_id: v_pid,
-                            dst_id: dst,
-                            time: None,
-                            is_remote: !e.is_local(),
-                        }),
-                )
-            }
-            Direction::IN => {
-                Box::new(
-                    self.default_layer.edges_iter_window(v_pid, w, d)
-                        .map(move |(dst, e)| EdgeRef {
-                            edge_id: e.edge_id(),
-                            src_g_id: self.v_g_id(dst, e),
-                            dst_g_id: v,
-                            src_id: dst,
-                            dst_id: v_pid,
-                            time: None,
-                            is_remote: !e.is_local(),
-                        }),
-                )
-            }
-            Direction::BOTH => Box::new(itertools::chain!(
-                self.vertex_edges_window(v, w, Direction::IN),
-                self.vertex_edges_window(v, w, Direction::OUT)
-            )),
-        }
+        self.default_layer.vertex_edges_window(v, v_pid, w, d)
     }
 
     pub(crate) fn vertex_edges_window_t(
@@ -515,35 +457,7 @@ impl TemporalGraph {
         d: Direction,
     ) -> Box<dyn Iterator<Item = EdgeRef> + Send + '_> {
         let v_pid = self.logical_to_physical[&v];
-
-        match d {
-            Direction::OUT => Box::new(self.default_layer.edges_iter_window_t(v_pid, w, d).map(
-                move |(dst, t, e)| EdgeRef {
-                    edge_id: e.edge_id(),
-                    src_g_id: v,
-                    dst_g_id: self.v_g_id(dst, e),
-                    src_id: v_pid,
-                    dst_id: dst,
-                    time: Some(t),
-                    is_remote: !e.is_local(),
-                },
-            )),
-            Direction::IN => Box::new(self.default_layer.edges_iter_window_t(v_pid, w, d).map(
-                move |(dst, t, e)| EdgeRef {
-                    edge_id: e.edge_id(),
-                    src_g_id: self.v_g_id(dst, e),
-                    dst_g_id: v,
-                    src_id: dst,
-                    dst_id: v_pid,
-                    time: Some(t),
-                    is_remote: !e.is_local(),
-                },
-            )),
-            Direction::BOTH => Box::new(itertools::chain!(
-                self.vertex_edges_window_t(v, w, Direction::IN),
-                self.vertex_edges_window_t(v, w, Direction::OUT)
-            )),
-        }
+        self.default_layer.vertex_edges_window_t(v, v_pid, w, d)
     }
 
     pub(crate) fn neighbours(
@@ -763,16 +677,6 @@ impl TemporalGraph {
             .iter_window(w)
             .map(|(t, p)| (*t, p))
             .collect_vec()
-    }
-}
-
-impl TemporalGraph {
-    fn v_g_id(&self, v_id: usize, e: AdjEdge) -> u64 {
-        if e.is_local() {
-            *self.default_layer.adj_lists[v_id].logical()
-        } else {
-            v_id.try_into().unwrap()
-        }
     }
 }
 
@@ -2013,15 +1917,9 @@ mod graph_test {
 
         let actual = g1
             .vertex_edges_window(11, &(1..3), Direction::OUT)
-            .map(|e| e.dst_g_id)
+            .map(|e| (e.dst_id, e.dst_g_id, e.is_remote))
             .collect_vec();
-        assert_eq!(actual, vec![22]);
-
-        let actual = g1.default_layer
-            .edges_iter_window(0, &(1..3), Direction::OUT)
-            .map(|(id, edge)| (id, edge.is_local()))
-            .collect_vec();
-        assert_eq!(actual, vec![(22, false)])
+        assert_eq!(actual, vec![(22, 22, true)]);
     }
 
     // this test checks TemporalGraph can be serialized and deserialized

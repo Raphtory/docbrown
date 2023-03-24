@@ -82,7 +82,7 @@ impl EdgeLayer {
     }
 }
 
-// PRIVATE INGESTION
+// INGESTION HELPERS:
 impl EdgeLayer {
     fn link_inbound_edge(
         &mut self,
@@ -262,12 +262,134 @@ impl EdgeLayer {
         self.adj_lists.iter().map(|adj| adj.out_edges_len()).sum()
     }
 
-    pub(crate) fn edges_iter( // TODO: change back to private if appropriate
+    // FIXME: all the functions using global ID need to be changed to use the physical ID instead
+    pub(crate) fn vertex_edges(
         &self,
-        vid: usize,
+        v: u64,
+        v_pid: usize,
+        d: Direction,
+    ) -> Box<dyn Iterator<Item=EdgeRef> + Send + '_>
+        where
+            Self: Sized,
+    {
+        match d {
+            Direction::OUT => Box::new(self.edges_iter(v_pid, d).map(move |(dst, e)| EdgeRef {
+                edge_id: e.edge_id(),
+                src_g_id: v,
+                dst_g_id: self.v_g_id(*dst, e),
+                src_id: v_pid,
+                dst_id: *dst,
+                time: None,
+                is_remote: !e.is_local(),
+            })),
+            Direction::IN => Box::new(self.edges_iter(v_pid, d).map(move |(dst, e)| EdgeRef {
+                edge_id: e.edge_id(),
+                src_g_id: self.v_g_id(*dst, e),
+                dst_g_id: v,
+                src_id: *dst,
+                dst_id: v_pid,
+                time: None,
+                is_remote: !e.is_local(),
+            })),
+            Direction::BOTH => Box::new(itertools::chain!(
+                self.vertex_edges(v, v_pid, Direction::IN),
+                self.vertex_edges(v, v_pid, Direction::OUT)
+            )),
+        }
+    }
+
+    pub(crate) fn vertex_edges_window(
+        &self,
+        v: u64,
+        v_pid: usize,
+        w: &Range<i64>,
+        d: Direction,
+    ) -> Box<dyn Iterator<Item=EdgeRef> + Send + '_>
+        where
+            Self: Sized,
+    {
+        match d {
+            Direction::OUT => {
+                Box::new(
+                    self.edges_iter_window(v_pid, w, d)
+                        .map(move |(dst, e)| EdgeRef {
+                            edge_id: e.edge_id(),
+                            src_g_id: v,
+                            dst_g_id: self.v_g_id(dst, e),
+                            src_id: v_pid,
+                            dst_id: dst,
+                            time: None,
+                            is_remote: !e.is_local(),
+                        }),
+                )
+            }
+            Direction::IN => {
+                Box::new(
+                    self.edges_iter_window(v_pid, w, d)
+                        .map(move |(dst, e)| EdgeRef {
+                            edge_id: e.edge_id(),
+                            src_g_id: self.v_g_id(dst, e),
+                            dst_g_id: v,
+                            src_id: dst,
+                            dst_id: v_pid,
+                            time: None,
+                            is_remote: !e.is_local(),
+                        }),
+                )
+            }
+            Direction::BOTH => Box::new(itertools::chain!(
+                self.vertex_edges_window(v, v_pid, w, Direction::IN),
+                self.vertex_edges_window(v, v_pid, w, Direction::OUT)
+            )),
+        }
+    }
+
+    pub(crate) fn vertex_edges_window_t(
+        &self,
+        v: u64,
+        v_pid: usize,
+        w: &Range<i64>,
+        d: Direction,
+    ) -> Box<dyn Iterator<Item=EdgeRef> + Send + '_> {
+        match d {
+            Direction::OUT => Box::new(self.edges_iter_window_t(v_pid, w, d).map(
+                move |(dst, t, e)| EdgeRef {
+                    edge_id: e.edge_id(),
+                    src_g_id: v,
+                    dst_g_id: self.v_g_id(dst, e),
+                    src_id: v_pid,
+                    dst_id: dst,
+                    time: Some(t),
+                    is_remote: !e.is_local(),
+                },
+            )),
+            Direction::IN => Box::new(self.edges_iter_window_t(v_pid, w, d).map(
+                move |(dst, t, e)| EdgeRef {
+                    edge_id: e.edge_id(),
+                    src_g_id: self.v_g_id(dst, e),
+                    dst_g_id: v,
+                    src_id: dst,
+                    dst_id: v_pid,
+                    time: Some(t),
+                    is_remote: !e.is_local(),
+                },
+            )),
+            Direction::BOTH => Box::new(itertools::chain!(
+                self.vertex_edges_window_t(v, v_pid, w, Direction::IN),
+                self.vertex_edges_window_t(v, v_pid, w, Direction::OUT)
+            )),
+        }
+    }
+}
+
+// MULTIPLE EDGE ACCES HELPERS:
+impl EdgeLayer {
+    fn edges_iter( // TODO: change back to private if appropriate
+        &self,
+        vertex_pid: usize,
         d: Direction,
     ) -> Box<dyn Iterator<Item = (&usize, AdjEdge)> + Send + '_> {
-        match &self.adj_lists[vid] {
+        match &self.adj_lists[vertex_pid] {
             Adj::List {
                 out,
                 into,
@@ -291,13 +413,13 @@ impl EdgeLayer {
         }
     }
 
-    pub(crate) fn edges_iter_window( // TODO: change back to private if appropriate
+    fn edges_iter_window( // TODO: change back to private if appropriate
         &self,
-        vid: usize,
+        vertex_pid: usize,
         r: &Range<i64>,
         d: Direction,
     ) -> Box<dyn Iterator<Item = (usize, AdjEdge)> + Send + '_> {
-        match &self.adj_lists[vid] {
+        match &self.adj_lists[vertex_pid] {
             Adj::List {
                 out,
                 into,
@@ -327,13 +449,13 @@ impl EdgeLayer {
         }
     }
 
-    pub(crate) fn edges_iter_window_t( // TODO: change back to private if appropriate
+    fn edges_iter_window_t( // TODO: change back to private if appropriate
         &self,
-        vid: usize,
+        vertex_pid: usize,
         window: &Range<i64>,
         d: Direction,
     ) -> Box<dyn Iterator<Item = (usize, i64, AdjEdge)> + Send + '_> {
-        match &self.adj_lists[vid] {
+        match &self.adj_lists[vertex_pid] {
             Adj::List {
                 out,
                 into,
@@ -360,6 +482,14 @@ impl EdgeLayer {
                 }
             }
             _ => Box::new(std::iter::empty()),
+        }
+    }
+
+    fn v_g_id(&self, vertex_pid: usize, e: AdjEdge) -> u64 {
+        if e.is_local() {
+            *self.adj_lists[vertex_pid].logical()
+        } else {
+            vertex_pid.try_into().unwrap()
         }
     }
 }
