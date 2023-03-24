@@ -1,4 +1,5 @@
 #![allow(unused_imports)]
+use std::cmp::Reverse;
 use std::collections::HashMap;
 use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
@@ -16,6 +17,7 @@ use docbrown_db::program::algo::connected_components;
 use docbrown_db::program::{
     GlobalEvalState, Program, TriangleCountS1, TriangleCountS2, TriangleCountSlowS2,
 };
+use itertools::Itertools;
 use regex::Regex;
 use serde::Deserialize;
 use std::fs::File;
@@ -141,10 +143,26 @@ fn try_main() -> Result<(), Box<dyn Error>> {
     //     now.elapsed().as_secs()
     // );
 
-    connected_components(
+    let now = Instant::now();
+    let components = connected_components(
         &graph,
         graph.earliest_time().unwrap()..graph.latest_time().unwrap(),
         5,
+    );
+
+    components
+        .iter()
+        .group_by(|(_, cc)| *cc)
+        .into_iter()
+        .map(|(cc, group)| (cc, Reverse(group.count())))
+        .sorted_by(|l, r| l.1.cmp(&r.1))
+        .take(50).for_each(|(group, count)|{
+            println!("Group {} has {} vertices", group, count.0);
+        });
+
+    println!(
+        "Connected Components took {} seconds",
+        now.elapsed().as_secs()
     );
 
     let now = Instant::now();

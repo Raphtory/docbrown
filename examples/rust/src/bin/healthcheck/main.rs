@@ -3,8 +3,8 @@ fn main() {}
 #[cfg(test)]
 mod test {
     use std::{
-        ops::Deref,
-        path::{Path, PathBuf},
+        fmt::Debug,
+        path::{Path, PathBuf}, cmp::Reverse,
     };
 
     use docbrown_core::Direction;
@@ -13,23 +13,26 @@ mod test {
         graph::Graph,
         view_api::{internal::GraphViewInternalOps, GraphViewOps, VertexViewOps},
     };
-    use rand::Rng;
+    use itertools::Itertools;
     use serde::de::DeserializeOwned;
 
-    fn load<REC: DeserializeOwned>(g1: &Graph, gn: &Graph, p: PathBuf) {
+    trait TestEdge {
+        fn src(&self) -> u64;
+        fn dst(&self) -> u64;
+        fn t(&self) -> i64;
+    }
+
+    fn load<REC: DeserializeOwned + TestEdge + Debug>(g1: &Graph, gn: &Graph, p: PathBuf) {
         CsvLoader::new(p)
             .set_delimiter(" ")
-            .load_into_graph(&(g1, gn), |pair: Pair, (g1, gn)| {
-                // let mut rng = rand::thread_rng();
-                // let t = rng.gen_range(-100..100);
-                // println!("{} {} {}", pair.src, pair.dst, t);
-                g1.add_edge(pair.t, pair.src, pair.dst, &vec![]);
-                gn.add_edge(pair.t, pair.src, pair.dst, &vec![]);
+            .load_into_graph(&(g1, gn), |pair: REC, (g1, gn)| {
+                g1.add_edge(pair.t(), pair.src(), pair.dst(), &vec![]);
+                gn.add_edge(pair.t(), pair.src(), pair.dst(), &vec![]);
             })
             .expect("Failed to load graph from CSV files");
     }
 
-    fn test_graph_sanity<P, REC: DeserializeOwned>(p: P, n_parts: usize)
+    fn test_graph_sanity<P, REC: DeserializeOwned + TestEdge + Debug>(p: P, n_parts: usize)
     where
         P: Into<PathBuf>,
     {
@@ -185,6 +188,20 @@ mod test {
         t: i64,
     }
 
+    impl TestEdge for Pair {
+        fn src(&self) -> u64 {
+            self.src
+        }
+
+        fn dst(&self) -> u64 {
+            self.dst
+        }
+
+        fn t(&self) -> i64 {
+            self.t
+        }
+    }
+
     #[test]
     fn load_graph_from_cargo_path() {
         let csv_path: PathBuf = [env!("CARGO_MANIFEST_DIR"), "../../resource/", "test2.csv"]
@@ -192,11 +209,72 @@ mod test {
             .collect();
 
         let p = Path::new(&csv_path);
-        println!("Path: {}", p.display());
         assert!(p.exists());
 
         for n_parts in 1..33 {
             test_graph_sanity::<&Path, Pair>(p, n_parts);
+        }
+    }
+
+    #[derive(serde::Deserialize, std::fmt::Debug)]
+    struct PairNoTime {
+        src: u64,
+        dst: u64,
+    }
+
+    impl TestEdge for PairNoTime {
+        fn src(&self) -> u64 {
+            self.src
+        }
+
+        fn dst(&self) -> u64 {
+            self.dst
+        }
+
+        fn t(&self) -> i64 {
+            0
+        }
+    }
+
+    #[test]
+    fn connected_components() {
+        let csv_path: PathBuf = [env!("CARGO_MANIFEST_DIR"), "../../resource/", "test3.csv"]
+            .iter()
+            .collect();
+
+        let p = Path::new(&csv_path);
+        assert!(p.exists());
+
+        for n_parts in 1..33 {
+            let g1 = Graph::new(1);
+            let gn = Graph::new(n_parts);
+            load::<PairNoTime>(&g1, &gn, csv_path.clone());
+
+            let cc1 = docbrown_db::program::algo::connected_components(&g1, 0..1, usize::MAX);
+            let ccn = docbrown_db::program::algo::connected_components(&gn, 0..1, usize::MAX);
+
+            let max_1 = cc1
+                .iter()
+                .group_by(|(_, cc)| *cc)
+                .into_iter()
+                .map(|(cc, group)| (cc, Reverse(group.count())))
+                .sorted_by(|l, r| l.1.cmp(&r.1))
+                .take(1)
+                .map(|(a, b)| (a, b.0))
+                .next();
+
+            let max_n = ccn
+                .iter()
+                .group_by(|(_, cc)| *cc)
+                .into_iter()
+                .map(|(cc, group)| (cc, Reverse(group.count())))
+                .sorted_by(|l, r| l.1.cmp(&r.1))
+                .take(1)
+                .map(|(a, b)| (a, b.0))
+                .next();
+
+            assert!(max_1.is_some());
+            assert_eq!(max_1, max_n);
         }
     }
 }
