@@ -256,60 +256,12 @@ impl TemporalGraph {
 
     pub(crate) fn degree(&self, v: u64, d: Direction) -> usize {
         let v_pid = self.logical_to_physical[&v];
-
-        match &self.default_layer.adj_lists[v_pid] {
-            Adj::List {
-                out,
-                into,
-                remote_out,
-                remote_into,
-                ..
-            } => match d {
-                Direction::OUT => out.len() + remote_out.len(),
-                Direction::IN => into.len() + remote_into.len(),
-                _ => {
-                    vec![
-                        out.iter(),
-                        into.iter(),
-                        remote_out.iter(),
-                        remote_into.iter(),
-                    ] // FIXME: there are better ways of doing this, all adj lists are sorted except for the HashMap
-                    .into_iter()
-                    .flatten()
-                    .unique_by(|(v, _)| *v)
-                    .count()
-                }
-            },
-            _ => 0,
-        }
+        self.default_layer.degree(v_pid, d)
     }
 
     pub fn degree_window(&self, v: u64, w: &Range<i64>, d: Direction) -> usize {
         let v_pid = self.logical_to_physical[&v];
-
-        match &self.default_layer.adj_lists[v_pid] {
-            Adj::List {
-                out,
-                into,
-                remote_out,
-                remote_into,
-                ..
-            } => match d {
-                Direction::OUT => out.len_window(w) + remote_out.len_window(w),
-                Direction::IN => into.len_window(w) + remote_into.len_window(w),
-                _ => vec![
-                    out.iter_window(w),
-                    into.iter_window(w),
-                    remote_out.iter_window(w),
-                    remote_into.iter_window(w),
-                ]
-                .into_iter()
-                .flatten()
-                .unique_by(|(v, _)| *v)
-                .count(),
-            },
-            _ => 0,
-        }
+        self.default_layer.degree_window(v_pid, w, d)
     }
 
     pub(crate) fn vertex(&self, v: u64) -> Option<VertexRef> {

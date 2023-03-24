@@ -1,4 +1,5 @@
 use itertools::chain;
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::ops::Range;
 
@@ -256,12 +257,69 @@ impl EdgeLayer {
     }
 }
 
-// MULTIPLE EDGE ACCESS:
+// AGGREGATED ACCESS:
 impl EdgeLayer {
     pub(crate) fn out_edges_len(&self) -> usize {
         self.adj_lists.iter().map(|adj| adj.out_edges_len()).sum()
     }
 
+    pub(crate) fn degree(&self, v_pid: usize, d: Direction) -> usize {
+        match &self.adj_lists[v_pid] {
+            Adj::List {
+                out,
+                into,
+                remote_out,
+                remote_into,
+                ..
+            } => match d {
+                Direction::OUT => out.len() + remote_out.len(),
+                Direction::IN => into.len() + remote_into.len(),
+                _ => {
+                    vec![
+                        out.iter(),
+                        into.iter(),
+                        remote_out.iter(),
+                        remote_into.iter(),
+                    ] // FIXME: there are better ways of doing this, all adj lists are sorted except for the HashMap
+                        .into_iter()
+                        .flatten()
+                        .unique_by(|(v, _)| *v)
+                        .count()
+                }
+            },
+            _ => 0,
+        }
+    }
+
+    pub fn degree_window(&self, v_pid: usize, w: &Range<i64>, d: Direction) -> usize {
+        match &self.adj_lists[v_pid] {
+            Adj::List {
+                out,
+                into,
+                remote_out,
+                remote_into,
+                ..
+            } => match d {
+                Direction::OUT => out.len_window(w) + remote_out.len_window(w),
+                Direction::IN => into.len_window(w) + remote_into.len_window(w),
+                _ => vec![
+                    out.iter_window(w),
+                    into.iter_window(w),
+                    remote_out.iter_window(w),
+                    remote_into.iter_window(w),
+                ]
+                    .into_iter()
+                    .flatten()
+                    .unique_by(|(v, _)| *v)
+                    .count(),
+            },
+            _ => 0,
+        }
+    }
+}
+
+// MULTIPLE EDGE ACCESS:
+impl EdgeLayer {
     // FIXME: all the functions using global ID need to be changed to use the physical ID instead
     pub(crate) fn vertex_edges(
         &self,
