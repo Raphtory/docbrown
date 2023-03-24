@@ -1,5 +1,5 @@
 from .raphtory import *
-from .graphplot import draw
+from .plot import draw
 
 __doc__ = raphtory.__doc__
 if hasattr(raphtory, "__all__"):
