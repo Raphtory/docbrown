@@ -452,14 +452,6 @@ def test_static_prop_change():
     g.add_edge(0, 1, 2, {})
     g.add_vertex_properties(1, {"name": "value1"})
 
-    expected_msg1 = (
-       """Exception: Failed to mutate graph\n"""
-       """Caused by:\n"""
-       """  -> cannot change property for vertex '1'\n"""
-       """  -> cannot mutate static property 'name'\n"""
-       """  -> cannot set previous value 'Some(Str("value1"))' to 'Some(Str("value2"))' in position '0'"""
-    )
-
     expected_msg = (
         """Exception: Failed to mutate graph\n"""
         """Caused by:\n"""
@@ -468,7 +460,6 @@ def test_static_prop_change():
         """  -> cannot set previous value 'Some(Str("value1"))' to 'Some(Str("value2"))' in position '0'"""
     )
 
-    assert expected_msg == expected_msg1
-    
     # with pytest.raises(Exception, match=re.escape(expected_msg)):
-    g.add_vertex_properties(1, {"name": "value2"})
+    with pytest.raises(Exception):
+        g.add_vertex_properties(1, {"name": "value2"})
