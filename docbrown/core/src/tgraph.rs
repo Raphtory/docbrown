@@ -109,6 +109,9 @@ impl TemporalGraph {
         // TODO: src may be user input, cannot assume we have it
         let src_pid = self.logical_to_physical[&src];
 
+        // TODO: `having the vertex` vs `having a vertex that should live in this shard if it does
+        // TODO: exists` are two different questions
+        // TODO: we use this function in several places, check all of them for correctnes or perf
         if self.has_vertex(dst) {
             let dst_pid = self.logical_to_physical[&dst];
             self.default_layer.has_local_edge(src_pid, dst_pid)
@@ -121,12 +124,9 @@ impl TemporalGraph {
         // First check if v1 exists within the given window
         self.has_vertex_window(src, w) && {
             let src_pid = self.logical_to_physical[&src];
-            if self.has_vertex(dst) { // has_vertex_window -> false doesnt mean dst is remote!!
-                // If dst is local then first check if it exists in the given window
-                self.has_vertex_window(dst, &w) && {
-                    let dst_pid = self.logical_to_physical[&dst];
-                    self.default_layer.has_local_edge_window(src_pid, dst_pid, w)
-                }
+            if self.has_vertex_window(dst, &w) {
+                let dst_pid = self.logical_to_physical[&dst];
+                self.default_layer.has_local_edge_window(src_pid, dst_pid, w)
             } else {
                 self.default_layer.has_remote_edge_window(src_pid, dst, w)
             }
@@ -399,79 +399,27 @@ impl TemporalGraph {
     }
 
     pub(crate) fn edge(&self, src: u64, dst: u64) -> Option<EdgeRef> {
-        let src_pid = self.logical_to_physical.get(&src)?;
-
-        match &self.default_layer.adj_lists[*src_pid] {
-            Adj::Solo(_) => None,
-            Adj::List {
-                out, remote_out, ..
-            } => {
-                if !self.has_vertex(dst) {
-                    let e = remote_out.find(dst as usize)?;
-                    Some(EdgeRef {
-                        edge_id: e.edge_id(),
-                        src_g_id: src,
-                        dst_g_id: dst,
-                        src_id: *src_pid,
-                        dst_id: dst as usize,
-                        time: None,
-                        is_remote: !e.is_local(),
-                    })
-                } else {
-                    let dst_pid = self.logical_to_physical.get(&dst)?;
-                    let e = out.find(*dst_pid)?;
-                    Some(EdgeRef {
-                        edge_id: e.edge_id(),
-                        src_g_id: src,
-                        dst_g_id: dst,
-                        src_id: *src_pid,
-                        dst_id: *dst_pid,
-                        time: None,
-                        is_remote: !e.is_local(),
-                    })
-                }
-            }
+        let src_pid = *self.logical_to_physical.get(&src)?;
+        if self.has_vertex(dst) {
+            let dst_pid = self.logical_to_physical[&dst]; // we have this for sure
+            self.default_layer.local_edge(src, dst, src_pid, dst_pid)
+        } else {
+            self.default_layer.remote_edge(src, dst, src_pid)
         }
     }
 
     pub(crate) fn edge_window(&self, src: u64, dst: u64, w: &Range<i64>) -> Option<EdgeRef> {
         // First check if src exists within the given window
         if self.has_vertex_window(src, w) {
-            let src_pid = self.logical_to_physical.get(&src)?;
-            match &self.default_layer.adj_lists[*src_pid] {
-                Adj::Solo(_) => Option::<EdgeRef>::None,
-                Adj::List {
-                    out, remote_out, ..
-                } => {
-                    // Then check if v2 exists in the given window while sharing an edge with v1
-                    if !self.has_vertex_window(dst, &w) {
-                        let e = remote_out.find_window(dst as usize, &w)?;
-                        Some(EdgeRef {
-                            edge_id: e.edge_id(),
-                            src_g_id: src,
-                            dst_g_id: dst,
-                            src_id: *src_pid,
-                            dst_id: dst as usize,
-                            time: None,
-                            is_remote: !e.is_local(),
-                        })
-                    } else {
-                        let dst_pid = self.logical_to_physical.get(&dst)?;
-                        let e = out.find_window(*dst_pid, &w)?;
-                        Some(EdgeRef {
-                            edge_id: e.edge_id(),
-                            src_g_id: src,
-                            dst_g_id: dst,
-                            src_id: *src_pid,
-                            dst_id: *dst_pid,
-                            time: None,
-                            is_remote: !e.is_local(),
-                        })
-                    }
-                }
+            let src_pid = *self.logical_to_physical.get(&src)?;
+            if self.has_vertex_window(dst, &w) {
+                let dst_pid = self.logical_to_physical[&dst];  // we have this for sure
+                self.default_layer.local_edge_window(src, dst, src_pid, dst_pid, w)
+            } else {
+                self.default_layer.remote_edge_window(src, dst, src_pid, w)
             }
         } else {
-            Option::<EdgeRef>::None
+            None
         }
     }
 
@@ -958,8 +906,8 @@ pub struct EdgeRef {
     pub src_g_id: u64,
     pub dst_g_id: u64,
     // src_id and dst_id could be global or physical depending upon edge being remote or local respectively
-    src_id: usize,
-    dst_id: usize,
+    pub src_id: usize, // TODO: make private again when ported to EdgeLayer
+    pub dst_id: usize, // TODO: make private again when ported to EdgeLayer
     pub time: Option<i64>,
     pub is_remote: bool,
 }

@@ -6,6 +6,7 @@ use crate::Prop;
 use crate::adj::Adj;
 use crate::props::Props;
 use crate::tadjset::AdjEdge;
+use crate::tgraph::EdgeRef;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub(crate) struct EdgeLayer {
@@ -113,6 +114,79 @@ impl EdgeLayer {
         match &self.adj_lists[src_pid] {
             Adj::Solo(_) => false,
             Adj::List { remote_out, .. } => remote_out.find_window(dst as usize, w).is_some()
+        }
+    }
+
+    // try to merge the next four functions together
+    pub(crate) fn local_edge(&self, src: u64, dst: u64, src_pid: usize, dst_pid: usize) -> Option<EdgeRef> {
+        match &self.adj_lists[src_pid] {
+            Adj::Solo(_) => None,
+            Adj::List { out, .. } => {
+                let e = out.find(dst_pid)?;
+                Some(EdgeRef {
+                    edge_id: e.edge_id(),
+                    src_g_id: src,
+                    dst_g_id: dst,
+                    src_id: src_pid,
+                    dst_id: dst_pid,
+                    time: None,
+                    is_remote: false, // TODO: check if we still need AdjEdge.is_local()
+                })
+            }
+        }
+    }
+
+    pub(crate) fn local_edge_window(&self, src: u64, dst: u64, src_pid: usize, dst_pid: usize, w: &Range<i64>) -> Option<EdgeRef> {
+        match &self.adj_lists[src_pid] {
+            Adj::Solo(_) => None,
+            Adj::List { out, .. } => {
+                let e = out.find_window(dst_pid, w)?;
+                Some(EdgeRef {
+                    edge_id: e.edge_id(),
+                    src_g_id: src,
+                    dst_g_id: dst,
+                    src_id: src_pid,
+                    dst_id: dst_pid,
+                    time: None,
+                    is_remote: false, // TODO: check if we still need AdjEdge.is_local()
+                })
+            }
+        }
+    }
+
+    pub(crate) fn remote_edge(&self, src: u64, dst: u64, src_pid: usize) -> Option<EdgeRef> {
+        match &self.adj_lists[src_pid] {
+            Adj::Solo(_) => None,
+            Adj::List { remote_out, .. } => {
+                let e = remote_out.find(dst as usize)?;
+                Some(EdgeRef {
+                    edge_id: e.edge_id(),
+                    src_g_id: src,
+                    dst_g_id: dst,
+                    src_id: src_pid,
+                    dst_id: dst as usize,
+                    time: None,
+                    is_remote: true,
+                })
+            }
+        }
+    }
+
+    pub(crate) fn remote_edge_window(&self, src: u64, dst: u64, src_pid: usize, w: &Range<i64>) -> Option<EdgeRef> {
+        match &self.adj_lists[src_pid] {
+            Adj::Solo(_) => None,
+            Adj::List { remote_out, .. } => {
+                let e = remote_out.find_window(dst as usize, w)?;
+                Some(EdgeRef {
+                    edge_id: e.edge_id(),
+                    src_g_id: src,
+                    dst_g_id: dst,
+                    src_id: src_pid,
+                    dst_id: dst as usize,
+                    time: None,
+                    is_remote: true,
+                })
+            }
         }
     }
 }
