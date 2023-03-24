@@ -1,14 +1,10 @@
-use std::{collections::HashMap, sync::Arc};
-
 use crate::wrappers;
-use crate::wrappers::Perspective;
 use crate::{graph::Graph, wrappers::*};
-use docbrown_core::tgraph::EdgeRef;
 use docbrown_db::graph_window;
 use docbrown_db::view_api::*;
 use itertools::Itertools;
 use pyo3::prelude::*;
-use pyo3::types::PyIterator;
+use std::collections::HashMap;
 
 #[pyclass]
 pub struct GraphWindowSet {
@@ -60,41 +56,43 @@ impl WindowedGraph {
 
     //******  Metrics APIs ******//
 
-    pub fn earliest_time(&self) -> Option<i64> {
-        self.graph_w.earliest_time()
+    pub fn earliest_time(&self) -> PyResult<Option<i64>> {
+        adapt_err(self.graph_w.earliest_time())
     }
 
-    pub fn latest_time(&self) -> Option<i64> {
-        self.graph_w.latest_time()
+    pub fn latest_time(&self) -> PyResult<Option<i64>> {
+        adapt_err(self.graph_w.latest_time())
     }
 
-    pub fn num_edges(&self) -> usize {
-        self.graph_w.num_edges()
+    pub fn num_edges(&self) -> PyResult<usize> {
+        adapt_err(self.graph_w.num_edges())
     }
 
-    pub fn num_vertices(&self) -> usize {
-        self.graph_w.num_vertices()
+    pub fn num_vertices(&self) -> PyResult<usize> {
+        adapt_err(self.graph_w.num_vertices())
     }
 
-    pub fn has_vertex(&self, v: &PyAny) -> bool {
+    pub fn has_vertex(&self, v: &PyAny) -> PyResult<bool> {
         if let Ok(v) = v.extract::<String>() {
-            self.graph_w.has_vertex(v)
+            adapt_err(self.graph_w.has_vertex(v))
         } else if let Ok(v) = v.extract::<u64>() {
-            self.graph_w.has_vertex(v)
+            adapt_err(self.graph_w.has_vertex(v))
         } else {
             panic!("Input must be a string or integer.")
         }
     }
 
-    pub fn has_edge(&self, src: &PyAny, dst: &PyAny) -> bool {
+    pub fn has_edge(&self, src: &PyAny, dst: &PyAny) -> PyResult<bool> {
         if src.extract::<String>().is_ok() && dst.extract::<String>().is_ok() {
-            self.graph_w.has_edge(
+            adapt_err(self.graph_w.has_edge(
                 src.extract::<String>().unwrap(),
                 dst.extract::<String>().unwrap(),
-            )
+            ))
         } else if src.extract::<u64>().is_ok() && dst.extract::<u64>().is_ok() {
-            self.graph_w
-                .has_edge(src.extract::<u64>().unwrap(), dst.extract::<u64>().unwrap())
+            adapt_err(
+                self.graph_w
+                    .has_edge(src.extract::<u64>().unwrap(), dst.extract::<u64>().unwrap()),
+            )
         } else {
             //FIXME This probably should just throw an error not fully panic
             panic!("Types of src and dst must be the same (either Int or str)")
@@ -103,10 +101,12 @@ impl WindowedGraph {
 
     //******  Getter APIs ******//
 
-    pub fn vertex(slf: PyRef<'_, Self>, v: u64) -> Option<WindowedVertex> {
-        let v = slf.graph_w.vertex(v)?;
-        let g: Py<Self> = slf.into();
-        Some(WindowedVertex::new(g, v))
+    pub fn vertex(slf: PyRef<'_, Self>, v: u64) -> PyResult<Option<WindowedVertex>> {
+        let v = slf.graph_w.vertex(v).map(|v| {
+            let g: Py<Self> = slf.into();
+            v.map(|x| WindowedVertex::new(g, x))
+        });
+        adapt_err(v)
     }
 
     pub fn vertex_ids(&self) -> VertexIdsIterator {
@@ -120,8 +120,9 @@ impl WindowedGraph {
         WindowedVertices { graph: g }
     }
 
-    pub fn edge(&self, src: u64, dst: u64) -> Option<WindowedEdge> {
-        self.graph_w.edge(src, dst).map(|we| we.into())
+    pub fn edge(&self, src: u64, dst: u64) -> PyResult<Option<WindowedEdge>> {
+        let r = self.graph_w.edge(src, dst);
+        adapt_err(r.map(|t| t.map(|we| we.into())))
     }
 
     pub fn edges(&self) -> WindowedEdgeIterator {
@@ -170,53 +171,59 @@ impl WindowedVertex {
 
 #[pymethods]
 impl WindowedVertex {
-    pub fn prop(&self, name: String) -> Vec<(i64, Prop)> {
-        self.vertex_w
+    pub fn prop(&self, name: String) -> PyResult<Vec<(i64, Prop)>> {
+        let r = self
+            .vertex_w
             .prop(name)
-            .into_iter()
-            .map(|(t, p)| (t, p.into()))
-            .collect_vec()
+            .map(|v| v.into_iter().map(|(t, p)| (t, p.into())).collect_vec());
+
+        adapt_err(r)
     }
 
-    pub fn props(&self) -> HashMap<String, Vec<(i64, Prop)>> {
-        self.vertex_w
-            .props()
-            .into_iter()
-            .map(|(n, p)| {
-                let prop = p
-                    .into_iter()
-                    .map(|(t, p)| (t, p.into()))
-                    .collect::<Vec<(i64, wrappers::Prop)>>();
-                (n, prop)
-            })
-            .into_iter()
-            .collect::<HashMap<String, Vec<(i64, Prop)>>>()
+    pub fn props(&self) -> PyResult<HashMap<String, Vec<(i64, Prop)>>> {
+        let r = self.vertex_w.props().map(|v| {
+            v.into_iter()
+                .map(|(n, p)| {
+                    let prop = p
+                        .into_iter()
+                        .map(|(t, p)| (t, p.into()))
+                        .collect::<Vec<(i64, wrappers::Prop)>>();
+                    (n, prop)
+                })
+                .into_iter()
+                .collect::<HashMap<String, Vec<(i64, Prop)>>>()
+        });
+
+        adapt_err(r)
     }
 
-    pub fn degree(&self, t_start: Option<i64>, t_end: Option<i64>) -> usize {
+    pub fn degree(&self, t_start: Option<i64>, t_end: Option<i64>) -> PyResult<usize> {
         match (t_start, t_end) {
-            (None, None) => self.vertex_w.degree(),
-            _ => self
-                .vertex_w
-                .degree_window(t_start.unwrap_or(i64::MIN), t_end.unwrap_or(i64::MAX)),
+            (None, None) => adapt_err(self.vertex_w.degree()),
+            _ => adapt_err(
+                self.vertex_w
+                    .degree_window(t_start.unwrap_or(i64::MIN), t_end.unwrap_or(i64::MAX)),
+            ),
         }
     }
 
-    pub fn in_degree(&self, t_start: Option<i64>, t_end: Option<i64>) -> usize {
+    pub fn in_degree(&self, t_start: Option<i64>, t_end: Option<i64>) -> PyResult<usize> {
         match (t_start, t_end) {
-            (None, None) => self.vertex_w.in_degree(),
-            _ => self
-                .vertex_w
-                .in_degree_window(t_start.unwrap_or(i64::MIN), t_end.unwrap_or(i64::MAX)),
+            (None, None) => adapt_err(self.vertex_w.in_degree()),
+            _ => adapt_err(
+                self.vertex_w
+                    .in_degree_window(t_start.unwrap_or(i64::MIN), t_end.unwrap_or(i64::MAX)),
+            ),
         }
     }
 
-    pub fn out_degree(&self, t_start: Option<i64>, t_end: Option<i64>) -> usize {
+    pub fn out_degree(&self, t_start: Option<i64>, t_end: Option<i64>) -> PyResult<usize> {
         match (t_start, t_end) {
-            (None, None) => self.vertex_w.out_degree(),
-            _ => self
-                .vertex_w
-                .out_degree_window(t_start.unwrap_or(i64::MIN), t_end.unwrap_or(i64::MAX)),
+            (None, None) => adapt_err(self.vertex_w.out_degree()),
+            _ => adapt_err(
+                self.vertex_w
+                    .out_degree_window(t_start.unwrap_or(i64::MIN), t_end.unwrap_or(i64::MAX)),
+            ),
         }
     }
 
@@ -400,12 +407,12 @@ impl From<graph_window::WindowedEdge> for WindowedEdge {
 
 #[pymethods]
 impl WindowedEdge {
-    pub fn prop(&self, name: String) -> Vec<(i64, Prop)> {
-        self.edge_w
-            .prop(name)
-            .into_iter()
-            .map(|(t, p)| (t, p.into()))
-            .collect_vec()
+    pub fn prop(&self, name: String) -> PyResult<Vec<(i64, Prop)>> {
+        adapt_err(
+            self.edge_w
+                .prop(name)
+                .map(|v| v.into_iter().map(|(t, p)| (t, p.into())).collect_vec()),
+        )
     }
 
     pub fn id(&self) -> usize {

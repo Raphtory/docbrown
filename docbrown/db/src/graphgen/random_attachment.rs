@@ -1,6 +1,7 @@
 use crate::graph::Graph;
 use crate::view_api::internal::GraphViewInternalOps;
 use crate::view_api::*;
+use docbrown_core::tgraph_shard::exceptions::GraphError;
 use rand::seq::SliceRandom;
 
 /// This function is a graph generation model based upon:
@@ -24,10 +25,14 @@ use rand::seq::SliceRandom;
 /// let graph = Graph::new(2);
 //  ba_preferential_attachment(&graph, 1000, 10);
 /// ```
-pub fn random_attachment(graph: &Graph, vertices_to_add: usize, edges_per_step: usize) {
+pub fn random_attachment(
+    graph: &Graph,
+    vertices_to_add: usize,
+    edges_per_step: usize,
+) -> Result<(), GraphError> {
     use rand::seq::IteratorRandom;
     let mut rng = &mut rand::thread_rng();
-    let mut latest_time = match graph.latest_time() {
+    let mut latest_time = match graph.latest_time()? {
         None => 0,
         Some(time) => time,
     };
@@ -53,6 +58,8 @@ pub fn random_attachment(graph: &Graph, vertices_to_add: usize, edges_per_step: 
         });
         ids.push(max_id);
     }
+
+    Ok(())
 }
 
 #[cfg(test)]
@@ -64,8 +71,8 @@ mod random_graph_test {
     fn blank_graph() {
         let graph = Graph::new(2);
         random_attachment(&graph, 100, 20);
-        assert_eq!(graph.num_edges(), 2000);
-        assert_eq!(graph.num_vertices(), 120);
+        assert_eq!(graph.num_edges().unwrap(), 2000);
+        assert_eq!(graph.num_vertices().unwrap(), 120);
     }
 
     #[test]
@@ -77,9 +84,9 @@ mod random_graph_test {
 
         random_attachment(&graph, 1000, 5);
         let window = graph.window(i64::MIN, i64::MAX);
-        let mut degree: Vec<usize> = window.vertices().map(|v| v.degree()).collect();
-        assert_eq!(graph.num_edges(), 5000);
-        assert_eq!(graph.num_vertices(), 1010);
+        let mut degree: Vec<usize> = window.vertices().map(|v| v.degree().unwrap()).collect();
+        assert_eq!(graph.num_edges().unwrap(), 5000);
+        assert_eq!(graph.num_vertices().unwrap(), 1010);
     }
 
     #[test]
@@ -88,8 +95,8 @@ mod random_graph_test {
         ba_preferential_attachment(&graph, 300, 7);
         random_attachment(&graph, 4000, 12);
         let window = graph.window(i64::MIN, i64::MAX);
-        let mut degree: Vec<usize> = window.vertices().map(|v| v.degree()).collect();
-        assert_eq!(graph.num_edges(), 50106);
-        assert_eq!(graph.num_vertices(), 4307);
+        let mut degree: Vec<usize> = window.vertices().map(|v| v.degree().unwrap()).collect();
+        assert_eq!(graph.num_edges().unwrap(), 50106);
+        assert_eq!(graph.num_vertices().unwrap(), 4307);
     }
 }

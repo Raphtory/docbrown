@@ -24,7 +24,7 @@ pub fn bootstrap_graph(num_shards: usize, num_vertices: usize) -> Graph {
         let source = indexes.next().unwrap();
         let target = indexes.next().unwrap();
         let time = times.next().unwrap();
-        graph.add_edge(time, source, target, &vec![]);
+        graph.add_edge(time, source, target, &vec![]).unwrap();
     }
     graph
 }
@@ -139,7 +139,7 @@ pub fn run_large_ingestion_benchmarks<F>(
                 },
                 |(g, times)| {
                     for t in times.iter() {
-                        g.add_edge(*t, 0, 0, &vec![])
+                        g.add_edge(*t, 0, 0, &vec![]).unwrap()
                     }
                 },
                 BatchSize::SmallInput,
@@ -168,7 +168,7 @@ pub fn run_large_ingestion_benchmarks<F>(
                             src_gen.next().unwrap(),
                             dst_gen.next().unwrap(),
                             &vec![],
-                        )
+                        ).unwrap()
                     }
                 },
                 BatchSize::SmallInput,
