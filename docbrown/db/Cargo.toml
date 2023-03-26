@@ -39,6 +39,9 @@ quickcheck = "1"
 quickcheck_macros = "1"
 criterion = "0.3"
 
+[profile.test]
+opt-level = 3
+
 [[bench]]
 name = "base"
 harness = false

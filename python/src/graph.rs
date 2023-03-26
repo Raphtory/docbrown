@@ -5,17 +5,14 @@ use docbrown_db::{graph, perspective};
 use pyo3::exceptions;
 use pyo3::exceptions::{PyException, PyTypeError};
 use pyo3::prelude::*;
-use pyo3::types::{PyInt, PyIterator, PyString};
+use pyo3::types::{PyIterator};
 use std::collections::HashMap;
 use std::fmt::Display;
-use std::iter;
-use std::ops::Deref;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 use itertools::Itertools;
 
-use crate::graph_window::{GraphWindowSet, WindowedEdge, WindowedGraph, WindowedVertex};
-use crate::wrappers::{PerspectiveSet, Prop, VertexIdsIterator, WindowedEdgeIterator, WindowedVertices};
+use crate::graph_window::{GraphWindowSet, WindowedGraph};
+use crate::wrappers::{PerspectiveSet, Prop};
 use crate::Perspective;
 
 #[pyclass]
