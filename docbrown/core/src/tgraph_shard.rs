@@ -365,6 +365,10 @@ impl TGraphShard {
         self.read_shard(|tg| tg.static_vertex_prop_keys(v))
     }
 
+    pub fn temporal_vertex_prop_keys(&self, v: u64) -> Vec<String> {
+        self.read_shard(|tg| tg.temporal_vertex_prop_keys(v))
+    }
+
     pub fn temporal_vertex_prop_vec(&self, v: u64, name: String) -> Vec<(i64, Prop)> {
         self.read_shard(|tg| tg.temporal_vertex_prop_vec(v, &name))
     }
@@ -389,6 +393,10 @@ impl TGraphShard {
         self.read_shard(|tg| tg.static_edge_prop_keys(e))
     }
 
+    pub fn temporal_edge_prop_keys(&self, e: usize) -> Vec<String> {
+        self.read_shard(|tg| tg.temporal_edge_prop_keys(e))
+    }
+
     pub fn temporal_edge_prop_vec(&self, e: usize, name: String) -> Vec<(i64, Prop)> {
         self.read_shard(|tg| tg.temporal_edge_prop_vec(e, &name))
     }
@@ -396,6 +404,18 @@ impl TGraphShard {
     pub fn temporal_edge_props_vec_window(&self, e: usize, name: String, w: Range<i64>) -> Vec<(i64, Prop)> {
         self.read_shard(|tg| tg.temporal_edge_prop_vec_window(e, &name, w.clone()))
     }
+
+    pub fn temporal_edge_props_window(
+        &self,
+        e: usize,
+        w: Range<i64>,
+    ) -> HashMap<String, Vec<(i64, Prop)>> {
+        self.read_shard(|tg| tg.temporal_edge_props_window(e, w.clone()))
+
+    }
+
+
+
 }
 
 #[cfg(test)]

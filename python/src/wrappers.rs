@@ -1,6 +1,5 @@
 use itertools::Itertools;
 use pyo3::prelude::*;
-use std::borrow::{Borrow};
 
 use docbrown_core as db_c;
 use docbrown_db::view_api::*;

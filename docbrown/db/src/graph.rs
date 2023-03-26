@@ -329,6 +329,10 @@ impl GraphViewInternalOps for Graph {
         self.get_shard_from_v(v).static_vertex_prop_keys(v.g_id)
     }
 
+    fn temporal_vertex_prop_keys(&self, v: VertexRef) -> Vec<String> {
+        self.get_shard_from_v(v).temporal_vertex_prop_keys(v.g_id)
+    }
+
     fn temporal_vertex_prop_vec(&self, v: VertexRef, name: String) -> Vec<(i64, Prop)> {
         self.get_shard_from_v(v).temporal_vertex_prop_vec(v.g_id, name)
     }
@@ -366,6 +370,10 @@ impl GraphViewInternalOps for Graph {
         self.get_shard_from_e(e).static_edge_prop_keys(e.edge_id)
     }
 
+    fn temporal_edge_prop_keys(&self, e: EdgeRef) -> Vec<String> {
+        self.get_shard_from_e(e).temporal_edge_prop_keys(e.edge_id)
+    }
+
     fn temporal_edge_props_vec(&self, e: EdgeRef, name: String) -> Vec<(i64, Prop)> {
         self.get_shard_from_e(e).temporal_edge_prop_vec(e.edge_id, name)
     }
@@ -392,8 +400,7 @@ impl GraphViewInternalOps for Graph {
         t_start: i64,
         t_end: i64,
     ) -> HashMap<String, Vec<(i64, Prop)>> {
-        //FIXME: This needs to be implemented in core if we want it
-        todo!()
+        self.get_shard_from_e(e).temporal_edge_props_window(e.edge_id,t_start..t_end)
     }
 }
 
