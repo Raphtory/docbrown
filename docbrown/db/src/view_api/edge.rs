@@ -6,6 +6,7 @@ use docbrown_core::Prop;
 pub trait EdgeViewOps: Sized + Send + Sync {
     type Vertex: VertexViewOps<Edge = Self>;
 
+    //TODO need to add specific windowed and non-windowed variants
     fn has_property(&self,name:String,include_static:bool) -> bool ;
     fn property(&self,name:String,include_static:bool) -> Option<Prop>;
     fn properties(&self,include_static:bool) -> HashMap<String,Prop> ;
