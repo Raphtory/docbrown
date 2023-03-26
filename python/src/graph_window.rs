@@ -172,31 +172,67 @@ impl WindowedVertex {
 
 #[pymethods]
 impl WindowedVertex {
-    pub fn __getitem__(&self, name: String) -> Vec<(i64, Prop)> {
-        self.prop(name)
+
+    pub fn __getitem__(&self, name: String) -> Option<Prop> {
+        self.property(name,Some(true))
     }
 
-    pub fn prop(&self, name: String) -> Vec<(i64, Prop)> {
-        self.vertex_w
-            .prop(name)
-            .into_iter()
-            .map(|(t, p)| (t, p.into()))
-            .collect_vec()
+    pub fn has_property(&self,name:String,include_static:Option<bool>) -> bool {
+        match include_static {
+            None => {self.vertex_w.has_property(name,true)}
+            Some(b) => {self.vertex_w.has_property(name,b)}
+        }
     }
 
-    pub fn props(&self) -> HashMap<String, Vec<(i64, Prop)>> {
-        self.vertex_w
-            .props()
-            .into_iter()
-            .map(|(n, p)| {
-                let prop = p
-                    .into_iter()
-                    .map(|(t, p)| (t, p.into()))
-                    .collect::<Vec<(i64, wrappers::Prop)>>();
-                (n, prop)
-            })
-            .into_iter()
-            .collect::<HashMap<String, Vec<(i64, Prop)>>>()
+    pub fn property(&self,name:String,include_static:Option<bool>) -> Option<Prop> {
+        let res = match include_static {
+            None => {self.vertex_w.property(name,true)}
+            Some(b) => {self.vertex_w.property(name,b)}
+        };
+
+        match res{
+            None => {None}
+            Some(prop) => {Some(prop.into())}
+        }
+    }
+
+    pub fn properties(&self,include_static:Option<bool>) -> HashMap<String,Prop> {
+        match include_static {
+            None => {self.vertex_w.properties(true)}
+            Some(b) => {self.vertex_w.properties(b)}
+        }.into_iter()
+            .map(|(k, v)| (k, v.into()))
+            .collect()
+    }
+
+    pub fn property_names(&self,include_static:Option<bool>) -> Vec<String> {
+        match include_static {
+            None => {self.vertex_w.property_names(true)}
+            Some(b) => {self.vertex_w.property_names(b)}
+        }
+
+    }
+
+    pub fn property_history(&self,name:String) -> Vec<(i64, Prop)> {
+        self.vertex_w.property_history(name).into_iter()
+            .map(|(k, v)| (k, v.into()))
+            .collect()
+    }
+
+    pub fn property_histories(&self) -> HashMap<String, Vec<(i64, Prop)>> {
+        self.vertex_w.property_histories().into_iter()
+            .map(|(k, v)| (k, v.into_iter().map(|(t,p)| (t,p.into())).collect()))
+            .collect()
+    }
+
+    pub fn has_static_property(&self,name:String)->bool {
+        self.vertex_w.has_static_property(name)
+    }
+    pub fn static_property(&self,name:String)-> Option<Prop>{
+        match self.vertex_w.static_property(name) {
+            None => {None}
+            Some(prop) => {Some(prop.into())}
+        }
     }
 
     pub fn degree(&self, t_start: Option<i64>, t_end: Option<i64>) -> usize {
