@@ -401,6 +401,11 @@ impl From<graph_window::WindowedEdge> for WindowedEdge {
 
 #[pymethods]
 impl WindowedEdge {
+
+    pub fn __getitem__(&self, name: String) -> Vec<(i64, Prop)> {
+        self.prop(name)
+    }
+
     pub fn prop(&self, name: String) -> Vec<(i64, Prop)> {
         self.edge_w
             .prop(name)
