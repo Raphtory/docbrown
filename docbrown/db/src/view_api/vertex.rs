@@ -9,9 +9,17 @@ pub trait VertexViewOps: Sized + Send + Sync {
 
     fn id(&self) -> u64;
 
-    fn prop(&self, name: String) -> Vec<(i64, Prop)>;
+    //TODO need to add specific windowed and non-windowed variants
+    fn has_property(&self,name:String,include_static:bool) -> bool ;
+    fn property(&self,name:String,include_static:bool) -> Option<Prop>;
+    fn properties(&self,include_static:bool) -> HashMap<String,Prop> ;
+    fn property_names(&self,include_static:bool) -> Vec<String> ;
 
-    fn props(&self) -> HashMap<String, Vec<(i64, Prop)>>;
+    fn has_static_property(&self,name:String)->bool;
+    fn static_property(&self,name:String)-> Option<Prop>;
+
+    fn property_history(&self,name:String) -> Vec<(i64, Prop)> ;
+    fn property_histories(&self) -> HashMap<String,Vec<(i64, Prop)>> ;
 
     fn degree(&self) -> usize;
 
@@ -60,10 +68,6 @@ pub trait VertexListOps:
     type ValueIterType<U>: Iterator<Item = U> + Send;
 
     fn id(self) -> Self::ValueIterType<u64>;
-
-    fn prop(self, name: String) -> Self::ValueIterType<Vec<(i64, Prop)>>;
-
-    fn props(self) -> Self::ValueIterType<HashMap<String, Vec<(i64, Prop)>>>;
 
     fn degree(self) -> Self::ValueIterType<usize>;
 

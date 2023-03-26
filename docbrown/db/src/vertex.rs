@@ -37,12 +37,62 @@ impl<G: GraphViewInternalOps + 'static + Send + Sync> VertexViewOps for VertexVi
         self.vertex.g_id
     }
 
-    fn prop(&self, name: String) -> Vec<(i64, Prop)> {
-        self.graph.temporal_vertex_prop_vec(self.vertex, name)
+    fn property(&self,name:String,include_static:bool) -> Option<Prop> {
+        let props= self.property_history(name.clone());
+
+        match props.last() {
+            None => {
+                if include_static {
+                    match self.graph.static_vertex_prop(self.vertex, name) {
+                        None => { None }
+                        Some(prop) => { Some(prop) }
+                    }
+                }
+                else {None}
+            },
+            Some((_,prop)) => {Some(prop.clone())}
+        }
+    }
+    fn property_history(&self,name:String) -> Vec<(i64, Prop)> {
+        //MIN MAX given as I can't get the real times from here and the internal graph sorts it out
+        self.graph.temporal_vertex_prop_vec_window(self.vertex, name,i64::MIN,i64::MAX)
+    }
+    fn properties(&self,include_static:bool) -> HashMap<String,Prop> {
+        let mut props:HashMap<String,Prop> = self.property_histories().iter().map(|(key,values)| {
+            (key.clone(),values.last().unwrap().1.clone())
+        }).collect();
+
+        if include_static{
+            for prop_name in self.graph.static_vertex_prop_keys(self.vertex) {
+                match self.graph.static_vertex_prop(self.vertex,prop_name.clone()) {
+                    Some(prop) => {props.insert(prop_name,prop);}
+                    None => {}
+                }
+            }
+        }
+        props
     }
 
-    fn props(&self) -> HashMap<String, Vec<(i64, Prop)>> {
-        self.graph.temporal_vertex_props(self.vertex)
+    fn property_histories(&self) -> HashMap<String,Vec<(i64, Prop)>> {
+        self.graph.temporal_vertex_props_window(self.vertex,i64::MIN,i64::MAX)
+    }
+    fn property_names(&self,include_static:bool) -> Vec<String> {
+        let mut names:Vec<String> = self.graph.temporal_vertex_props_window(self.vertex,i64::MIN,i64::MAX).into_keys().collect();
+        if include_static {
+            names.extend(self.graph.static_vertex_prop_keys(self.vertex))
+        }
+        names
+    }
+    fn has_property(&self,name:String,include_static:bool) -> bool {
+        self.property_names(include_static).contains(&name)
+    }
+
+    fn has_static_property(&self,name:String)->bool{
+        self.graph.static_vertex_prop_keys(self.vertex).contains(&name)
+    }
+
+    fn static_property(&self,name:String)-> Option<Prop>{
+        self.graph.static_vertex_prop(self.vertex,name)
     }
 
     fn degree(&self) -> usize {
@@ -191,15 +241,7 @@ impl<G: GraphViewInternalOps + 'static + Send + Sync> VertexListOps
         Box::new(self.map(|v| v.id()))
     }
 
-    fn prop(self, name: String) -> Self::ValueIterType<Vec<(i64, Prop)>> {
-        Box::new(self.map(move |v| v.prop(name.clone())))
-    }
-
-    fn props(self) -> Self::ValueIterType<HashMap<String, Vec<(i64, Prop)>>> {
-        Box::new(self.map(|v| v.props()))
-    }
-
-    fn degree(self) -> Self::ValueIterType<usize> {
+   fn degree(self) -> Self::ValueIterType<usize> {
         Box::new(self.map(|v| v.degree()))
     }
 
