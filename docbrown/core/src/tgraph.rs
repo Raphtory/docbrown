@@ -738,6 +738,11 @@ impl TemporalGraph {
         self.props.static_vertex_keys(index)
     }
 
+    pub fn temporal_vertex_prop_keys(&self, v: u64) -> Vec<String> {
+        let index = self.logical_to_physical[&v]; // this should panic as this v is not provided by the user
+        self.props.temporal_vertex_keys(index)
+    }
+
     pub(crate) fn temporal_vertex_prop(
         &self,
         v: u64,
@@ -804,6 +809,10 @@ impl TemporalGraph {
         self.props.static_edge_keys(e)
     }
 
+    pub fn temporal_edge_prop_keys(&self, e: usize) -> Vec<String> {
+        self.props.temporal_edge_keys(e)
+    }
+
     pub fn temporal_edge_prop(
         &self,
         e: usize,
@@ -841,6 +850,19 @@ impl TemporalGraph {
             .map(|(t, p)| (*t, p))
             .collect_vec()
     }
+
+    pub(crate) fn temporal_edge_props_window(
+        &self,
+        e: usize,
+        w: Range<i64>,
+    ) -> HashMap<String, Vec<(i64, Prop)>> {
+        let keys = self.props.temporal_edge_keys(e);
+        keys.into_iter()
+            .map(|key| (key.to_string(), self.temporal_edge_prop_window(e, &key, w.clone())
+                .map(|(t,v)|(*t,v)).collect()))
+            .collect()
+    }
+
 }
 
 impl TemporalGraph {

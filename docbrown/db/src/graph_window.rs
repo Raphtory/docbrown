@@ -285,6 +285,10 @@ impl GraphViewInternalOps for WindowedGraph {
         self.graph.static_vertex_prop_keys(v)
     }
 
+    fn temporal_vertex_prop_keys(&self, v: VertexRef) -> Vec<String> {
+        self.graph.temporal_vertex_prop_keys(v)
+    }
+
     fn temporal_vertex_prop_vec(&self, v: VertexRef, name: String) -> Vec<(i64, Prop)> {
         self.graph
             .temporal_vertex_prop_vec_window(v, name, self.t_start, self.t_end)
@@ -325,6 +329,10 @@ impl GraphViewInternalOps for WindowedGraph {
 
     fn static_edge_prop_keys(&self, e: EdgeRef) -> Vec<String> {
         self.graph.static_edge_prop_keys(e)
+    }
+
+    fn temporal_edge_prop_keys(&self, e: EdgeRef) -> Vec<String> {
+        self.graph.temporal_edge_prop_keys(e)
     }
 
     fn temporal_edge_props_vec(&self, e: EdgeRef, name: String) -> Vec<(i64, Prop)> {

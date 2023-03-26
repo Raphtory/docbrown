@@ -136,6 +136,8 @@ pub trait GraphViewInternalOps {
 
     fn static_vertex_prop_keys(&self, v: VertexRef) -> Vec<String>;
 
+    fn temporal_vertex_prop_keys(&self, v: VertexRef) -> Vec<String>;
+
     fn temporal_vertex_prop_vec(&self, v: VertexRef, name: String) -> Vec<(i64, Prop)>;
 
     fn temporal_vertex_prop_vec_window(
@@ -159,6 +161,8 @@ pub trait GraphViewInternalOps {
 
     fn static_edge_prop_keys(&self, e: EdgeRef) -> Vec<String>;
 
+    fn temporal_edge_prop_keys(&self, e: EdgeRef) -> Vec<String>;
+
     fn temporal_edge_props_vec(&self, e: EdgeRef, name: String) -> Vec<(i64, Prop)>;
 
     fn temporal_edge_props_vec_window(
@@ -169,6 +173,7 @@ pub trait GraphViewInternalOps {
         t_end: i64,
     ) -> Vec<(i64, Prop)>;
 
+    //TODO needs to be used by the graph
     fn temporal_edge_props(&self, e: EdgeRef) -> HashMap<String, Vec<(i64, Prop)>>;
 
     fn temporal_edge_props_window(

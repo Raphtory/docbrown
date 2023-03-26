@@ -1,4 +1,4 @@
-use std::{collections::HashMap};
+use std::collections::HashMap;
 
 use crate::wrappers;
 use crate::{graph::Graph, wrappers::*};
@@ -58,13 +58,21 @@ impl WindowedGraph {
 impl WindowedGraph {
     //******  Metrics APIs ******//
 
-    pub fn earliest_time(&self) -> Option<i64> { self.graph_w.earliest_time() }
+    pub fn earliest_time(&self) -> Option<i64> {
+        self.graph_w.earliest_time()
+    }
 
-    pub fn latest_time(&self) -> Option<i64> { self.graph_w.latest_time() }
+    pub fn latest_time(&self) -> Option<i64> {
+        self.graph_w.latest_time()
+    }
 
-    pub fn num_edges(&self) -> usize {self.graph_w.num_edges()}
+    pub fn num_edges(&self) -> usize {
+        self.graph_w.num_edges()
+    }
 
-    pub fn num_vertices(&self) -> usize {self.graph_w.num_vertices()}
+    pub fn num_vertices(&self) -> usize {
+        self.graph_w.num_vertices()
+    }
 
     pub fn has_vertex(&self, id: &PyAny) -> PyResult<bool> {
         let v = Graph::extract_id(id)?;
@@ -82,7 +90,7 @@ impl WindowedGraph {
     pub fn vertex(slf: PyRef<'_, Self>, id: &PyAny) -> PyResult<Option<WindowedVertex>> {
         let v = Graph::extract_id(id)?;
         match slf.graph_w.vertex(v) {
-            None => {Ok(None)}
+            None => Ok(None),
             Some(v) => {
                 let g: Py<Self> = slf.into();
                 Ok(Some(WindowedVertex::new(g, v)))
@@ -93,15 +101,13 @@ impl WindowedGraph {
     pub fn __getitem__(slf: PyRef<'_, Self>, id: &PyAny) -> PyResult<Option<WindowedVertex>> {
         let v = Graph::extract_id(id)?;
         match slf.graph_w.vertex(v) {
-            None => {Ok(None)}
+            None => Ok(None),
             Some(v) => {
                 let g: Py<Self> = slf.into();
                 Ok(Some(WindowedVertex::new(g, v)))
             }
         }
     }
-
-
 
     pub fn vertex_ids(&self) -> VertexIdsIterator {
         VertexIdsIterator {
@@ -143,7 +149,6 @@ pub struct WindowedVertex {
 //     }
 // }
 
-
 impl WindowedVertex {
     fn from(&self, value: graph_window::WindowedVertex) -> WindowedVertex {
         WindowedVertex {
@@ -167,7 +172,6 @@ impl WindowedVertex {
 
 #[pymethods]
 impl WindowedVertex {
-
     pub fn __getitem__(&self, name: String) -> Vec<(i64, Prop)> {
         self.prop(name)
     }
@@ -393,26 +397,75 @@ pub struct WindowedEdge {
 
 impl From<graph_window::WindowedEdge> for WindowedEdge {
     fn from(value: graph_window::WindowedEdge) -> WindowedEdge {
-        WindowedEdge {
-            edge_w: value,
-        }
+        WindowedEdge { edge_w: value }
     }
 }
 
 #[pymethods]
 impl WindowedEdge {
 
-    pub fn __getitem__(&self, name: String) -> Vec<(i64, Prop)> {
-        self.prop(name)
+    pub fn has_property(&self,name:String,include_static:Option<bool>) -> bool {
+        match include_static {
+            None => {self.edge_w.has_property(name,true)}
+            Some(b) => {self.edge_w.has_property(name,b)}
+        }
     }
 
-    pub fn prop(&self, name: String) -> Vec<(i64, Prop)> {
-        self.edge_w
-            .prop(name)
-            .into_iter()
-            .map(|(t, p)| (t, p.into()))
-            .collect_vec()
+    pub fn property(&self,name:String,include_static:Option<bool>) -> Option<Prop> {
+        let res = match include_static {
+            None => {self.edge_w.property(name,true)}
+            Some(b) => {self.edge_w.property(name,b)}
+        };
+
+        match res{
+            None => {None}
+            Some(prop) => {Some(prop.into())}
+        }
     }
+
+    pub fn properties(&self,include_static:Option<bool>) -> HashMap<String,Prop> {
+        match include_static {
+            None => {self.edge_w.properties(true)}
+            Some(b) => {self.edge_w.properties(b)}
+        }.into_iter()
+         .map(|(k, v)| (k, v.into()))
+         .collect()
+    }
+
+    pub fn property_names(&self,include_static:Option<bool>) -> Vec<String> {
+        match include_static {
+            None => {self.edge_w.property_names(true)}
+            Some(b) => {self.edge_w.property_names(b)}
+        }
+
+    }
+
+    pub fn property_history(&self,name:String) -> Vec<(i64, Prop)> {
+        self.edge_w.property_history(name).into_iter()
+            .map(|(k, v)| (k, v.into()))
+            .collect()
+    }
+
+    pub fn property_histories(&self) -> HashMap<String, Vec<(i64, Prop)>> {
+        self.edge_w.property_histories().into_iter()
+            .map(|(k, v)| (k, v.into_iter().map(|(t,p)| (t,p.into())).collect()))
+            .collect()
+    }
+
+    pub fn has_static_property(&self,name:String)->bool {
+        self.edge_w.has_static_property(name)
+    }
+    pub fn static_property(&self,name:String)-> Option<Prop>{
+        match self.edge_w.static_property(name) {
+            None => {None}
+            Some(prop) => {Some(prop.into())}
+        }
+    }
+
+    pub fn __getitem__(&self, name: String) -> Option<Prop> {
+        self.property(name,Some(true))
+    }
+
 
     pub fn id(&self) -> usize {
         self.edge_w.id()
