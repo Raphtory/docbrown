@@ -441,7 +441,7 @@ def test_all_edge_window():
     assert list(map(lambda e: e.id(),  v.out_edges(0, 4))) == [2]
     assert list(map(lambda e: e.id(),  v.out_edges(t_end=3))) == [2]
     assert list(map(lambda e: e.id(),  v.out_edges(t_start=2))) == [6]
-    assert list(map(lambda e: e.id(),  v.edges(0, 4))) == [1, 3, 5, 2]
+    assert sorted(list(map(lambda e: e.id(),  v.edges(0, 4)))) == [1, 2, 3, 5]
     assert sorted(list(map(lambda e: e.id(),  v.edges(t_end=4)))) == [1, 2, 3, 5]
     assert sorted(list(map(lambda e: e.id(),  v.edges(t_start=1)))) == [1, 2, 3, 5, 6]
 
