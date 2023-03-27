@@ -39,8 +39,8 @@ impl EdgeLayer {
         dst_pid: usize,
         props: &Vec<(String, Prop)>,
     ) {
-        let src_edge_meta_id = self.link_outbound_edge(t, src, src_pid, dst_pid, false);
-        let dst_edge_meta_id = self.link_inbound_edge(t, dst, src_pid, dst_pid, false);
+        let src_edge_meta_id = self.link_outbound_edge(t, src_pid, dst_pid, false);
+        let dst_edge_meta_id = self.link_inbound_edge(t, src_pid, dst_pid, false);
 
         if src_edge_meta_id != dst_edge_meta_id {
             panic!(
@@ -61,7 +61,7 @@ impl EdgeLayer {
         props: &Vec<(String, Prop)>,
     ) {
         let src_edge_meta_id =
-            self.link_outbound_edge(t, src, src_pid, dst.try_into().unwrap(), true);
+            self.link_outbound_edge(t, src_pid, dst.try_into().unwrap(), true);
 
         self.edge_props.upsert_temporal_props(t, src_edge_meta_id, props);
         self.num_edges += 1;
@@ -76,7 +76,7 @@ impl EdgeLayer {
         props: &Vec<(String, Prop)>,
     ) {
         let dst_edge_meta_id =
-            self.link_inbound_edge(t, dst, src.try_into().unwrap(), dst_pid, true);
+            self.link_inbound_edge(t, src.try_into().unwrap(), dst_pid, true);
 
         self.edge_props.upsert_temporal_props(t, dst_edge_meta_id, props);
         self.num_edges += 1;
@@ -88,18 +88,17 @@ impl EdgeLayer {
     fn link_inbound_edge(
         &mut self,
         t: i64,
-        dst_gid: u64,
         src: usize, // may or may not be physical id depending on remote_edge flag
         dst_pid: usize,
         remote_edge: bool,
     ) -> usize {
         match &mut self.adj_lists[dst_pid] {
-            entry @ Adj::Solo(_) => {
+            entry @ Adj::Solo => {
                 let edge_id = self.num_edges;
 
                 let edge = AdjEdge::new(edge_id, !remote_edge);
 
-                *entry = Adj::new_into(dst_gid, src, t, edge);
+                *entry = Adj::new_into(src, t, edge);
 
                 edge_id
             }
@@ -121,18 +120,17 @@ impl EdgeLayer {
     fn link_outbound_edge(
         &mut self,
         t: i64,
-        src_gid: u64,
         src_pid: usize,
         dst: usize, // may or may not pe physical id depending on remote_edge flag
         remote_edge: bool,
     ) -> usize {
         match &mut self.adj_lists[src_pid] {
-            entry @ Adj::Solo(_) => {
+            entry @ Adj::Solo => {
                 let edge_id = self.num_edges;
 
                 let edge = AdjEdge::new(edge_id, !remote_edge);
 
-                *entry = Adj::new_out(src_gid, dst, t, edge);
+                *entry = Adj::new_out(dst, t, edge);
 
                 edge_id
             }
@@ -157,28 +155,28 @@ impl EdgeLayer {
     // TODO reuse function to return edge
     pub(crate) fn has_local_edge(&self, src_pid: usize, dst_pid: usize) -> bool {
         match &self.adj_lists[src_pid] {
-            Adj::Solo(_) => false,
+            Adj::Solo => false,
             Adj::List { out, .. } => out.find(dst_pid).is_some()
         }
     }
 
     pub(crate) fn has_local_edge_window(&self, src_pid: usize, dst_pid: usize, w: &Range<i64>) -> bool {
         match &self.adj_lists[src_pid] {
-            Adj::Solo(_) => false,
+            Adj::Solo => false,
             Adj::List { out, .. } => out.find_window(dst_pid, w).is_some()
         }
     }
 
     pub(crate) fn has_remote_edge(&self, src_pid: usize, dst: u64) -> bool {
         match &self.adj_lists[src_pid] {
-            Adj::Solo(_) => false,
+            Adj::Solo => false,
             Adj::List { remote_out, .. } => remote_out.find(dst as usize).is_some()
         }
     }
 
     pub(crate) fn has_remote_edge_window(&self, src_pid: usize, dst: u64, w: &Range<i64>) -> bool {
         match &self.adj_lists[src_pid] {
-            Adj::Solo(_) => false,
+            Adj::Solo => false,
             Adj::List { remote_out, .. } => remote_out.find_window(dst as usize, w).is_some()
         }
     }
@@ -186,7 +184,7 @@ impl EdgeLayer {
     // try to merge the next four functions together
     pub(crate) fn local_edge(&self, src: u64, dst: u64, src_pid: usize, dst_pid: usize) -> Option<EdgeRef> {
         match &self.adj_lists[src_pid] {
-            Adj::Solo(_) => None,
+            Adj::Solo => None,
             Adj::List { out, .. } => {
                 let e = out.find(dst_pid)?;
                 Some(EdgeRef {
@@ -204,7 +202,7 @@ impl EdgeLayer {
 
     pub(crate) fn local_edge_window(&self, src: u64, dst: u64, src_pid: usize, dst_pid: usize, w: &Range<i64>) -> Option<EdgeRef> {
         match &self.adj_lists[src_pid] {
-            Adj::Solo(_) => None,
+            Adj::Solo => None,
             Adj::List { out, .. } => {
                 let e = out.find_window(dst_pid, w)?;
                 Some(EdgeRef {
@@ -222,7 +220,7 @@ impl EdgeLayer {
 
     pub(crate) fn remote_edge(&self, src: u64, dst: u64, src_pid: usize) -> Option<EdgeRef> {
         match &self.adj_lists[src_pid] {
-            Adj::Solo(_) => None,
+            Adj::Solo => None,
             Adj::List { remote_out, .. } => {
                 let e = remote_out.find(dst as usize)?;
                 Some(EdgeRef {
@@ -240,7 +238,7 @@ impl EdgeLayer {
 
     pub(crate) fn remote_edge_window(&self, src: u64, dst: u64, src_pid: usize, w: &Range<i64>) -> Option<EdgeRef> {
         match &self.adj_lists[src_pid] {
-            Adj::Solo(_) => None,
+            Adj::Solo => None,
             Adj::List { remote_out, .. } => {
                 let e = remote_out.find_window(dst as usize, w)?;
                 Some(EdgeRef {
@@ -270,7 +268,6 @@ impl EdgeLayer {
                 into,
                 remote_out,
                 remote_into,
-                ..
             } => match d {
                 Direction::OUT => out.len() + remote_out.len(),
                 Direction::IN => into.len() + remote_into.len(),
@@ -298,7 +295,6 @@ impl EdgeLayer {
                 into,
                 remote_out,
                 remote_into,
-                ..
             } => match d {
                 Direction::OUT => out.len_window(w) + remote_out.len_window(w),
                 Direction::IN => into.len_window(w) + remote_into.len_window(w),
@@ -318,131 +314,9 @@ impl EdgeLayer {
     }
 }
 
-// MULTIPLE EDGE ACCESS:
+// MULTIPLE EDGE ACCES:
 impl EdgeLayer {
-    // FIXME: all the functions using global ID need to be changed to use the physical ID instead
-    pub(crate) fn vertex_edges(
-        &self,
-        v: u64,
-        v_pid: usize,
-        d: Direction,
-    ) -> Box<dyn Iterator<Item=EdgeRef> + Send + '_>
-        where
-            Self: Sized,
-    {
-        match d {
-            Direction::OUT => Box::new(self.edges_iter(v_pid, d).map(move |(dst, e)| EdgeRef {
-                edge_id: e.edge_id(),
-                src_g_id: v,
-                dst_g_id: self.v_g_id(*dst, e),
-                src_id: v_pid,
-                dst_id: *dst,
-                time: None,
-                is_remote: !e.is_local(),
-            })),
-            Direction::IN => Box::new(self.edges_iter(v_pid, d).map(move |(dst, e)| EdgeRef {
-                edge_id: e.edge_id(),
-                src_g_id: self.v_g_id(*dst, e),
-                dst_g_id: v,
-                src_id: *dst,
-                dst_id: v_pid,
-                time: None,
-                is_remote: !e.is_local(),
-            })),
-            Direction::BOTH => Box::new(itertools::chain!(
-                self.vertex_edges(v, v_pid, Direction::IN),
-                self.vertex_edges(v, v_pid, Direction::OUT)
-            )),
-        }
-    }
-
-    pub(crate) fn vertex_edges_window(
-        &self,
-        v: u64,
-        v_pid: usize,
-        w: &Range<i64>,
-        d: Direction,
-    ) -> Box<dyn Iterator<Item=EdgeRef> + Send + '_>
-        where
-            Self: Sized,
-    {
-        match d {
-            Direction::OUT => {
-                Box::new(
-                    self.edges_iter_window(v_pid, w, d)
-                        .map(move |(dst, e)| EdgeRef {
-                            edge_id: e.edge_id(),
-                            src_g_id: v,
-                            dst_g_id: self.v_g_id(dst, e),
-                            src_id: v_pid,
-                            dst_id: dst,
-                            time: None,
-                            is_remote: !e.is_local(),
-                        }),
-                )
-            }
-            Direction::IN => {
-                Box::new(
-                    self.edges_iter_window(v_pid, w, d)
-                        .map(move |(dst, e)| EdgeRef {
-                            edge_id: e.edge_id(),
-                            src_g_id: self.v_g_id(dst, e),
-                            dst_g_id: v,
-                            src_id: dst,
-                            dst_id: v_pid,
-                            time: None,
-                            is_remote: !e.is_local(),
-                        }),
-                )
-            }
-            Direction::BOTH => Box::new(itertools::chain!(
-                self.vertex_edges_window(v, v_pid, w, Direction::IN),
-                self.vertex_edges_window(v, v_pid, w, Direction::OUT)
-            )),
-        }
-    }
-
-    pub(crate) fn vertex_edges_window_t(
-        &self,
-        v: u64,
-        v_pid: usize,
-        w: &Range<i64>,
-        d: Direction,
-    ) -> Box<dyn Iterator<Item=EdgeRef> + Send + '_> {
-        match d {
-            Direction::OUT => Box::new(self.edges_iter_window_t(v_pid, w, d).map(
-                move |(dst, t, e)| EdgeRef {
-                    edge_id: e.edge_id(),
-                    src_g_id: v,
-                    dst_g_id: self.v_g_id(dst, e),
-                    src_id: v_pid,
-                    dst_id: dst,
-                    time: Some(t),
-                    is_remote: !e.is_local(),
-                },
-            )),
-            Direction::IN => Box::new(self.edges_iter_window_t(v_pid, w, d).map(
-                move |(dst, t, e)| EdgeRef {
-                    edge_id: e.edge_id(),
-                    src_g_id: self.v_g_id(dst, e),
-                    dst_g_id: v,
-                    src_id: dst,
-                    dst_id: v_pid,
-                    time: Some(t),
-                    is_remote: !e.is_local(),
-                },
-            )),
-            Direction::BOTH => Box::new(itertools::chain!(
-                self.vertex_edges_window_t(v, v_pid, w, Direction::IN),
-                self.vertex_edges_window_t(v, v_pid, w, Direction::OUT)
-            )),
-        }
-    }
-}
-
-// MULTIPLE EDGE ACCES HELPERS:
-impl EdgeLayer {
-    fn edges_iter( // TODO: change back to private if appropriate
+    pub(crate) fn edges_iter( // TODO: change back to private if appropriate
         &self,
         vertex_pid: usize,
         d: Direction,
@@ -471,7 +345,7 @@ impl EdgeLayer {
         }
     }
 
-    fn edges_iter_window( // TODO: change back to private if appropriate
+    pub(crate) fn edges_iter_window( // TODO: change back to private if appropriate
         &self,
         vertex_pid: usize,
         r: &Range<i64>,
@@ -507,7 +381,7 @@ impl EdgeLayer {
         }
     }
 
-    fn edges_iter_window_t( // TODO: change back to private if appropriate
+    pub(crate) fn edges_iter_window_t( // TODO: change back to private if appropriate
         &self,
         vertex_pid: usize,
         window: &Range<i64>,
@@ -540,14 +414,6 @@ impl EdgeLayer {
                 }
             }
             _ => Box::new(std::iter::empty()),
-        }
-    }
-
-    fn v_g_id(&self, vertex_pid: usize, e: AdjEdge) -> u64 {
-        if e.is_local() {
-            *self.adj_lists[vertex_pid].logical()
-        } else {
-            vertex_pid.try_into().unwrap()
         }
     }
 }

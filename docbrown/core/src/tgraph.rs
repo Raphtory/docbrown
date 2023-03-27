@@ -62,6 +62,9 @@ pub struct TemporalGraph {
     // Maps global (logical) id to the local (physical) id which is an index to the adjacency list vector
     pub(crate) logical_to_physical: FxHashMap<u64, usize>,
 
+    // global ids in insertion order for fast iterations, maps physical ids to logical ids
+    pub(crate) logical_ids: Vec<u64>,
+
     // Time index pointing at the index against adjacency lists.
     index: BTreeMap<i64, BitSet>,
 
@@ -83,6 +86,7 @@ impl Default for TemporalGraph {
     fn default() -> Self {
         let graph = Self {
             logical_to_physical: Default::default(),
+            logical_ids: Default::default(),
             index: Default::default(),
             vertex_props: Default::default(),
             default_layer: Default::default(),
@@ -167,9 +171,11 @@ impl TemporalGraph {
         let index = match self.logical_to_physical.get(&v.id()) {
             None => {
                 let physical_id: usize = self.default_layer.adj_lists.len();
-                self.default_layer.adj_lists.push(Adj::Solo(v.id()));
+                // TODO: we shouldnt need to do the following, adj_lists should be a lazy vec that returns Adj::Solo when out of bounds
+                self.default_layer.adj_lists.push(Adj::Solo);
 
                 self.logical_to_physical.insert(v.id(), physical_id);
+                self.logical_ids.push(v.id());
 
                 self.index
                     .entry(t)
@@ -266,40 +272,28 @@ impl TemporalGraph {
 
     pub(crate) fn vertex(&self, v: u64) -> Option<VertexRef> {
         let pid = self.logical_to_physical.get(&v)?;
-        Some(match self.default_layer.adj_lists[*pid] {
-            Adj::Solo(lid) => VertexRef {
-                g_id: lid,
-                pid: Some(*pid),
-            },
-            Adj::List { logical, .. } => VertexRef {
-                g_id: logical,
-                pid: Some(*pid),
-            },
+        Some(VertexRef {
+            g_id: v,
+            pid: Some(*pid),
         })
     }
 
     pub(crate) fn vertex_window(&self, v: u64, w: &Range<i64>) -> Option<VertexRef> {
         let pid = self.logical_to_physical.get(&v)?;
-        let w = w.clone();
         let mut vs = self.index.range(w.clone()).flat_map(|(_, vs)| vs.iter());
-
         match vs.contains(&pid) {
-            true => Some(match self.default_layer.adj_lists[*pid] {
-                Adj::Solo(lid) => VertexRef {
-                    g_id: lid,
+            true => {
+                Some(VertexRef {
+                    g_id: v,
                     pid: Some(*pid),
-                },
-                Adj::List { logical, .. } => VertexRef {
-                    g_id: logical,
-                    pid: Some(*pid),
-                },
-            }),
+                })
+            }
             false => None,
         }
     }
 
     pub(crate) fn vertex_ids(&self) -> Box<dyn Iterator<Item = u64> + Send + '_> {
-        Box::new(self.default_layer.adj_lists.iter().map(|adj| *adj.logical()))
+        Box::new(self.logical_ids.iter().cloned())
     }
 
     pub(crate) fn vertex_ids_window(
@@ -312,16 +306,13 @@ impl TemporalGraph {
                 .map(|(_, vs)| vs.iter())
                 .kmerge()
                 .dedup()
-                .map(move |pid| match self.default_layer.adj_lists[pid] {
-                    Adj::Solo(lid) => lid,
-                    Adj::List { logical, .. } => logical,
-                }),
+                .map(move |pid| self.logical_ids[pid])
         )
     }
 
     pub fn vertices(&self) -> Box<dyn Iterator<Item = VertexRef> + Send + '_> {
-        Box::new(self.default_layer.adj_lists.iter().enumerate().map(|(pid, v)| VertexRef {
-            g_id: *v.logical(),
+        Box::new(self.logical_ids.iter().enumerate().map(|(pid, v)| VertexRef {
+            g_id: *v,
             pid: Some(pid),
         }))
     }
@@ -336,18 +327,10 @@ impl TemporalGraph {
             .map(|(_, vs)| vs.iter())
             .kmerge()
             .dedup();
-
-        let vs = unique_vids.map(move |pid| match self.default_layer.adj_lists[pid] {
-            Adj::Solo(lid) => VertexRef {
-                g_id: lid,
-                pid: Some(pid),
-            },
-            Adj::List { logical, .. } => VertexRef {
-                g_id: logical,
-                pid: Some(pid),
-            },
+        let vs = unique_vids.map(move |pid| VertexRef {
+            g_id: self.logical_ids[pid],
+            pid: Some(pid),
         });
-
         Box::new(vs)
     }
 
@@ -381,12 +364,35 @@ impl TemporalGraph {
         &self,
         v: u64,
         d: Direction,
-    ) -> Box<dyn Iterator<Item = EdgeRef> + Send + '_>
-    where
-        Self: Sized,
+    ) -> Box<dyn Iterator<Item=EdgeRef> + Send + '_>
+        where
+            Self: Sized,
     {
         let v_pid = self.logical_to_physical[&v];
-        self.default_layer.vertex_edges(v, v_pid, d)
+        match d {
+            Direction::OUT => Box::new(self.default_layer.edges_iter(v_pid, d).map(move |(dst, e)| EdgeRef {
+                edge_id: e.edge_id(),
+                src_g_id: v,
+                dst_g_id: self.v_g_id(*dst, e),
+                src_id: v_pid,
+                dst_id: *dst,
+                time: None,
+                is_remote: !e.is_local(),
+            })),
+            Direction::IN => Box::new(self.default_layer.edges_iter(v_pid, d).map(move |(dst, e)| EdgeRef {
+                edge_id: e.edge_id(),
+                src_g_id: self.v_g_id(*dst, e),
+                dst_g_id: v,
+                src_id: *dst,
+                dst_id: v_pid,
+                time: None,
+                is_remote: !e.is_local(),
+            })),
+            Direction::BOTH => Box::new(itertools::chain!(
+                self.vertex_edges(v, Direction::IN),
+                self.vertex_edges(v, Direction::OUT)
+            )),
+        }
     }
 
     pub(crate) fn vertex_edges_window(
@@ -394,12 +400,45 @@ impl TemporalGraph {
         v: u64,
         w: &Range<i64>,
         d: Direction,
-    ) -> Box<dyn Iterator<Item = EdgeRef> + Send + '_>
-    where
-        Self: Sized,
+    ) -> Box<dyn Iterator<Item=EdgeRef> + Send + '_>
+        where
+            Self: Sized,
     {
         let v_pid = self.logical_to_physical[&v];
-        self.default_layer.vertex_edges_window(v, v_pid, w, d)
+        match d {
+            Direction::OUT => {
+                Box::new(
+                    self.default_layer.edges_iter_window(v_pid, w, d)
+                        .map(move |(dst, e)| EdgeRef {
+                            edge_id: e.edge_id(),
+                            src_g_id: v,
+                            dst_g_id: self.v_g_id(dst, e),
+                            src_id: v_pid,
+                            dst_id: dst,
+                            time: None,
+                            is_remote: !e.is_local(),
+                        }),
+                )
+            }
+            Direction::IN => {
+                Box::new(
+                    self.default_layer.edges_iter_window(v_pid, w, d)
+                        .map(move |(dst, e)| EdgeRef {
+                            edge_id: e.edge_id(),
+                            src_g_id: self.v_g_id(dst, e),
+                            dst_g_id: v,
+                            src_id: dst,
+                            dst_id: v_pid,
+                            time: None,
+                            is_remote: !e.is_local(),
+                        }),
+                )
+            }
+            Direction::BOTH => Box::new(itertools::chain!(
+                self.vertex_edges_window(v, w, Direction::IN),
+                self.vertex_edges_window(v, w, Direction::OUT)
+            )),
+        }
     }
 
     pub(crate) fn vertex_edges_window_t(
@@ -407,9 +446,36 @@ impl TemporalGraph {
         v: u64,
         w: &Range<i64>,
         d: Direction,
-    ) -> Box<dyn Iterator<Item = EdgeRef> + Send + '_> {
+    ) -> Box<dyn Iterator<Item=EdgeRef> + Send + '_> {
         let v_pid = self.logical_to_physical[&v];
-        self.default_layer.vertex_edges_window_t(v, v_pid, w, d)
+        match d {
+            Direction::OUT => Box::new(self.default_layer.edges_iter_window_t(v_pid, w, d).map(
+                move |(dst, t, e)| EdgeRef {
+                    edge_id: e.edge_id(),
+                    src_g_id: v,
+                    dst_g_id: self.v_g_id(dst, e),
+                    src_id: v_pid,
+                    dst_id: dst,
+                    time: Some(t),
+                    is_remote: !e.is_local(),
+                },
+            )),
+            Direction::IN => Box::new(self.default_layer.edges_iter_window_t(v_pid, w, d).map(
+                move |(dst, t, e)| EdgeRef {
+                    edge_id: e.edge_id(),
+                    src_g_id: self.v_g_id(dst, e),
+                    dst_g_id: v,
+                    src_id: dst,
+                    dst_id: v_pid,
+                    time: Some(t),
+                    is_remote: !e.is_local(),
+                },
+            )),
+            Direction::BOTH => Box::new(itertools::chain!(
+                self.vertex_edges_window_t(v, w, Direction::IN),
+                self.vertex_edges_window_t(v, w, Direction::OUT)
+            )),
+        }
     }
 
     pub(crate) fn neighbours(
@@ -629,6 +695,16 @@ impl TemporalGraph {
             .iter_window(w)
             .map(|(t, p)| (*t, p))
             .collect_vec()
+    }
+}
+
+impl TemporalGraph {
+    fn v_g_id(&self, vertex_pid: usize, e: AdjEdge) -> u64 {
+        if e.is_local() {
+            self.logical_ids[vertex_pid]
+        } else {
+            vertex_pid as u64
+        }
     }
 }
 
