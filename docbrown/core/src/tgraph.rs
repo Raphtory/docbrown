@@ -1483,7 +1483,7 @@ mod graph_test {
         // the outbound neighbours of 9 at time 0..2 is the empty set
         let actual: Vec<u64> = g
             .vertex_edges_window(9, &(0..2), Direction::OUT)
-            .map(|e| e.dst_g_id)
+            .map(|e| e.1.dst_g_id)
             .collect();
         let expected: Vec<u64> = vec![];
         assert_eq!(actual, expected);

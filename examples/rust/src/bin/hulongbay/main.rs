@@ -13,7 +13,7 @@ use docbrown_core::tgraph::TemporalGraph;
 use docbrown_core::{state, utils};
 use docbrown_core::{Direction, Prop};
 use docbrown_db::csv_loader::csv::CsvLoader;
-use docbrown_db::program::algo::connected_components;
+use docbrown_db::program::algo::{connected_components, triangle_counting_fast};
 use docbrown_db::program::{
     GlobalEvalState, Program, TriangleCountS1, TriangleCountS2, TriangleCountSlowS2,
 };
@@ -23,6 +23,7 @@ use serde::Deserialize;
 use std::fs::File;
 use std::io::{prelude::*, BufReader, LineWriter};
 use std::time::Instant;
+use docbrown_db::algorithms::global_triangle_count::global_triangle_count;
 
 use docbrown_db::graph::Graph;
 use docbrown_db::view_api::internal::GraphViewInternalOps;
@@ -119,29 +120,19 @@ fn try_main() -> Result<(), Box<dyn Error>> {
 
     let graph = loader(data_dir)?;
 
-    // let mut program_s1 = TriangleCountS1 {};
-    // let mut program_s2 = TriangleCountS2 {};
-    // let agg = state::def::sum::<usize>(1);
-
-    // let now = Instant::now();
-
-    let min_time = graph.earliest_time().ok_or(GraphEmptyError)? + 100;
-    let max_time = graph.latest_time().ok_or(GraphEmptyError)? - 100;
+    let min_time = graph.earliest_time().ok_or(GraphEmptyError)?;
+    let max_time = graph.latest_time().ok_or(GraphEmptyError)?;
     let mid_time = (min_time + max_time) / 2;
-    // let mut gs = GlobalEvalState::new(graph.clone(), mid_time..max_time, false);
 
-    // program_s1.run_step(&graph, &mut gs);
+    let now = Instant::now();
+    let actual_tri_count = triangle_counting_fast(&graph, mid_time..max_time);
 
-    // program_s2.run_step(&graph, &mut gs);
+    println!("Actual triangle count: {:?}", actual_tri_count);
 
-    // let actual_tri_count = gs.read_global_state(&agg);
-
-    // println!("Actual triangle count: {:?}", actual_tri_count);
-
-    // println!(
-    //     "Counting triangles took {} seconds",
-    //     now.elapsed().as_secs()
-    // );
+    println!(
+        "Counting triangles took {} seconds",
+        now.elapsed().as_secs()
+    );
 
     let now = Instant::now();
     let components = connected_components(
