@@ -364,11 +364,12 @@ impl TemporalGraph {
         &self,
         v: u64,
         d: Direction,
-    ) -> Box<dyn Iterator<Item=EdgeRef> + Send + '_>
+    ) -> Box<dyn Iterator<Item = EdgeRef> + Send + '_>
         where
             Self: Sized,
     {
         let v_pid = self.logical_to_physical[&v];
+
         match d {
             Direction::OUT => Box::new(self.default_layer.edges_iter(v_pid, d).map(move |(dst, e)| EdgeRef {
                 edge_id: e.edge_id(),
@@ -400,11 +401,12 @@ impl TemporalGraph {
         v: u64,
         w: &Range<i64>,
         d: Direction,
-    ) -> Box<dyn Iterator<Item=EdgeRef> + Send + '_>
+    ) -> Box<dyn Iterator<Item = EdgeRef> + Send + '_>
         where
             Self: Sized,
     {
         let v_pid = self.logical_to_physical[&v];
+
         match d {
             Direction::OUT => {
                 Box::new(
@@ -446,8 +448,9 @@ impl TemporalGraph {
         v: u64,
         w: &Range<i64>,
         d: Direction,
-    ) -> Box<dyn Iterator<Item=EdgeRef> + Send + '_> {
+    ) -> Box<dyn Iterator<Item = EdgeRef> + Send + '_> {
         let v_pid = self.logical_to_physical[&v];
+
         match d {
             Direction::OUT => Box::new(self.default_layer.edges_iter_window_t(v_pid, w, d).map(
                 move |(dst, t, e)| EdgeRef {
