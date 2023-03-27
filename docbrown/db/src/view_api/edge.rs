@@ -26,11 +26,21 @@ pub trait EdgeViewOps: Sized + Send + Sync {
 pub trait EdgeListOps:
     IntoIterator<Item = Self::Edge, IntoIter = Self::IterType> + Sized + Send
 {
+    /// The type of vertex on the edge list
     type Vertex: VertexViewOps;
+
+    /// the type of list of vertices
     type VList: VertexListOps;
+
+    /// the type of edge
     type Edge: EdgeViewOps<Vertex = Self::Vertex>;
+
+    /// the type of iterator
     type IterType: Iterator<Item = Self::Edge> + Send;
 
+    /// gets the source vertices of the edges in the list
     fn src(self) -> Self::VList;
+
+    /// gets the destination vertices of the edges in the list
     fn dst(self) -> Self::VList;
 }
