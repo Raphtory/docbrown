@@ -1,9 +1,5 @@
 use crate::view_api::edge::EdgeViewOps;
 use crate::view_api::vertex::VertexViewOps;
-use docbrown_core::eval::LocalVRef;
-use docbrown_core::tgraph::{EdgeRef, VertexRef};
-use docbrown_core::{Direction, Prop};
-use std::collections::HashMap;
 use docbrown_core::vertex::InputVertex;
 
 pub trait GraphViewOps: Send + Sync {
@@ -26,4 +22,5 @@ pub trait GraphViewOps: Send + Sync {
     fn vertices(&self) -> Self::Vertices;
     fn edge<T: InputVertex>(&self, src: T, dst: T) -> Option<Self::Edge>;
     fn edges(&self) -> Self::Edges;
+    fn vertices_shard(&self, shard: usize) -> Self::Vertices;
 }

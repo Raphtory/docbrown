@@ -1,5 +1,6 @@
 #[cfg(test)]
 #[macro_use(quickcheck)]
+
 extern crate quickcheck_macros;
 
 pub mod algorithms;
@@ -11,5 +12,6 @@ pub mod graph_window;
 pub mod graphgen;
 pub mod perspective;
 pub mod polars_loader;
+pub mod program;
 pub mod vertex;
 pub mod view_api;

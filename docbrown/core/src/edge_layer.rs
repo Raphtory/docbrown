@@ -381,6 +381,75 @@ impl EdgeLayer {
         }
     }
 
+    pub(crate) fn edges_iter_location(
+        &self,
+        vid: usize,
+        d: Direction,
+        remote: bool,
+    ) -> Box<dyn Iterator<Item = (&usize, AdjEdge)> + Send + '_> {
+        match &self.adj_lists[vid] {
+            Adj::List {
+                out,
+                into,
+                remote_out,
+                remote_into,
+                ..
+            } => match d {
+                Direction::OUT => {
+                    if remote {
+                        remote_out.iter()
+                    } else {
+                        out.iter()
+                    }
+                }
+                Direction::IN => {
+                    if remote {
+                        remote_into.iter()
+                    } else {
+                        into.iter()
+                    }
+                }
+                _ => panic!("edges_iter_window_remote does not support Direction BOTH"),
+            },
+            _ => Box::new(std::iter::empty()),
+        }
+    }
+
+    pub(crate) fn edges_iter_window_location(
+        &self,
+        vid: usize,
+        r: &Range<i64>,
+        d: Direction,
+        remote: bool,
+    ) -> Box<dyn Iterator<Item = (usize, AdjEdge)> + Send + '_> {
+        match &self.adj_lists[vid] {
+            Adj::List {
+                out,
+                into,
+                remote_out,
+                remote_into,
+                ..
+            } => match d {
+                Direction::OUT => {
+                    if remote {
+                        remote_out.iter_window(r)
+                    } else {
+                        out.iter_window(r)
+                    }
+                }
+                Direction::IN => {
+                    if remote {
+                        remote_into.iter_window(r)
+                    } else {
+                        into.iter_window(r)
+                    }
+                }
+                _ => panic!("edges_iter_window_remote does not support Direction BOTH"),
+            },
+            _ => Box::new(std::iter::empty()),
+        }
+    }
+
     pub(crate) fn edges_iter_window_t( // TODO: change back to private if appropriate
         &self,
         vertex_pid: usize,

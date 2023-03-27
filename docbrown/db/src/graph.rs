@@ -3,9 +3,8 @@ use crate::perspective::{Perspective, PerspectiveIterator, PerspectiveSet};
 use std::{
     collections::HashMap,
     iter,
-    ops::Range,
     path::{Path, PathBuf},
-    sync::{mpsc, Arc},
+    sync::{Arc},
 };
 
 use docbrown_core::{
@@ -20,14 +19,12 @@ use crate::edge::EdgeView;
 use crate::vertex::VertexView;
 use crate::view_api::internal::GraphViewInternalOps;
 use crate::view_api::*;
-use itertools::Itertools;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
-use tempdir::TempDir;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Graph {
-    nr_shards: usize,
+    pub(crate) nr_shards: usize,
     pub(crate) shards: Vec<TGraphShard>,
 }
 
@@ -108,12 +105,12 @@ impl GraphViewInternalOps for Graph {
         self.get_shard_from_id(v).vertex_window(v, t_start..t_end)
     }
 
-    fn vertex_ids(&self) -> Box<dyn Iterator<Item = u64> + Send> {
+    fn vertex_ids(&self) -> Box<dyn Iterator<Item=u64> + Send> {
         let shards = self.shards.clone();
         Box::new(shards.into_iter().flat_map(|s| s.vertex_ids()))
     }
 
-    fn vertex_ids_window(&self, t_start: i64, t_end: i64) -> Box<dyn Iterator<Item = u64> + Send> {
+    fn vertex_ids_window(&self, t_start: i64, t_end: i64) -> Box<dyn Iterator<Item=u64> + Send> {
         let shards = self.shards.clone();
         Box::new(
             shards
@@ -122,7 +119,7 @@ impl GraphViewInternalOps for Graph {
         )
     }
 
-    fn vertex_refs(&self) -> Box<dyn Iterator<Item = VertexRef> + Send> {
+    fn vertex_refs(&self) -> Box<dyn Iterator<Item=VertexRef> + Send> {
         let shards = self.shards.clone();
         Box::new(shards.into_iter().flat_map(|s| s.vertices()))
     }
@@ -131,7 +128,7 @@ impl GraphViewInternalOps for Graph {
         &self,
         t_start: i64,
         t_end: i64,
-    ) -> Box<dyn Iterator<Item = VertexRef> + Send> {
+    ) -> Box<dyn Iterator<Item=VertexRef> + Send> {
         let shards = self.shards.clone();
         Box::new(
             shards
@@ -140,10 +137,22 @@ impl GraphViewInternalOps for Graph {
         )
     }
 
-    fn vertices_par<O, F>(&self, f: F) -> Box<dyn Iterator<Item = O>>
-    where
-        O: Send + 'static,
-        F: Fn(VertexRef) -> O + Send + Sync + Copy,
+    fn vertex_refs_window_shard(
+        &self,
+        shard: usize,
+        t_start: i64,
+        t_end: i64,
+    ) -> Box<dyn Iterator<Item=VertexRef> + Send> {
+        let shard = self.shards[shard].clone();
+        Box::new(
+            shard.vertices_window(t_start..t_end)
+        )
+    }
+
+    fn vertices_par<O, F>(&self, f: F) -> Box<dyn Iterator<Item=O>>
+        where
+            O: Send + 'static,
+            F: Fn(VertexRef) -> O + Send + Sync + Copy,
     {
         let (tx, rx) = flume::unbounded();
 
@@ -159,10 +168,10 @@ impl GraphViewInternalOps for Graph {
     }
 
     fn fold_par<S, F, F2>(&self, f: F, agg: F2) -> Option<S>
-    where
-        S: Send + 'static,
-        F: Fn(VertexRef) -> S + Send + Sync + Copy,
-        F2: Fn(S, S) -> S + Sync + Send + Copy,
+        where
+            S: Send + 'static,
+            F: Fn(VertexRef) -> S + Send + Sync + Copy,
+            F2: Fn(S, S) -> S + Sync + Send + Copy,
     {
         self.shards
             .par_iter()
@@ -177,10 +186,10 @@ impl GraphViewInternalOps for Graph {
         t_start: i64,
         t_end: i64,
         f: F,
-    ) -> Box<dyn Iterator<Item = O>>
-    where
-        O: Send + 'static,
-        F: Fn(VertexRef) -> O + Send + Sync + Copy,
+    ) -> Box<dyn Iterator<Item=O>>
+        where
+            O: Send + 'static,
+            F: Fn(VertexRef) -> O + Send + Sync + Copy,
     {
         let (tx, rx) = flume::unbounded();
 
@@ -196,10 +205,10 @@ impl GraphViewInternalOps for Graph {
     }
 
     fn fold_window_par<S, F, F2>(&self, t_start: i64, t_end: i64, f: F, agg: F2) -> Option<S>
-    where
-        S: Send + 'static,
-        F: Fn(VertexRef) -> S + Send + Sync + Copy,
-        F2: Fn(S, S) -> S + Sync + Send + Copy,
+        where
+            S: Send + 'static,
+            F: Fn(VertexRef) -> S + Send + Sync + Copy,
+            F2: Fn(S, S) -> S + Sync + Send + Copy,
     {
         self.shards
             .par_iter()
@@ -238,7 +247,7 @@ impl GraphViewInternalOps for Graph {
             .edge_window(src.g_id, dst.g_id, t_start..t_end)
     }
 
-    fn edge_refs(&self) -> Box<dyn Iterator<Item = EdgeRef> + Send> {
+    fn edge_refs(&self) -> Box<dyn Iterator<Item=EdgeRef> + Send> {
         //FIXME: needs low-level primitive
         let g = self.clone();
         Box::new(
@@ -251,7 +260,7 @@ impl GraphViewInternalOps for Graph {
         &self,
         t_start: i64,
         t_end: i64,
-    ) -> Box<dyn Iterator<Item = EdgeRef> + Send> {
+    ) -> Box<dyn Iterator<Item=EdgeRef> + Send> {
         //FIXME: needs low-level primitive
         let g = self.clone();
         Box::new(
@@ -260,7 +269,7 @@ impl GraphViewInternalOps for Graph {
         )
     }
 
-    fn vertex_edges(&self, v: VertexRef, d: Direction) -> Box<dyn Iterator<Item = EdgeRef> + Send> {
+    fn vertex_edges(&self, v: VertexRef, d: Direction) -> Box<dyn Iterator<Item=EdgeRef> + Send> {
         Box::new(self.get_shard_from_v(v).vertex_edges(v.g_id, d))
     }
 
@@ -270,7 +279,7 @@ impl GraphViewInternalOps for Graph {
         t_start: i64,
         t_end: i64,
         d: Direction,
-    ) -> Box<dyn Iterator<Item = EdgeRef> + Send> {
+    ) -> Box<dyn Iterator<Item=EdgeRef> + Send> {
         Box::new(
             self.get_shard_from_v(v)
                 .vertex_edges_window(v.g_id, t_start..t_end, d),
@@ -283,14 +292,14 @@ impl GraphViewInternalOps for Graph {
         t_start: i64,
         t_end: i64,
         d: Direction,
-    ) -> Box<dyn Iterator<Item = EdgeRef> + Send> {
+    ) -> Box<dyn Iterator<Item=EdgeRef> + Send> {
         Box::new(
             self.get_shard_from_v(v)
                 .vertex_edges_window_t(v.g_id, t_start..t_end, d),
         )
     }
 
-    fn neighbours(&self, v: VertexRef, d: Direction) -> Box<dyn Iterator<Item = VertexRef> + Send> {
+    fn neighbours(&self, v: VertexRef, d: Direction) -> Box<dyn Iterator<Item=VertexRef> + Send> {
         Box::new(self.get_shard_from_v(v).neighbours(v.g_id, d))
     }
 
@@ -300,14 +309,14 @@ impl GraphViewInternalOps for Graph {
         t_start: i64,
         t_end: i64,
         d: Direction,
-    ) -> Box<dyn Iterator<Item = VertexRef> + Send> {
+    ) -> Box<dyn Iterator<Item=VertexRef> + Send> {
         Box::new(
             self.get_shard_from_v(v)
                 .neighbours_window(v.g_id, t_start..t_end, d),
         )
     }
 
-    fn neighbours_ids(&self, v: VertexRef, d: Direction) -> Box<dyn Iterator<Item = u64> + Send> {
+    fn neighbours_ids(&self, v: VertexRef, d: Direction) -> Box<dyn Iterator<Item=u64> + Send> {
         Box::new(self.get_shard_from_v(v).neighbours_ids(v.g_id, d))
     }
 
@@ -317,7 +326,7 @@ impl GraphViewInternalOps for Graph {
         t_start: i64,
         t_end: i64,
         d: Direction,
-    ) -> Box<dyn Iterator<Item = u64> + Send> {
+    ) -> Box<dyn Iterator<Item=u64> + Send> {
         Box::new(
             self.get_shard_from_v(v)
                 .neighbours_ids_window(v.g_id, t_start..t_end, d),
@@ -403,9 +412,9 @@ impl GraphViewInternalOps for Graph {
 impl GraphViewOps for Graph {
     type Vertex = VertexView<Self>;
     type VertexIter = Self::Vertices;
-    type Vertices = Box<dyn Iterator<Item = Self::Vertex> + Send>;
+    type Vertices = Box<dyn Iterator<Item=Self::Vertex> + Send>;
     type Edge = EdgeView<Self>;
-    type Edges = Box<dyn Iterator<Item = Self::Edge> + Send>;
+    type Edges = Box<dyn Iterator<Item=Self::Edge> + Send>;
 
     fn num_vertices(&self) -> usize {
         self.vertices_len()
@@ -445,6 +454,14 @@ impl GraphViewOps for Graph {
         )
     }
 
+    fn vertices_shard(&self, shard: usize) -> Self::Vertices {
+        let g = Arc::new(self.clone());
+        Box::new(
+            g.vertices_shard(shard)
+                .map(move |v| Self::Vertex::new(g.clone(), v.as_ref())),
+        )
+    }
+
     fn edge<T: InputVertex>(&self, src: T, dst: T) -> Option<Self::Edge> {
         self.edge_ref(
             VertexRef {
@@ -456,7 +473,7 @@ impl GraphViewOps for Graph {
                 pid: None,
             },
         )
-        .map(|e| Self::Edge::new(Arc::new(self.clone()), e))
+            .map(|e| Self::Edge::new(Arc::new(self.clone()), e))
     }
 
     fn edges(&self) -> Self::Edges {
@@ -496,7 +513,7 @@ impl Graph {
         self.window(i64::MIN, end.saturating_add(1))
     }
 
-    pub fn through_perspectives(&self, mut perspectives: PerspectiveSet) -> GraphWindowSet {
+    pub fn through_perspectives(&self, perspectives: PerspectiveSet) -> GraphWindowSet {
         let iter = match (self.earliest_time(), self.latest_time()) {
             (Some(start), Some(end)) => perspectives.build_iter(start..end),
             _ => PerspectiveIterator::empty(),
@@ -506,7 +523,7 @@ impl Graph {
 
     pub fn through_iter(
         &self,
-        perspectives: Box<dyn Iterator<Item = Perspective> + Send>,
+        perspectives: Box<dyn Iterator<Item=Perspective> + Send>,
     ) -> GraphWindowSet {
         let iter = match (self.earliest_time(), self.latest_time()) {
             (Some(start), Some(end)) => perspectives,
@@ -518,7 +535,8 @@ impl Graph {
     pub fn load_from_file<P: AsRef<Path>>(path: P) -> Result<Self, Box<bincode::ErrorKind>> {
         // use BufReader for better performance
 
-        println!("loading from {:?}", path.as_ref());
+        //TODO turn to logging?
+        //println!("loading from {:?}", path.as_ref());
         let mut p = PathBuf::from(path.as_ref());
         p.push("graphdb_nr_shards");
 
@@ -556,7 +574,8 @@ impl Graph {
         for i in 0..self.nr_shards {
             let mut p = PathBuf::from(path.as_ref());
             p.push(format!("shard_{}", i));
-            println!("saving shard {} to {:?}", i, p);
+            //TODO turn to logging?
+            //println!("saving shard {} to {:?}", i, p);
             shard_paths.push((i, p));
         }
         shard_paths
@@ -584,7 +603,7 @@ impl Graph {
     }
 
     // TODO: Vertex.name which gets ._id property else numba as string
-
+    //TODO should this also return a result?
     pub fn add_edge<T: InputVertex>(&self, t: i64, src: T, dst: T, props: &Vec<(String, Prop)>) {
         // TODO: Problem: if the vertex already exists, then this
         // TODO: wont create a property name if the vertex is a string
@@ -613,11 +632,10 @@ mod db_tests {
     use csv::StringRecord;
     use docbrown_core::utils;
     use itertools::Itertools;
-    use quickcheck::{quickcheck, TestResult};
-    use rand::Rng;
-    use std::collections::HashMap;
+    use quickcheck::quickcheck;
+    use std::fs;
     use std::sync::Arc;
-    use std::{env, fs};
+    use tempdir::TempDir;
     use uuid::Uuid;
 
     use crate::algorithms::local_triangle_count::local_triangle_count;
@@ -646,7 +664,7 @@ mod db_tests {
 
         let expected_len = vs.iter().map(|(_, v)| v).sorted().dedup().count();
         for (t, v) in vs {
-            g.add_vertex(t.into(), v, &vec![]);
+            g.add_vertex(t.into(), v, &vec![]).map_err(|err| println!("{:?}", err)).ok();
         }
 
         assert_eq!(g.num_vertices(), expected_len)
@@ -710,10 +728,10 @@ mod db_tests {
             format!("{}/shard_0", shards_path),
             format!("{}/graphdb_nr_shards", shards_path),
         ]
-        .iter()
-        .map(Path::new)
-        .map(PathBuf::from)
-        .collect::<Vec<_>>();
+            .iter()
+            .map(Path::new)
+            .map(PathBuf::from)
+            .collect::<Vec<_>>();
 
         expected.sort();
 
@@ -1000,7 +1018,7 @@ mod db_tests {
         assert_eq!(g.latest_time(), None);
         assert_eq!(g.earliest_time(), None);
 
-        g.add_vertex(5, 1, &vec![]);
+        g.add_vertex(5, 1, &vec![]).map_err(|err| println!("{:?}", err)).ok();
 
         assert_eq!(g.latest_time(), Some(5));
         assert_eq!(g.earliest_time(), Some(5));
@@ -1011,7 +1029,7 @@ mod db_tests {
         assert_eq!(g.latest_time(), Some(10));
         assert_eq!(g.earliest_time(), Some(10));
 
-        g.add_vertex(5, 1, &vec![]);
+        g.add_vertex(5, 1, &vec![]).map_err(|err| println!("{:?}", err)).ok();
         assert_eq!(g.latest_time(), Some(10));
         assert_eq!(g.earliest_time(), Some(5));
 
@@ -1019,9 +1037,9 @@ mod db_tests {
         assert_eq!(g.latest_time(), Some(20));
         assert_eq!(g.earliest_time(), Some(5));
 
-        random_attachment(&g,100,10);
-        assert_eq!(g.latest_time(),Some(126));
-        assert_eq!(g.earliest_time(),Some(5));
+        random_attachment(&g, 100, 10);
+        assert_eq!(g.latest_time(), Some(126));
+        assert_eq!(g.earliest_time(), Some(5));
     }
 
     #[test]
@@ -1031,19 +1049,18 @@ mod db_tests {
         g.add_edge(0, 11, 11, &vec![("temp".to_string(), Prop::Bool(true))]);
         g.add_edge(0, 22, 33, &vec![]);
         g.add_edge(0, 33, 11, &vec![]);
-        g.add_vertex(0, 11, &vec![("temp".to_string(), Prop::Bool(true))]);
+        g.add_vertex(0, 11, &vec![("temp".to_string(), Prop::Bool(true))]).map_err(|err| println!("{:?}", err)).ok();
 
         let edges11 = g.vertex_edges_window(11.into(), 0, 1, Direction::OUT).collect_vec();
-        let edge1122 = *edges11.iter().find(|e| e.dst_g_id == 22).unwrap();
         let edge1111 = *edges11.iter().find(|e| e.dst_g_id == 11).unwrap();
         let edge2233 = g.vertex_edges_window(22.into(), 0, 1, Direction::OUT).next().unwrap();
         let edge3311 = g.vertex_edges_window(33.into(), 0, 1, Direction::OUT).next().unwrap();
 
-        g.add_vertex_properties(11, &vec![("a".to_string(), Prop::U64(11)), ("b".to_string(), Prop::I64(11))]);
-        g.add_vertex_properties(11, &vec![("c".to_string(), Prop::U32(11))]);
-        g.add_vertex_properties(22, &vec![("b".to_string(), Prop::U64(22))]);
-        g.add_edge_properties(11, 11, &vec![("d".to_string(), Prop::U64(1111))]);
-        g.add_edge_properties(33, 11, &vec![("a".to_string(), Prop::U64(3311))]);
+        g.add_vertex_properties(11, &vec![("a".to_string(), Prop::U64(11)), ("b".to_string(), Prop::I64(11))]).map_err(|err| println!("{:?}", err)).ok();
+        g.add_vertex_properties(11, &vec![("c".to_string(), Prop::U32(11))]).map_err(|err| println!("{:?}", err)).ok();
+        g.add_vertex_properties(22, &vec![("b".to_string(), Prop::U64(22))]).map_err(|err| println!("{:?}", err)).ok();
+        g.add_edge_properties(11, 11, &vec![("d".to_string(), Prop::U64(1111))]).map_err(|err| println!("{:?}", err)).ok();
+        g.add_edge_properties(33, 11, &vec![("a".to_string(), Prop::U64(3311))]).map_err(|err| println!("{:?}", err)).ok();
 
         assert_eq!(g.static_vertex_prop_keys(11.into()), vec!["a", "b", "c"]);
         assert_eq!(g.static_vertex_prop_keys(22.into()), vec!["b"]);
@@ -1066,8 +1083,8 @@ mod db_tests {
     #[should_panic]
     fn changing_property_type_for_vertex_panics() {
         let g = Graph::new(4);
-        g.add_vertex(0, 11, &vec![("test".to_string(), Prop::Bool(true))]);
-        g.add_vertex_properties(11, &vec![("test".to_string(), Prop::Bool(true))]);
+        g.add_vertex(0, 11, &vec![("test".to_string(), Prop::Bool(true))]).map_err(|err| println!("{:?}", err)).ok();
+        g.add_vertex_properties(11, &vec![("test".to_string(), Prop::Bool(true))]).map_err(|err| println!("{:?}", err)).ok();
     }
 
     #[test]
@@ -1075,7 +1092,7 @@ mod db_tests {
     fn changing_property_type_for_edge_panics() {
         let g = Graph::new(4);
         g.add_edge(0, 11, 22, &vec![("test".to_string(), Prop::Bool(true))]);
-        g.add_edge_properties(11, 22, &vec![("test".to_string(), Prop::Bool(true))]);
+        g.add_edge_properties(11, 22, &vec![("test".to_string(), Prop::Bool(true))]).map_err(|err| println!("{:?}", err)).ok();
     }
 
     #[test]
@@ -1172,12 +1189,12 @@ mod db_tests {
                             t,
                             src_id,
                             &vec![("name".to_string(), Prop::Str("Character".to_string()))],
-                        );
+                        ).map_err(|err| println!("{:?}", err)).ok();
                         g.add_vertex(
                             t,
                             dst_id,
                             &vec![("name".to_string(), Prop::Str("Character".to_string()))],
-                        );
+                        ).map_err(|err| println!("{:?}", err)).ok();
                         g.add_edge(
                             t,
                             src_id,
@@ -1252,9 +1269,9 @@ mod db_tests {
     fn test_add_vertex_with_strings() {
         let g = Graph::new(1);
 
-        g.add_vertex(0, "haaroon", &vec![]);
-        g.add_vertex(1, "hamza", &vec![]);
-        g.add_vertex(1, 831, &vec![]);
+        g.add_vertex(0, "haaroon", &vec![]).map_err(|err| println!("{:?}", err)).ok();
+        g.add_vertex(1, "hamza", &vec![]).map_err(|err| println!("{:?}", err)).ok();
+        g.add_vertex(1, 831, &vec![]).map_err(|err| println!("{:?}", err)).ok();
 
         assert!(g.has_vertex(831));
         assert!(g.has_vertex("haaroon"));

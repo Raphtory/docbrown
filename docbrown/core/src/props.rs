@@ -2,7 +2,7 @@ use crate::lazy_vec::{LazyVec, IllegalSet};
 use crate::Prop;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::fmt::{Debug, Display, Formatter};
+use std::fmt::{Debug};
 use itertools::Itertools;
 use crate::tprop::TProp;
 
@@ -76,7 +76,7 @@ impl Props {
         self.prop_ids.iter().find(|&(k, v)| v == id).unwrap().0
     }
 
-    fn get_or_default<A>(&self, vector: &Vec<LazyVec<A>>, id: usize, name: &str, should_be_static: bool) -> A
+    fn get_or_default<A>(&self, vector: &Vec<LazyVec<A>>, id: usize, name: &str) -> A
     where
         A: PartialEq + Default + Clone + Debug,
     {
@@ -90,7 +90,7 @@ impl Props {
     }
 
     pub(crate) fn static_prop(&self, id: usize, name: &str) -> Option<Prop> {
-        self.get_or_default(&self.static_props, id, name, true)
+        self.get_or_default(&self.static_props, id, name)
     }
 
     pub(crate) fn temporal_prop(&self, id: usize, name: &str) -> Option<&TProp> {
@@ -146,11 +146,11 @@ impl Props {
         match self.prop_ids.get(name) {
             None => {
                 let new_prop_id = if should_be_static {
-                    let static_prop_ids = self.prop_ids.iter().filter(|&(k, v)| v.is_static());
+                    let static_prop_ids = self.prop_ids.iter().filter(|&(_, v)| v.is_static());
                     let new_id = static_prop_ids.count();
                     PropId::Static(new_id)
                 } else {
-                    let static_prop_ids = self.prop_ids.iter().filter(|&(k, v)| !v.is_static());
+                    let static_prop_ids = self.prop_ids.iter().filter(|&(_, v)| !v.is_static());
                     let new_id = static_prop_ids.count();
                     PropId::Temporal(new_id)
                 };

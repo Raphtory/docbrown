@@ -1,5 +1,5 @@
 use crate::graph::Graph;
-use crate::perspective::{Perspective, PerspectiveSet};
+use crate::perspective::{Perspective};
 use docbrown_core::{
     tgraph::{EdgeRef, VertexRef},
     Direction, Prop,
@@ -134,6 +134,19 @@ impl GraphViewInternalOps for WindowedGraph {
 
     fn vertex_refs(&self) -> Box<dyn Iterator<Item = VertexRef> + Send> {
         self.graph.vertex_refs_window(self.t_start, self.t_end)
+    }
+
+    fn vertex_refs_window_shard(
+        &self,
+        shard: usize,
+        t_start: i64,
+        t_end: i64,
+    ) -> Box<dyn Iterator<Item = VertexRef> + Send> {
+        self.graph.vertex_refs_window_shard(
+            shard,
+            self.actual_start(t_start),
+            self.actual_end(t_end),
+        )
     }
 
     fn vertex_refs_window(
@@ -306,7 +319,8 @@ impl GraphViewInternalOps for WindowedGraph {
     }
 
     fn temporal_vertex_props(&self, v: VertexRef) -> HashMap<String, Vec<(i64, Prop)>> {
-        self.graph.temporal_vertex_props_window(v, self.t_start, self.t_end)
+        self.graph
+            .temporal_vertex_props_window(v, self.t_start, self.t_end)
     }
 
     fn temporal_vertex_props_window(
@@ -315,8 +329,11 @@ impl GraphViewInternalOps for WindowedGraph {
         t_start: i64,
         t_end: i64,
     ) -> HashMap<String, Vec<(i64, Prop)>> {
-        self.graph
-            .temporal_vertex_props_window(v, self.actual_start(t_start), self.actual_end(t_end))
+        self.graph.temporal_vertex_props_window(
+            v,
+            self.actual_start(t_start),
+            self.actual_end(t_end),
+        )
     }
 
     fn static_edge_prop(&self, e: EdgeRef, name: String) -> Option<Prop> {
@@ -348,7 +365,8 @@ impl GraphViewInternalOps for WindowedGraph {
     }
 
     fn temporal_edge_props(&self, e: EdgeRef) -> HashMap<String, Vec<(i64, Prop)>> {
-        self.graph.temporal_edge_props_window(e, self.t_start, self.t_end)
+        self.graph
+            .temporal_edge_props_window(e, self.t_start, self.t_end)
     }
 
     fn temporal_edge_props_window(
@@ -425,6 +443,15 @@ impl GraphViewOps for WindowedGraph {
         )
     }
 
+    fn vertices_shard(&self, shard: usize) -> Self::Vertices {
+        let graph_w = self.clone();
+        Box::new(
+            self.graph
+                .vertex_refs_window_shard(shard, self.t_start, self.t_end)
+                .map(move |vv| WindowedVertex::new(Arc::new(graph_w.clone()), vv)),
+        )
+    }
+
     fn edge<T: InputVertex>(&self, src: T, dst: T) -> Option<WindowedEdge> {
         let graph_w = self.clone();
         self.graph
@@ -452,7 +479,6 @@ mod views_test {
     use quickcheck::TestResult;
     use rand::prelude::*;
     use rayon::prelude::*;
-    use std::collections::HashMap;
 
     #[test]
     fn windowed_graph_vertices_degree() {
@@ -524,7 +550,7 @@ mod views_test {
 
         let wg = WindowedGraph::new(g.into(), -1, 1);
 
-        let v = wg.vertex(1).unwrap();
+        assert_eq!(wg.vertex(1).unwrap().id(),1);
     }
 
     #[test]
@@ -540,7 +566,7 @@ mod views_test {
         let g = Graph::new(2);
 
         for (t, v) in &vs {
-            g.add_vertex(*t, *v, &vec![]);
+            g.add_vertex(*t, *v, &vec![]).map_err(|err| println!("{:?}", err)).ok();
         }
 
         let wg = WindowedGraph::new(g, 1, 2);
@@ -563,7 +589,7 @@ mod views_test {
         let g = Graph::new(2);
 
         for (t, v) in &vs {
-            g.add_vertex(*t, *v, &vec![]);
+            g.add_vertex(*t, *v, &vec![]).map_err(|err| println!("{:?}", err)).ok();
         }
 
         let start = vs.get(rand_start_index).expect("start index in range").0;
@@ -755,7 +781,7 @@ mod views_test {
                 ("type".into(), Prop::Str("wallet".into())),
                 ("cost".into(), Prop::F32(99.5)),
             ],
-        );
+        ).map_err(|err| println!("{:?}", err)).ok();
 
         g.add_vertex(
             -1,
@@ -764,7 +790,7 @@ mod views_test {
                 ("type".into(), Prop::Str("wallet".into())),
                 ("cost".into(), Prop::F32(10.0)),
             ],
-        );
+        ).map_err(|err| println!("{:?}", err)).ok();
 
         g.add_vertex(
             6,
@@ -773,7 +799,7 @@ mod views_test {
                 ("type".into(), Prop::Str("wallet".into())),
                 ("cost".into(), Prop::F32(76.2)),
             ],
-        );
+        ).map_err(|err| println!("{:?}", err)).ok();
 
         for (t, src, dst) in &vs {
             g.add_edge(
@@ -788,7 +814,6 @@ mod views_test {
 
         let actual = wg.vertices().map(|tv| tv.id()).collect::<Vec<_>>();
 
-        let hm: HashMap<String, Vec<(i64, Prop)>> = HashMap::new();
         let expected = vec![1, 2];
 
         assert_eq!(actual, expected);
@@ -803,7 +828,7 @@ mod views_test {
                 ("type".into(), Prop::Str("wallet".into())),
                 ("cost".into(), Prop::F32(99.5)),
             ],
-        );
+        ).map_err(|err| println!("{:?}", err)).ok();
 
         g.add_vertex(
             -1,
@@ -812,7 +837,7 @@ mod views_test {
                 ("type".into(), Prop::Str("wallet".into())),
                 ("cost".into(), Prop::F32(10.0)),
             ],
-        );
+        ).map_err(|err| println!("{:?}", err)).ok();
 
         g.add_vertex(
             6,
@@ -821,7 +846,7 @@ mod views_test {
                 ("type".into(), Prop::Str("wallet".into())),
                 ("cost".into(), Prop::F32(76.2)),
             ],
-        );
+        ).map_err(|err| println!("{:?}", err)).ok();
 
         for (t, src, dst) in &vs {
             g.add_edge(*t, *src, *dst, &vec![]);
