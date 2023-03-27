@@ -109,18 +109,19 @@ impl TemporalGraph {
     }
 
     pub(crate) fn has_edge(&self, src: u64, dst: u64) -> bool {
-        // TODO: src may be user input, cannot assume we have it
-        let src_pid = self.logical_to_physical[&src];
-
-        // TODO: `having the vertex` vs `having a vertex that should live in this shard if it does
-        // TODO: exists` are two different questions
-        // TODO: we use this function in several places, check all of them for correctnes or perf
-        // TODO: we can instead ask 'should dst belong to this partition' and if so 'do we have it'
-        if self.has_vertex(dst) {
-            let dst_pid = self.logical_to_physical[&dst];
-            self.default_layer.has_local_edge(src_pid, dst_pid)
+        if let Some(src_pid) = self.logical_to_physical.get(&src) {
+            // TODO: `having the vertex` vs `having a vertex that should live in this shard if it does
+            // TODO: exists` are two different questions
+            // TODO: we use this function in several places, check all of them for correctnes or perf
+            // TODO: we can instead ask 'should dst belong to this partition' and if so 'do we have it'
+            if self.has_vertex(dst) {
+                let dst_pid = self.logical_to_physical[&dst];
+                self.default_layer.has_local_edge(*src_pid, dst_pid)
+            } else {
+                self.default_layer.has_remote_edge(*src_pid, dst)
+            }
         } else {
-            self.default_layer.has_remote_edge(src_pid, dst)
+            false
         }
     }
 
@@ -1057,6 +1058,7 @@ mod graph_test {
         assert_eq!(g.has_edge(11, 9), false);
         assert_eq!(g.has_edge(10, 11), false);
         assert_eq!(g.has_edge(10, 9), false);
+        assert_eq!(g.has_edge(100, 101), false);
     }
 
     #[test]
