@@ -151,13 +151,14 @@ fn try_main() -> Result<(), Box<dyn Error>> {
     );
 
     components
-        .iter()
-        .group_by(|(_, cc)| *cc)
         .into_iter()
-        .map(|(cc, group)| (cc, Reverse(group.count())))
-        .sorted_by(|l, r| l.1.cmp(&r.1))
-        .take(50).for_each(|(group, count)|{
-            println!("Group {} has {} vertices", group, count.0);
+        .counts_by(|(_, cc)| cc)
+        .iter()
+        .sorted_by(|l, r| l.1.cmp(r.1))
+        .rev()
+        .take(50)
+        .for_each(|(cc, count)| {
+            println!("CC {} has {} vertices", cc, count);
         });
 
     println!(
