@@ -739,7 +739,7 @@ impl Graph {
     /// # Example
     ///
     /// ```
-    /// use docbrown::Graph;
+    /// use docbrown_db::graph::Graph;
     /// let g = Graph::new(1);
     /// let v = g.add_vertex(0, "Alice", &vec![]);
     /// let v = g.add_vertex(0, 5, &vec![]);
@@ -764,11 +764,11 @@ impl Graph {
     /// # Example
     ///
     /// ```
-    /// use my_crate::{Graph};
-    ///
+    /// use docbrown_db::graph::Graph;
+    /// use docbrown_core::Prop;
     /// let graph = Graph::new(1);
     /// graph.add_vertex(0, "Alice", &vec![]);
-    /// let properties = vec![("color".to_owned(), "blue".to_owned()), ("weight".to_owned(), 10)];
+    /// let properties = vec![("color".to_owned(), Prop::Str("blue".to_owned())), ("weight".to_owned(), Prop::I64(11))];
     /// let result = graph.add_vertex_properties("Alice", &properties);
     /// ```
     pub fn add_vertex_properties<T: InputVertex>(
@@ -794,12 +794,12 @@ impl Graph {
     /// # Example
     ///
     /// ```
-    /// use my_crate::{Graph};
+    /// use docbrown_db::graph::Graph;
     ///
     /// let graph = Graph::new(1);
-    /// g.add_vertex(1, "Alice", &vec![]);
-    /// g.add_vertex(2, "Bob", &vec![]);
-    /// graph.add_edge(3, "Alice", "Bob", vec![]);
+    /// graph.add_vertex(1, "Alice", &vec![]);
+    /// graph.add_vertex(2, "Bob", &vec![]);
+    /// graph.add_edge(3, "Alice", "Bob", &vec![]);
     /// ```
     pub fn add_edge<T: InputVertex>(&self, t: i64, src: T, dst: T, props: &Vec<(String, Prop)>) {
         // TODO: Problem: if the vertex already exists, then this
@@ -828,8 +828,14 @@ impl Graph {
     /// # Example
     ///
     /// ```
-    /// let properties = vec![("price".to_owned(), 100)];
-    /// let result = graph.add_edge_properties(src, dst, &properties);
+    /// use docbrown_db::graph::Graph;
+    /// use docbrown_core::Prop;
+    /// let graph = Graph::new(1);
+    /// graph.add_vertex(1, "Alice", &vec![]);
+    /// graph.add_vertex(2, "Bob", &vec![]);
+    /// graph.add_edge(3, "Alice", "Bob", &vec![]);
+    /// let properties = vec![("price".to_owned(), Prop::I64(100))];
+    /// let result = graph.add_edge_properties("Alice", "Bob", &properties);
     /// ```
     pub fn add_edge_properties<T: InputVertex>(
         &self,
