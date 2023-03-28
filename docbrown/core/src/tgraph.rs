@@ -395,50 +395,7 @@ impl TemporalGraph {
             is_remote: !e.is_local(),
         };
 
-        match d {
-            Direction::OUT => Box::new(
-                self.default_layer.edges_iter(v_pid, d)
-                    .map(move |(dst, e)| (*dst, edge_ref_out(*dst, e))),
-            ),
-            Direction::IN => Box::new(
-                self.default_layer.edges_iter(v_pid, d)
-                    .map(move |(dst, e)| (*dst, edge_ref_in(*dst, e))),
-            ),
-            Direction::BOTH => {
-                let remote_out: Box<dyn Iterator<Item = (usize, EdgeRef)> + Send> = Box::new(
-                    self.default_layer.edges_iter_location(v_pid, Direction::OUT, true)
-                        .map(move |(dst, e)| (*dst, edge_ref_out(*dst, e))),
-                );
-                let remote_in = Box::new(
-                    self.default_layer.edges_iter_location(v_pid, Direction::IN, true)
-                        .map(move |(dst, e)| (*dst, edge_ref_in(*dst, e))),
-                );
-
-                let remote: Box<dyn Iterator<Item = (usize, EdgeRef)> + Send> = Box::new(
-                    vec![remote_out, remote_in]
-                        .into_iter()
-                        .kmerge_by(|(left, _), (right, _)| left < right),
-                );
-
-                let out: Box<dyn Iterator<Item = (usize, EdgeRef)> + Send> = Box::new(
-                    self.default_layer.edges_iter_location(v_pid, Direction::OUT, false)
-                        .map(move |(dst, e)| (*dst, edge_ref_out(*dst, e))),
-                );
-
-                let into = Box::new(
-                    self.default_layer.edges_iter_location(v_pid, Direction::IN, false)
-                        .map(move |(dst, e)| (*dst, edge_ref_in(*dst, e))),
-                );
-
-                let local: Box<dyn Iterator<Item = (usize, EdgeRef)> + Send> = Box::new(
-                    vec![out, into]
-                        .into_iter()
-                        .kmerge_by(|(left, _), (right, _)| left < right),
-                );
-
-                Box::new(itertools::chain!(local, remote))
-            }
-        }
+        self.default_layer.edges_iter(v_pid, d, edge_ref_out, edge_ref_in)
     }
 
     pub(crate) fn vertex_edges_window(
@@ -472,50 +429,7 @@ impl TemporalGraph {
             is_remote: !e.is_local(),
         };
 
-        match d {
-            Direction::OUT => Box::new(
-                self.default_layer.edges_iter_window(v_pid, w, d)
-                    .map(move |(dst, e)| (dst, edge_ref_out(dst, e))),
-            ),
-            Direction::IN => Box::new(
-                self.default_layer.edges_iter_window(v_pid, w, d)
-                    .map(move |(dst, e)| (dst, edge_ref_in(dst, e))),
-            ),
-            Direction::BOTH => {
-                let remote_out: Box<dyn Iterator<Item = (usize, EdgeRef)> + Send> = Box::new(
-                    self.default_layer.edges_iter_window_location(v_pid, w, Direction::OUT, true)
-                        .map(move |(dst, e)| (dst, edge_ref_out(dst, e))),
-                );
-                let remote_in = Box::new(
-                    self.default_layer.edges_iter_window_location(v_pid, w, Direction::IN, true)
-                        .map(move |(dst, e)| (dst, edge_ref_in(dst, e))),
-                );
-
-                let remote: Box<dyn Iterator<Item = (usize, EdgeRef)> + Send> = Box::new(
-                    vec![remote_out, remote_in]
-                        .into_iter()
-                        .kmerge_by(|(left, _), (right, _)| left < right),
-                );
-
-                let out: Box<dyn Iterator<Item = (usize, EdgeRef)> + Send> = Box::new(
-                    self.default_layer.edges_iter_window_location(v_pid, w, Direction::OUT, false)
-                        .map(move |(dst, e)| (dst, edge_ref_out(dst, e))),
-                );
-
-                let into = Box::new(
-                    self.default_layer.edges_iter_window_location(v_pid, w, Direction::IN, false)
-                        .map(move |(dst, e)| (dst, edge_ref_in(dst, e))),
-                );
-
-                let local: Box<dyn Iterator<Item = (usize, EdgeRef)> + Send> = Box::new(
-                    vec![out, into]
-                        .into_iter()
-                        .kmerge_by(|(left, _), (right, _)| left < right),
-                );
-
-                Box::new(itertools::chain!(local, remote))
-            }
-        }
+        self.default_layer.edges_iter_window(v_pid, w, d, edge_ref_out, edge_ref_in)
     }
 
     pub(crate) fn vertex_edges_window_t(
@@ -526,6 +440,7 @@ impl TemporalGraph {
     ) -> Box<dyn Iterator<Item = EdgeRef> + Send + '_> {
         let v_pid = self.logical_to_physical[&v];
 
+        // TODO: move the patter matching inside edges_iter_window_t
         match d {
             Direction::OUT => Box::new(self.default_layer.edges_iter_window_t(v_pid, w, d).map(
                 move |(dst, t, e)| EdgeRef {

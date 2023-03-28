@@ -1,3 +1,4 @@
+use core::iter::Map;
 use itertools::chain;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
@@ -6,7 +7,7 @@ use std::ops::Range;
 use crate::{Direction, Prop};
 use crate::adj::Adj;
 use crate::props::Props;
-use crate::tadjset::AdjEdge;
+use crate::tadjset::{AdjEdge, TAdjSet};
 use crate::tgraph::EdgeRef;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
@@ -271,18 +272,12 @@ impl EdgeLayer {
             } => match d {
                 Direction::OUT => out.len() + remote_out.len(),
                 Direction::IN => into.len() + remote_into.len(),
-                _ => {
-                    vec![
-                        out.iter(),
-                        into.iter(),
-                        remote_out.iter(),
-                        remote_into.iter(),
-                    ] // FIXME: there are better ways of doing this, all adj lists are sorted except for the HashMap
-                        .into_iter()
-                        .flatten()
-                        .unique_by(|(v, _)| *v)
-                        .count()
-                }
+                _ => self
+                    .edges_iter(v_pid, d, |_, e| e, |_, e| e)
+                    .dedup_by(|(left, e1), (right, e2)| {
+                        left == right && e1.is_local() == e2.is_local()
+                    })
+                    .count(),
             },
             _ => 0,
         }
@@ -298,15 +293,11 @@ impl EdgeLayer {
             } => match d {
                 Direction::OUT => out.len_window(w) + remote_out.len_window(w),
                 Direction::IN => into.len_window(w) + remote_into.len_window(w),
-                _ => vec![
-                    out.iter_window(w),
-                    into.iter_window(w),
-                    remote_out.iter_window(w),
-                    remote_into.iter_window(w),
-                ]
-                    .into_iter()
-                    .flatten()
-                    .unique_by(|(v, _)| *v)
+                _ => self
+                    .edges_iter_window(v_pid, w, d, |_, e| e, |_, e| e)
+                    .dedup_by(|(left, e1), (right, e2)| {
+                        left == right && e1.is_local() == e2.is_local()
+                    })
                     .count(),
             },
             _ => 0,
@@ -316,11 +307,18 @@ impl EdgeLayer {
 
 // MULTIPLE EDGE ACCES:
 impl EdgeLayer {
-    pub(crate) fn edges_iter( // TODO: change back to private if appropriate
-        &self,
+    pub(crate) fn edges_iter<'a, T, O, I>(
+        &'a self,
         vertex_pid: usize,
         d: Direction,
-    ) -> Box<dyn Iterator<Item = (&usize, AdjEdge)> + Send + '_> {
+        out_adapter: O,
+        in_adapter: I,
+    ) -> Box<dyn Iterator<Item = (usize, T)> + Send + '_>
+    where
+        O: Fn(usize, AdjEdge) -> T + Send + Sync + Copy + 'a,
+        I: Fn(usize, AdjEdge) -> T + Send + Sync + Copy + 'a,
+        T: Send + 'a,
+    {
         match &self.adj_lists[vertex_pid] {
             Adj::List {
                 out,
@@ -330,27 +328,57 @@ impl EdgeLayer {
                 ..
             } => {
                 match d {
-                    Direction::OUT => Box::new(itertools::chain!(out.iter(), remote_out.iter())),
-                    Direction::IN => Box::new(itertools::chain!(into.iter(), remote_into.iter())),
-                    // This piece of code is only for the sake of symmetry. Not really used.
-                    _ => Box::new(itertools::chain!(
-                        out.iter(),
-                        into.iter(),
-                        remote_out.iter(),
-                        remote_into.iter()
-                    )),
+                    Direction::OUT => {
+                        let iter = chain!(out.iter(), remote_out.iter())
+                            .map(move |(dst, e)| (*dst, out_adapter(*dst, e)));
+                        Box::new(iter)
+                    },
+                    Direction::IN => {
+                        let iter = chain!(into.iter(), remote_into.iter())
+                            .map(move |(dst, e)| (*dst, in_adapter(*dst, e)));
+                        Box::new(iter)
+                    },
+                    Direction::BOTH => {
+                        let out_mapper = move |(dst, e): (&usize, AdjEdge)| (*dst, out_adapter(*dst, e));
+                        let in_mapper = move |(dst, e): (&usize, AdjEdge)| (*dst, in_adapter(*dst, e));
+
+                        let remote_out: Box<dyn Iterator<Item=(usize, T)> + Send> =
+                            Box::new(remote_out.iter().map(out_mapper));
+                        let remote_into: Box<dyn Iterator<Item=(usize, T)> + Send> =
+                            Box::new(remote_into.iter().map(in_mapper));
+                        let remote = vec![remote_out, remote_into]
+                            .into_iter()
+                            .kmerge_by(|(left, _), (right, _)| left < right);
+
+                        let out: Box<dyn Iterator<Item=(usize, T)> + Send> =
+                            Box::new(out.iter().map(out_mapper));
+                        let into: Box<dyn Iterator<Item=(usize, T)> + Send> =
+                            Box::new(into.iter().map(in_mapper));
+                        let local = vec![out, into]
+                                .into_iter()
+                                .kmerge_by(|(left, _), (right, _)| left < right);
+
+                        Box::new(chain!(local, remote))
+                    }
                 }
             }
             _ => Box::new(std::iter::empty()),
         }
     }
 
-    pub(crate) fn edges_iter_window( // TODO: change back to private if appropriate
-        &self,
+    pub(crate) fn edges_iter_window<'a, T, O, I>(
+        &'a self,
         vertex_pid: usize,
         r: &Range<i64>,
         d: Direction,
-    ) -> Box<dyn Iterator<Item = (usize, AdjEdge)> + Send + '_> {
+        out_adapter: O,
+        in_adapter: I,
+    ) -> Box<dyn Iterator<Item = (usize, T)> + Send + '_>
+        where
+            O: Fn(usize, AdjEdge) -> T + Send + Sync + Copy + 'a,
+            I: Fn(usize, AdjEdge) -> T + Send + Sync + Copy + 'a,
+            T: Send + 'a,
+    {
         match &self.adj_lists[vertex_pid] {
             Adj::List {
                 out,
@@ -360,92 +388,40 @@ impl EdgeLayer {
                 ..
             } => {
                 match d {
-                    Direction::OUT => Box::new(itertools::chain!(
-                        out.iter_window(r),
-                        remote_out.iter_window(r)
-                    )),
-                    Direction::IN => Box::new(itertools::chain!(
-                        into.iter_window(r),
-                        remote_into.iter_window(r),
-                    )),
-                    // This piece of code is only for the sake of symmetry. Not really used.
-                    _ => Box::new(itertools::chain!(
-                        out.iter_window(r),
-                        into.iter_window(r),
-                        remote_out.iter_window(r),
-                        remote_into.iter_window(r)
-                    )),
+                    Direction::OUT => {
+                        let iter = chain!(out.iter_window(r), remote_out.iter_window(r))
+                            .map(move |(dst, e)| (dst, out_adapter(dst, e)));
+                        Box::new(iter)
+                    },
+                    Direction::IN => {
+                        let iter = chain!(into.iter_window(r), remote_into.iter_window(r))
+                            .map(move |(dst, e)| (dst, in_adapter(dst, e)));
+                        Box::new(iter)
+                    },
+                    Direction::BOTH => {
+                        let out_mapper = move |(dst, e): (usize, AdjEdge)| (dst, out_adapter(dst, e));
+                        let in_mapper = move |(dst, e): (usize, AdjEdge)| (dst, in_adapter(dst, e));
+
+                        let remote_out: Box<dyn Iterator<Item=(usize, T)> + Send> =
+                            Box::new(remote_out.iter_window(r).map(out_mapper));
+                        let remote_into: Box<dyn Iterator<Item=(usize, T)> + Send> =
+                            Box::new(remote_into.iter_window(r).map(in_mapper));
+                        let remote = vec![remote_out, remote_into]
+                            .into_iter()
+                            .kmerge_by(|(left, _), (right, _)| left < right);
+
+                        let out: Box<dyn Iterator<Item=(usize, T)> + Send> =
+                            Box::new(out.iter_window(r).map(out_mapper));
+                        let into: Box<dyn Iterator<Item=(usize, T)> + Send> =
+                            Box::new(into.iter_window(r).map(in_mapper));
+                        let local = vec![out, into]
+                            .into_iter()
+                            .kmerge_by(|(left, _), (right, _)| left < right);
+
+                        Box::new(chain!(local, remote))
+                    }
                 }
             }
-            _ => Box::new(std::iter::empty()),
-        }
-    }
-
-    pub(crate) fn edges_iter_location(
-        &self,
-        vid: usize,
-        d: Direction,
-        remote: bool,
-    ) -> Box<dyn Iterator<Item = (&usize, AdjEdge)> + Send + '_> {
-        match &self.adj_lists[vid] {
-            Adj::List {
-                out,
-                into,
-                remote_out,
-                remote_into,
-                ..
-            } => match d {
-                Direction::OUT => {
-                    if remote {
-                        remote_out.iter()
-                    } else {
-                        out.iter()
-                    }
-                }
-                Direction::IN => {
-                    if remote {
-                        remote_into.iter()
-                    } else {
-                        into.iter()
-                    }
-                }
-                _ => panic!("edges_iter_window_remote does not support Direction BOTH"),
-            },
-            _ => Box::new(std::iter::empty()),
-        }
-    }
-
-    pub(crate) fn edges_iter_window_location(
-        &self,
-        vid: usize,
-        r: &Range<i64>,
-        d: Direction,
-        remote: bool,
-    ) -> Box<dyn Iterator<Item = (usize, AdjEdge)> + Send + '_> {
-        match &self.adj_lists[vid] {
-            Adj::List {
-                out,
-                into,
-                remote_out,
-                remote_into,
-                ..
-            } => match d {
-                Direction::OUT => {
-                    if remote {
-                        remote_out.iter_window(r)
-                    } else {
-                        out.iter_window(r)
-                    }
-                }
-                Direction::IN => {
-                    if remote {
-                        remote_into.iter_window(r)
-                    } else {
-                        into.iter_window(r)
-                    }
-                }
-                _ => panic!("edges_iter_window_remote does not support Direction BOTH"),
-            },
             _ => Box::new(std::iter::empty()),
         }
     }
