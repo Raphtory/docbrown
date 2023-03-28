@@ -279,10 +279,16 @@ mod test {
             load::<PairNoTime>(&g1, &gn, csv_path.clone());
 
             let iter_count = 50;
-            let cc1 =
-                docbrown_db::program::algo::connected_components(&g1, window.clone(), iter_count);
-            let ccn =
-                docbrown_db::program::algo::connected_components(&gn, window.clone(), iter_count);
+            let cc1 = docbrown_db::algorithms::connected_components::weakly_connected_components(
+                &g1,
+                window.clone(),
+                iter_count,
+            );
+            let ccn = docbrown_db::algorithms::connected_components::weakly_connected_components(
+                &gn,
+                window.clone(),
+                iter_count,
+            );
 
             // get LCC
             let counts = cc1.iter().counts_by(|(_, cc)| cc);

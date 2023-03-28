@@ -12,9 +12,10 @@ use chrono::{DateTime, Utc};
 use docbrown_core::tgraph::TemporalGraph;
 use docbrown_core::{state, utils};
 use docbrown_core::{Direction, Prop};
+use docbrown_db::algorithms::connected_components::weakly_connected_components;
 use docbrown_db::algorithms::global_triangle_count::global_triangle_count;
 use docbrown_db::csv_loader::csv::CsvLoader;
-use docbrown_db::program::algo::{connected_components, triangle_counting_fast};
+use docbrown_db::program::algo::triangle_counting_fast;
 use docbrown_db::program::{
     GlobalEvalState, Program, TriangleCountS1, TriangleCountS2, TriangleCountSlowS2,
 };
@@ -136,7 +137,7 @@ fn try_main() -> Result<(), Box<dyn Error>> {
     );
 
     let now = Instant::now();
-    let components = connected_components(
+    let components = weakly_connected_components(
         &graph,
         graph.earliest_time().unwrap().unwrap()..graph.latest_time().unwrap().unwrap(),
         5,
