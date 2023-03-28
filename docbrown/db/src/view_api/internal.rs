@@ -1,5 +1,5 @@
 use docbrown_core::tgraph::{EdgeRef, VertexRef};
-use docbrown_core::tgraph_shard::exceptions::GraphError;
+use docbrown_core::tgraph_shard::errors::GraphError;
 use docbrown_core::{Direction, Prop};
 use std::collections::HashMap;
 
@@ -167,7 +167,11 @@ pub trait GraphViewInternalOps {
 
     fn static_edge_prop_keys(&self, e: EdgeRef) -> Result<Vec<String>, GraphError>;
 
-    fn temporal_edge_props_vec(&self, e: EdgeRef, name: String) -> Result<Vec<(i64, Prop)>, GraphError>;
+    fn temporal_edge_props_vec(
+        &self,
+        e: EdgeRef,
+        name: String,
+    ) -> Result<Vec<(i64, Prop)>, GraphError>;
 
     fn temporal_edge_props_vec_window(
         &self,

@@ -1,5 +1,5 @@
 use crate::view_api::*;
-use docbrown_core::tgraph_shard::exceptions::GraphError;
+use docbrown_core::tgraph_shard::errors::GraphError;
 use itertools::Itertools;
 
 pub fn local_triangle_count<G: GraphViewOps>(graph: &G, v: u64) -> Result<usize, GraphError> {

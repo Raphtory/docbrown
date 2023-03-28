@@ -138,9 +138,15 @@ mod test {
         let mut expected_1 = g1
             .vertex_refs_window(t_start, t_end)
             .map(|id| {
-                let deg = g1.degree_window(id, t_start, t_end, docbrown_core::Direction::BOTH).unwrap();
-                let out_deg = g1.degree_window(id, t_start, t_end, docbrown_core::Direction::OUT).unwrap();
-                let in_deg = g1.degree_window(id, t_start, t_end, docbrown_core::Direction::IN).unwrap();
+                let deg = g1
+                    .degree_window(id, t_start, t_end, docbrown_core::Direction::BOTH)
+                    .unwrap();
+                let out_deg = g1
+                    .degree_window(id, t_start, t_end, docbrown_core::Direction::OUT)
+                    .unwrap();
+                let in_deg = g1
+                    .degree_window(id, t_start, t_end, docbrown_core::Direction::IN)
+                    .unwrap();
                 (id.g_id, deg, out_deg, in_deg)
             })
             .collect::<Vec<_>>();
@@ -149,9 +155,15 @@ mod test {
         let mut expected_n = gn
             .vertex_refs_window(t_start, t_end)
             .map(|id| {
-                let deg = gn.degree_window(id, t_start, t_end, docbrown_core::Direction::BOTH).unwrap();
-                let out_deg = gn.degree_window(id, t_start, t_end, docbrown_core::Direction::OUT).unwrap();
-                let in_deg = gn.degree_window(id, t_start, t_end, docbrown_core::Direction::IN).unwrap();
+                let deg = gn
+                    .degree_window(id, t_start, t_end, docbrown_core::Direction::BOTH)
+                    .unwrap();
+                let out_deg = gn
+                    .degree_window(id, t_start, t_end, docbrown_core::Direction::OUT)
+                    .unwrap();
+                let in_deg = gn
+                    .degree_window(id, t_start, t_end, docbrown_core::Direction::IN)
+                    .unwrap();
                 (id.g_id, deg, out_deg, in_deg)
             })
             .collect::<Vec<_>>();
@@ -168,13 +180,27 @@ mod test {
 
         let mut expected_1 = wg1
             .vertices()
-            .map(|vs| (vs.id(), vs.degree().unwrap(), vs.out_degree().unwrap(), vs.in_degree().unwrap()))
+            .map(|vs| {
+                (
+                    vs.id(),
+                    vs.degree().unwrap(),
+                    vs.out_degree().unwrap(),
+                    vs.in_degree().unwrap(),
+                )
+            })
             .collect::<Vec<_>>();
         expected_1.sort_by(|v1, v2| v1.0.cmp(&v2.0));
 
         let mut expected_n = wgn
             .vertices()
-            .map(|vs| (vs.id(), vs.degree().unwrap(), vs.out_degree().unwrap(), vs.in_degree().unwrap()))
+            .map(|vs| {
+                (
+                    vs.id(),
+                    vs.degree().unwrap(),
+                    vs.out_degree().unwrap(),
+                    vs.in_degree().unwrap(),
+                )
+            })
             .collect::<Vec<_>>();
 
         expected_n.sort_by(|v1, v2| v1.0.cmp(&v2.0));
@@ -275,7 +301,6 @@ mod test {
                 .rev()
                 .take(1)
                 .next();
-
 
             assert_eq!(max_1, Some((&6, 1039)));
             assert_eq!(max_1, max_n);

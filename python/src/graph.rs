@@ -50,9 +50,15 @@ impl Graph {
         adapt_err(result)
     }
 
-    pub fn add_vertex_properties(&self, id: &PyAny, properties: HashMap<String, Prop>) -> PyResult<()> {
+    pub fn add_vertex_properties(
+        &self,
+        id: &PyAny,
+        properties: HashMap<String, Prop>,
+    ) -> PyResult<()> {
         let v = Self::extract_id(id)?;
-        let result = self.graph.add_vertex_properties(v, &Self::transform_props(Some(properties)));
+        let result = self
+            .graph
+            .add_vertex_properties(v, &Self::transform_props(Some(properties)));
         adapt_err(result)
     }
 
@@ -71,10 +77,17 @@ impl Graph {
         )
     }
 
-    pub fn add_edge_properties(&self, src: &PyAny, dst: &PyAny, properties: HashMap<String, Prop>) -> PyResult<()> {
+    pub fn add_edge_properties(
+        &self,
+        src: &PyAny,
+        dst: &PyAny,
+        properties: HashMap<String, Prop>,
+    ) -> PyResult<()> {
         let src = Self::extract_id(src)?;
         let dst = Self::extract_id(dst)?;
-        let result = self.graph.add_edge_properties(src, dst, &Self::transform_props(Some(properties)));
+        let result =
+            self.graph
+                .add_edge_properties(src, dst, &Self::transform_props(Some(properties)));
         adapt_err(result)
     }
 
@@ -170,7 +183,6 @@ impl Graph {
         let v = Self::extract_id(id)?;
         adapt_err(self.graph.has_vertex(v))
     }
-
 
     pub fn has_edge(&self, src: &PyAny, dst: &PyAny) -> PyResult<bool> {
         let src = Self::extract_id(src)?;

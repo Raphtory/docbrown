@@ -1,5 +1,5 @@
 use crate::view_api::*;
-use docbrown_core::tgraph_shard::exceptions::GraphError;
+use docbrown_core::tgraph_shard::errors::GraphError;
 
 pub fn max_out_degree<G: GraphViewOps>(graph: &G) -> Result<usize, GraphError> {
     let r: Result<Vec<usize>, GraphError> = graph

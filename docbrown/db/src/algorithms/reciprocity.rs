@@ -1,4 +1,4 @@
-use docbrown_core::tgraph_shard::exceptions::GraphError;
+use docbrown_core::tgraph_shard::errors::GraphError;
 
 use crate::view_api::*;
 use std::collections::HashSet;

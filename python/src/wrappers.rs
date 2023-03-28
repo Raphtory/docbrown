@@ -1,8 +1,8 @@
-use db_c::tgraph_shard::exceptions::GraphError;
+use db_c::tgraph_shard::errors::GraphError;
 use itertools::Itertools;
 use pyo3::exceptions::PyException;
 use pyo3::prelude::*;
-use std::borrow::{Borrow};
+use std::borrow::Borrow;
 
 use docbrown_core as db_c;
 use docbrown_db::view_api::*;

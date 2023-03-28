@@ -12,6 +12,7 @@ use chrono::{DateTime, Utc};
 use docbrown_core::tgraph::TemporalGraph;
 use docbrown_core::{state, utils};
 use docbrown_core::{Direction, Prop};
+use docbrown_db::algorithms::global_triangle_count::global_triangle_count;
 use docbrown_db::csv_loader::csv::CsvLoader;
 use docbrown_db::program::algo::{connected_components, triangle_counting_fast};
 use docbrown_db::program::{
@@ -23,7 +24,6 @@ use serde::Deserialize;
 use std::fs::File;
 use std::io::{prelude::*, BufReader, LineWriter};
 use std::time::Instant;
-use docbrown_db::algorithms::global_triangle_count::global_triangle_count;
 
 use docbrown_db::graph::Graph;
 use docbrown_db::view_api::internal::GraphViewInternalOps;
@@ -98,7 +98,8 @@ pub fn loader(data_dir: &Path) -> Result<Graph, Box<dyn Error>> {
                     src,
                     dst,
                     &vec![("amount".to_owned(), Prop::U64(sent.amount_usd))],
-                ).unwrap()
+                )
+                .unwrap()
             })?;
 
         println!(
@@ -220,7 +221,10 @@ fn try_main_bm() -> Result<(), Box<dyn Error>> {
     let graph = graph.freeze();
 
     let now = Instant::now();
-    let num_edges: usize = graph.vertices().map(|v| graph.degree(v, Direction::OUT)).sum();
+    let num_edges: usize = graph
+        .vertices()
+        .map(|v| graph.degree(v, Direction::OUT))
+        .sum();
 
     println!(
         "Counting edges by summing degrees returned {} in {} milliseconds",

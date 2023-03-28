@@ -1,6 +1,6 @@
 use crate::view_api::edge::EdgeViewOps;
 use crate::view_api::vertex::VertexViewOps;
-use docbrown_core::tgraph_shard::exceptions::GraphError;
+use docbrown_core::tgraph_shard::errors::GraphError;
 use docbrown_core::vertex::InputVertex;
 
 pub trait GraphViewOps: Send + Sync {

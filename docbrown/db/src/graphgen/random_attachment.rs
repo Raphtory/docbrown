@@ -1,7 +1,7 @@
 use crate::graph::Graph;
 use crate::view_api::internal::GraphViewInternalOps;
 use crate::view_api::*;
-use docbrown_core::tgraph_shard::exceptions::GraphError;
+use docbrown_core::tgraph_shard::errors::GraphError;
 use rand::seq::SliceRandom;
 
 /// This function is a graph generation model based upon:
@@ -43,7 +43,10 @@ pub fn random_attachment(
     while ids.len() < edges_per_step {
         max_id += 1;
         latest_time += 1;
-        graph.add_vertex(latest_time, max_id, &vec![]).map_err(|err| println!("{:?}", err)).ok();
+        graph
+            .add_vertex(latest_time, max_id, &vec![])
+            .map_err(|err| println!("{:?}", err))
+            .ok();
         ids.push(max_id);
     }
 
@@ -76,7 +79,10 @@ mod random_graph_test {
     fn only_nodes() {
         let graph = Graph::new(2);
         for i in 0..10 {
-            graph.add_vertex(i, i as u64, &vec![]).map_err(|err| println!("{:?}", err)).ok();
+            graph
+                .add_vertex(i, i as u64, &vec![])
+                .map_err(|err| println!("{:?}", err))
+                .ok();
         }
 
         random_attachment(&graph, 1000, 5);

@@ -1,5 +1,5 @@
 use crate::view_api::*;
-use docbrown_core::tgraph_shard::exceptions::GraphError;
+use docbrown_core::tgraph_shard::errors::GraphError;
 
 pub fn directed_graph_density<G: GraphViewOps>(graph: &G) -> Result<f32, GraphError> {
     Ok(graph.num_edges()? as f32

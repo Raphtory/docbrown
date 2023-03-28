@@ -15,12 +15,9 @@ use crate::vertex::InputVertex;
 use crate::Prop;
 use crate::{bitset::BitSet, tadjset::AdjEdge, Direction};
 
-use self::exceptions::MutateGraphError;
+use self::errors::MutateGraphError;
 
-// pub type AddVertexResult = Result<(), IllegalVertexPropertyChange>;
-// pub type AddEdgeResult = Result<(), AddEdgeError>;
-
-pub(crate) mod exceptions {
+pub(crate) mod errors {
     use crate::props::IllegalMutate;
 
     #[derive(thiserror::Error, Debug)]
@@ -42,41 +39,6 @@ pub(crate) mod exceptions {
 }
 
 pub type MutateGraphResult = Result<(), MutateGraphError>;
-
-// #[derive(thiserror::Error, Debug)]
-// #[error("cannot change property for vertex '{vertex_id}'")]
-// pub struct IllegalVertexPropertyChange {
-//     vertex_id: u64,
-//     source: IllegalMutate,
-// }
-
-// impl IllegalVertexPropertyChange {
-//     fn new(vertex_id: u64, source: IllegalMutate) -> IllegalVertexPropertyChange {
-//         IllegalVertexPropertyChange { vertex_id, source }
-//     }
-// }
-
-// #[derive(thiserror::Error, Debug)]
-// pub enum AddEdgeError {
-//     #[error("cannot set property for missing edge '{0}' -> '{1}'")]
-//     MissingEdge(u64, u64), // src, dst
-//     #[error("cannot change property for edge '{src_id}' -> '{dst_id}'")]
-//     IllegalEdgePropertyChange {
-//         src_id: u64,
-//         dst_id: u64,
-//         source: IllegalMutate,
-//     },
-// }
-
-// impl AddEdgeError {
-//     fn new(src_id: u64, dst_id: u64, source: IllegalMutate) -> AddEdgeError {
-//         AddEdgeError::IllegalEdgePropertyChange {
-//             src_id,
-//             dst_id,
-//             source,
-//         }
-//     }
-// }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct TemporalGraph {
@@ -262,8 +224,12 @@ impl TemporalGraph {
         props: &Vec<(String, Prop)>,
     ) {
         // mark the times of the vertices at t
-        self.add_vertex(t, src).map_err(|err| println!("{:?}", err)).ok();
-        self.add_vertex(t, dst).map_err(|err| println!("{:?}", err)).ok();
+        self.add_vertex(t, src)
+            .map_err(|err| println!("{:?}", err))
+            .ok();
+        self.add_vertex(t, dst)
+            .map_err(|err| println!("{:?}", err))
+            .ok();
 
         let src_pid = self.logical_to_physical[&src];
         let dst_pid = self.logical_to_physical[&dst];
@@ -288,7 +254,9 @@ impl TemporalGraph {
         dst: u64,
         props: &Vec<(String, Prop)>,
     ) {
-        self.add_vertex(t, src).map_err(|err| println!("{:?}", err)).ok();
+        self.add_vertex(t, src)
+            .map_err(|err| println!("{:?}", err))
+            .ok();
         let src_pid = self.logical_to_physical[&src];
         let src_edge_meta_id =
             self.link_outbound_edge(t, src, src_pid, dst.try_into().unwrap(), true);
@@ -304,7 +272,9 @@ impl TemporalGraph {
         dst: u64, // we are on the destination shard
         props: &Vec<(String, Prop)>,
     ) {
-        self.add_vertex(t, dst).map_err(|err| println!("{:?}", err)).ok();
+        self.add_vertex(t, dst)
+            .map_err(|err| println!("{:?}", err))
+            .ok();
 
         let dst_pid = self.logical_to_physical[&dst];
 
@@ -913,7 +883,12 @@ impl TemporalGraph {
         let index = self.logical_to_physical[&v];
         let keys = self.props.temporal_vertex_keys(index);
         keys.into_iter()
-            .map(|key| (key.to_string(), self.temporal_vertex_prop_vec_window(v, &key, w)))
+            .map(|key| {
+                (
+                    key.to_string(),
+                    self.temporal_vertex_prop_vec_window(v, &key, w),
+                )
+            })
             .filter(|(_, v)| !v.is_empty())
             .collect()
     }

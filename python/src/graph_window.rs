@@ -1,4 +1,4 @@
-use std::{collections::HashMap};
+use std::collections::HashMap;
 
 use crate::wrappers;
 use crate::{graph::Graph, wrappers::*};
@@ -94,7 +94,6 @@ impl WindowedGraph {
             v.map(|x| WindowedVertex::new(g, x))
         });
         adapt_err(v)
-
     }
 
     pub fn __getitem__(slf: PyRef<'_, Self>, id: &PyAny) -> PyResult<Option<WindowedVertex>> {
@@ -105,8 +104,6 @@ impl WindowedGraph {
         });
         adapt_err(v)
     }
-
-
 
     pub fn vertex_ids(&self) -> VertexIdsIterator {
         VertexIdsIterator {
@@ -148,7 +145,6 @@ pub struct WindowedVertex {
 //     }
 // }
 
-
 impl WindowedVertex {
     fn from(&self, value: graph_window::WindowedVertex) -> WindowedVertex {
         WindowedVertex {
@@ -172,7 +168,6 @@ impl WindowedVertex {
 
 #[pymethods]
 impl WindowedVertex {
-
     pub fn __getitem__(&self, name: String) -> PyResult<Vec<(i64, Prop)>> {
         self.prop(name)
     }
@@ -405,15 +400,12 @@ pub struct WindowedEdge {
 
 impl From<graph_window::WindowedEdge> for WindowedEdge {
     fn from(value: graph_window::WindowedEdge) -> WindowedEdge {
-        WindowedEdge {
-            edge_w: value,
-        }
+        WindowedEdge { edge_w: value }
     }
 }
 
 #[pymethods]
 impl WindowedEdge {
-
     pub fn __getitem__(&self, name: String) -> PyResult<Vec<(i64, Prop)>> {
         self.prop(name)
     }

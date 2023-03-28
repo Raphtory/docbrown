@@ -3,7 +3,7 @@ use crate::graph::Graph;
 use crate::view_api::internal::GraphViewInternalOps;
 use crate::view_api::{VertexListOps, VertexViewOps};
 use docbrown_core::tgraph::VertexRef;
-use docbrown_core::tgraph_shard::exceptions::GraphError;
+use docbrown_core::tgraph_shard::errors::GraphError;
 use docbrown_core::{Direction, Prop};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -306,22 +306,42 @@ impl<G: GraphViewInternalOps + 'static + Send + Sync> VertexListOps
 mod vertex_test {
     use crate::view_api::*;
 
-
     #[test]
     fn test_all_degrees_window() {
         let g = crate::graph_loader::lotr_graph::lotr_graph(4);
 
         assert_eq!(g.num_edges().unwrap(), 701);
         assert_eq!(g.vertex("Gandalf").unwrap().unwrap().degree().unwrap(), 49);
-        assert_eq!(g.vertex("Gandalf").unwrap().unwrap().degree_window(1356, 24792).unwrap(), 34);
-        assert_eq!(g.vertex("Gandalf").unwrap().unwrap().in_degree().unwrap(), 24);
         assert_eq!(
-            g.vertex("Gandalf").unwrap().unwrap().in_degree_window(1356, 24792).unwrap(),
+            g.vertex("Gandalf")
+                .unwrap()
+                .unwrap()
+                .degree_window(1356, 24792)
+                .unwrap(),
+            34
+        );
+        assert_eq!(
+            g.vertex("Gandalf").unwrap().unwrap().in_degree().unwrap(),
+            24
+        );
+        assert_eq!(
+            g.vertex("Gandalf")
+                .unwrap()
+                .unwrap()
+                .in_degree_window(1356, 24792)
+                .unwrap(),
             16
         );
-        assert_eq!(g.vertex("Gandalf").unwrap().unwrap().out_degree().unwrap(), 35);
         assert_eq!(
-            g.vertex("Gandalf").unwrap().unwrap().out_degree_window(1356, 24792).unwrap(),
+            g.vertex("Gandalf").unwrap().unwrap().out_degree().unwrap(),
+            35
+        );
+        assert_eq!(
+            g.vertex("Gandalf")
+                .unwrap()
+                .unwrap()
+                .out_degree_window(1356, 24792)
+                .unwrap(),
             20
         );
     }
@@ -331,7 +351,10 @@ mod vertex_test {
         let g = crate::graph_loader::lotr_graph::lotr_graph(4);
 
         assert_eq!(g.num_edges().unwrap(), 701);
-        assert_eq!(g.vertex("Gandalf").unwrap().unwrap().neighbours().count(), 49);
+        assert_eq!(
+            g.vertex("Gandalf").unwrap().unwrap().neighbours().count(),
+            49
+        );
         assert_eq!(
             g.vertex("Gandalf")
                 .unwrap()
@@ -340,7 +363,14 @@ mod vertex_test {
                 .count(),
             34
         );
-        assert_eq!(g.vertex("Gandalf").unwrap().unwrap().in_neighbours().count(), 24);
+        assert_eq!(
+            g.vertex("Gandalf")
+                .unwrap()
+                .unwrap()
+                .in_neighbours()
+                .count(),
+            24
+        );
         assert_eq!(
             g.vertex("Gandalf")
                 .unwrap()
@@ -349,7 +379,14 @@ mod vertex_test {
                 .count(),
             16
         );
-        assert_eq!(g.vertex("Gandalf").unwrap().unwrap().out_neighbours().count(), 35);
+        assert_eq!(
+            g.vertex("Gandalf")
+                .unwrap()
+                .unwrap()
+                .out_neighbours()
+                .count(),
+            35
+        );
         assert_eq!(
             g.vertex("Gandalf")
                 .unwrap()
@@ -383,7 +420,10 @@ mod vertex_test {
                 .count(),
             16
         );
-        assert_eq!(g.vertex("Gandalf").unwrap().unwrap().out_edges().count(), 35);
+        assert_eq!(
+            g.vertex("Gandalf").unwrap().unwrap().out_edges().count(),
+            35
+        );
         assert_eq!(
             g.vertex("Gandalf")
                 .unwrap()

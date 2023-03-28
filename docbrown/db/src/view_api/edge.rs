@@ -1,7 +1,7 @@
 use crate::view_api::vertex::VertexViewOps;
 use crate::view_api::VertexListOps;
+use docbrown_core::tgraph_shard::errors::GraphError;
 use docbrown_core::Prop;
-use docbrown_core::tgraph_shard::exceptions::GraphError;
 
 pub trait EdgeViewOps: Sized + Send + Sync {
     type Vertex: VertexViewOps<Edge = Self>;

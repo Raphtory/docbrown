@@ -1,4 +1,4 @@
-use docbrown_core::tgraph_shard::exceptions::GraphError;
+use docbrown_core::tgraph_shard::errors::GraphError;
 
 use crate::algorithms::local_triangle_count::local_triangle_count;
 use crate::view_api::*;

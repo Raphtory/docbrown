@@ -1,6 +1,6 @@
 use crate::graph::Graph;
 use crate::view_api::*;
-use docbrown_core::tgraph_shard::exceptions::GraphError;
+use docbrown_core::tgraph_shard::errors::GraphError;
 use rand::prelude::*;
 use std::collections::HashSet;
 
@@ -48,7 +48,10 @@ pub fn ba_preferential_attachment(
 
     while ids.len() < edges_per_step {
         max_id += 1;
-        graph.add_vertex(latest_time, max_id, &vec![]).map_err(|err| println!("{:?}", err)).ok();
+        graph
+            .add_vertex(latest_time, max_id, &vec![])
+            .map_err(|err| println!("{:?}", err))
+            .ok();
         degrees.push(0);
         ids.push(max_id);
     }
@@ -104,7 +107,7 @@ mod preferential_attachment_tests {
     fn blank_graph() {
         let graph = Graph::new(2);
         ba_preferential_attachment(&graph, 1000, 10);
-         assert_eq!(graph.num_edges().unwrap(), 10009);
+        assert_eq!(graph.num_edges().unwrap(), 10009);
         assert_eq!(graph.num_vertices().unwrap(), 1010);
     }
 
@@ -112,7 +115,10 @@ mod preferential_attachment_tests {
     fn only_nodes() {
         let graph = Graph::new(2);
         for i in 0..10 {
-            graph.add_vertex(i, i as u64, &vec![]).map_err(|err| println!("{:?}", err)).ok();
+            graph
+                .add_vertex(i, i as u64, &vec![])
+                .map_err(|err| println!("{:?}", err))
+                .ok();
         }
 
         ba_preferential_attachment(&graph, 1000, 5);

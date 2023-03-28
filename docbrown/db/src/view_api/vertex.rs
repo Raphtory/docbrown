@@ -1,5 +1,5 @@
 use crate::view_api::edge::{EdgeListOps, EdgeViewOps};
-use docbrown_core::{tgraph_shard::exceptions::GraphError, Direction, Prop};
+use docbrown_core::{tgraph_shard::errors::GraphError, Direction, Prop};
 use std::collections::HashMap;
 
 pub trait VertexViewOps: Sized + Send + Sync {
@@ -67,15 +67,27 @@ pub trait VertexListOps:
 
     fn degree(self) -> Result<Self::ValueIterType<usize>, GraphError>;
 
-    fn degree_window(self, t_start: i64, t_end: i64) -> Result<Self::ValueIterType<usize>, GraphError>;
+    fn degree_window(
+        self,
+        t_start: i64,
+        t_end: i64,
+    ) -> Result<Self::ValueIterType<usize>, GraphError>;
 
     fn in_degree(self) -> Result<Self::ValueIterType<usize>, GraphError>;
 
-    fn in_degree_window(self, t_start: i64, t_end: i64) -> Result<Self::ValueIterType<usize>, GraphError>;
+    fn in_degree_window(
+        self,
+        t_start: i64,
+        t_end: i64,
+    ) -> Result<Self::ValueIterType<usize>, GraphError>;
 
     fn out_degree(self) -> Result<Self::ValueIterType<usize>, GraphError>;
 
-    fn out_degree_window(self, t_start: i64, t_end: i64) -> Result<Self::ValueIterType<usize>, GraphError>;
+    fn out_degree_window(
+        self,
+        t_start: i64,
+        t_end: i64,
+    ) -> Result<Self::ValueIterType<usize>, GraphError>;
 
     fn edges(self) -> Self::EList;
 

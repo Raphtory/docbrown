@@ -2,8 +2,8 @@ use crate::vertex::VertexView;
 use crate::view_api::internal::GraphViewInternalOps;
 use crate::view_api::{EdgeListOps, EdgeViewOps};
 use docbrown_core::tgraph::{EdgeRef, VertexRef};
+use docbrown_core::tgraph_shard::errors::GraphError;
 use docbrown_core::Prop;
-use docbrown_core::tgraph_shard::exceptions::GraphError;
 use std::fmt::{Debug, Formatter};
 use std::sync::Arc;
 
