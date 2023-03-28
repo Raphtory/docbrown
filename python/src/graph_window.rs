@@ -99,13 +99,11 @@ impl WindowedGraph {
 
     pub fn __getitem__(slf: PyRef<'_, Self>, id: &PyAny) -> PyResult<Option<WindowedVertex>> {
         let v = Graph::extract_id(id)?;
-        match slf.graph_w.vertex(v) {
-            None => {Ok(None)}
-            Some(v) => {
-                let g: Py<Self> = slf.into();
-                Ok(Some(WindowedVertex::new(g, v)))
-            }
-        }
+        let v = slf.graph_w.vertex(v).map(|v| {
+            let g: Py<Self> = slf.into();
+            v.map(|x| WindowedVertex::new(g, x))
+        });
+        adapt_err(v)
     }
 
 
@@ -124,7 +122,7 @@ impl WindowedGraph {
     pub fn edge(&self, src: &PyAny, dst: &PyAny) -> PyResult<Option<WindowedEdge>> {
         let src = Graph::extract_id(src)?;
         let dst = Graph::extract_id(dst)?;
-        adapt_err(self.graph_w.edge(src, dst).map(|we| we.into()))
+        Ok(adapt_err(self.graph_w.edge(src, dst))?.map(|we| we.into()))
     }
 
     pub fn edges(&self) -> WindowedEdgeIterator {

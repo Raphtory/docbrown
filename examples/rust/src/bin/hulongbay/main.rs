@@ -120,8 +120,8 @@ fn try_main() -> Result<(), Box<dyn Error>> {
 
     let graph = loader(data_dir)?;
 
-    let min_time = graph.earliest_time().ok_or(GraphEmptyError)?;
-    let max_time = graph.latest_time().ok_or(GraphEmptyError)?;
+    let min_time = graph.earliest_time().unwrap().ok_or(GraphEmptyError)?;
+    let max_time = graph.latest_time().unwrap().ok_or(GraphEmptyError)?;
     let mid_time = (min_time + max_time) / 2;
 
     let now = Instant::now();
@@ -137,7 +137,7 @@ fn try_main() -> Result<(), Box<dyn Error>> {
     let now = Instant::now();
     let components = connected_components(
         &graph,
-        graph.earliest_time().unwrap()..graph.latest_time().unwrap(),
+        graph.earliest_time().unwrap().unwrap()..graph.latest_time().unwrap().unwrap(),
         5,
     );
 

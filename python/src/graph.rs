@@ -13,11 +13,6 @@ use pyo3::types::PyIterator;
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::path::{Path, PathBuf};
-use itertools::Itertools;
-
-use crate::graph_window::{GraphWindowSet, WindowedGraph};
-use crate::wrappers::{PerspectiveSet, Prop};
-use crate::Perspective;
 
 #[pyclass]
 pub struct Graph {
@@ -58,7 +53,7 @@ impl Graph {
     pub fn add_vertex_properties(&self, id: &PyAny, properties: HashMap<String, Prop>) -> PyResult<()> {
         let v = Self::extract_id(id)?;
         let result = self.graph.add_vertex_properties(v, &Self::transform_props(Some(properties)));
-        Self::adapt_err(result)
+        adapt_err(result)
     }
 
     pub fn add_edge(
@@ -80,7 +75,7 @@ impl Graph {
         let src = Self::extract_id(src)?;
         let dst = Self::extract_id(dst)?;
         let result = self.graph.add_edge_properties(src, dst, &Self::transform_props(Some(properties)));
-        Self::adapt_err(result)
+        adapt_err(result)
     }
 
     //******  Perspective APIS  ******//
@@ -173,13 +168,14 @@ impl Graph {
 
     pub fn has_vertex(&self, id: &PyAny) -> PyResult<bool> {
         let v = Self::extract_id(id)?;
-        Ok(self.graph.has_vertex(v))
+        adapt_err(self.graph.has_vertex(v))
     }
+
 
     pub fn has_edge(&self, src: &PyAny, dst: &PyAny) -> PyResult<bool> {
         let src = Self::extract_id(src)?;
         let dst = Self::extract_id(dst)?;
-        Ok(self.graph.has_edge(src, dst))
+        adapt_err(self.graph.has_edge(src, dst))
     }
 
     //******  Getter APIs ******//

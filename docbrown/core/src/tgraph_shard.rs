@@ -361,7 +361,7 @@ impl TGraphShard<TemporalGraph> {
         let iter = gen!({
             let binding = tgshard.rc.read();
             let g = binding.as_ref().unwrap();
-            let chunks = (*g).vertex_edges_window(v, &w, d).map(|e| e.into());
+            let chunks = (*g).vertex_edges_window(v, &w, d).map(|(_,e)| e.into());
             let iter = chunks.into_iter();
             for v_id in iter {
                 yield_!(v_id)
@@ -499,40 +499,19 @@ impl TGraphShard<TemporalGraph> {
         self.read_shard(|tg| Ok(tg.temporal_vertex_props(v)))
     }
 
-
-
-
     pub fn temporal_vertex_props_window(
         &self,
         v: u64,
         w: Range<i64>,
     ) -> Result<HashMap<String, Vec<(i64, Prop)>>, GraphError> {
         self.read_shard(|tg| Ok(tg.temporal_vertex_props_window(v, &w)))
-
+    }
     pub fn static_edge_prop(&self, e: usize, name: String) -> Result<Option<Prop>, GraphError> {
         self.read_shard(|tg| Ok(tg.static_edge_prop(e, &name)))
     }
 
     pub fn static_edge_prop_keys(&self, e: usize) -> Result<Vec<String>, GraphError> {
         self.read_shard(|tg| Ok(tg.static_edge_prop_keys(e)))
-    }
-
-
-    pub fn temporal_vertex_prop_vec_window(
-        &self,
-        v: u64,
-        name: String,
-        w: Range<i64>,
-    ) -> Vec<(i64, Prop)> {
-        self.read_shard(|tg| tg.temporal_vertex_prop_vec_window(v, &name, &w))
-    }
-
-    pub fn temporal_vertex_props_window(
-        &self,
-        v: u64,
-        w: Range<i64>,
-    ) -> Result<HashMap<String, Vec<(i64, Prop)>>, GraphError> {
-        self.read_shard(|tg| Ok(tg.temporal_vertex_props_window(v, &w)))
     }
 
     pub fn temporal_edge_prop_vec(
@@ -586,18 +565,18 @@ impl ImmutableTGraphShard<TemporalGraph> {
         self.rc.degree(v, d)
     }
 
-    pub fn vertices(&self) -> Box<dyn Iterator<Item = VertexRef> + Send + '_> {
+    pub fn vertices(&self) -> Box<dyn Iterator<Item=VertexRef> + Send+ '_> {
         self.rc.vertices()
     }
 
-    pub fn edges(&self, v: u64, d: Direction) -> Box<dyn Iterator<Item = EdgeRef> + Send + '_> {
+    pub fn edges(&self, v: u64, d: Direction) -> Box<dyn Iterator<Item=(usize,EdgeRef)> + Send+ '_> {
         self.rc.vertex_edges(v, d)
     }
 
     pub fn out_edges_len(&self) -> usize {
         self.rc.out_edges_len()
+    }
 }
-
 #[cfg(test)]
 mod temporal_graph_partition_test {
     use crate::{tgraph_shard::TGraphShard, Direction};

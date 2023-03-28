@@ -545,7 +545,7 @@ mod views_test {
 
         let wg = WindowedGraph::new(g.into(), -1, 1);
 
-        assert_eq!(wg.vertex(1).unwrap().id(),1);
+        assert_eq!(wg.vertex(1).unwrap().unwrap().id(),1);
     }
 
     #[test]

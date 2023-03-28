@@ -7,6 +7,7 @@ use std::{
     path::{Path, PathBuf},
     sync::Arc,
 };
+use itertools::Itertools;
 
 use docbrown_core::tgraph::TemporalGraph;
 use docbrown_core::tgraph_shard::TGraphShard;
@@ -28,7 +29,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Graph {
     pub(crate) nr_shards: usize,
-    pub(crate) shards: Vec<TGraphShard>,
+    pub(crate) shards: Vec<TGraphShard<TemporalGraph>>,
 }
 
 impl GraphViewInternalOps for Graph {
@@ -165,6 +166,18 @@ impl GraphViewInternalOps for Graph {
             shards
                 .into_iter()
                 .flat_map(move |s| s.vertices_window(t_start..t_end)),
+        )
+    }
+
+    fn vertex_refs_window_shard(
+        &self,
+        shard: usize,
+        t_start: i64,
+        t_end: i64,
+    ) -> Box<dyn Iterator<Item=VertexRef> + Send> {
+        let shard = self.shards[shard].clone();
+        Box::new(
+            shard.vertices_window(t_start..t_end)
         )
     }
 
@@ -1032,8 +1045,8 @@ mod db_tests {
         assert_eq!(g.earliest_time().unwrap(), Some(10));
 
         g.add_vertex(5, 1, &vec![]).map_err(|err| println!("{:?}", err)).ok();
-        assert_eq!(g.latest_time(), Some(10));
-        assert_eq!(g.earliest_time(), Some(5));
+        assert_eq!(g.latest_time().unwrap(), Some(10));
+        assert_eq!(g.earliest_time().unwrap(), Some(5));
 
         g.add_edge(20, 3, 4, &vec![]).unwrap();
         assert_eq!(g.latest_time().unwrap(), Some(20));

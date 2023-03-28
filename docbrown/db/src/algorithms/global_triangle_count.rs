@@ -91,7 +91,7 @@ mod triangle_count_tests {
         let windowed_graph = g.window(0, 95);
         let expected = 8;
 
-        let actual = global_triangle_count(&windowed_graph);
+        let actual = global_triangle_count(&windowed_graph).unwrap();
 
         assert_eq!(actual, expected);
     }

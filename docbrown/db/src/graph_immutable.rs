@@ -67,7 +67,7 @@ impl ImmutableGraph {
         Box::new(self.shards.iter().flat_map(|s| s.vertices()))
     }
 
-    pub fn edges(&self) -> Box<dyn Iterator<Item = EdgeRef> + Send + '_> {
+    pub fn edges(&self) -> Box<dyn Iterator<Item = (usize,EdgeRef)> + Send + '_> {
         Box::new(
             self.vertices()
                 .flat_map(|v| self.get_shard_from_v(v).edges(v.g_id, Direction::OUT)),
