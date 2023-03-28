@@ -7,11 +7,11 @@ use docbrown_db::algorithms::degree::{
 };
 use docbrown_db::algorithms::directed_graph_density::directed_graph_density as directed_graph_density_rs;
 use docbrown_db::algorithms::local_clustering_coefficient::local_clustering_coefficient as local_clustering_coefficient_rs;
-use docbrown_db::algorithms::triangle_count::local_triangle_count as local_triangle_count_rs;
 use docbrown_db::algorithms::reciprocity::{
     all_local_reciprocity as all_local_reciprocity_rs, global_reciprocity as global_reciprocity_rs,
     local_reciprocity as local_reciprocity_rs,
 };
+use docbrown_db::algorithms::triangle_count::local_triangle_count as local_triangle_count_rs;
 use pyo3::prelude::*;
 
 #[pyfunction]

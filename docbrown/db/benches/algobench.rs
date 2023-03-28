@@ -1,7 +1,7 @@
 use crate::common::bench;
 use criterion::{criterion_group, criterion_main, Criterion};
-use docbrown_db::algorithms::triangle_count::global_triangle_count;
 use docbrown_db::algorithms::local_clustering_coefficient::local_clustering_coefficient;
+use docbrown_db::algorithms::triangle_count::global_triangle_count;
 use docbrown_db::algorithms::triangle_count::local_triangle_count;
 use docbrown_db::graph::Graph;
 use docbrown_db::view_api::*;

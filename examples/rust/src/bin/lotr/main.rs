@@ -1,10 +1,8 @@
+use docbrown_core::Prop;
 use docbrown_core::{state, utils};
-use docbrown_core::{Direction, Prop};
-use docbrown_db::program::{
-    GlobalEvalState, Program, TriangleCountS1, TriangleCountS2, TriangleCountSlowS2,
-};
-use docbrown_db::view_api::*;
-use docbrown_db::view_api::{GraphViewOps, VertexViewOps};
+use docbrown_db::algorithms::triangle_count::*;
+use docbrown_db::program::{GlobalEvalState, Program};
+use docbrown_db::view_api::GraphViewOps;
 use docbrown_db::{csv_loader::csv::CsvLoader, graph::Graph};
 use serde::Deserialize;
 use std::path::PathBuf;
@@ -64,12 +62,14 @@ fn main() {
                     time,
                     src_id,
                     &vec![("name".to_string(), Prop::Str("Character".to_string()))],
-                );
+                )
+                .unwrap();
                 g.add_vertex(
                     time,
                     src_id,
                     &vec![("name".to_string(), Prop::Str("Character".to_string()))],
-                );
+                )
+                .unwrap();
                 g.add_edge(
                     time,
                     src_id,
@@ -78,7 +78,8 @@ fn main() {
                         "name".to_string(),
                         Prop::Str("Character Co-occurrence".to_string()),
                     )],
-                );
+                )
+                .unwrap();
             })
             .expect("Failed to load graph from CSV data files");
 
@@ -104,8 +105,8 @@ fn main() {
     assert_eq!(gandalf, 8703678510860200260);
     assert!(graph.has_vertex(gandalf).unwrap());
 
-    let mut program_s1 = TriangleCountS1 {};
-    let mut program_s2 = TriangleCountS2 {};
+    let program_s1 = TriangleCountS1 {};
+    let program_s2 = TriangleCountS2 {};
     let agg = state::def::sum::<u64>(1);
 
     let mut gs = GlobalEvalState::new(graph.clone(), i64::MIN..i64::MAX, false);
@@ -118,7 +119,7 @@ fn main() {
 
     println!("Actual triangle count: {:?}", actual_tri_count);
 
-    let mut program = TriangleCountSlowS2 {};
+    let program = TriangleCountSlowS2 {};
     let agg = state::def::sum::<usize>(0);
 
     let mut gs = GlobalEvalState::new(graph.clone(), i64::MIN..i64::MAX, false);
