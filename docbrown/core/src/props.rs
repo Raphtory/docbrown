@@ -1,10 +1,10 @@
-use crate::lazy_vec::{LazyVec, IllegalSet};
+use crate::lazy_vec::{IllegalSet, LazyVec};
+use crate::tprop::TProp;
 use crate::Prop;
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::fmt::{Debug};
-use itertools::Itertools;
-use crate::tprop::TProp;
+use std::fmt::Debug;
 
 #[derive(thiserror::Error, Debug)]
 #[error("cannot mutate static property '{name}'")]
@@ -18,7 +18,7 @@ impl IllegalMutate {
         let id = PropId::Static(source.index);
         IllegalMutate {
             name: props.reverse_id(&id).to_string(),
-            source
+            source,
         }
     }
 }
@@ -62,7 +62,6 @@ pub(crate) struct Props {
 }
 
 impl Props {
-
     // GETTERS:
 
     fn get_prop_id(&self, name: &str, should_be_static: bool) -> Option<usize> {
@@ -84,8 +83,8 @@ impl Props {
             Some(prop_id) => {
                 let props = vector.get(id).unwrap_or(&LazyVec::Empty);
                 props.get(prop_id).cloned().unwrap_or(Default::default())
-            },
-            None => Default::default()
+            }
+            None => Default::default(),
         }
     }
 
@@ -100,23 +99,26 @@ impl Props {
         props.get(prop_id)
     }
 
-    fn get_keys<A>(&self, vector: &Vec<LazyVec<A>>, id: usize, should_be_static: bool) -> Vec<String>
+    fn get_keys<A>(
+        &self,
+        vector: &Vec<LazyVec<A>>,
+        id: usize,
+        should_be_static: bool,
+    ) -> Vec<String>
     where
-        A: Clone + Default + PartialEq + Debug
+        A: Clone + Default + PartialEq + Debug,
     {
         match vector.get(id) {
             Some(props) => {
                 let ids = props.filled_ids().into_iter();
                 if should_be_static {
-                    ids
-                        .map(|id| self.reverse_id(&PropId::Static(id)).to_string())
+                    ids.map(|id| self.reverse_id(&PropId::Static(id)).to_string())
                         .collect_vec()
                 } else {
-                    ids
-                        .map(|id| self.reverse_id(&PropId::Temporal(id)).to_string())
+                    ids.map(|id| self.reverse_id(&PropId::Temporal(id)).to_string())
                         .collect_vec()
                 }
-            },
+            }
             None => vec![],
         }
     }
@@ -132,8 +134,8 @@ impl Props {
     // SETTERS:
 
     fn grow_and_get_slot<A>(vector: &mut Vec<A>, id: usize) -> &mut A
-        where
-            A: Default
+    where
+        A: Default,
     {
         if vector.len() <= id {
             vector.resize_with(id + 1, || Default::default());
@@ -156,35 +158,52 @@ impl Props {
                 };
                 self.prop_ids.insert(name.to_string(), new_prop_id.clone());
                 Ok(new_prop_id.get_id())
-            },
+            }
             Some(id) if id.is_static() == should_be_static => Ok(id.get_id()),
             _ => Err(()),
         }
     }
 
-    fn translate_props(&mut self, props: &Vec<(String, Prop)>, should_be_static: bool) -> Vec<(usize, Prop)> { // TODO: return Result
-        props.iter()
-            .map(|(name, prop)| (self.get_or_allocate_id(&name, should_be_static).unwrap(), prop.clone()))
+    fn translate_props(
+        &mut self,
+        props: &Vec<(String, Prop)>,
+        should_be_static: bool,
+    ) -> Vec<(usize, Prop)> {
+        // TODO: return Result
+        props
+            .iter()
+            .map(|(name, prop)| {
+                (
+                    self.get_or_allocate_id(&name, should_be_static).unwrap(),
+                    prop.clone(),
+                )
+            })
             .collect_vec()
     }
 
     pub fn upsert_temporal_props(&mut self, t: i64, id: usize, props: &Vec<(String, Prop)>) {
         if !props.is_empty() {
             let translated_props = self.translate_props(props, false);
-            let vertex_slot: &mut LazyVec<TProp> = Self::grow_and_get_slot(&mut self.temporal_props, id);
+            let vertex_slot: &mut LazyVec<TProp> =
+                Self::grow_and_get_slot(&mut self.temporal_props, id);
             for (prop_id, prop) in translated_props {
                 vertex_slot.update_or_set(prop_id, |p| p.set(t, &prop), TProp::from(t, &prop));
             }
         }
     }
 
-    pub fn set_static_props(&mut self, id: usize, props: &Vec<(String, Prop)>) -> Result<(), IllegalMutate> {
+    pub fn set_static_props(
+        &mut self,
+        id: usize,
+        props: &Vec<(String, Prop)>,
+    ) -> Result<(), IllegalMutate> {
         if !props.is_empty() {
             let translated_props = self.translate_props(props, true);
-            let vertex_slot: &mut LazyVec<Option<Prop>> = Self::grow_and_get_slot(&mut self.static_props, id);
+            let vertex_slot: &mut LazyVec<Option<Prop>> =
+                Self::grow_and_get_slot(&mut self.static_props, id);
             for (prop_id, prop) in translated_props {
                 if let Err(e) = vertex_slot.set(prop_id, Some(prop)) {
-                    return Err(IllegalMutate::from(e, &self))
+                    return Err(IllegalMutate::from(e, &self));
                 }
             }
         }
@@ -199,8 +218,12 @@ mod props_tests {
     #[test]
     fn return_prop_id_if_prop_name_found() {
         let mut props = Props::default();
-        props.prop_ids.insert(String::from("key1"), PropId::Temporal(0));
-        props.prop_ids.insert(String::from("key2"), PropId::Temporal(1));
+        props
+            .prop_ids
+            .insert(String::from("key1"), PropId::Temporal(0));
+        props
+            .prop_ids
+            .insert(String::from("key2"), PropId::Temporal(1));
 
         assert_eq!(props.get_or_allocate_id("key2", false), Ok(1));
     }

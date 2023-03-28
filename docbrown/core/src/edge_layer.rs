@@ -4,11 +4,11 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::ops::Range;
 
-use crate::{Direction, Prop};
 use crate::adj::Adj;
 use crate::props::Props;
 use crate::tadjset::{AdjEdge, TAdjSet};
 use crate::tgraph::EdgeRef;
+use crate::{Direction, Prop};
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub(crate) struct EdgeLayer {
@@ -66,8 +66,7 @@ impl EdgeLayer {
         src_pid: usize,
         props: &Vec<(String, Prop)>,
     ) {
-        let src_edge_meta_id =
-            self.link_outbound_edge(t, src_pid, dst.try_into().unwrap(), true);
+        let src_edge_meta_id = self.link_outbound_edge(t, src_pid, dst.try_into().unwrap(), true);
 
         self.props.upsert_temporal_props(t, src_edge_meta_id, props);
         self.next_edge_id += 1;
@@ -81,8 +80,7 @@ impl EdgeLayer {
         dst_pid: usize,
         props: &Vec<(String, Prop)>,
     ) {
-        let dst_edge_meta_id =
-            self.link_inbound_edge(t, src.try_into().unwrap(), dst_pid, true);
+        let dst_edge_meta_id = self.link_inbound_edge(t, src.try_into().unwrap(), dst_pid, true);
 
         self.props.upsert_temporal_props(t, dst_edge_meta_id, props);
         self.next_edge_id += 1;
@@ -162,33 +160,44 @@ impl EdgeLayer {
     pub(crate) fn has_local_edge(&self, src_pid: usize, dst_pid: usize) -> bool {
         match &self.adj_lists[src_pid] {
             Adj::Solo => false,
-            Adj::List { out, .. } => out.find(dst_pid).is_some()
+            Adj::List { out, .. } => out.find(dst_pid).is_some(),
         }
     }
 
-    pub(crate) fn has_local_edge_window(&self, src_pid: usize, dst_pid: usize, w: &Range<i64>) -> bool {
+    pub(crate) fn has_local_edge_window(
+        &self,
+        src_pid: usize,
+        dst_pid: usize,
+        w: &Range<i64>,
+    ) -> bool {
         match &self.adj_lists[src_pid] {
             Adj::Solo => false,
-            Adj::List { out, .. } => out.find_window(dst_pid, w).is_some()
+            Adj::List { out, .. } => out.find_window(dst_pid, w).is_some(),
         }
     }
 
     pub(crate) fn has_remote_edge(&self, src_pid: usize, dst: u64) -> bool {
         match &self.adj_lists[src_pid] {
             Adj::Solo => false,
-            Adj::List { remote_out, .. } => remote_out.find(dst as usize).is_some()
+            Adj::List { remote_out, .. } => remote_out.find(dst as usize).is_some(),
         }
     }
 
     pub(crate) fn has_remote_edge_window(&self, src_pid: usize, dst: u64, w: &Range<i64>) -> bool {
         match &self.adj_lists[src_pid] {
             Adj::Solo => false,
-            Adj::List { remote_out, .. } => remote_out.find_window(dst as usize, w).is_some()
+            Adj::List { remote_out, .. } => remote_out.find_window(dst as usize, w).is_some(),
         }
     }
 
     // try to merge the next four functions together
-    pub(crate) fn local_edge(&self, src: u64, dst: u64, src_pid: usize, dst_pid: usize) -> Option<EdgeRef> {
+    pub(crate) fn local_edge(
+        &self,
+        src: u64,
+        dst: u64,
+        src_pid: usize,
+        dst_pid: usize,
+    ) -> Option<EdgeRef> {
         match &self.adj_lists[src_pid] {
             Adj::Solo => None,
             Adj::List { out, .. } => {
@@ -206,7 +215,14 @@ impl EdgeLayer {
         }
     }
 
-    pub(crate) fn local_edge_window(&self, src: u64, dst: u64, src_pid: usize, dst_pid: usize, w: &Range<i64>) -> Option<EdgeRef> {
+    pub(crate) fn local_edge_window(
+        &self,
+        src: u64,
+        dst: u64,
+        src_pid: usize,
+        dst_pid: usize,
+        w: &Range<i64>,
+    ) -> Option<EdgeRef> {
         match &self.adj_lists[src_pid] {
             Adj::Solo => None,
             Adj::List { out, .. } => {
@@ -242,7 +258,13 @@ impl EdgeLayer {
         }
     }
 
-    pub(crate) fn remote_edge_window(&self, src: u64, dst: u64, src_pid: usize, w: &Range<i64>) -> Option<EdgeRef> {
+    pub(crate) fn remote_edge_window(
+        &self,
+        src: u64,
+        dst: u64,
+        src_pid: usize,
+        w: &Range<i64>,
+    ) -> Option<EdgeRef> {
         match &self.adj_lists[src_pid] {
             Adj::Solo => None,
             Adj::List { remote_out, .. } => {
@@ -331,42 +353,41 @@ impl EdgeLayer {
                 remote_out,
                 remote_into,
                 ..
-            } => {
-                match d {
-                    Direction::OUT => {
-                        let iter = chain!(out.iter(), remote_out.iter())
-                            .map(move |(dst, e)| (*dst, out_adapter(*dst, e)));
-                        Box::new(iter)
-                    },
-                    Direction::IN => {
-                        let iter = chain!(into.iter(), remote_into.iter())
-                            .map(move |(dst, e)| (*dst, in_adapter(*dst, e)));
-                        Box::new(iter)
-                    },
-                    Direction::BOTH => {
-                        let out_mapper = move |(dst, e): (&usize, AdjEdge)| (*dst, out_adapter(*dst, e));
-                        let in_mapper = move |(dst, e): (&usize, AdjEdge)| (*dst, in_adapter(*dst, e));
-
-                        let remote_out: Box<dyn Iterator<Item=(usize, T)> + Send> =
-                            Box::new(remote_out.iter().map(out_mapper));
-                        let remote_into: Box<dyn Iterator<Item=(usize, T)> + Send> =
-                            Box::new(remote_into.iter().map(in_mapper));
-                        let remote = vec![remote_out, remote_into]
-                            .into_iter()
-                            .kmerge_by(|(left, _), (right, _)| left < right);
-
-                        let out: Box<dyn Iterator<Item=(usize, T)> + Send> =
-                            Box::new(out.iter().map(out_mapper));
-                        let into: Box<dyn Iterator<Item=(usize, T)> + Send> =
-                            Box::new(into.iter().map(in_mapper));
-                        let local = vec![out, into]
-                                .into_iter()
-                                .kmerge_by(|(left, _), (right, _)| left < right);
-
-                        Box::new(chain!(local, remote))
-                    }
+            } => match d {
+                Direction::OUT => {
+                    let iter = chain!(out.iter(), remote_out.iter())
+                        .map(move |(dst, e)| (*dst, out_adapter(*dst, e)));
+                    Box::new(iter)
                 }
-            }
+                Direction::IN => {
+                    let iter = chain!(into.iter(), remote_into.iter())
+                        .map(move |(dst, e)| (*dst, in_adapter(*dst, e)));
+                    Box::new(iter)
+                }
+                Direction::BOTH => {
+                    let out_mapper =
+                        move |(dst, e): (&usize, AdjEdge)| (*dst, out_adapter(*dst, e));
+                    let in_mapper = move |(dst, e): (&usize, AdjEdge)| (*dst, in_adapter(*dst, e));
+
+                    let remote_out: Box<dyn Iterator<Item = (usize, T)> + Send> =
+                        Box::new(remote_out.iter().map(out_mapper));
+                    let remote_into: Box<dyn Iterator<Item = (usize, T)> + Send> =
+                        Box::new(remote_into.iter().map(in_mapper));
+                    let remote = vec![remote_out, remote_into]
+                        .into_iter()
+                        .kmerge_by(|(left, _), (right, _)| left < right);
+
+                    let out: Box<dyn Iterator<Item = (usize, T)> + Send> =
+                        Box::new(out.iter().map(out_mapper));
+                    let into: Box<dyn Iterator<Item = (usize, T)> + Send> =
+                        Box::new(into.iter().map(in_mapper));
+                    let local = vec![out, into]
+                        .into_iter()
+                        .kmerge_by(|(left, _), (right, _)| left < right);
+
+                    Box::new(chain!(local, remote))
+                }
+            },
             _ => Box::new(std::iter::empty()),
         }
     }
@@ -379,10 +400,10 @@ impl EdgeLayer {
         out_adapter: O,
         in_adapter: I,
     ) -> Box<dyn Iterator<Item = (usize, T)> + Send + '_>
-        where
-            O: Fn(usize, AdjEdge) -> T + Send + Sync + Copy + 'a,
-            I: Fn(usize, AdjEdge) -> T + Send + Sync + Copy + 'a,
-            T: Send + 'a,
+    where
+        O: Fn(usize, AdjEdge) -> T + Send + Sync + Copy + 'a,
+        I: Fn(usize, AdjEdge) -> T + Send + Sync + Copy + 'a,
+        T: Send + 'a,
     {
         match &self.adj_lists[vertex_pid] {
             Adj::List {
@@ -391,47 +412,46 @@ impl EdgeLayer {
                 remote_out,
                 remote_into,
                 ..
-            } => {
-                match d {
-                    Direction::OUT => {
-                        let iter = chain!(out.iter_window(r), remote_out.iter_window(r))
-                            .map(move |(dst, e)| (dst, out_adapter(dst, e)));
-                        Box::new(iter)
-                    },
-                    Direction::IN => {
-                        let iter = chain!(into.iter_window(r), remote_into.iter_window(r))
-                            .map(move |(dst, e)| (dst, in_adapter(dst, e)));
-                        Box::new(iter)
-                    },
-                    Direction::BOTH => {
-                        let out_mapper = move |(dst, e): (usize, AdjEdge)| (dst, out_adapter(dst, e));
-                        let in_mapper = move |(dst, e): (usize, AdjEdge)| (dst, in_adapter(dst, e));
-
-                        let remote_out: Box<dyn Iterator<Item=(usize, T)> + Send> =
-                            Box::new(remote_out.iter_window(r).map(out_mapper));
-                        let remote_into: Box<dyn Iterator<Item=(usize, T)> + Send> =
-                            Box::new(remote_into.iter_window(r).map(in_mapper));
-                        let remote = vec![remote_out, remote_into]
-                            .into_iter()
-                            .kmerge_by(|(left, _), (right, _)| left < right);
-
-                        let out: Box<dyn Iterator<Item=(usize, T)> + Send> =
-                            Box::new(out.iter_window(r).map(out_mapper));
-                        let into: Box<dyn Iterator<Item=(usize, T)> + Send> =
-                            Box::new(into.iter_window(r).map(in_mapper));
-                        let local = vec![out, into]
-                            .into_iter()
-                            .kmerge_by(|(left, _), (right, _)| left < right);
-
-                        Box::new(chain!(local, remote))
-                    }
+            } => match d {
+                Direction::OUT => {
+                    let iter = chain!(out.iter_window(r), remote_out.iter_window(r))
+                        .map(move |(dst, e)| (dst, out_adapter(dst, e)));
+                    Box::new(iter)
                 }
-            }
+                Direction::IN => {
+                    let iter = chain!(into.iter_window(r), remote_into.iter_window(r))
+                        .map(move |(dst, e)| (dst, in_adapter(dst, e)));
+                    Box::new(iter)
+                }
+                Direction::BOTH => {
+                    let out_mapper = move |(dst, e): (usize, AdjEdge)| (dst, out_adapter(dst, e));
+                    let in_mapper = move |(dst, e): (usize, AdjEdge)| (dst, in_adapter(dst, e));
+
+                    let remote_out: Box<dyn Iterator<Item = (usize, T)> + Send> =
+                        Box::new(remote_out.iter_window(r).map(out_mapper));
+                    let remote_into: Box<dyn Iterator<Item = (usize, T)> + Send> =
+                        Box::new(remote_into.iter_window(r).map(in_mapper));
+                    let remote = vec![remote_out, remote_into]
+                        .into_iter()
+                        .kmerge_by(|(left, _), (right, _)| left < right);
+
+                    let out: Box<dyn Iterator<Item = (usize, T)> + Send> =
+                        Box::new(out.iter_window(r).map(out_mapper));
+                    let into: Box<dyn Iterator<Item = (usize, T)> + Send> =
+                        Box::new(into.iter_window(r).map(in_mapper));
+                    let local = vec![out, into]
+                        .into_iter()
+                        .kmerge_by(|(left, _), (right, _)| left < right);
+
+                    Box::new(chain!(local, remote))
+                }
+            },
             _ => Box::new(std::iter::empty()),
         }
     }
 
-    pub(crate) fn edges_iter_window_t( // TODO: change back to private if appropriate
+    pub(crate) fn edges_iter_window_t(
+        // TODO: change back to private if appropriate
         &self,
         vertex_pid: usize,
         window: &Range<i64>,
