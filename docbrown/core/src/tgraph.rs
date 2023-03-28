@@ -261,7 +261,7 @@ impl TemporalGraph {
         data: &Vec<(String, Prop)>,
     ) -> AddEdgeResult {
         let edge_id = self.edge(src, dst).ok_or(AddEdgeError::MissingEdge(src, dst))?.edge_id;
-        let result = self.default_layer.edge_props.set_static_props(edge_id, data);
+        let result = self.default_layer.props.set_static_props(edge_id, data);
         result.map_err(|e| AddEdgeError::new(src, dst, e))
     }
 
@@ -610,11 +610,11 @@ impl TemporalGraph {
     }
 
     pub fn static_edge_prop(&self, e: usize, name: &str) -> Option<Prop> {
-        self.default_layer.edge_props.static_prop(e, name)
+        self.default_layer.props.static_prop(e, name)
     }
 
     pub fn static_edge_prop_keys(&self, e: usize) -> Vec<String> {
-        self.default_layer.edge_props.static_keys(e)
+        self.default_layer.props.static_keys(e)
     }
 
     pub fn temporal_edge_prop(
@@ -622,7 +622,7 @@ impl TemporalGraph {
         e: usize,
         name: &str,
     ) -> Box<dyn Iterator<Item = (&i64, Prop)> + '_> {
-        self.default_layer.edge_props.temporal_prop(e, name).unwrap_or(&TProp::Empty).iter()
+        self.default_layer.props.temporal_prop(e, name).unwrap_or(&TProp::Empty).iter()
     }
 
     pub fn temporal_edge_prop_window(
@@ -631,11 +631,11 @@ impl TemporalGraph {
         name: &str,
         w: Range<i64>,
     ) -> Box<dyn Iterator<Item = (&i64, Prop)> + '_> {
-        self.default_layer.edge_props.temporal_prop(e, name).unwrap_or(&TProp::Empty).iter_window(w)
+        self.default_layer.props.temporal_prop(e, name).unwrap_or(&TProp::Empty).iter_window(w)
     }
 
     pub fn temporal_edge_prop_vec(&self, e: usize, name: &str) -> Vec<(i64, Prop)> {
-        self.default_layer.edge_props.temporal_prop(e, name)
+        self.default_layer.props.temporal_prop(e, name)
             .unwrap_or(&TProp::Empty)
             .iter()
             .map(|(t, p)| (*t, p))
@@ -648,7 +648,7 @@ impl TemporalGraph {
         name: &str,
         w: Range<i64>,
     ) -> Vec<(i64, Prop)> {
-        self.default_layer.edge_props.temporal_prop(e, name)
+        self.default_layer.props.temporal_prop(e, name)
             .unwrap_or(&TProp::Empty)
             .iter_window(w)
             .map(|(t, p)| (*t, p))

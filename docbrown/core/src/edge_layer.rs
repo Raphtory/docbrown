@@ -16,7 +16,7 @@ pub(crate) struct EdgeLayer {
 
     // Vector of adjacency lists
     pub(crate) adj_lists: Vec<Adj>,
-    pub(crate) edge_props: Props, // TODO: rename to props
+    pub(crate) props: Props, // TODO: rename to props
 }
 
 impl Default for EdgeLayer {
@@ -24,7 +24,7 @@ impl Default for EdgeLayer {
         Self {
             num_edges: 1, // TODO: add big comment here
             adj_lists: Default::default(),
-            edge_props: Default::default(),
+            props: Default::default(),
         }
     }
 }
@@ -49,7 +49,7 @@ impl EdgeLayer {
             );
         }
 
-        self.edge_props.upsert_temporal_props(t, src_edge_meta_id, props);
+        self.props.upsert_temporal_props(t, src_edge_meta_id, props);
         self.num_edges += 1; // FIXME: we have this in three different places, prone to errors!
     }
 
@@ -64,7 +64,7 @@ impl EdgeLayer {
         let src_edge_meta_id =
             self.link_outbound_edge(t, src_pid, dst.try_into().unwrap(), true);
 
-        self.edge_props.upsert_temporal_props(t, src_edge_meta_id, props);
+        self.props.upsert_temporal_props(t, src_edge_meta_id, props);
         self.num_edges += 1;
     }
 
@@ -79,7 +79,7 @@ impl EdgeLayer {
         let dst_edge_meta_id =
             self.link_inbound_edge(t, src.try_into().unwrap(), dst_pid, true);
 
-        self.edge_props.upsert_temporal_props(t, dst_edge_meta_id, props);
+        self.props.upsert_temporal_props(t, dst_edge_meta_id, props);
         self.num_edges += 1;
     }
 }
