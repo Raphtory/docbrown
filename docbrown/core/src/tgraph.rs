@@ -364,6 +364,30 @@ impl TemporalGraph {
         }
     }
 
+    fn edge_ref_out(&self, v:u64, v_pid: usize, dst: usize, e: AdjEdge) -> EdgeRef {
+        EdgeRef {
+            edge_id: e.edge_id(),
+            src_g_id: v,
+            dst_g_id: self.v_g_id(dst, e),
+            src_id: v_pid,
+            dst_id: dst,
+            time: None,
+            is_remote: !e.is_local(),
+        }
+    }
+
+    fn edge_ref_in(&self, v:u64, v_pid: usize, dst: usize, e: AdjEdge) -> EdgeRef {
+        EdgeRef {
+            edge_id: e.edge_id(),
+            src_g_id: self.v_g_id(dst, e),
+            dst_g_id: v,
+            src_id: dst,
+            dst_id: v_pid,
+            time: None,
+            is_remote: !e.is_local(),
+        }
+    }
+
     // FIXME: all the functions using global ID need to be changed to use the physical ID instead
     pub(crate) fn vertex_edges(
         &self,
@@ -374,28 +398,11 @@ impl TemporalGraph {
         Self: Sized,
     {
         let v_pid = self.logical_to_physical[&v];
-
-        let edge_ref_out = move |dst: usize, e: AdjEdge| EdgeRef {
-            edge_id: e.edge_id(),
-            src_g_id: v,
-            dst_g_id: self.v_g_id(dst, e),
-            src_id: v_pid,
-            dst_id: dst,
-            time: None,
-            is_remote: !e.is_local(),
-        };
-
-        let edge_ref_in = move |dst: usize, e: AdjEdge| EdgeRef {
-            edge_id: e.edge_id(),
-            src_g_id: self.v_g_id(dst, e),
-            dst_g_id: v,
-            src_id: dst,
-            dst_id: v_pid,
-            time: None,
-            is_remote: !e.is_local(),
-        };
-
-        self.default_layer.edges_iter(v_pid, d, edge_ref_out, edge_ref_in)
+        self.default_layer.edges_iter(
+            v_pid,
+            d,
+            move |dst, e| self.edge_ref_out(v, v_pid, dst, e),
+            move |dst, e| self.edge_ref_in(v, v_pid, dst, e))
     }
 
     pub(crate) fn vertex_edges_window(
@@ -408,28 +415,12 @@ impl TemporalGraph {
         Self: Sized,
     {
         let v_pid = self.logical_to_physical[&v];
-
-        let edge_ref_out = move |dst: usize, e: AdjEdge| EdgeRef {
-            edge_id: e.edge_id(),
-            src_g_id: v,
-            dst_g_id: self.v_g_id(dst, e),
-            src_id: v_pid,
-            dst_id: dst,
-            time: None,
-            is_remote: !e.is_local(),
-        };
-
-        let edge_ref_in = move |dst: usize, e: AdjEdge| EdgeRef {
-            edge_id: e.edge_id(),
-            src_g_id: self.v_g_id(dst, e),
-            dst_g_id: v,
-            src_id: dst,
-            dst_id: v_pid,
-            time: None,
-            is_remote: !e.is_local(),
-        };
-
-        self.default_layer.edges_iter_window(v_pid, w, d, edge_ref_out, edge_ref_in)
+        self.default_layer.edges_iter_window(
+            v_pid,
+            w,
+            d,
+            move |dst, e| self.edge_ref_out(v, v_pid, dst, e),
+            move |dst, e| self.edge_ref_in(v, v_pid, dst, e))
     }
 
     pub(crate) fn vertex_edges_window_t(
