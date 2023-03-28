@@ -14,7 +14,7 @@
 //! ## Example
 //!
 //! ```rust
-//! use docbrown_db::view_api::*;
+//! use docbrown_db::graph::Graph;
 //! use docbrown_core::algorithms::degree::max_out_degree;
 //!
 //! let g = Graph::new(1);
