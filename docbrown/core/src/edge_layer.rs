@@ -273,7 +273,7 @@ impl EdgeLayer {
                 Direction::OUT => out.len() + remote_out.len(),
                 Direction::IN => into.len() + remote_into.len(),
                 _ => self
-                    .edges_iter(v_pid, d, |_, e| e, |_, e| e)
+                    .basic_edges_iter(v_pid, d)
                     .dedup_by(|(left, e1), (right, e2)| {
                         left == right && e1.is_local() == e2.is_local()
                     })
@@ -294,7 +294,7 @@ impl EdgeLayer {
                 Direction::OUT => out.len_window(w) + remote_out.len_window(w),
                 Direction::IN => into.len_window(w) + remote_into.len_window(w),
                 _ => self
-                    .edges_iter_window(v_pid, w, d, |_, e| e, |_, e| e)
+                    .basic_edges_iter_window(v_pid, w, d)
                     .dedup_by(|(left, e1), (right, e2)| {
                         left == right && e1.is_local() == e2.is_local()
                     })
@@ -460,6 +460,23 @@ impl EdgeLayer {
             }
             _ => Box::new(std::iter::empty()),
         }
+    }
+
+    fn basic_edges_iter(
+        &self,
+        vertex_pid: usize,
+        d: Direction,
+    ) -> Box<dyn Iterator<Item = (usize, AdjEdge)> + Send + '_> {
+        self.edges_iter(vertex_pid, d, |_, e| e, |_, e| e)
+    }
+
+    fn basic_edges_iter_window(
+        &self,
+        vertex_pid: usize,
+        r: &Range<i64>,
+        d: Direction,
+    ) -> Box<dyn Iterator<Item = (usize, AdjEdge)> + Send + '_> {
+        self.edges_iter_window(vertex_pid, r, d, |_, e| e, |_, e| e)
     }
 }
 
