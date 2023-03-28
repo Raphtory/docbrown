@@ -11,30 +11,8 @@
 //! **Note** this module is not meant to be used as a standalone crate, but in conjunction with the
 //! docbrown_db crate.
 //!
-//! ## Example
+//! For example code, please see the docbrown_db crate.
 //!
-//! ```rust
-//! use docbrown_db::graph::Graph;
-//! use docbrown_core::algorithms::degree::max_out_degree;
-//!
-//! let g = Graph::new(1);
-//! let vs = vec![
-//!   (1, 1, 2),
-//!   (2, 1, 3),
-//!   (3, 2, 1),
-//!   (4, 3, 2),
-//!   (5, 1, 4),
-//!   (6, 4, 5),
-//!   ];
-//!
-//! for (t, src, dst) in &vs {
-//!    g.add_edge(*t, *src, *dst, &vec![]);
-//! }
-//!
-//! let max_out_degree = max_out_degree(&g);
-//! println!("max_out_degree: {:?}", max_out_degree);
-//! // 3
-//! ```
 //! ## Supported Platforms
 //!
 //! `docbrown-core` supports  support for the following platforms:
