@@ -1,3 +1,5 @@
+//! Defines the `Vertex` struct, which represents a vertex in the graph.
+
 use crate::edge::EdgeView;
 use crate::view_api::internal::GraphViewInternalOps;
 use crate::view_api::{VertexListOps, VertexViewOps};
@@ -279,7 +281,6 @@ impl<G: GraphViewInternalOps + 'static + Send + Sync> VertexListOps
 #[cfg(test)]
 mod vertex_test {
     use crate::view_api::*;
-
 
     #[test]
     fn test_all_degrees_window() {

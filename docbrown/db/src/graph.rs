@@ -1,3 +1,5 @@
+//! Defines the `Graph` struct, which represents a graph in memory.
+
 use crate::graph_window::{GraphWindowSet, WindowedGraph};
 use crate::perspective::{Perspective, PerspectiveIterator, PerspectiveSet};
 use std::{

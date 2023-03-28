@@ -1,5 +1,7 @@
+//! Defines the `GraphWindow` trait, which represents a window of time over which a graph can be queried.
+
 use crate::graph::Graph;
-use crate::perspective::{Perspective};
+use crate::perspective::Perspective;
 use docbrown_core::{
     tgraph::{EdgeRef, VertexRef},
     Direction, Prop,
@@ -550,7 +552,7 @@ mod views_test {
 
         let wg = WindowedGraph::new(g.into(), -1, 1);
 
-        assert_eq!(wg.vertex(1).unwrap().id(),1);
+        assert_eq!(wg.vertex(1).unwrap().id(), 1);
     }
 
     #[test]
@@ -566,7 +568,9 @@ mod views_test {
         let g = Graph::new(2);
 
         for (t, v) in &vs {
-            g.add_vertex(*t, *v, &vec![]).map_err(|err| println!("{:?}", err)).ok();
+            g.add_vertex(*t, *v, &vec![])
+                .map_err(|err| println!("{:?}", err))
+                .ok();
         }
 
         let wg = WindowedGraph::new(g, 1, 2);
@@ -589,7 +593,9 @@ mod views_test {
         let g = Graph::new(2);
 
         for (t, v) in &vs {
-            g.add_vertex(*t, *v, &vec![]).map_err(|err| println!("{:?}", err)).ok();
+            g.add_vertex(*t, *v, &vec![])
+                .map_err(|err| println!("{:?}", err))
+                .ok();
         }
 
         let start = vs.get(rand_start_index).expect("start index in range").0;
@@ -781,7 +787,9 @@ mod views_test {
                 ("type".into(), Prop::Str("wallet".into())),
                 ("cost".into(), Prop::F32(99.5)),
             ],
-        ).map_err(|err| println!("{:?}", err)).ok();
+        )
+        .map_err(|err| println!("{:?}", err))
+        .ok();
 
         g.add_vertex(
             -1,
@@ -790,7 +798,9 @@ mod views_test {
                 ("type".into(), Prop::Str("wallet".into())),
                 ("cost".into(), Prop::F32(10.0)),
             ],
-        ).map_err(|err| println!("{:?}", err)).ok();
+        )
+        .map_err(|err| println!("{:?}", err))
+        .ok();
 
         g.add_vertex(
             6,
@@ -799,7 +809,9 @@ mod views_test {
                 ("type".into(), Prop::Str("wallet".into())),
                 ("cost".into(), Prop::F32(76.2)),
             ],
-        ).map_err(|err| println!("{:?}", err)).ok();
+        )
+        .map_err(|err| println!("{:?}", err))
+        .ok();
 
         for (t, src, dst) in &vs {
             g.add_edge(
@@ -828,7 +840,9 @@ mod views_test {
                 ("type".into(), Prop::Str("wallet".into())),
                 ("cost".into(), Prop::F32(99.5)),
             ],
-        ).map_err(|err| println!("{:?}", err)).ok();
+        )
+        .map_err(|err| println!("{:?}", err))
+        .ok();
 
         g.add_vertex(
             -1,
@@ -837,7 +851,9 @@ mod views_test {
                 ("type".into(), Prop::Str("wallet".into())),
                 ("cost".into(), Prop::F32(10.0)),
             ],
-        ).map_err(|err| println!("{:?}", err)).ok();
+        )
+        .map_err(|err| println!("{:?}", err))
+        .ok();
 
         g.add_vertex(
             6,
@@ -846,7 +862,9 @@ mod views_test {
                 ("type".into(), Prop::Str("wallet".into())),
                 ("cost".into(), Prop::F32(76.2)),
             ],
-        ).map_err(|err| println!("{:?}", err)).ok();
+        )
+        .map_err(|err| println!("{:?}", err))
+        .ok();
 
         for (t, src, dst) in &vs {
             g.add_edge(*t, *src, *dst, &vec![]);

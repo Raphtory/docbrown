@@ -1,5 +1,42 @@
+//! This module contains functions for computing the various degrees of an entire graph.
+//!
+//! - `max_out_degree` - The maximum out degree of any vertex in the graph.
+//! - `max_in_degree` - The maximum in degree of any vertex in the graph.
+//! - `min_out_degree` - The minimum out degree of any vertex in the graph.
+//! - `min_in_degree` - The minimum in degree of any vertex in the graph.
+//! - `average_degree` - The average degree of all vertices in the graph.
+//!
+//! # Examples
+//!
+//! ```rust
+//! use docbrown_db::algorithms::degree::{average_degree, max_in_degree, min_in_degree, min_out_degree, max_out_degree};
+//! use docbrown_db::graph::Graph;
+//!  
+//!  let g = Graph::new(1);
+//!  let vs = vec![
+//!      (1, 1, 2),
+//!      (2, 1, 3),
+//!      (3, 2, 1),
+//!      (4, 3, 2),
+//!      (5, 1, 4),
+//!      (6, 4, 5),
+//!   ];
+//!
+//!  for (t, src, dst) in &vs {
+//!    g.add_edge(*t, *src, *dst, &vec![]);
+//!  };
+//!
+//! println!("max_out_degree: {}", max_out_degree(&g));
+//! println!("max_in_degree: {}", max_in_degree(&g));
+//! println!("min_out_degree: {}", min_out_degree(&g));
+//! println!("min_in_degree: {}", min_in_degree(&g));
+//! println!("average_degree: {}", average_degree(&g));
+//! ```
+//!
+
 use crate::view_api::*;
 
+/// The maximum out degree of any vertex in the graph.
 pub fn max_out_degree<G: GraphViewOps>(graph: &G) -> usize {
     graph
         .vertices()
@@ -9,6 +46,7 @@ pub fn max_out_degree<G: GraphViewOps>(graph: &G) -> usize {
         .unwrap_or(0)
 }
 
+/// The maximum in degree of any vertex in the graph.
 pub fn max_in_degree<G: GraphViewOps>(graph: &G) -> usize {
     graph
         .vertices()
@@ -18,6 +56,7 @@ pub fn max_in_degree<G: GraphViewOps>(graph: &G) -> usize {
         .unwrap_or(0)
 }
 
+/// The minimum out degree of any vertex in the graph.
 pub fn min_out_degree<G: GraphViewOps>(graph: &G) -> usize {
     graph
         .vertices()
@@ -27,6 +66,7 @@ pub fn min_out_degree<G: GraphViewOps>(graph: &G) -> usize {
         .unwrap_or(0)
 }
 
+/// The minimum in degree of any vertex in the graph.
 pub fn min_in_degree<G: GraphViewOps>(graph: &G) -> usize {
     graph
         .vertices()
@@ -36,6 +76,7 @@ pub fn min_in_degree<G: GraphViewOps>(graph: &G) -> usize {
         .unwrap_or(0)
 }
 
+/// The average degree of all vertices in the graph.
 pub fn average_degree<G: GraphViewOps>(graph: &G) -> f64 {
     let degree_totals = graph
         .vertices()
