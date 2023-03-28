@@ -1,5 +1,5 @@
 use crate::graph::Graph;
-use crate::perspective::Perspective;
+use crate::perspective::{Perspective};
 use docbrown_core::{
     tgraph::{EdgeRef, VertexRef},
     tgraph_shard::exceptions::GraphError,
@@ -155,6 +155,19 @@ impl GraphViewInternalOps for WindowedGraph {
 
     fn vertex_refs(&self) -> Box<dyn Iterator<Item = VertexRef> + Send> {
         self.graph.vertex_refs_window(self.t_start, self.t_end)
+    }
+
+    fn vertex_refs_window_shard(
+        &self,
+        shard: usize,
+        t_start: i64,
+        t_end: i64,
+    ) -> Box<dyn Iterator<Item = VertexRef> + Send> {
+        self.graph.vertex_refs_window_shard(
+            shard,
+            self.actual_start(t_start),
+            self.actual_end(t_end),
+        )
     }
 
     fn vertex_refs_window(
@@ -424,6 +437,15 @@ impl GraphViewOps for WindowedGraph {
         )
     }
 
+    fn vertices_shard(&self, shard: usize) -> Self::Vertices {
+        let graph_w = self.clone();
+        Box::new(
+            self.graph
+                .vertex_refs_window_shard(shard, self.t_start, self.t_end)
+                .map(move |vv| WindowedVertex::new(Arc::new(graph_w.clone()), vv)),
+        )
+    }
+
     fn edge<T: InputVertex>(&self, src: T, dst: T) -> Result<Option<WindowedEdge>, GraphError> {
         let graph_w = self.clone();
         let r = self
@@ -452,7 +474,6 @@ mod views_test {
     use quickcheck::TestResult;
     use rand::prelude::*;
     use rayon::prelude::*;
-    use std::collections::HashMap;
 
     #[test]
     fn windowed_graph_vertices_degree() {
@@ -524,7 +545,7 @@ mod views_test {
 
         let wg = WindowedGraph::new(g.into(), -1, 1);
 
-        let v = wg.vertex(1).unwrap();
+        assert_eq!(wg.vertex(1).unwrap().id(),1);
     }
 
     #[test]
@@ -540,7 +561,7 @@ mod views_test {
         let g = Graph::new(2);
 
         for (t, v) in &vs {
-            g.add_vertex(*t, *v, &vec![]).unwrap();
+            g.add_vertex(*t, *v, &vec![]).map_err(|err| println!("{:?}", err)).ok();
         }
 
         let wg = WindowedGraph::new(g, 1, 2);
@@ -563,7 +584,7 @@ mod views_test {
         let g = Graph::new(2);
 
         for (t, v) in &vs {
-            g.add_vertex(*t, *v, &vec![]).unwrap();
+            g.add_vertex(*t, *v, &vec![]).map_err(|err| println!("{:?}", err)).ok();
         }
 
         let start = vs.get(rand_start_index).expect("start index in range").0;
@@ -757,7 +778,7 @@ mod views_test {
                 ("type".into(), Prop::Str("wallet".into())),
                 ("cost".into(), Prop::F32(99.5)),
             ],
-        ).unwrap();
+        ).map_err(|err| println!("{:?}", err)).ok();
 
         g.add_vertex(
             -1,
@@ -766,7 +787,7 @@ mod views_test {
                 ("type".into(), Prop::Str("wallet".into())),
                 ("cost".into(), Prop::F32(10.0)),
             ],
-        ).unwrap();
+        ).map_err(|err| println!("{:?}", err)).ok();
 
         g.add_vertex(
             6,
@@ -775,7 +796,7 @@ mod views_test {
                 ("type".into(), Prop::Str("wallet".into())),
                 ("cost".into(), Prop::F32(76.2)),
             ],
-        ).unwrap();
+        ).map_err(|err| println!("{:?}", err)).ok();
 
         for (t, src, dst) in &vs {
             g.add_edge(
@@ -790,7 +811,6 @@ mod views_test {
 
         let actual = wg.vertices().map(|tv| tv.id()).collect::<Vec<_>>();
 
-        let hm: HashMap<String, Vec<(i64, Prop)>> = HashMap::new();
         let expected = vec![1, 2];
 
         assert_eq!(actual, expected);
@@ -805,7 +825,7 @@ mod views_test {
                 ("type".into(), Prop::Str("wallet".into())),
                 ("cost".into(), Prop::F32(99.5)),
             ],
-        ).unwrap();
+        ).map_err(|err| println!("{:?}", err)).ok();
 
         g.add_vertex(
             -1,
@@ -814,7 +834,7 @@ mod views_test {
                 ("type".into(), Prop::Str("wallet".into())),
                 ("cost".into(), Prop::F32(10.0)),
             ],
-        ).unwrap();
+        ).map_err(|err| println!("{:?}", err)).ok();
 
         g.add_vertex(
             6,
@@ -823,7 +843,7 @@ mod views_test {
                 ("type".into(), Prop::Str("wallet".into())),
                 ("cost".into(), Prop::F32(76.2)),
             ],
-        ).unwrap();
+        ).map_err(|err| println!("{:?}", err)).ok();
 
         for (t, src, dst) in &vs {
             g.add_edge(*t, *src, *dst, &vec![]).unwrap();

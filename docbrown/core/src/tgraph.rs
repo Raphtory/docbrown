@@ -126,20 +126,22 @@ impl TemporalGraph {
     }
 
     pub(crate) fn has_edge(&self, src: u64, dst: u64) -> bool {
-        let v_pid = self.logical_to_physical[&src];
-
-        match &self.adj_lists[v_pid] {
-            Adj::Solo(_) => false,
-            Adj::List {
-                out, remote_out, ..
-            } => {
-                if !self.has_vertex(dst) {
-                    remote_out.find(dst as usize).is_some()
-                } else {
-                    let dst_pid = self.logical_to_physical[&dst];
-                    out.find(dst_pid).is_some()
+        if let Some(v_pid) = self.logical_to_physical.get(&src) {
+            match &self.adj_lists[*v_pid] {
+                Adj::Solo(_) => false,
+                Adj::List {
+                    out, remote_out, ..
+                } => {
+                    if !self.has_vertex(dst) {
+                        remote_out.find(dst as usize).is_some()
+                    } else {
+                        let dst_pid = self.logical_to_physical[&dst];
+                        out.find(dst_pid).is_some()
+                    }
                 }
             }
+        } else {
+            false
         }
     }
 
@@ -260,8 +262,8 @@ impl TemporalGraph {
         props: &Vec<(String, Prop)>,
     ) {
         // mark the times of the vertices at t
-        self.add_vertex(t, src);
-        self.add_vertex(t, dst);
+        self.add_vertex(t, src).map_err(|err| println!("{:?}", err)).ok();
+        self.add_vertex(t, dst).map_err(|err| println!("{:?}", err)).ok();
 
         let src_pid = self.logical_to_physical[&src];
         let dst_pid = self.logical_to_physical[&dst];
@@ -286,7 +288,7 @@ impl TemporalGraph {
         dst: u64,
         props: &Vec<(String, Prop)>,
     ) {
-        self.add_vertex(t, src);
+        self.add_vertex(t, src).map_err(|err| println!("{:?}", err)).ok();
         let src_pid = self.logical_to_physical[&src];
         let src_edge_meta_id =
             self.link_outbound_edge(t, src, src_pid, dst.try_into().unwrap(), true);
@@ -302,7 +304,7 @@ impl TemporalGraph {
         dst: u64, // we are on the destination shard
         props: &Vec<(String, Prop)>,
     ) {
-        self.add_vertex(t, dst);
+        self.add_vertex(t, dst).map_err(|err| println!("{:?}", err)).ok();
 
         let dst_pid = self.logical_to_physical[&dst];
 
@@ -344,18 +346,12 @@ impl TemporalGraph {
             } => match d {
                 Direction::OUT => out.len() + remote_out.len(),
                 Direction::IN => into.len() + remote_into.len(),
-                _ => {
-                    vec![
-                        out.iter(),
-                        into.iter(),
-                        remote_out.iter(),
-                        remote_into.iter(),
-                    ] // FIXME: there are better ways of doing this, all adj lists are sorted except for the HashMap
-                    .into_iter()
-                    .flatten()
-                    .unique_by(|(v, _)| *v)
-                    .count()
-                }
+                _ => self
+                    .vertex_edges(v, d)
+                    .dedup_by(|(left, e1), (right, e2)| {
+                        left == right && e1.is_remote == e2.is_remote
+                    })
+                    .count(),
             },
             _ => 0,
         }
@@ -374,22 +370,18 @@ impl TemporalGraph {
             } => match d {
                 Direction::OUT => out.len_window(w) + remote_out.len_window(w),
                 Direction::IN => into.len_window(w) + remote_into.len_window(w),
-                _ => vec![
-                    out.iter_window(w),
-                    into.iter_window(w),
-                    remote_out.iter_window(w),
-                    remote_into.iter_window(w),
-                ]
-                .into_iter()
-                .flatten()
-                .unique_by(|(v, _)| *v)
-                .count(),
+                _ => self
+                    .vertex_edges_window(v, w, d)
+                    .dedup_by(|(left, e1), (right, e2)| {
+                        left == right && e1.is_remote == e2.is_remote
+                    })
+                    .count(),
             },
             _ => 0,
         }
     }
 
-    pub(crate) fn vertex(&self, v: u64) -> Option<VertexRef> {
+    pub fn vertex(&self, v: u64) -> Option<VertexRef> {
         let pid = self.logical_to_physical.get(&v)?;
         Some(match self.adj_lists[*pid] {
             Adj::Solo(lid) => VertexRef {
@@ -558,35 +550,75 @@ impl TemporalGraph {
         &self,
         v: u64,
         d: Direction,
-    ) -> Box<dyn Iterator<Item = EdgeRef> + Send + '_>
+    ) -> Box<dyn Iterator<Item = (usize, EdgeRef)> + Send + '_>
     where
         Self: Sized,
     {
         let v_pid = self.logical_to_physical[&v];
 
+        let edge_ref_out = move |dst: usize, e: AdjEdge| EdgeRef {
+            edge_id: e.edge_id(),
+            src_g_id: v,
+            dst_g_id: self.v_g_id(dst, e),
+            src_id: v_pid,
+            dst_id: dst,
+            time: None,
+            is_remote: !e.is_local(),
+        };
+
+        let edge_ref_in = move |dst: usize, e: AdjEdge| EdgeRef {
+            edge_id: e.edge_id(),
+            src_g_id: self.v_g_id(dst, e),
+            dst_g_id: v,
+            src_id: dst,
+            dst_id: v_pid,
+            time: None,
+            is_remote: !e.is_local(),
+        };
+
         match d {
-            Direction::OUT => Box::new(self.edges_iter(v_pid, d).map(move |(dst, e)| EdgeRef {
-                edge_id: e.edge_id(),
-                src_g_id: v,
-                dst_g_id: self.v_g_id(*dst, e),
-                src_id: v_pid,
-                dst_id: *dst,
-                time: None,
-                is_remote: !e.is_local(),
-            })),
-            Direction::IN => Box::new(self.edges_iter(v_pid, d).map(move |(dst, e)| EdgeRef {
-                edge_id: e.edge_id(),
-                src_g_id: self.v_g_id(*dst, e),
-                dst_g_id: v,
-                src_id: *dst,
-                dst_id: v_pid,
-                time: None,
-                is_remote: !e.is_local(),
-            })),
-            Direction::BOTH => Box::new(itertools::chain!(
-                self.vertex_edges(v, Direction::IN),
-                self.vertex_edges(v, Direction::OUT)
-            )),
+            Direction::OUT => Box::new(
+                self.edges_iter(v_pid, d)
+                    .map(move |(dst, e)| (*dst, edge_ref_out(*dst, e))),
+            ),
+            Direction::IN => Box::new(
+                self.edges_iter(v_pid, d)
+                    .map(move |(dst, e)| (*dst, edge_ref_in(*dst, e))),
+            ),
+            Direction::BOTH => {
+                let remote_out: Box<dyn Iterator<Item = (usize, EdgeRef)> + Send> = Box::new(
+                    self.edges_iter_location(v_pid, Direction::OUT, true)
+                        .map(move |(dst, e)| (*dst, edge_ref_out(*dst, e))),
+                );
+                let remote_in = Box::new(
+                    self.edges_iter_location(v_pid, Direction::IN, true)
+                        .map(move |(dst, e)| (*dst, edge_ref_in(*dst, e))),
+                );
+
+                let remote: Box<dyn Iterator<Item = (usize, EdgeRef)> + Send> = Box::new(
+                    vec![remote_out, remote_in]
+                        .into_iter()
+                        .kmerge_by(|(left, _), (right, _)| left < right),
+                );
+
+                let out: Box<dyn Iterator<Item = (usize, EdgeRef)> + Send> = Box::new(
+                    self.edges_iter_location(v_pid, Direction::OUT, false)
+                        .map(move |(dst, e)| (*dst, edge_ref_out(*dst, e))),
+                );
+
+                let into = Box::new(
+                    self.edges_iter_location(v_pid, Direction::IN, false)
+                        .map(move |(dst, e)| (*dst, edge_ref_in(*dst, e))),
+                );
+
+                let local: Box<dyn Iterator<Item = (usize, EdgeRef)> + Send> = Box::new(
+                    vec![out, into]
+                        .into_iter()
+                        .kmerge_by(|(left, _), (right, _)| left < right),
+                );
+
+                Box::new(itertools::chain!(local, remote))
+            }
         }
     }
 
@@ -595,45 +627,75 @@ impl TemporalGraph {
         v: u64,
         w: &Range<i64>,
         d: Direction,
-    ) -> Box<dyn Iterator<Item = EdgeRef> + Send + '_>
+    ) -> Box<dyn Iterator<Item = (usize, EdgeRef)> + Send + '_>
     where
         Self: Sized,
     {
         let v_pid = self.logical_to_physical[&v];
 
+        let edge_ref_out = move |dst: usize, e: AdjEdge| EdgeRef {
+            edge_id: e.edge_id(),
+            src_g_id: v,
+            dst_g_id: self.v_g_id(dst, e),
+            src_id: v_pid,
+            dst_id: dst,
+            time: None,
+            is_remote: !e.is_local(),
+        };
+
+        let edge_ref_in = move |dst: usize, e: AdjEdge| EdgeRef {
+            edge_id: e.edge_id(),
+            src_g_id: self.v_g_id(dst, e),
+            dst_g_id: v,
+            src_id: dst,
+            dst_id: v_pid,
+            time: None,
+            is_remote: !e.is_local(),
+        };
+
         match d {
-            Direction::OUT => {
-                Box::new(
-                    self.edges_iter_window(v_pid, w, d)
-                        .map(move |(dst, e)| EdgeRef {
-                            edge_id: e.edge_id(),
-                            src_g_id: v,
-                            dst_g_id: self.v_g_id(dst, e),
-                            src_id: v_pid,
-                            dst_id: dst,
-                            time: None,
-                            is_remote: !e.is_local(),
-                        }),
-                )
+            Direction::OUT => Box::new(
+                self.edges_iter_window(v_pid, w, d)
+                    .map(move |(dst, e)| (dst, edge_ref_out(dst, e))),
+            ),
+            Direction::IN => Box::new(
+                self.edges_iter_window(v_pid, w, d)
+                    .map(move |(dst, e)| (dst, edge_ref_in(dst, e))),
+            ),
+            Direction::BOTH => {
+                let remote_out: Box<dyn Iterator<Item = (usize, EdgeRef)> + Send> = Box::new(
+                    self.edges_iter_window_location(v_pid, w, Direction::OUT, true)
+                        .map(move |(dst, e)| (dst, edge_ref_out(dst, e))),
+                );
+                let remote_in = Box::new(
+                    self.edges_iter_window_location(v_pid, w, Direction::IN, true)
+                        .map(move |(dst, e)| (dst, edge_ref_in(dst, e))),
+                );
+
+                let remote: Box<dyn Iterator<Item = (usize, EdgeRef)> + Send> = Box::new(
+                    vec![remote_out, remote_in]
+                        .into_iter()
+                        .kmerge_by(|(left, _), (right, _)| left < right),
+                );
+
+                let out: Box<dyn Iterator<Item = (usize, EdgeRef)> + Send> = Box::new(
+                    self.edges_iter_window_location(v_pid, w, Direction::OUT, false)
+                        .map(move |(dst, e)| (dst, edge_ref_out(dst, e))),
+                );
+
+                let into = Box::new(
+                    self.edges_iter_window_location(v_pid, w, Direction::IN, false)
+                        .map(move |(dst, e)| (dst, edge_ref_in(dst, e))),
+                );
+
+                let local: Box<dyn Iterator<Item = (usize, EdgeRef)> + Send> = Box::new(
+                    vec![out, into]
+                        .into_iter()
+                        .kmerge_by(|(left, _), (right, _)| left < right),
+                );
+
+                Box::new(itertools::chain!(local, remote))
             }
-            Direction::IN => {
-                Box::new(
-                    self.edges_iter_window(v_pid, w, d)
-                        .map(move |(dst, e)| EdgeRef {
-                            edge_id: e.edge_id(),
-                            src_g_id: self.v_g_id(dst, e),
-                            dst_g_id: v,
-                            src_id: dst,
-                            dst_id: v_pid,
-                            time: None,
-                            is_remote: !e.is_local(),
-                        }),
-                )
-            }
-            Direction::BOTH => Box::new(itertools::chain!(
-                self.vertex_edges_window(v, w, Direction::IN),
-                self.vertex_edges_window(v, w, Direction::OUT)
-            )),
         }
     }
 
@@ -675,6 +737,32 @@ impl TemporalGraph {
         }
     }
 
+    fn edge_ref_as_vertex_ref(edge: EdgeRef, v: u64) -> VertexRef {
+        let EdgeRef {
+            src_id,
+            dst_id,
+            is_remote,
+            ..
+        } = edge;
+
+        let src_g_id = edge.src_g_id;
+        let dst_g_id = edge.dst_g_id;
+
+        if v == src_g_id {
+            if is_remote {
+                VertexRef::new(dst_g_id, None)
+            } else {
+                VertexRef::new(dst_g_id, Some(dst_id))
+            }
+        } else {
+            if is_remote {
+                VertexRef::new(src_g_id, None)
+            } else {
+                VertexRef::new(src_g_id, Some(src_id))
+            }
+        }
+    }
+
     pub(crate) fn neighbours(
         &self,
         v: u64,
@@ -685,39 +773,21 @@ impl TemporalGraph {
     {
         let edges = self.vertex_edges(v, d);
 
-        let iter = edges.map(move |edge| {
-            let EdgeRef {
-                src_id,
-                dst_id,
-                is_remote,
-                ..
-            } = edge;
-
-            let src_g_id = edge.src_g_id;
-            let dst_g_id = edge.dst_g_id;
-
-            if v == src_g_id {
-                if is_remote {
-                    VertexRef::new(dst_g_id, None)
-                } else {
-                    VertexRef::new(dst_g_id, Some(dst_id))
-                }
-            } else {
-                if is_remote {
-                    VertexRef::new(src_g_id, None)
-                } else {
-                    VertexRef::new(src_g_id, Some(src_id))
-                }
-            }
-        });
-        if matches!(d, Direction::BOTH) {
-            Box::new(iter.unique_by(|v| v.g_id))
-        } else {
+        if matches!(d, Direction::OUT | Direction::IN) {
+            let iter = edges.map(move |(_, edge)| Self::edge_ref_as_vertex_ref(edge, v));
             Box::new(iter)
+        } else {
+            Box::new(
+                self.vertex_edges(v, d)
+                    .dedup_by(|(left, e1), (right, e2)| {
+                        left == right && e1.is_remote == e2.is_remote
+                    })
+                    .map(move |(_, e)| Self::edge_ref_as_vertex_ref(e, v)),
+            )
         }
     }
 
-    pub(crate) fn neighbours_window(
+    pub fn neighbours_window(
         &self,
         v: u64,
         w: &Range<i64>,
@@ -726,34 +796,19 @@ impl TemporalGraph {
     where
         Self: Sized,
     {
-        let edges = self.vertex_edges_window(v, w, d);
-        let iter = edges.map(move |edge| {
-            let EdgeRef {
-                src_id,
-                dst_id,
-                is_remote,
-                ..
-            } = edge;
-
-            let src_g_id = edge.src_g_id;
-            let dst_g_id = edge.dst_g_id;
-
-            if v == src_g_id {
-                if is_remote {
-                    VertexRef::new(dst_g_id, None)
-                } else {
-                    VertexRef::new(dst_g_id, Some(dst_id))
-                }
-            } else if is_remote {
-                VertexRef::new(src_g_id, None)
-            } else {
-                VertexRef::new(src_g_id, Some(src_id))
-            }
-        });
-        if matches!(d, Direction::BOTH) {
-            Box::new(iter.unique_by(|v| v.g_id))
-        } else {
+        if matches!(d, Direction::OUT | Direction::IN) {
+            let iter = self
+                .vertex_edges_window(v, w, d)
+                .map(move |(_, edge)| Self::edge_ref_as_vertex_ref(edge, v));
             Box::new(iter)
+        } else {
+            Box::new(
+                self.vertex_edges_window(v, w, d)
+                    .dedup_by(|(left, e1), (right, e2)| {
+                        left == right && e1.is_remote == e2.is_remote
+                    })
+                    .map(move |(_, e)| Self::edge_ref_as_vertex_ref(e, v)),
+            )
         }
     }
 
@@ -846,7 +901,7 @@ impl TemporalGraph {
         let keys = self.props.temporal_vertex_keys(index);
         keys.into_iter()
             .map(|key| (key.to_string(), self.temporal_vertex_prop_vec(v, &key)))
-            .filter(|(k, v)| !v.is_empty()) // just filtered out None
+            .filter(|(_, v)| !v.is_empty()) // just filtered out None
             .collect()
     }
 
@@ -858,13 +913,8 @@ impl TemporalGraph {
         let index = self.logical_to_physical[&v];
         let keys = self.props.temporal_vertex_keys(index);
         keys.into_iter()
-            .map(|key| {
-                (
-                    key.to_string(),
-                    self.temporal_vertex_prop_vec_window(v, &key, w),
-                )
-            })
-            .filter(|(k, v)| !v.is_empty())
+            .map(|key| (key.to_string(), self.temporal_vertex_prop_vec_window(v, &key, w)))
+            .filter(|(_, v)| !v.is_empty())
             .collect()
     }
 
@@ -1055,6 +1105,75 @@ impl TemporalGraph {
         }
     }
 
+    fn edges_iter_location(
+        &self,
+        vid: usize,
+        d: Direction,
+        remote: bool,
+    ) -> Box<dyn Iterator<Item = (&usize, AdjEdge)> + Send + '_> {
+        match &self.adj_lists[vid] {
+            Adj::List {
+                out,
+                into,
+                remote_out,
+                remote_into,
+                ..
+            } => match d {
+                Direction::OUT => {
+                    if remote {
+                        remote_out.iter()
+                    } else {
+                        out.iter()
+                    }
+                }
+                Direction::IN => {
+                    if remote {
+                        remote_into.iter()
+                    } else {
+                        into.iter()
+                    }
+                }
+                _ => panic!("edges_iter_window_remote does not support Direction BOTH"),
+            },
+            _ => Box::new(std::iter::empty()),
+        }
+    }
+
+    fn edges_iter_window_location(
+        &self,
+        vid: usize,
+        r: &Range<i64>,
+        d: Direction,
+        remote: bool,
+    ) -> Box<dyn Iterator<Item = (usize, AdjEdge)> + Send + '_> {
+        match &self.adj_lists[vid] {
+            Adj::List {
+                out,
+                into,
+                remote_out,
+                remote_into,
+                ..
+            } => match d {
+                Direction::OUT => {
+                    if remote {
+                        remote_out.iter_window(r)
+                    } else {
+                        out.iter_window(r)
+                    }
+                }
+                Direction::IN => {
+                    if remote {
+                        remote_into.iter_window(r)
+                    } else {
+                        into.iter_window(r)
+                    }
+                }
+                _ => panic!("edges_iter_window_remote does not support Direction BOTH"),
+            },
+            _ => Box::new(std::iter::empty()),
+        }
+    }
+
     fn edges_iter_window_t(
         &self,
         vid: usize,
@@ -1101,7 +1220,7 @@ impl TemporalGraph {
 }
 
 // helps us track what are we iterating over
-#[derive(Debug, PartialEq, Copy, Clone)]
+#[derive(Debug, PartialEq, Copy, Clone, Eq, Hash, PartialOrd, Ord)]
 pub struct VertexRef {
     pub g_id: u64,
     // `pid` is optional because pid info is unavailable while creating remote vertex view locally.
@@ -1361,7 +1480,7 @@ mod graph_test {
         // the outbound neighbours of 9 at time 0..2 is the empty set
         let actual: Vec<u64> = g
             .vertex_edges_window(9, &(0..2), Direction::OUT)
-            .map(|e| e.dst_g_id)
+            .map(|e| e.1.dst_g_id)
             .collect();
         let expected: Vec<u64> = vec![];
         assert_eq!(actual, expected);
@@ -1369,14 +1488,14 @@ mod graph_test {
         // the outbound neighbours of 9 at time 0..4 are 1
         let actual: Vec<u64> = g
             .vertex_edges_window(9, &(0..4), Direction::OUT)
-            .map(|e| e.dst_g_id)
+            .map(|e| e.1.dst_g_id)
             .collect();
         assert_eq!(actual, vec![1]);
 
         // the inbound neighbours of 1 at time 0..4 are 9
         let actual: Vec<u64> = g
             .vertex_edges_window(1, &(0..4), Direction::IN)
-            .map(|e| e.src_g_id)
+            .map(|e| e.1.src_g_id)
             .collect();
         assert_eq!(actual, vec![9]);
     }
@@ -1398,6 +1517,7 @@ mod graph_test {
         assert_eq!(g.has_edge(11, 9), false);
         assert_eq!(g.has_edge(10, 11), false);
         assert_eq!(g.has_edge(10, 9), false);
+        assert_eq!(g.has_edge(100, 101), false);
     }
 
     #[test]
@@ -1409,7 +1529,7 @@ mod graph_test {
 
         let actual: Vec<bool> = g
             .vertex_edges_window(5, &(0..4), Direction::OUT)
-            .map(|e| g.has_edge(e.src_g_id, e.dst_g_id))
+            .map(|e| g.has_edge(e.1.src_g_id, e.1.dst_g_id))
             .collect();
 
         assert_eq!(actual, vec![true]);
@@ -1424,7 +1544,7 @@ mod graph_test {
 
         let actual: Vec<bool> = g
             .vertex_edges_window(9, &(0..4), Direction::OUT)
-            .map(|e| g.has_edge(e.src_g_id, e.dst_g_id))
+            .map(|e| g.has_edge(e.1.src_g_id, e.1.dst_g_id))
             .collect();
 
         //return empty as no edges in this window
@@ -1451,7 +1571,7 @@ mod graph_test {
         // the outbound neighbours of 9 at time 0..2 is the empty set
         let actual: Vec<u64> = g
             .vertex_edges_window(9, &(0..2), Direction::OUT)
-            .map(|e| e.dst_g_id)
+            .map(|e| e.1.dst_g_id)
             .collect();
         let expected: Vec<u64> = vec![];
         assert_eq!(actual, expected);
@@ -1459,14 +1579,14 @@ mod graph_test {
         // the outbound neighbours of 9 at time 0..4 are 1
         let actual: Vec<u64> = g
             .vertex_edges_window(9, &(0..4), Direction::OUT)
-            .map(|e| e.dst_g_id)
+            .map(|e| e.1.dst_g_id)
             .collect();
         assert_eq!(actual, vec![1]);
 
         // the outbound neighbours of 9 at time 0..4 are 1
         let actual: Vec<u64> = g
             .vertex_edges_window(1, &(0..4), Direction::IN)
-            .map(|e| e.src_g_id)
+            .map(|e| e.1.src_g_id)
             .collect();
         assert_eq!(actual, vec![9]);
     }
@@ -1492,7 +1612,7 @@ mod graph_test {
         // the outbound neighbours of 9 at time 0..2 is the empty set
         let actual: Vec<u64> = g
             .vertex_edges_window(9, &(0..2), Direction::OUT)
-            .map(|e| e.dst_g_id)
+            .map(|e| e.1.dst_g_id)
             .collect();
         let expected: Vec<u64> = vec![];
         assert_eq!(actual, expected);
@@ -1500,20 +1620,20 @@ mod graph_test {
         // the outbound_t neighbours of 9 at time 0..4 are 1
         let actual: Vec<u64> = g
             .vertex_edges_window(9, &(0..4), Direction::OUT)
-            .map(|e| e.dst_g_id)
+            .map(|e| e.1.dst_g_id)
             .collect();
         assert_eq!(actual, vec![1]);
 
         // the outbound_t neighbours of 9 at time 0..4 are 1
         let actual: Vec<u64> = g
             .vertex_edges_window(1, &(0..4), Direction::IN)
-            .map(|e| e.src_g_id)
+            .map(|e| e.1.src_g_id)
             .collect();
         assert_eq!(actual, vec![9]);
 
         let actual: Vec<u64> = g
             .vertex_edges_window(9, &(0..13), Direction::OUT)
-            .map(|e| e.dst_g_id)
+            .map(|e| e.1.dst_g_id)
             .collect();
         assert_eq!(actual, vec![1]);
 
@@ -1554,7 +1674,7 @@ mod graph_test {
 
         let actual = g
             .vertex_edges_window(11, &(1..5), Direction::OUT)
-            .map(|e| e.dst_g_id)
+            .map(|e| e.1.dst_g_id)
             .collect::<Vec<_>>();
         assert_eq!(actual, vec![22]);
 
@@ -1572,21 +1692,21 @@ mod graph_test {
 
         let actual = g
             .vertex_edges_window(44, &(1..6), Direction::IN)
-            .map(|e| e.dst_g_id)
+            .map(|e| e.1.dst_g_id)
             .collect::<Vec<_>>();
         let expected: Vec<u64> = vec![];
         assert_eq!(actual, expected);
 
         let actual = g
             .vertex_edges_window(44, &(1..7), Direction::IN)
-            .map(|e| e.src_g_id)
+            .map(|e| e.1.src_g_id)
             .collect::<Vec<_>>();
         let expected: Vec<u64> = vec![11];
         assert_eq!(actual, expected);
 
         let actual = g
             .vertex_edges_window(44, &(9..100), Direction::IN)
-            .map(|e| e.dst_g_id)
+            .map(|e| e.1.dst_g_id)
             .collect::<Vec<_>>();
         let expected: Vec<u64> = vec![];
         assert_eq!(actual, expected)
@@ -1604,7 +1724,7 @@ mod graph_test {
 
         let actual = g
             .vertex_edges_window(11, &(1..5), Direction::OUT)
-            .map(|e| e.dst_g_id)
+            .map(|e| e.1.dst_g_id)
             .collect::<Vec<_>>();
         assert_eq!(actual, vec![22]);
     }
@@ -1620,7 +1740,7 @@ mod graph_test {
 
         let edge_weights = g
             .vertex_edges(11, Direction::OUT)
-            .flat_map(|e| {
+            .flat_map(|(_, e)| {
                 g.temporal_edge_prop(e.edge_id, "weight")
                     .flat_map(|(t, prop)| match prop {
                         Prop::U32(weight) => Some((t, weight)),
@@ -1652,7 +1772,7 @@ mod graph_test {
 
         let edge_weights = g
             .vertex_edges(11, Direction::OUT)
-            .flat_map(|e| {
+            .flat_map(|(_, e)| {
                 let weight = g.temporal_edge_prop(e.edge_id, "weight");
                 let amount = g.temporal_edge_prop(e.edge_id, "amount");
                 let label = g.temporal_edge_prop(e.edge_id, "label");
@@ -1684,7 +1804,7 @@ mod graph_test {
         let edge_weights = g
             .vertex_edges_window(11, &(4..8), Direction::OUT)
             .flat_map(|e| {
-                g.temporal_edge_prop_window(e.edge_id, "amount", 4..8)
+                g.temporal_edge_prop_window(e.1.edge_id, "amount", 4..8)
                     .flat_map(|(t, prop)| match prop {
                         Prop::U32(weight) => Some((t, weight)),
                         _ => None,
@@ -1697,7 +1817,7 @@ mod graph_test {
         let edge_weights = g
             .vertex_edges_window(22, &(4..8), Direction::IN)
             .flat_map(|e| {
-                g.temporal_edge_prop_window(e.edge_id, "amount", 4..8)
+                g.temporal_edge_prop_window(e.1.edge_id, "amount", 4..8)
                     .flat_map(|(t, prop)| match prop {
                         Prop::U32(weight) => Some((t, weight)),
                         _ => None,
@@ -1755,9 +1875,9 @@ mod graph_test {
         let edge_weights = g
             .vertex_edges_window(11, &(3..5), Direction::OUT)
             .flat_map(|e| {
-                let weight = g.temporal_edge_prop_window(e.edge_id, "weight", 3..5);
-                let amount = g.temporal_edge_prop_window(e.edge_id, "amount", 3..5);
-                let label = g.temporal_edge_prop_window(e.edge_id, "label", 3..5);
+                let weight = g.temporal_edge_prop_window(e.1.edge_id, "weight", 3..5);
+                let amount = g.temporal_edge_prop_window(e.1.edge_id, "amount", 3..5);
+                let label = g.temporal_edge_prop_window(e.1.edge_id, "label", 3..5);
                 weight.chain(amount).chain(label)
             })
             .collect_vec();
@@ -1767,7 +1887,7 @@ mod graph_test {
             vec![
                 (&3, Prop::U32(12)),
                 (&3, Prop::Str("blerg".into())),
-                (&4, Prop::Str("blerg_again".into()))
+                (&4, Prop::Str("blerg_again".into())),
             ]
         )
     }
@@ -1800,7 +1920,7 @@ mod graph_test {
 
         let edge_weights_out_11 = g
             .vertex_edges(11, Direction::OUT)
-            .flat_map(|e| {
+            .flat_map(|(_, e)| {
                 g.temporal_edge_prop(e.edge_id, "weight")
                     .flat_map(|(t, prop)| match prop {
                         Prop::F32(weight) => Some((t, weight)),
@@ -1813,7 +1933,7 @@ mod graph_test {
 
         let edge_weights_into_11 = g
             .vertex_edges(11, Direction::IN)
-            .flat_map(|e| {
+            .flat_map(|(_, e)| {
                 g.temporal_edge_prop(e.edge_id, "weight")
                     .flat_map(|(t, prop)| match prop {
                         Prop::F32(weight) => Some((t, weight)),
@@ -1881,7 +2001,7 @@ mod graph_test {
             .vertices_window(3..6)
             .flat_map(|v| {
                 g.vertex_edges_window(v.g_id, &(3..6), Direction::OUT)
-                    .map(|e| e.dst_g_id)
+                    .map(|e| e.1.dst_g_id)
                     .collect::<Vec<_>>() // FIXME: we can't just return v.outbound().map(|e| e.global_dst()) here we might need to do so check lifetimes
             })
             .collect::<Vec<_>>();
@@ -1890,7 +2010,7 @@ mod graph_test {
 
         let edge_weights = g
             .vertex_edges(11, Direction::OUT)
-            .flat_map(|e| {
+            .flat_map(|(_, e)| {
                 let weight = g.temporal_edge_prop(e.edge_id, "weight");
                 let amount = g.temporal_edge_prop(e.edge_id, "amount");
                 let label = g.temporal_edge_prop(e.edge_id, "label");
@@ -2000,11 +2120,11 @@ mod graph_test {
         for i in 1..4 {
             let out1 = g
                 .vertex_edges(i, Direction::OUT)
-                .map(|e| e.dst_g_id)
+                .map(|(_, e)| e.dst_g_id)
                 .collect_vec();
             let out2 = g
                 .vertex_edges_window(i, &(1..7), Direction::OUT)
-                .map(|e| e.dst_g_id)
+                .map(|e| e.1.dst_g_id)
                 .collect_vec();
 
             assert_eq!(out1, out2);
@@ -2337,7 +2457,7 @@ mod graph_test {
 
         let actual = g1
             .vertex_edges_window(11, &(1..3), Direction::OUT)
-            .map(|e| e.dst_g_id)
+            .map(|e| e.1.dst_g_id)
             .collect_vec();
         assert_eq!(actual, vec![22]);
 

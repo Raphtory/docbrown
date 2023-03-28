@@ -100,13 +100,7 @@ impl Props {
         }
     }
 
-    fn get_or_default<A>(
-        &self,
-        vector: &Vec<LazyVec<A>>,
-        id: usize,
-        name: &str,
-        should_be_static: bool,
-    ) -> A
+    fn get_or_default<A>(&self, vector: &Vec<LazyVec<A>>, id: usize, name: &str) -> A
     where
         A: PartialEq + Default + Clone + Debug,
     {
@@ -120,7 +114,7 @@ impl Props {
     }
 
     pub(crate) fn static_vertex_prop(&self, id: usize, name: &str) -> Option<Prop> {
-        self.get_or_default(&self.static_vertex_props, id, name, true)
+        self.get_or_default(&self.static_vertex_props, id, name)
     }
 
     pub(crate) fn temporal_vertex_prop(&self, id: usize, name: &str) -> Option<&TProp> {
@@ -134,7 +128,7 @@ impl Props {
     }
 
     pub(crate) fn static_edge_prop(&self, id: usize, name: &str) -> Option<Prop> {
-        self.get_or_default(&self.static_edge_props, id, name, true)
+        self.get_or_default(&self.static_edge_props, id, name)
     }
 
     pub(crate) fn temporal_edge_prop(&self, id: usize, name: &str) -> Option<&TProp> {
@@ -211,11 +205,11 @@ impl Props {
         match self.prop_ids.get(name) {
             None => {
                 let new_prop_id = if should_be_static {
-                    let static_prop_ids = self.prop_ids.iter().filter(|&(k, v)| v.is_static());
+                    let static_prop_ids = self.prop_ids.iter().filter(|&(_, v)| v.is_static());
                     let new_id = static_prop_ids.count();
                     PropId::Static(new_id)
                 } else {
-                    let static_prop_ids = self.prop_ids.iter().filter(|&(k, v)| !v.is_static());
+                    let static_prop_ids = self.prop_ids.iter().filter(|&(_, v)| !v.is_static());
                     let new_id = static_prop_ids.count();
                     PropId::Temporal(new_id)
                 };

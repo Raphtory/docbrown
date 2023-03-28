@@ -66,6 +66,13 @@ pub trait GraphViewInternalOps {
         t_end: i64,
     ) -> Box<dyn Iterator<Item = VertexRef> + Send>;
 
+    fn vertex_refs_window_shard(
+        &self,
+        shard: usize,
+        t_start: i64,
+        t_end: i64,
+    ) -> Box<dyn Iterator<Item = VertexRef> + Send>;
+
     fn edge_ref<V1: Into<VertexRef>, V2: Into<VertexRef>>(
         &self,
         src: V1,

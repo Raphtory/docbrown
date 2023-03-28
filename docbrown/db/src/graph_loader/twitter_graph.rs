@@ -1,7 +1,10 @@
+use crate::{
+    graph::Graph,
+    graph_loader::{fetch_file, CsvLoader},
+};
+use docbrown_core::{utils, Prop};
 use serde::Deserialize;
 use std::path::PathBuf;
-use crate::{graph_loader::{fetch_file, CsvLoader}, graph::Graph};
-use docbrown_core::{Prop, utils};
 
 #[derive(Deserialize, std::fmt::Debug)]
 pub struct Twitter {
@@ -13,6 +16,7 @@ pub fn twitter_file() -> Result<PathBuf, Box<dyn std::error::Error>> {
     fetch_file(
         "twitter.csv",
         "https://raw.githubusercontent.com/Raphtory/Data/main/snap-twitter.csv",
+        600
     )
 }
 
@@ -31,12 +35,12 @@ pub fn twitter_graph(shards: usize) -> Graph {
                     time,
                     src_id,
                     &vec![("name".to_string(), Prop::Str("User".to_string()))],
-                );
+                ).map_err(|err| println!("{:?}", err)).ok();
                 g.add_vertex(
                     time,
                     src_id,
                     &vec![("name".to_string(), Prop::Str("User".to_string()))],
-                );
+                ).map_err(|err| println!("{:?}", err)).ok();
                 g.add_edge(
                     time,
                     src_id,

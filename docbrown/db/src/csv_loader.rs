@@ -1,4 +1,5 @@
 pub mod csv {
+    use bzip2::read::BzDecoder;
     use flate2; // 1.0
     use flate2::read::GzDecoder;
     use serde::de::DeserializeOwned;
@@ -134,10 +135,11 @@ pub mod csv {
             Ok(paths)
         }
 
-        pub fn load_into_graph<F, REC>(&self, g: &Graph, loader: F) -> Result<(), CsvErr>
+        pub fn load_into_graph<F, REC, G>(&self, g: &G, loader: F) -> Result<(), CsvErr>
         where
             REC: DeserializeOwned + std::fmt::Debug,
-            F: Fn(REC, &Graph) -> () + Send + Sync,
+            F: Fn(REC, &G) -> () + Send + Sync,
+            G: std::marker::Sync,
         {
             let paths = self.files_vec()?;
             paths
@@ -146,21 +148,22 @@ pub mod csv {
             Ok(())
         }
 
-        fn load_file_into_graph<F, REC, P: Into<PathBuf> + Debug>(
+        fn load_file_into_graph<F, REC, P: Into<PathBuf> + Debug, G>(
             &self,
             path: P,
-            g: &Graph,
+            g: &G,
             loader: &F,
         ) -> Result<(), CsvErr>
         where
             REC: DeserializeOwned + std::fmt::Debug,
-            F: Fn(REC, &Graph) -> (),
+            F: Fn(REC, &G) -> (),
         {
             let file_path: PathBuf = path.into();
 
             let mut csv_reader = self.csv_reader(file_path)?;
-            let mut records_iter = csv_reader.deserialize::<REC>();
+            let records_iter = csv_reader.deserialize::<REC>();
 
+            //TODO this needs better error handling for files without perfect data
             for rec in records_iter {
                 let record = rec?;
                 loader(record, g)
@@ -176,12 +179,23 @@ pub mod csv {
                 .filter(|name| name.ends_with(".gz"))
                 .is_some();
 
+            let is_bziped = file_path
+                .file_name()
+                .and_then(|name| name.to_str())
+                .filter(|name| name.ends_with(".bz2"))
+                .is_some();
+
             let f = File::open(&file_path)?;
             if is_gziped {
                 Ok(csv::ReaderBuilder::new()
                     .has_headers(self.header)
                     .delimiter(self.delimiter)
                     .from_reader(Box::new(BufReader::new(GzDecoder::new(f)))))
+            } else if is_bziped {
+                Ok(csv::ReaderBuilder::new()
+                    .has_headers(self.header)
+                    .delimiter(self.delimiter)
+                    .from_reader(Box::new(BufReader::new(BzDecoder::new(f)))))
             } else {
                 Ok(csv::ReaderBuilder::new()
                     .has_headers(self.header)
@@ -245,12 +259,12 @@ mod csv_loader_test {
                     time,
                     src_id,
                     &vec![("name".to_string(), Prop::Str("Character".to_string()))],
-                );
+                ).map_err(|err| println!("{:?}", err)).ok();
                 g.add_vertex(
                     time,
                     dst_id,
                     &vec![("name".to_string(), Prop::Str("Character".to_string()))],
-                );
+                ).map_err(|err| println!("{:?}", err)).ok();
                 g.add_edge(
                     time,
                     src_id,

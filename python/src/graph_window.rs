@@ -1,10 +1,11 @@
+use std::{collections::HashMap};
+
 use crate::wrappers;
 use crate::{graph::Graph, wrappers::*};
 use docbrown_db::graph_window;
 use docbrown_db::view_api::*;
 use itertools::Itertools;
 use pyo3::prelude::*;
-use std::collections::HashMap;
 
 #[pyclass]
 pub struct GraphWindowSet {
@@ -45,15 +46,16 @@ impl From<graph_window::WindowedGraph> for WindowedGraph {
     }
 }
 
-#[pymethods]
 impl WindowedGraph {
-    #[new]
     pub fn new(graph: &Graph, t_start: i64, t_end: i64) -> Self {
         Self {
             graph_w: graph_window::WindowedGraph::new(graph.graph.clone(), t_start, t_end),
         }
     }
+}
 
+#[pymethods]
+impl WindowedGraph {
     //******  Metrics APIs ******//
 
     pub fn earliest_time(&self) -> PyResult<Option<i64>> {
@@ -72,42 +74,41 @@ impl WindowedGraph {
         adapt_err(self.graph_w.num_vertices())
     }
 
-    pub fn has_vertex(&self, v: &PyAny) -> PyResult<bool> {
-        if let Ok(v) = v.extract::<String>() {
-            adapt_err(self.graph_w.has_vertex(v))
-        } else if let Ok(v) = v.extract::<u64>() {
-            adapt_err(self.graph_w.has_vertex(v))
-        } else {
-            panic!("Input must be a string or integer.")
-        }
+    pub fn has_vertex(&self, id: &PyAny) -> PyResult<bool> {
+        let v = Graph::extract_id(id)?;
+        adapt_err(self.graph_w.has_vertex(v))
     }
 
     pub fn has_edge(&self, src: &PyAny, dst: &PyAny) -> PyResult<bool> {
-        if src.extract::<String>().is_ok() && dst.extract::<String>().is_ok() {
-            adapt_err(self.graph_w.has_edge(
-                src.extract::<String>().unwrap(),
-                dst.extract::<String>().unwrap(),
-            ))
-        } else if src.extract::<u64>().is_ok() && dst.extract::<u64>().is_ok() {
-            adapt_err(
-                self.graph_w
-                    .has_edge(src.extract::<u64>().unwrap(), dst.extract::<u64>().unwrap()),
-            )
-        } else {
-            //FIXME This probably should just throw an error not fully panic
-            panic!("Types of src and dst must be the same (either Int or str)")
-        }
+        let src = Graph::extract_id(src)?;
+        let dst = Graph::extract_id(dst)?;
+        adapt_err(self.graph_w.has_edge(src, dst))
     }
 
     //******  Getter APIs ******//
 
-    pub fn vertex(slf: PyRef<'_, Self>, v: u64) -> PyResult<Option<WindowedVertex>> {
+    pub fn vertex(slf: PyRef<'_, Self>, id: &PyAny) -> PyResult<Option<WindowedVertex>> {
+        let v = Graph::extract_id(id)?;
         let v = slf.graph_w.vertex(v).map(|v| {
             let g: Py<Self> = slf.into();
             v.map(|x| WindowedVertex::new(g, x))
         });
         adapt_err(v)
+
     }
+
+    pub fn __getitem__(slf: PyRef<'_, Self>, id: &PyAny) -> PyResult<Option<WindowedVertex>> {
+        let v = Graph::extract_id(id)?;
+        match slf.graph_w.vertex(v) {
+            None => {Ok(None)}
+            Some(v) => {
+                let g: Py<Self> = slf.into();
+                Ok(Some(WindowedVertex::new(g, v)))
+            }
+        }
+    }
+
+
 
     pub fn vertex_ids(&self) -> VertexIdsIterator {
         VertexIdsIterator {
@@ -120,9 +121,10 @@ impl WindowedGraph {
         WindowedVertices { graph: g }
     }
 
-    pub fn edge(&self, src: u64, dst: u64) -> PyResult<Option<WindowedEdge>> {
-        let r = self.graph_w.edge(src, dst);
-        adapt_err(r.map(|t| t.map(|we| we.into())))
+    pub fn edge(&self, src: &PyAny, dst: &PyAny) -> PyResult<Option<WindowedEdge>> {
+        let src = Graph::extract_id(src)?;
+        let dst = Graph::extract_id(dst)?;
+        adapt_err(self.graph_w.edge(src, dst).map(|we| we.into()))
     }
 
     pub fn edges(&self) -> WindowedEdgeIterator {
@@ -148,6 +150,7 @@ pub struct WindowedVertex {
 //     }
 // }
 
+
 impl WindowedVertex {
     fn from(&self, value: graph_window::WindowedVertex) -> WindowedVertex {
         WindowedVertex {
@@ -171,6 +174,11 @@ impl WindowedVertex {
 
 #[pymethods]
 impl WindowedVertex {
+
+    pub fn __getitem__(&self, name: String) -> PyResult<Vec<(i64, Prop)>> {
+        self.prop(name)
+    }
+
     pub fn prop(&self, name: String) -> PyResult<Vec<(i64, Prop)>> {
         let r = self
             .vertex_w
@@ -179,7 +187,6 @@ impl WindowedVertex {
 
         adapt_err(r)
     }
-
     pub fn props(&self) -> PyResult<HashMap<String, Vec<(i64, Prop)>>> {
         let r = self.vertex_w.props().map(|v| {
             v.into_iter()
@@ -226,7 +233,6 @@ impl WindowedVertex {
             ),
         }
     }
-
     pub fn edges(&self, t_start: Option<i64>, t_end: Option<i64>) -> WindowedEdgeIterator {
         match (t_start, t_end) {
             (None, None) => WindowedEdgeIterator {
@@ -401,12 +407,19 @@ pub struct WindowedEdge {
 
 impl From<graph_window::WindowedEdge> for WindowedEdge {
     fn from(value: graph_window::WindowedEdge) -> WindowedEdge {
-        WindowedEdge { edge_w: value }
+        WindowedEdge {
+            edge_w: value,
+        }
     }
 }
 
 #[pymethods]
 impl WindowedEdge {
+
+    pub fn __getitem__(&self, name: String) -> PyResult<Vec<(i64, Prop)>> {
+        self.prop(name)
+    }
+
     pub fn prop(&self, name: String) -> PyResult<Vec<(i64, Prop)>> {
         adapt_err(
             self.edge_w
