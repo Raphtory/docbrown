@@ -196,23 +196,6 @@ impl Props {
 mod props_tests {
     use super::*;
 
-    // TODO: move to edge layer
-    // #[test]
-    // fn return_valid_next_available_edge_id() {
-    //     let mut props = Props::default();
-    //
-    //     // 0th index is not a valid edge id because it can't be used to correctly denote
-    //     // both local as well as remote edge id. Hence edge ids must always start with 1.
-    //     assert_eq!(props.get_next_available_edge_id(), 1);
-    // }
-
-    // #[test]
-    // #[should_panic]
-    // fn assigning_edge_id_as_0_should_fail() {
-    //     let mut props = Props::default();
-    //     props.upsert_temporal_edge_props(1, 0, &vec![]);
-    // }
-
     #[test]
     fn return_prop_id_if_prop_name_found() {
         let mut props = Props::default();
