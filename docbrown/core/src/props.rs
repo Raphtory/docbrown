@@ -230,14 +230,6 @@ mod props_tests {
     }
 
     #[test]
-    // fn insert_default_value_against_no_props_vertex_upsert() {
-    //     let mut props = Props::default();
-    //     props.upsert_temporal_vertex_props(1, 0, &vec![]);
-    //
-    //     assert_eq!(props.temporal_vertex_props[0], LazyVec::Empty)
-    // }
-
-    #[test]
     fn insert_new_vertex_prop() {
         let mut props = Props::default();
         props.upsert_temporal_props(1, 0, &vec![("bla".to_string(), Prop::I32(10))]);
@@ -295,69 +287,4 @@ mod props_tests {
             vec![(&1, Prop::I32(10))]
         )
     }
-
-    // #[test]
-    // fn insert_default_value_against_no_props_edge_upsert() {
-    //     let mut props = Props::default();
-    //     props.upsert_temporal_edge_props(1, 1, &vec![]);
-    //
-    //     assert_eq!(props.temporal_edge_props[1], LazyVec::Empty)
-    // }
-
-    // #[test]
-    // fn insert_new_edge_prop() {
-    //     let mut props = Props::default();
-    //     props.upsert_temporal_edge_props(1, 1, &vec![("bla".to_string(), Prop::I32(10))]);
-    //
-    //     let prop_id = props.get_or_allocate_id("bla", false).unwrap();
-    //     assert_eq!(
-    //         props
-    //             .temporal_edge_props[1]
-    //             .get(prop_id)
-    //             .unwrap()
-    //             .iter()
-    //             .collect::<Vec<_>>(),
-    //         vec![(&1, Prop::I32(10))]
-    //     )
-    // }
-    //
-    // #[test]
-    // fn update_existing_edge_prop() {
-    //     let mut props = Props::default();
-    //     props.upsert_temporal_edge_props(1, 1, &vec![("bla".to_string(), Prop::I32(10))]);
-    //     props.upsert_temporal_edge_props(2, 1, &vec![("bla".to_string(), Prop::I32(10))]);
-    //
-    //     let prop_id = props.get_or_allocate_id("bla", false).unwrap();
-    //     assert_eq!(
-    //         props
-    //             .temporal_edge_props
-    //             .get(1)
-    //             .unwrap()
-    //             .get(prop_id)
-    //             .unwrap()
-    //             .iter()
-    //             .collect::<Vec<_>>(),
-    //         vec![(&1, Prop::I32(10)), (&2, Prop::I32(10))]
-    //     )
-    // }
-    //
-    // #[test]
-    // fn new_update_with_the_same_time_to_a_edge_prop_is_ignored() {
-    //     let mut props = Props::default();
-    //     props.upsert_temporal_edge_props(1, 1, &vec![("bla".to_string(), Prop::I32(10))]);
-    //     props.upsert_temporal_edge_props(1, 1, &vec![("bla".to_string(), Prop::I32(20))]);
-    //
-    //     let prop_id = props.get_or_allocate_id("bla", false).unwrap();
-    //     assert_eq!(
-    //         props
-    //             .temporal_edge_props
-    //             .get(1)
-    //             .unwrap()
-    //             .get(prop_id)
-    //             .unwrap()
-    //             .iter()
-    //             .collect::<Vec<_>>(),
-    //         vec![(&1, Prop::I32(10))]
-    //     )
-    // }
 }

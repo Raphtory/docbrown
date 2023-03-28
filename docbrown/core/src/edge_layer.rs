@@ -12,17 +12,22 @@ use crate::tgraph::EdgeRef;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub(crate) struct EdgeLayer {
-    num_edges: usize,
+    next_edge_id: usize,
 
     // Vector of adjacency lists
     pub(crate) adj_lists: Vec<Adj>,
-    pub(crate) props: Props, // TODO: rename to props
+    pub(crate) props: Props,
 }
 
 impl Default for EdgeLayer {
     fn default() -> Self {
         Self {
-            num_edges: 1, // TODO: add big comment here
+            // Edge ids refer to the position of properties inside self.props.temporal_props
+            // and self.props.static_props. Besides, negative and positive indices are used
+            // to denote remote and local edges, respectively. Therefore, index "0" can be used to
+            // denote neither local nor remote edges, which simply breaks this symmetry.
+            // Hence, the first id to be provided as edge id is 1
+            next_edge_id: 1,
             adj_lists: Default::default(),
             props: Default::default(),
         }
@@ -50,7 +55,7 @@ impl EdgeLayer {
         }
 
         self.props.upsert_temporal_props(t, src_edge_meta_id, props);
-        self.num_edges += 1; // FIXME: we have this in three different places, prone to errors!
+        self.next_edge_id += 1; // FIXME: we have this in three different places, prone to errors!
     }
 
     pub(crate) fn add_edge_remote_out(
@@ -65,7 +70,7 @@ impl EdgeLayer {
             self.link_outbound_edge(t, src_pid, dst.try_into().unwrap(), true);
 
         self.props.upsert_temporal_props(t, src_edge_meta_id, props);
-        self.num_edges += 1;
+        self.next_edge_id += 1;
     }
 
     pub(crate) fn add_edge_remote_into(
@@ -80,7 +85,7 @@ impl EdgeLayer {
             self.link_inbound_edge(t, src.try_into().unwrap(), dst_pid, true);
 
         self.props.upsert_temporal_props(t, dst_edge_meta_id, props);
-        self.num_edges += 1;
+        self.next_edge_id += 1;
     }
 }
 
@@ -95,7 +100,7 @@ impl EdgeLayer {
     ) -> usize {
         match &mut self.adj_lists[dst_pid] {
             entry @ Adj::Solo => {
-                let edge_id = self.num_edges;
+                let edge_id = self.next_edge_id;
 
                 let edge = AdjEdge::new(edge_id, !remote_edge);
 
@@ -110,7 +115,7 @@ impl EdgeLayer {
                 let edge_id: usize = list
                     .find(src)
                     .map(|e| e.edge_id())
-                    .unwrap_or(self.num_edges);
+                    .unwrap_or(self.next_edge_id);
 
                 list.push(t, src, AdjEdge::new(edge_id, !remote_edge)); // idempotent
                 edge_id
@@ -127,7 +132,7 @@ impl EdgeLayer {
     ) -> usize {
         match &mut self.adj_lists[src_pid] {
             entry @ Adj::Solo => {
-                let edge_id = self.num_edges;
+                let edge_id = self.next_edge_id;
 
                 let edge = AdjEdge::new(edge_id, !remote_edge);
 
@@ -142,7 +147,7 @@ impl EdgeLayer {
                 let edge_id: usize = list
                     .find(dst)
                     .map(|e| e.edge_id())
-                    .unwrap_or(self.num_edges);
+                    .unwrap_or(self.next_edge_id);
 
                 list.push(t, dst, AdjEdge::new(edge_id, !remote_edge));
                 edge_id
@@ -195,7 +200,7 @@ impl EdgeLayer {
                     src_id: src_pid,
                     dst_id: dst_pid,
                     time: None,
-                    is_remote: false, // TODO: check if we still need AdjEdge.is_local()
+                    is_remote: false,
                 })
             }
         }
@@ -213,7 +218,7 @@ impl EdgeLayer {
                     src_id: src_pid,
                     dst_id: dst_pid,
                     time: None,
-                    is_remote: false, // TODO: check if we still need AdjEdge.is_local()
+                    is_remote: false,
                 })
             }
         }
@@ -480,3 +485,16 @@ impl EdgeLayer {
     }
 }
 
+#[cfg(test)]
+mod edge_layer_tests {
+    use super::*;
+
+    #[test]
+    fn return_valid_next_available_edge_id() {
+        let mut layer = EdgeLayer::default();
+
+        // 0th index is not a valid edge id because it can't be used to correctly denote
+        // both local as well as remote edge id. Hence edge ids must always start with 1.
+        assert_eq!(layer.next_edge_id, 1);
+    }
+}

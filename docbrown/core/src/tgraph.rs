@@ -72,7 +72,6 @@ pub struct TemporalGraph {
 
     // Edge layers
     pub(crate) default_layer: EdgeLayer,
-    // layers:Vec<EdgeLayer>,
 
     //earliest time seen in this graph
     pub(crate) earliest_time: i64,
@@ -83,19 +82,15 @@ pub struct TemporalGraph {
 
 impl Default for TemporalGraph {
     fn default() -> Self {
-        let graph = Self {
+        Self {
             logical_to_physical: Default::default(),
             logical_ids: Default::default(),
             index: Default::default(),
             vertex_props: Default::default(),
             default_layer: Default::default(),
-            // layers: Default::default(),
             earliest_time: i64::MAX,
             latest_time: i64::MIN,
-        };
-        // // when we cover the layers, we cover the default layer as well:
-        // graph.layers.push(graph.default_layer);
-        graph
+        }
     }
 }
 
@@ -110,10 +105,7 @@ impl TemporalGraph {
 
     pub(crate) fn has_edge(&self, src: u64, dst: u64) -> bool {
         if let Some(src_pid) = self.logical_to_physical.get(&src) {
-            // TODO: `having the vertex` vs `having a vertex that should live in this shard if it does
-            // TODO: exists` are two different questions
-            // TODO: we use this function in several places, check all of them for correctnes or perf
-            // TODO: we can instead ask 'should dst belong to this partition' and if so 'do we have it'
+            // TODO: if we should own dst but we don't, we should directly return false
             if self.has_vertex(dst) {
                 let dst_pid = self.logical_to_physical[&dst];
                 self.default_layer.has_local_edge(*src_pid, dst_pid)
