@@ -1,3 +1,5 @@
+//! A data structure for representing temporal graphs.
+
 use std::{
     collections::{BTreeMap, HashMap},
     ops::Range,
