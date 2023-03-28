@@ -24,7 +24,7 @@ mod triangle_count_tests {
 
     use crate::graph::Graph;
 
-    use super::global_triangle_count;
+    use super::*;
 
     #[test]
     fn counts_triangles() {

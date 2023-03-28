@@ -6,9 +6,8 @@ pub fn directed_graph_density<G: GraphViewOps>(graph: &G) -> f32 {
 
 #[cfg(test)]
 mod directed_graph_density_tests {
+    use super::*;
     use crate::graph::Graph;
-
-    use super::directed_graph_density;
 
     #[test]
     fn low_graph_density() {

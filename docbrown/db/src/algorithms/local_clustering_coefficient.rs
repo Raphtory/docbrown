@@ -18,6 +18,7 @@ pub fn local_clustering_coefficient<G: GraphViewOps>(graph: &G, v: u64) -> f32 {
 mod clustering_coefficient_tests {
 
     use crate::graph::Graph;
+    use crate::view_api::*;
 
     use super::local_clustering_coefficient;
 

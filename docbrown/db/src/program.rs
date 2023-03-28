@@ -1,7 +1,6 @@
 use std::{
     cell::{Ref, RefCell},
     fmt::Debug,
-    ops::{Deref, Range},
     rc::Rc,
     sync::Arc,
 };
@@ -17,37 +16,28 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::vertex::VertexView;
 use crate::view_api::GraphViewOps;
-use crate::{
-    graph::Graph,
-    graph_window::{WindowedGraph, WindowedVertex},
-    view_api::{internal::GraphViewInternalOps, VertexViewOps},
-};
+use crate::view_api::*;
 
 pub mod algo {
-    use std::ops::Range;
 
     use rustc_hash::FxHashMap;
 
-    use crate::graph::Graph;
+    use crate::view_api::GraphViewOps;
 
     use super::{
         GlobalEvalState, Program, SimpleConnectedComponents, TriangleCountS1, TriangleCountS2,
     };
 
-    pub fn connected_components(
-        g: &Graph,
-        window: Range<i64>,
-        iter_count: usize,
-    ) -> FxHashMap<u64, u64> {
+    pub fn connected_components<G: GraphViewOps>(g: &G, iter_count: usize) -> FxHashMap<u64, u64> {
         let cc = SimpleConnectedComponents {};
 
-        let gs = cc.run(g, window.clone(), true, iter_count);
+        let gs = cc.run(g, true, iter_count);
 
-        cc.produce_output(g, window, &gs)
+        cc.produce_output(g, &gs)
     }
 
-    pub fn triangle_counting_fast(g: &Graph, window: Range<i64>) -> Option<usize> {
-        let mut gs = GlobalEvalState::new(g.clone(), window.clone(), false);
+    pub fn triangle_counting_fast<G: GraphViewOps>(g: &G) -> Option<usize> {
+        let mut gs = GlobalEvalState::new(g.clone(), false);
         let tc = TriangleCountS1 {};
 
         tc.run_step(g, &mut gs);
@@ -56,32 +46,30 @@ pub mod algo {
 
         tc.run_step(g, &mut gs);
 
-        tc.produce_output(g, window, &gs)
+        tc.produce_output(g, &gs)
     }
 }
 
 type CS = ComputeStateMap;
 
 #[derive(Debug, Clone)]
-pub struct AggRef<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(state::AccId<A, IN, OUT, ACC>)
+pub struct AggRef<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(AccId<A, IN, OUT, ACC>)
 where
     A: StateType;
 
-pub struct LocalState {
+pub struct LocalState<G: GraphViewOps> {
     ss: usize,
     shard: usize,
-    graph: Graph,
-    window: Range<i64>,
+    graph: G,
     shard_local_state: Rc<RefCell<ShuffleComputeState<CS>>>,
     next_vertex_set: Option<Arc<FxHashSet<u64>>>,
 }
 
-impl LocalState {
+impl<G: GraphViewOps> LocalState<G> {
     pub fn new(
         ss: usize,
         shard: usize,
-        graph: Graph,
-        window: Range<i64>,
+        graph: G,
         shard_local_state: Rc<RefCell<ShuffleComputeState<CS>>>,
         next_vertex_set: Option<Arc<FxHashSet<u64>>>,
     ) -> Self {
@@ -89,7 +77,6 @@ impl LocalState {
             ss,
             shard,
             graph,
-            window,
             shard_local_state,
             next_vertex_set,
         }
@@ -97,7 +84,7 @@ impl LocalState {
 
     fn agg<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(
         &self,
-        agg_ref: state::AccId<A, IN, OUT, ACC>,
+        agg_ref: AccId<A, IN, OUT, ACC>,
     ) -> AggRef<A, IN, OUT, ACC>
     where
         A: StateType,
@@ -107,7 +94,7 @@ impl LocalState {
 
     fn global_agg<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(
         &self,
-        agg_ref: state::AccId<A, IN, OUT, ACC>,
+        agg_ref: AccId<A, IN, OUT, ACC>,
     ) -> AggRef<A, IN, OUT, ACC>
     where
         A: StateType,
@@ -117,22 +104,17 @@ impl LocalState {
 
     fn step<F>(&self, f: F)
     where
-        F: Fn(EvalVertexView),
+        F: Fn(EvalVertexView<VertexView<G>>),
     {
-        let window_graph = Arc::new(WindowedGraph::new(
-            self.graph.clone(),
-            self.window.start,
-            self.window.end,
-        ));
         let graph = Arc::new(self.graph.clone());
 
         let iter = match self.next_vertex_set {
-            None => window_graph.vertices_shard(self.shard),
+            None => graph.vertices_shard(self.shard),
             Some(ref next_vertex_set) => Box::new(
                 next_vertex_set
                     .iter()
-                    .flat_map(|&v| graph.vertex_ref(v as u64))
-                    .map(|vref| VertexView::new(window_graph.clone(), vref)),
+                    .flat_map(|&v| graph.vertex_ref(v))
+                    .map(|vref| VertexView::new(graph.clone(), vref)),
             ),
         };
 
@@ -158,10 +140,9 @@ impl LocalState {
 }
 
 #[derive(Debug)]
-pub struct GlobalEvalState {
+pub struct GlobalEvalState<G: GraphViewOps> {
     ss: usize,
-    g: Graph,
-    window: Range<i64>,
+    g: G,
     keep_past_state: bool,
     // running state
     next_vertex_set: Option<Vec<Arc<FxHashSet<u64>>>>,
@@ -169,7 +150,7 @@ pub struct GlobalEvalState {
     post_agg_state: Arc<parking_lot::RwLock<Option<ShuffleComputeState<CS>>>>, // FIXME this is a pointer to one of the states in states, beware of deadlocks
 }
 
-impl GlobalEvalState {
+impl<G: GraphViewOps> GlobalEvalState<G> {
     pub fn read_vec_partitions<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(
         &self,
         agg: &AccId<A, IN, OUT, ACC>,
@@ -199,7 +180,7 @@ impl GlobalEvalState {
     where
         OUT: StateType,
         A: StateType,
-        F: Fn(B, &u64, OUT) -> B + std::marker::Copy,
+        F: Fn(B, &u64, OUT) -> B + Copy,
     {
         let part_state = self.states[part_id].read();
         let part_state = part_state.as_ref().unwrap();
@@ -232,8 +213,8 @@ impl GlobalEvalState {
     }
 
     // make new Context with n_parts as input
-    pub fn new(g: Graph, window: Range<i64>, keep_past_state: bool) -> Self {
-        let n_parts = g.nr_shards;
+    pub fn new(g: G, keep_past_state: bool) -> Self {
+        let n_parts = g.num_shards();
         let mut states = Vec::with_capacity(n_parts);
         for _ in 0..n_parts {
             states.push(Arc::new(parking_lot::RwLock::new(Some(
@@ -244,7 +225,6 @@ impl GlobalEvalState {
             ss: 0,
             g,
             keep_past_state,
-            window,
             next_vertex_set: None,
             states,
             post_agg_state: Arc::new(parking_lot::RwLock::new(None)),
@@ -253,7 +233,7 @@ impl GlobalEvalState {
 
     fn global_agg<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(
         &mut self,
-        agg: state::AccId<A, IN, OUT, ACC>,
+        agg: AccId<A, IN, OUT, ACC>,
     ) -> AggRef<A, IN, OUT, ACC>
     where
         A: StateType,
@@ -263,7 +243,7 @@ impl GlobalEvalState {
 
     fn agg<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(
         &mut self,
-        agg: state::AccId<A, IN, OUT, ACC>,
+        agg: AccId<A, IN, OUT, ACC>,
     ) -> AggRef<A, IN, OUT, ACC>
     where
         A: StateType,
@@ -297,7 +277,7 @@ impl GlobalEvalState {
             .unwrap();
 
         if !Arc::ptr_eq(&self.post_agg_state, &new_global_state)
-            && (&self.post_agg_state.read()).is_some()
+            && self.post_agg_state.read().is_some()
         {
             let left_placeholder = &mut self.post_agg_state.write();
             let mut state1 = left_placeholder.take().unwrap();
@@ -319,7 +299,7 @@ impl GlobalEvalState {
 
         for state in self.states.iter() {
             // this avoids a deadlock since we may already hold the read lock
-            if Arc::ptr_eq(&state, &self.post_agg_state) {
+            if Arc::ptr_eq(state, &self.post_agg_state) {
                 continue;
             }
 
@@ -334,7 +314,7 @@ impl GlobalEvalState {
 
     fn step<F>(&mut self, f: F)
     where
-        F: Fn(EvalVertexView) -> bool + Sync,
+        F: Fn(EvalVertexView<VertexView<G>>) -> bool + Sync,
     {
         println!("START BROADCAST STATE");
         self.broadcast_state();
@@ -342,12 +322,7 @@ impl GlobalEvalState {
 
         let ss = self.ss;
         let graph = Arc::new(self.g.clone());
-        let window_graph = Arc::new(WindowedGraph::new(
-            self.g.clone(),
-            self.window.start,
-            self.window.end,
-        ));
-        let next_vertex_set = (0..self.g.shards.len())
+        let next_vertex_set = (0..self.g.num_shards())
             .collect_vec()
             .par_iter()
             .map(|shard| {
@@ -367,11 +342,7 @@ impl GlobalEvalState {
 
                 let rc_state = Rc::new(RefCell::new(own_state));
 
-                for vv in prev_vertex_set
-                    .iter()
-                    .flat_map(|v_id| graph.vertex_ref(*v_id))
-                    .map(|v| WindowedVertex::new(window_graph.clone(), v))
-                {
+                for vv in prev_vertex_set.iter().flat_map(|v_id| graph.vertex(*v_id)) {
                     let evv = EvalVertexView::new(self.ss, vv, rc_state.clone());
                     let g_id = evv.global_id();
                     // we need to account for the vertices that will be included in the next step
@@ -426,13 +397,13 @@ impl<'a, A: StateType, IN, OUT, ACC: Accumulator<A, IN, OUT>> Entry<'a, A, IN, O
     }
 }
 
-pub struct EvalVertexView {
+pub struct EvalVertexView<V: VertexViewOps> {
     ss: usize,
-    vv: WindowedVertex,
+    vv: V,
     state: Rc<RefCell<ShuffleComputeState<CS>>>,
 }
 
-impl EvalVertexView {
+impl<V: VertexViewOps> EvalVertexView<V> {
     pub fn update<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(
         &self,
         agg_r: &AggRef<A, IN, OUT, ACC>,
@@ -443,7 +414,7 @@ impl EvalVertexView {
         let AggRef(agg) = agg_r;
         self.state
             .borrow_mut()
-            .accumulate_into(self.ss, self.vv.id() as usize, a, &agg)
+            .accumulate_into(self.ss, self.vv.id() as usize, a, agg)
     }
 
     pub fn global_update<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(
@@ -454,7 +425,7 @@ impl EvalVertexView {
         A: StateType,
     {
         let AggRef(agg) = agg_r;
-        self.state.borrow_mut().accumulate_global(self.ss, a, &agg)
+        self.state.borrow_mut().accumulate_global(self.ss, a, agg)
     }
 
     pub fn try_read<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(
@@ -513,14 +484,14 @@ impl EvalVertexView {
     ) -> OUT
     where
         A: StateType,
-        OUT: std::fmt::Debug,
+        OUT: Debug,
     {
         self.try_read_prev::<A, IN, OUT, ACC>(agg_r)
             .or_else(|v| Ok::<OUT, OUT>(v))
             .unwrap()
     }
 
-    pub fn new(ss: usize, vv: WindowedVertex, state: Rc<RefCell<ShuffleComputeState<CS>>>) -> Self {
+    pub fn new(ss: usize, vv: V, state: Rc<RefCell<ShuffleComputeState<CS>>>) -> Self {
         Self { ss, vv, state }
     }
 
@@ -528,21 +499,24 @@ impl EvalVertexView {
         self.vv.id()
     }
 
-    pub fn neighbours_out(&self) -> impl Iterator<Item = EvalVertexView> + '_ {
+    pub fn neighbours_out(&self) -> impl Iterator<Item = Self> + '_ {
         self.vv
             .out_neighbours()
+            .into_iter()
             .map(move |vv| EvalVertexView::new(self.ss, vv, self.state.clone()))
     }
 
-    pub fn neighbours_in(&self) -> impl Iterator<Item = EvalVertexView> + '_ {
+    pub fn neighbours_in(&self) -> impl Iterator<Item = Self> + '_ {
         self.vv
             .in_neighbours()
+            .into_iter()
             .map(move |vv| EvalVertexView::new(self.ss, vv, self.state.clone()))
     }
 
-    pub fn neighbours(&self) -> impl Iterator<Item = EvalVertexView> + '_ {
+    pub fn neighbours(&self) -> impl Iterator<Item = Self> + '_ {
         self.vv
             .neighbours()
+            .into_iter()
             .map(move |vv| EvalVertexView::new(self.ss, vv, self.state.clone()))
     }
 }
@@ -550,69 +524,69 @@ impl EvalVertexView {
 pub trait Program {
     type Out;
 
-    fn local_eval(&self, c: &LocalState);
+    fn local_eval<G: GraphViewOps>(&self, c: &LocalState<G>);
 
-    fn post_eval(&self, c: &mut GlobalEvalState);
+    fn post_eval<G: GraphViewOps>(&self, c: &mut GlobalEvalState<G>);
 
-    fn run_step(&self, g: &Graph, c: &mut GlobalEvalState)
+    fn run_step<G: GraphViewOps>(&self, g: &G, c: &mut GlobalEvalState<G>)
     where
         Self: Sync,
     {
         println!("RUN STEP {:#?}", c.ss);
 
         let next_vertex_set = c.next_vertex_set.clone();
-        let window = c.window.clone();
         let graph = g.clone();
 
-        (0..g.nr_shards).collect_vec().par_iter().for_each(|shard| {
-            let i = *shard;
-            let local_state = c.states[i].clone();
-            // take control of the actual state
-            let local_state = &mut local_state
-                .try_write()
-                .expect("STATE LOCK SHOULD NOT BE CONTENDED");
-            let own_state = (local_state).take().unwrap();
+        (0..g.num_shards())
+            .collect_vec()
+            .par_iter()
+            .for_each(|shard| {
+                let i = *shard;
+                let local_state = c.states[i].clone();
+                // take control of the actual state
+                let local_state = &mut local_state
+                    .try_write()
+                    .expect("STATE LOCK SHOULD NOT BE CONTENDED");
+                let own_state = (local_state).take().unwrap();
 
-            let rc_state = LocalState::new(
-                c.ss,
-                i,
-                graph.clone(),
-                window.clone(),
-                Rc::new(RefCell::new(own_state)),
-                next_vertex_set.as_ref().map(|v| v[i].clone()),
-            );
+                let rc_state = LocalState::new(
+                    c.ss,
+                    i,
+                    graph.clone(),
+                    Rc::new(RefCell::new(own_state)),
+                    next_vertex_set.as_ref().map(|v| v[i].clone()),
+                );
 
-            self.local_eval(&rc_state);
+                self.local_eval(&rc_state);
 
-            let t_id = std::thread::current().id();
-            println!(
-                "DONE LOCAL STEP ss: {}, shard: {}, thread: {t_id:?}",
-                c.ss, i
-            );
-            // put back the state
-            **local_state = Some(rc_state.consume());
-        });
+                let t_id = std::thread::current().id();
+                println!(
+                    "DONE LOCAL STEP ss: {}, shard: {}, thread: {t_id:?}",
+                    c.ss, i
+                );
+                // put back the state
+                **local_state = Some(rc_state.consume());
+            });
 
         // here we merge all the accumulators
         self.post_eval(c);
         println!("DONE POST STEP ss: {}", c.ss)
     }
 
-    fn run(
+    fn run<G: GraphViewOps>(
         &self,
-        g: &Graph,
-        window: Range<i64>,
+        g: &G,
         keep_past_state: bool,
         iter_count: usize,
-    ) -> GlobalEvalState
+    ) -> GlobalEvalState<G>
     where
         Self: Sync,
     {
-        let mut c = GlobalEvalState::new(g.clone(), window.clone(), keep_past_state);
+        let mut c = GlobalEvalState::new(g.clone(), keep_past_state);
 
         let mut i = 0;
         while c.do_loop() && i < iter_count {
-            self.run_step(&g, &mut c);
+            self.run_step(g, &mut c);
             if c.keep_past_state {
                 c.ss += 1;
             }
@@ -621,7 +595,7 @@ pub trait Program {
         c
     }
 
-    fn produce_output(&self, g: &Graph, window: Range<i64>, gs: &GlobalEvalState) -> Self::Out
+    fn produce_output<G: GraphViewOps>(&self, g: &G, gs: &GlobalEvalState<G>) -> Self::Out
     where
         Self: Sync;
 }
@@ -632,7 +606,7 @@ struct SimpleConnectedComponents {}
 impl Program for SimpleConnectedComponents {
     type Out = FxHashMap<u64, u64>;
 
-    fn local_eval(&self, c: &LocalState) {
+    fn local_eval<G: GraphViewOps>(&self, c: &LocalState<G>) {
         let min = c.agg(state::def::min(0));
 
         c.step(|vv| {
@@ -646,7 +620,7 @@ impl Program for SimpleConnectedComponents {
         })
     }
 
-    fn post_eval(&self, c: &mut GlobalEvalState) {
+    fn post_eval<G: GraphViewOps>(&self, c: &mut GlobalEvalState<G>) {
         // this will make the global state merge all the values for all partitions
         let min = c.agg(state::def::min::<u64>(0));
 
@@ -657,7 +631,7 @@ impl Program for SimpleConnectedComponents {
         })
     }
 
-    fn produce_output(&self, g: &Graph, _window: Range<i64>, gs: &GlobalEvalState) -> Self::Out
+    fn produce_output<G: GraphViewOps>(&self, g: &G, gs: &GlobalEvalState<G>) -> Self::Out
     where
         Self: Sync,
     {
@@ -665,7 +639,7 @@ impl Program for SimpleConnectedComponents {
 
         let mut results: FxHashMap<u64, u64> = FxHashMap::default();
 
-        (0..g.nr_shards)
+        (0..g.num_shards())
             .into_iter()
             .fold(&mut results, |res, part_id| {
                 gs.fold_state(&agg, part_id, res, |res, v_id, cc| {
@@ -681,7 +655,9 @@ impl Program for SimpleConnectedComponents {
 pub struct TriangleCountS1 {}
 
 impl Program for TriangleCountS1 {
-    fn local_eval(&self, c: &LocalState) {
+    type Out = ();
+
+    fn local_eval<G: GraphViewOps>(&self, c: &LocalState<G>) {
         let neighbors_set = c.agg(state::def::hash_set(0));
 
         c.step(|s| {
@@ -693,14 +669,12 @@ impl Program for TriangleCountS1 {
         });
     }
 
-    fn post_eval(&self, c: &mut GlobalEvalState) {
+    fn post_eval<G: GraphViewOps>(&self, c: &mut GlobalEvalState<G>) {
         let _ = c.agg(state::def::hash_set::<u64>(0));
         c.step(|_| false)
     }
 
-    type Out = ();
-
-    fn produce_output(&self, g: &Graph, window: Range<i64>, gs: &GlobalEvalState) -> Self::Out
+    fn produce_output<G: GraphViewOps>(&self, _g: &G, _gs: &GlobalEvalState<G>) -> Self::Out
     where
         Self: Sync,
     {
@@ -711,7 +685,7 @@ pub struct TriangleCountS2 {}
 
 impl Program for TriangleCountS2 {
     type Out = Option<usize>;
-    fn local_eval(&self, c: &LocalState) {
+    fn local_eval<G: GraphViewOps>(&self, c: &LocalState<G>) {
         let neighbors_set = c.agg(state::def::hash_set::<u64>(0));
         let count = c.global_agg(state::def::sum::<usize>(1));
 
@@ -743,12 +717,12 @@ impl Program for TriangleCountS2 {
         });
     }
 
-    fn post_eval(&self, c: &mut GlobalEvalState) {
+    fn post_eval<G: GraphViewOps>(&self, c: &mut GlobalEvalState<G>) {
         let _ = c.global_agg(state::def::sum::<usize>(1));
         c.step(|_| false)
     }
 
-    fn produce_output(&self, g: &Graph, window: Range<i64>, gs: &GlobalEvalState) -> Self::Out
+    fn produce_output<G: GraphViewOps>(&self, _g: &G, gs: &GlobalEvalState<G>) -> Self::Out
     where
         Self: Sync,
     {
@@ -759,7 +733,9 @@ impl Program for TriangleCountS2 {
 pub struct TriangleCountSlowS2 {}
 
 impl Program for TriangleCountSlowS2 {
-    fn local_eval(&self, c: &LocalState) {
+    type Out = usize;
+
+    fn local_eval<G: GraphViewOps>(&self, c: &LocalState<G>) {
         let count = c.global_agg(state::def::sum::<usize>(0));
 
         c.step(|v| {
@@ -788,14 +764,12 @@ impl Program for TriangleCountSlowS2 {
         })
     }
 
-    fn post_eval(&self, c: &mut GlobalEvalState) {
+    fn post_eval<G: GraphViewOps>(&self, c: &mut GlobalEvalState<G>) {
         let _ = c.global_agg(state::def::sum::<usize>(0));
         c.step(|_| false)
     }
 
-    type Out = usize;
-
-    fn produce_output(&self, g: &Graph, window: Range<i64>, gs: &GlobalEvalState) -> Self::Out
+    fn produce_output<G: GraphViewOps>(&self, _g: &G, _gs: &GlobalEvalState<G>) -> Self::Out
     where
         Self: Sync,
     {
@@ -810,6 +784,7 @@ mod program {
     use crate::program::algo::{connected_components, triangle_counting_fast};
 
     use super::*;
+    use crate::graph::Graph;
     use docbrown_core::state;
     use itertools::chain;
     use pretty_assertions::assert_eq;
@@ -840,7 +815,7 @@ mod program {
             graph.add_edge(ts, src, dst, &vec![]);
         }
 
-        let actual_tri_count = triangle_counting_fast(&graph, 0..96);
+        let actual_tri_count = triangle_counting_fast(&graph.window(0, 96));
 
         assert_eq!(actual_tri_count, Some(4))
     }
@@ -873,9 +848,10 @@ mod program {
         let mut program_s1 = TriangleCountSlowS2 {};
         let agg = state::def::sum::<usize>(0);
 
-        let mut gs = GlobalEvalState::new(graph.clone(), 0..95, false);
+        let windowed_graph = graph.window(0, 95);
+        let mut gs = GlobalEvalState::new(windowed_graph.clone(), false);
 
-        program_s1.run_step(&graph, &mut gs);
+        program_s1.run_step(&windowed_graph, &mut gs);
 
         let actual_tri_count = gs.read_global_state(&agg).map(|v| v / 3);
 
@@ -918,10 +894,11 @@ mod program {
 
         let mut program_s1 = TriangleCountSlowS2 {};
         let agg = state::def::sum::<usize>(0);
+        let graph_window = graph.window(0, 64);
 
-        let mut gs = GlobalEvalState::new(graph.clone(), 0..64, false);
+        let mut gs = GlobalEvalState::new(graph_window.clone(), false);
 
-        program_s1.run_step(&graph, &mut gs);
+        program_s1.run_step(&graph_window, &mut gs);
 
         let actual_tri_count = gs.read_global_state(&agg).map(|v| v / 3);
 
@@ -962,7 +939,9 @@ mod program {
             graph.add_edge(ts, src, dst, &vec![]);
         }
 
-        let actual_tri_count = triangle_counting_fast(&graph, 0..27);
+        let graph_window = graph.window(0, 27);
+
+        let actual_tri_count = triangle_counting_fast(&graph_window);
 
         assert_eq!(actual_tri_count, Some(8))
     }
@@ -987,8 +966,9 @@ mod program {
             graph.add_edge(ts, src, dst, &vec![]);
         }
 
-        let mut gs = GlobalEvalState::new(graph.clone(), 0..10, true);
-        program.run_step(&graph, &mut gs);
+        let graph_window = graph.window(0, 10);
+        let mut gs = GlobalEvalState::new(graph_window.clone(), true);
+        program.run_step(&graph_window, &mut gs);
 
         let agg = state::def::min::<u64>(0);
 
@@ -1006,7 +986,7 @@ mod program {
         println!("ACTUAL: {:?}", actual_part1);
         assert_eq!(actual_part1, &expected);
 
-        program.run_step(&graph, &mut gs);
+        program.run_step(&graph_window, &mut gs);
 
         let expected =             // output from the eval running on the first shard
             vec![
@@ -1022,7 +1002,7 @@ mod program {
         println!("ACTUAL: {:?}", actual_part1);
         assert_eq!(actual_part1, &expected);
 
-        program.run_step(&graph, &mut gs);
+        program.run_step(&graph_window, &mut gs);
 
         let expected =             // output from the eval running on the first shard
             vec![
@@ -1038,7 +1018,7 @@ mod program {
         println!("ACTUAL: {:?}", actual_part1);
         assert_eq!(actual_part1, &expected);
 
-        program.run_step(&graph, &mut gs);
+        program.run_step(&graph_window, &mut gs);
 
         let expected =             // output from the eval running on the first shard
             vec![
@@ -1073,9 +1053,9 @@ mod program {
             graph.add_edge(ts, src, dst, &vec![]);
         }
 
-        let window = 0..10;
+        let graph_window = graph.window(0, 10);
 
-        let results: FxHashMap<u64, u64> = connected_components(&graph, window, usize::MAX)
+        let results: FxHashMap<u64, u64> = connected_components(&graph_window, usize::MAX)
             .into_iter()
             .map(|(k, v)| (k, v as u64))
             .collect();
@@ -1131,9 +1111,9 @@ mod program {
             graph.add_edge(ts, src, dst, &vec![]);
         }
 
-        let window = 0..25;
+        let graph_window = graph.window(0, 25);
 
-        let results: FxHashMap<u64, u64> = connected_components(&graph, window, usize::MAX)
+        let results: FxHashMap<u64, u64> = connected_components(&graph_window, usize::MAX)
             .into_iter()
             .map(|(k, v)| (k, v as u64))
             .collect();
@@ -1169,9 +1149,9 @@ mod program {
             graph.add_edge(ts, src, dst, &vec![]);
         }
 
-        let window = 0..25;
+        let graph_window = graph.window(0, 25);
 
-        let results: FxHashMap<u64, u64> = connected_components(&graph, window, usize::MAX);
+        let results: FxHashMap<u64, u64> = connected_components(&graph_window, usize::MAX);
 
         assert_eq!(
             results,
@@ -1205,9 +1185,9 @@ mod program {
 
             // now we do connected components over window 0..1
 
-            let window = 0..1;
+            let graph_window = graph.window(0, 1);
 
-            let components: FxHashMap<u64, u64> = connected_components(&graph, window, usize::MAX);
+            let components: FxHashMap<u64, u64> = connected_components(&graph_window, usize::MAX);
 
             let actual = components
                 .iter()

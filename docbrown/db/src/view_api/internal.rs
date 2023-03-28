@@ -1,4 +1,5 @@
 use docbrown_core::tgraph::{EdgeRef, VertexRef};
+use docbrown_core::tgraph_shard::TGraphShard;
 use docbrown_core::{Direction, Prop};
 use std::collections::HashMap;
 
@@ -184,4 +185,6 @@ pub trait GraphViewInternalOps {
         t_start: i64,
         t_end: i64,
     ) -> HashMap<String, Vec<(i64, Prop)>>;
+
+    fn num_shards(&self) -> usize;
 }

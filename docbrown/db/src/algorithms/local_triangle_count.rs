@@ -20,9 +20,9 @@ pub fn local_triangle_count<G: GraphViewOps>(graph: &G, v: u64) -> usize {
 #[cfg(test)]
 mod triangle_count_tests {
 
-    use crate::graph::Graph;
-
     use super::local_triangle_count;
+    use crate::graph::Graph;
+    use crate::view_api::*;
 
     #[test]
     fn counts_triangles() {

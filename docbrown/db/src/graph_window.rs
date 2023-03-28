@@ -1,5 +1,5 @@
 use crate::graph::Graph;
-use crate::perspective::{Perspective};
+use crate::perspective::Perspective;
 use docbrown_core::{
     tgraph::{EdgeRef, VertexRef},
     Direction, Prop,
@@ -10,20 +10,18 @@ use crate::vertex::VertexView;
 use crate::view_api::internal::GraphViewInternalOps;
 use crate::view_api::GraphViewOps;
 use crate::view_api::*;
+use docbrown_core::tgraph_shard::TGraphShard;
 use docbrown_core::vertex::InputVertex;
 use std::cmp::{max, min};
 use std::{collections::HashMap, sync::Arc};
 
-pub struct GraphWindowSet {
-    graph: Graph,
+pub struct GraphWindowSet<G: GraphViewOps> {
+    graph: G,
     perspectives: Box<dyn Iterator<Item = Perspective> + Send>,
 }
 
-impl GraphWindowSet {
-    pub fn new(
-        graph: Graph,
-        perspectives: Box<dyn Iterator<Item = Perspective> + Send>,
-    ) -> GraphWindowSet {
+impl<G: GraphViewOps> GraphWindowSet<G> {
+    pub fn new(graph: G, perspectives: Box<dyn Iterator<Item = Perspective> + Send>) -> Self {
         GraphWindowSet {
             graph,
             perspectives,
@@ -31,8 +29,8 @@ impl GraphWindowSet {
     }
 }
 
-impl Iterator for GraphWindowSet {
-    type Item = WindowedGraph;
+impl<G: GraphViewOps> Iterator for GraphWindowSet<G> {
+    type Item = WindowedGraph<G>;
     fn next(&mut self) -> Option<Self::Item> {
         let perspective = self.perspectives.next()?;
         Some(WindowedGraph {
@@ -44,13 +42,13 @@ impl Iterator for GraphWindowSet {
 }
 
 #[derive(Debug, Clone)]
-pub struct WindowedGraph {
-    pub graph: Graph,
+pub struct WindowedGraph<G: GraphViewOps> {
+    pub graph: G,
     pub t_start: i64, // inclusive
     pub t_end: i64,   // exclusive
 }
 
-impl WindowedGraph {
+impl<G: GraphViewOps> WindowedGraph<G> {
     fn actual_start(&self, t_start: i64) -> i64 {
         max(self.t_start, t_start)
     }
@@ -60,7 +58,7 @@ impl WindowedGraph {
     }
 }
 
-impl GraphViewInternalOps for WindowedGraph {
+impl<G: GraphViewOps> GraphViewInternalOps for WindowedGraph<G> {
     fn vertices_len(&self) -> usize {
         self.graph.vertices_len_window(self.t_start, self.t_end)
     }
@@ -136,6 +134,15 @@ impl GraphViewInternalOps for WindowedGraph {
         self.graph.vertex_refs_window(self.t_start, self.t_end)
     }
 
+    fn vertex_refs_window(
+        &self,
+        t_start: i64,
+        t_end: i64,
+    ) -> Box<dyn Iterator<Item = VertexRef> + Send> {
+        self.graph
+            .vertex_refs_window(self.actual_start(t_start), self.actual_end(t_end))
+    }
+
     fn vertex_refs_window_shard(
         &self,
         shard: usize,
@@ -147,15 +154,6 @@ impl GraphViewInternalOps for WindowedGraph {
             self.actual_start(t_start),
             self.actual_end(t_end),
         )
-    }
-
-    fn vertex_refs_window(
-        &self,
-        t_start: i64,
-        t_end: i64,
-    ) -> Box<dyn Iterator<Item = VertexRef> + Send> {
-        self.graph
-            .vertex_refs_window(self.actual_start(t_start), self.actual_end(t_end))
     }
 
     fn vertices_par<O, F>(&self, f: F) -> Box<dyn Iterator<Item = O>>
@@ -378,10 +376,14 @@ impl GraphViewInternalOps for WindowedGraph {
         self.graph
             .temporal_edge_props_window(e, self.actual_start(t_start), self.actual_end(t_end))
     }
+
+    fn num_shards(&self) -> usize {
+        self.graph.num_shards()
+    }
 }
 
-impl WindowedGraph {
-    pub fn new(graph: Graph, t_start: i64, t_end: i64) -> Self {
+impl<G: GraphViewOps> WindowedGraph<G> {
+    pub fn new(graph: G, t_start: i64, t_end: i64) -> Self {
         WindowedGraph {
             graph,
             t_start,
@@ -390,13 +392,7 @@ impl WindowedGraph {
     }
 }
 
-impl GraphViewOps for WindowedGraph {
-    type Vertex = WindowedVertex;
-    type VertexIter = Self::Vertices;
-    type Vertices = Box<dyn Iterator<Item = WindowedVertex> + Send>;
-    type Edge = WindowedEdge;
-    type Edges = Box<dyn Iterator<Item = WindowedEdge> + Send>;
-
+impl<G: GraphViewOps> GraphViewOps for WindowedGraph<G> {
     fn num_vertices(&self) -> usize {
         // FIXME: This needs Optimising badly
         self.vertices().count()
@@ -427,46 +423,50 @@ impl GraphViewOps for WindowedGraph {
             .has_edge_ref_window(src.id(), dst.id(), self.t_start, self.t_end)
     }
 
-    fn vertex<T: InputVertex>(&self, v: T) -> Option<WindowedVertex> {
+    fn vertex<T: InputVertex>(&self, v: T) -> Option<VertexView<Self>> {
         let graph_w = Arc::new(self.clone());
         self.graph
             .vertex_ref_window(v.id(), self.t_start, self.t_end)
-            .map(move |vv| WindowedVertex::new(graph_w, vv))
+            .map(move |vv| VertexView::new(graph_w, vv))
     }
 
-    fn vertices(&self) -> Self::Vertices {
+    fn vertices(&self) -> Box<dyn Iterator<Item = VertexView<Self>> + Send> {
         let graph_w = self.clone();
         Box::new(
             self.graph
                 .vertex_refs_window(self.t_start, self.t_end)
-                .map(move |vv| WindowedVertex::new(Arc::new(graph_w.clone()), vv)),
+                .map(move |vv| VertexView::new(Arc::new(graph_w.clone()), vv)),
         )
     }
 
-    fn vertices_shard(&self, shard: usize) -> Self::Vertices {
+    fn edge<T: InputVertex>(&self, src: T, dst: T) -> Option<EdgeView<Self>> {
+        let graph_w = self.clone();
+        self.graph
+            .edge_ref_window(src.id(), dst.id(), self.t_start, self.t_end)
+            .map(|ev| EdgeView::new(Arc::new(graph_w.clone()), ev))
+    }
+
+    fn edges(&self) -> Box<dyn Iterator<Item = EdgeView<Self>> + Send> {
+        Box::new(self.vertices().flat_map(|v| v.out_edges()))
+    }
+
+    fn vertices_shard(&self, shard: usize) -> Box<dyn Iterator<Item = VertexView<Self>> + Send> {
         let graph_w = self.clone();
         Box::new(
             self.graph
                 .vertex_refs_window_shard(shard, self.t_start, self.t_end)
-                .map(move |vv| WindowedVertex::new(Arc::new(graph_w.clone()), vv)),
+                .map(move |vv| VertexView::new(Arc::new(graph_w.clone()), vv)),
         )
     }
 
-    fn edge<T: InputVertex>(&self, src: T, dst: T) -> Option<WindowedEdge> {
-        let graph_w = self.clone();
-        self.graph
-            .edge_ref_window(src.id(), dst.id(), self.t_start, self.t_end)
-            .map(|ev| WindowedEdge::new(Arc::new(graph_w.clone()), ev))
-    }
-
-    fn edges(&self) -> Self::Edges {
-        Box::new(self.vertices().flat_map(|v| v.out_edges()))
+    fn window(&self, t_start: i64, t_end: i64) -> WindowedGraph<Self> {
+        WindowedGraph::new(
+            self.clone(),
+            self.actual_start(t_start),
+            self.actual_end(t_end),
+        )
     }
 }
-
-pub type WindowedVertex = VertexView<WindowedGraph>;
-
-pub type WindowedEdge = EdgeView<WindowedGraph>;
 
 #[cfg(test)]
 mod views_test {
@@ -497,7 +497,7 @@ mod views_test {
             g.add_edge(*t, *src, *dst, &vec![]);
         }
 
-        let wg = WindowedGraph::new(g.into(), -1, 1);
+        let wg = WindowedGraph::new(g, -1, 1);
 
         let actual = wg
             .vertices()
@@ -548,9 +548,9 @@ mod views_test {
             g.add_edge(*t, *src, *dst, &vec![]);
         }
 
-        let wg = WindowedGraph::new(g.into(), -1, 1);
+        let wg = WindowedGraph::new(g, -1, 1);
 
-        assert_eq!(wg.vertex(1).unwrap().id(),1);
+        assert_eq!(wg.vertex(1).unwrap().id(), 1);
     }
 
     #[test]
@@ -566,7 +566,9 @@ mod views_test {
         let g = Graph::new(2);
 
         for (t, v) in &vs {
-            g.add_vertex(*t, *v, &vec![]).map_err(|err| println!("{:?}", err)).ok();
+            g.add_vertex(*t, *v, &vec![])
+                .map_err(|err| println!("{:?}", err))
+                .ok();
         }
 
         let wg = WindowedGraph::new(g, 1, 2);
@@ -589,7 +591,9 @@ mod views_test {
         let g = Graph::new(2);
 
         for (t, v) in &vs {
-            g.add_vertex(*t, *v, &vec![]).map_err(|err| println!("{:?}", err)).ok();
+            g.add_vertex(*t, *v, &vec![])
+                .map_err(|err| println!("{:?}", err))
+                .ok();
         }
 
         let start = vs.get(rand_start_index).expect("start index in range").0;
@@ -781,7 +785,9 @@ mod views_test {
                 ("type".into(), Prop::Str("wallet".into())),
                 ("cost".into(), Prop::F32(99.5)),
             ],
-        ).map_err(|err| println!("{:?}", err)).ok();
+        )
+        .map_err(|err| println!("{:?}", err))
+        .ok();
 
         g.add_vertex(
             -1,
@@ -790,7 +796,9 @@ mod views_test {
                 ("type".into(), Prop::Str("wallet".into())),
                 ("cost".into(), Prop::F32(10.0)),
             ],
-        ).map_err(|err| println!("{:?}", err)).ok();
+        )
+        .map_err(|err| println!("{:?}", err))
+        .ok();
 
         g.add_vertex(
             6,
@@ -799,7 +807,9 @@ mod views_test {
                 ("type".into(), Prop::Str("wallet".into())),
                 ("cost".into(), Prop::F32(76.2)),
             ],
-        ).map_err(|err| println!("{:?}", err)).ok();
+        )
+        .map_err(|err| println!("{:?}", err))
+        .ok();
 
         for (t, src, dst) in &vs {
             g.add_edge(
@@ -828,7 +838,9 @@ mod views_test {
                 ("type".into(), Prop::Str("wallet".into())),
                 ("cost".into(), Prop::F32(99.5)),
             ],
-        ).map_err(|err| println!("{:?}", err)).ok();
+        )
+        .map_err(|err| println!("{:?}", err))
+        .ok();
 
         g.add_vertex(
             -1,
@@ -837,7 +849,9 @@ mod views_test {
                 ("type".into(), Prop::Str("wallet".into())),
                 ("cost".into(), Prop::F32(10.0)),
             ],
-        ).map_err(|err| println!("{:?}", err)).ok();
+        )
+        .map_err(|err| println!("{:?}", err))
+        .ok();
 
         g.add_vertex(
             6,
@@ -846,7 +860,9 @@ mod views_test {
                 ("type".into(), Prop::Str("wallet".into())),
                 ("cost".into(), Prop::F32(76.2)),
             ],
-        ).map_err(|err| println!("{:?}", err)).ok();
+        )
+        .map_err(|err| println!("{:?}", err))
+        .ok();
 
         for (t, src, dst) in &vs {
             g.add_edge(*t, *src, *dst, &vec![]);

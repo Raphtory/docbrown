@@ -1,25 +1,25 @@
 use crate::edge::EdgeView;
 use crate::view_api::internal::GraphViewInternalOps;
-use crate::view_api::{VertexListOps, VertexViewOps};
+use crate::view_api::{GraphViewOps, VertexListOps, VertexViewOps};
 use docbrown_core::tgraph::VertexRef;
 use docbrown_core::{Direction, Prop};
 use std::collections::HashMap;
 use std::sync::Arc;
 
 #[derive(Debug)]
-pub struct VertexView<G: GraphViewInternalOps> {
+pub struct VertexView<G: GraphViewOps> {
     //FIXME: Not sure Arc is good here, maybe this should just own a graph and rely on cheap clone...
     graph: Arc<G>,
     vertex: VertexRef,
 }
 
-impl<G: GraphViewInternalOps> Into<VertexRef> for VertexView<G> {
-    fn into(self) -> VertexRef {
-        self.vertex
+impl<G: GraphViewOps> From<VertexView<G>> for VertexRef {
+    fn from(value: VertexView<G>) -> Self {
+        value.vertex
     }
 }
 
-impl<G: GraphViewInternalOps> VertexView<G> {
+impl<G: GraphViewOps> VertexView<G> {
     pub(crate) fn new(graph: Arc<G>, vertex: VertexRef) -> VertexView<G> {
         VertexView { graph, vertex }
     }
@@ -29,7 +29,7 @@ impl<G: GraphViewInternalOps> VertexView<G> {
     }
 }
 
-impl<G: GraphViewInternalOps + 'static + Send + Sync> VertexViewOps for VertexView<G> {
+impl<G: GraphViewOps> VertexViewOps for VertexView<G> {
     type Edge = EdgeView<G>;
     type VList = Box<dyn Iterator<Item = Self> + Send>;
     type EList = Box<dyn Iterator<Item = Self::Edge> + Send>;
@@ -182,9 +182,7 @@ impl<G: GraphViewInternalOps + 'static + Send + Sync> VertexViewOps for VertexVi
     }
 }
 
-impl<G: GraphViewInternalOps + 'static + Send + Sync> VertexListOps
-    for Box<dyn Iterator<Item = VertexView<G>> + Send>
-{
+impl<G: GraphViewOps> VertexListOps for Box<dyn Iterator<Item = VertexView<G>> + Send> {
     type Vertex = VertexView<G>;
     type Edge = EdgeView<G>;
     type EList = Box<dyn Iterator<Item = Self::Edge> + Send>;
@@ -279,7 +277,6 @@ impl<G: GraphViewInternalOps + 'static + Send + Sync> VertexListOps
 #[cfg(test)]
 mod vertex_test {
     use crate::view_api::*;
-
 
     #[test]
     fn test_all_degrees_window() {

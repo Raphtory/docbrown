@@ -44,6 +44,7 @@ pub fn local_reciprocity<G: GraphViewOps>(graph: &G, v: u64) -> f64 {
 mod reciprocity_test {
     use super::{all_local_reciprocity, global_reciprocity, local_reciprocity};
     use crate::graph::Graph;
+    use crate::view_api::*;
 
     #[test]
     fn check_all_reciprocities() {
