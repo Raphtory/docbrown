@@ -1,4 +1,4 @@
-use std::{collections::HashMap};
+use std::collections::HashMap;
 
 use crate::wrappers;
 use crate::{graph::Graph, wrappers::*};
@@ -6,6 +6,10 @@ use docbrown_db::graph_window;
 use docbrown_db::view_api::*;
 use itertools::Itertools;
 use pyo3::prelude::*;
+
+pub struct PyGraphView {
+    graph: Box<dyn GraphViewOps>,
+}
 
 #[pyclass]
 pub struct GraphWindowSet {
@@ -58,13 +62,21 @@ impl WindowedGraph {
 impl WindowedGraph {
     //******  Metrics APIs ******//
 
-    pub fn earliest_time(&self) -> Option<i64> { self.graph_w.earliest_time() }
+    pub fn earliest_time(&self) -> Option<i64> {
+        self.graph_w.earliest_time()
+    }
 
-    pub fn latest_time(&self) -> Option<i64> { self.graph_w.latest_time() }
+    pub fn latest_time(&self) -> Option<i64> {
+        self.graph_w.latest_time()
+    }
 
-    pub fn num_edges(&self) -> usize {self.graph_w.num_edges()}
+    pub fn num_edges(&self) -> usize {
+        self.graph_w.num_edges()
+    }
 
-    pub fn num_vertices(&self) -> usize {self.graph_w.num_vertices()}
+    pub fn num_vertices(&self) -> usize {
+        self.graph_w.num_vertices()
+    }
 
     pub fn has_vertex(&self, id: &PyAny) -> PyResult<bool> {
         let v = Graph::extract_id(id)?;
@@ -82,7 +94,7 @@ impl WindowedGraph {
     pub fn vertex(slf: PyRef<'_, Self>, id: &PyAny) -> PyResult<Option<WindowedVertex>> {
         let v = Graph::extract_id(id)?;
         match slf.graph_w.vertex(v) {
-            None => {Ok(None)}
+            None => Ok(None),
             Some(v) => {
                 let g: Py<Self> = slf.into();
                 Ok(Some(WindowedVertex::new(g, v)))
@@ -93,15 +105,13 @@ impl WindowedGraph {
     pub fn __getitem__(slf: PyRef<'_, Self>, id: &PyAny) -> PyResult<Option<WindowedVertex>> {
         let v = Graph::extract_id(id)?;
         match slf.graph_w.vertex(v) {
-            None => {Ok(None)}
+            None => Ok(None),
             Some(v) => {
                 let g: Py<Self> = slf.into();
                 Ok(Some(WindowedVertex::new(g, v)))
             }
         }
     }
-
-
 
     pub fn vertex_ids(&self) -> VertexIdsIterator {
         VertexIdsIterator {
@@ -143,7 +153,6 @@ pub struct WindowedVertex {
 //     }
 // }
 
-
 impl WindowedVertex {
     fn from(&self, value: graph_window::WindowedVertex) -> WindowedVertex {
         WindowedVertex {
@@ -167,7 +176,6 @@ impl WindowedVertex {
 
 #[pymethods]
 impl WindowedVertex {
-
     pub fn __getitem__(&self, name: String) -> Vec<(i64, Prop)> {
         self.prop(name)
     }
@@ -393,15 +401,12 @@ pub struct WindowedEdge {
 
 impl From<graph_window::WindowedEdge> for WindowedEdge {
     fn from(value: graph_window::WindowedEdge) -> WindowedEdge {
-        WindowedEdge {
-            edge_w: value,
-        }
+        WindowedEdge { edge_w: value }
     }
 }
 
 #[pymethods]
 impl WindowedEdge {
-
     pub fn __getitem__(&self, name: String) -> Vec<(i64, Prop)> {
         self.prop(name)
     }
