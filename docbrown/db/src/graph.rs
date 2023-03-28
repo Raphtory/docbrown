@@ -548,7 +548,7 @@ impl Graph {
     /// # Example
     ///
     /// ```
-    /// use docbrown::Graph;
+    /// use docbrown_db::graph::Graph;;
     /// let g = Graph::new(4);
     /// ```
     pub fn new(nr_shards: usize) -> Self {
@@ -572,7 +572,14 @@ impl Graph {
     /// # Example
     ///
     /// ```
-    /// let w = g.window(10, 20);
+    /// use docbrown_db::graph::Graph;;
+    /// let g = Graph::new(1);
+    /// g.add_vertex(1, 10, &vec![]);
+    /// g.add_vertex(2, 20, &vec![]);
+    /// g.add_vertex(3, 30, &vec![]);
+    /// g.add_edge(2, 10, 20, &vec![]);
+    /// g.add_edge(3, 20, 30, &vec![]);
+    /// let w = g.window(1, 3);
     /// ```
     pub fn window(&self, t_start: i64, t_end: i64) -> WindowedGraph {
         WindowedGraph::new(self.clone(), t_start, t_end)
@@ -591,7 +598,14 @@ impl Graph {
     /// # Example
     ///
     /// ```
-    /// let w = g.at(10);
+    /// use docbrown_db::graph::Graph;;
+    /// let g = Graph::new(1);
+    /// g.add_vertex(1, 10, &vec![]);
+    /// g.add_vertex(2, 20, &vec![]);
+    /// g.add_vertex(3, 30, &vec![]);
+    /// g.add_edge(2, 10, 20, &vec![]);
+    /// g.add_edge(3, 20, 30, &vec![]);
+    /// let w = g.at(2);
     /// ```
     pub fn at(&self, end: i64) -> WindowedGraph {
         self.window(i64::MIN, end.saturating_add(1))
