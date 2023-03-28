@@ -1,8 +1,10 @@
 //! A data structure for representing temporal graphs.
 
+use std::collections::BTreeSet;
 use std::fmt::{Display, Formatter};
 use std::{
     collections::{BTreeMap, HashMap},
+    mem,
     ops::Range,
 };
 
@@ -81,6 +83,10 @@ impl TemporalGraph {
         self.logical_to_physical.len()
     }
 
+    pub(crate) fn len_window(&self, w: &Range<i64>) -> usize {
+        self.adj_lists.iter().filter(|adj| adj.exists(w)).count()
+    }
+
     pub(crate) fn out_edges_len(&self) -> usize {
         self.adj_lists
             .iter()
@@ -92,7 +98,7 @@ impl TemporalGraph {
     pub(crate) fn has_edge(&self, src: u64, dst: u64) -> bool {
         if let Some(v_pid) = self.logical_to_physical.get(&src) {
             match &self.adj_lists[*v_pid] {
-                Adj::Solo(_) => false,
+                Adj::Solo(_, _) => false,
                 Adj::List {
                     out, remote_out, ..
                 } => {
@@ -114,7 +120,7 @@ impl TemporalGraph {
         if self.has_vertex_window(src, w) {
             let src_pid = self.logical_to_physical[&src];
             match &self.adj_lists[src_pid] {
-                Adj::Solo(_) => false,
+                Adj::Solo(_, _) => false,
                 Adj::List {
                     out, remote_out, ..
                 } => {
@@ -165,7 +171,7 @@ impl TemporalGraph {
         let index = match self.logical_to_physical.get(&v.id()) {
             None => {
                 let physical_id: usize = self.adj_lists.len();
-                self.adj_lists.push(Adj::Solo(v.id()));
+                self.adj_lists.push(Adj::Solo(v.id(), [t].into()));
 
                 self.logical_to_physical.insert(v.id(), physical_id);
 
@@ -178,6 +184,8 @@ impl TemporalGraph {
                 physical_id
             }
             Some(pid) => {
+                self.adj_lists[*pid].register_event(t);
+
                 self.index
                     .entry(t)
                     .and_modify(|set| {
@@ -356,7 +364,7 @@ impl TemporalGraph {
     pub fn vertex(&self, v: u64) -> Option<VertexRef> {
         let pid = self.logical_to_physical.get(&v)?;
         Some(match self.adj_lists[*pid] {
-            Adj::Solo(lid) => VertexRef {
+            Adj::Solo(lid, _) => VertexRef {
                 g_id: lid,
                 pid: Some(*pid),
             },
@@ -374,7 +382,7 @@ impl TemporalGraph {
 
         match vs.contains(&pid) {
             true => Some(match self.adj_lists[*pid] {
-                Adj::Solo(lid) => VertexRef {
+                Adj::Solo(lid, _) => VertexRef {
                     g_id: lid,
                     pid: Some(*pid),
                 },
@@ -402,7 +410,7 @@ impl TemporalGraph {
                 .kmerge()
                 .dedup()
                 .map(move |pid| match self.adj_lists[pid] {
-                    Adj::Solo(lid) => lid,
+                    Adj::Solo(lid, _) => lid,
                     Adj::List { logical, .. } => logical,
                 }),
         )
@@ -427,7 +435,7 @@ impl TemporalGraph {
             .dedup();
 
         let vs = unique_vids.map(move |pid| match self.adj_lists[pid] {
-            Adj::Solo(lid) => VertexRef {
+            Adj::Solo(lid, _) => VertexRef {
                 g_id: lid,
                 pid: Some(pid),
             },
@@ -444,7 +452,7 @@ impl TemporalGraph {
         let src_pid = self.logical_to_physical.get(&src)?;
 
         match &self.adj_lists[*src_pid] {
-            Adj::Solo(_) => None,
+            Adj::Solo(_, _) => None,
             Adj::List {
                 out, remote_out, ..
             } => {
@@ -481,7 +489,7 @@ impl TemporalGraph {
         if self.has_vertex_window(src, w) {
             let src_pid = self.logical_to_physical.get(&src)?;
             match &self.adj_lists[*src_pid] {
-                Adj::Solo(_) => Option::<EdgeRef>::None,
+                Adj::Solo(_, _) => Option::<EdgeRef>::None,
                 Adj::List {
                     out, remote_out, ..
                 } => {
@@ -960,17 +968,27 @@ impl TemporalGraph {
         remote_edge: bool,
     ) -> usize {
         match &mut self.adj_lists[dst_pid] {
-            entry @ Adj::Solo(_) => {
+            entry @ Adj::Solo(_, _) => {
                 let edge_id = self.props.get_next_available_edge_id();
+
+                entry.timestamps_mut().insert(t);
+                let mut timestamps = BTreeSet::new();
+
+                mem::swap(&mut timestamps, entry.timestamps_mut());
 
                 let edge = AdjEdge::new(edge_id, !remote_edge);
 
                 *entry = Adj::new_into(dst_gid, src, t, edge);
 
+                mem::swap(&mut timestamps, entry.timestamps_mut());
+
                 edge_id
             }
             Adj::List {
-                into, remote_into, ..
+                into,
+                remote_into,
+                timestamps,
+                ..
             } => {
                 let list = if remote_edge { remote_into } else { into };
                 let edge_id: usize = list
@@ -979,6 +997,8 @@ impl TemporalGraph {
                     .unwrap_or(self.props.get_next_available_edge_id());
 
                 list.push(t, src, AdjEdge::new(edge_id, !remote_edge)); // idempotent
+
+                timestamps.insert(t);
                 edge_id
             }
         }
@@ -993,12 +1013,20 @@ impl TemporalGraph {
         remote_edge: bool,
     ) -> usize {
         match &mut self.adj_lists[src_pid] {
-            entry @ Adj::Solo(_) => {
+            entry @ Adj::Solo(_, _) => {
                 let edge_id = self.props.get_next_available_edge_id();
 
                 let edge = AdjEdge::new(edge_id, !remote_edge);
 
+                entry.timestamps_mut().insert(t);
+
+                let mut timestamps = BTreeSet::new();
+
+                mem::swap(&mut timestamps, entry.timestamps_mut());
+
                 *entry = Adj::new_out(src_gid, dst, t, edge);
+
+                mem::swap(&mut timestamps, entry.timestamps_mut());
 
                 edge_id
             }
@@ -1012,6 +1040,8 @@ impl TemporalGraph {
                     .unwrap_or(self.props.get_next_available_edge_id());
 
                 list.push(t, dst, AdjEdge::new(edge_id, !remote_edge));
+
+                timestamps.insert(t);
                 edge_id
             }
         }
@@ -2324,6 +2354,49 @@ mod graph_test {
 
         assert_eq!(neighbours, expected);
         assert_eq!(neighbours_window, expected);
+    }
+
+    #[test]
+    fn len_window() {
+        let mut g = TemporalGraph::default();
+
+        let triplets = vec![
+            (1, 1, 2),
+            (2, 1, 3),
+            (-2, 2, 5),
+            (-1, 2, 1),
+            (0, 1, 1),
+            (7, 3, 2),
+            (1, 1, 1),
+        ];
+
+        for (t, src, dst) in triplets {
+            g.add_edge(t, src, dst);
+        }
+
+        let w = 0..5;
+        let len = g.len_window(&w);
+        assert_eq!(len, 3);
+
+        let w = 0..1;
+        let len = g.len_window(&w);
+        assert_eq!(len, 1);
+
+        let w = 0..0;
+        let len = g.len_window(&w);
+        assert_eq!(len, 0);
+
+        let w = -2..0;
+        let len = g.len_window(&w);
+        assert_eq!(len, 3);
+
+        let w = 0..i64::MAX;
+        let len = g.len_window(&w);
+        assert_eq!(len, 3);
+
+        let w = i64::MIN..i64::MAX;
+        let len = g.len_window(&w);
+        assert_eq!(len, 4);
     }
 
     #[test]

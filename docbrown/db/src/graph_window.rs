@@ -970,10 +970,13 @@ impl GraphViewOps for WindowedGraph {
     type Edge = WindowedEdge;
     type Edges = Box<dyn Iterator<Item = WindowedEdge> + Send>;
 
-    /// Returns the number of vertices in the view.
     fn num_vertices(&self) -> Result<usize, GraphError> {
-        // FIXME: This needs Optimising badly
-        Ok(self.vertices().count())
+        Ok(self
+            .graph
+            .shards
+            .iter()
+            .map(|s| s.len_window(self.t_start..self.t_end))
+            .sum())
     }
 
     /// Returns the earliest time in the view.

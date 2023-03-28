@@ -181,6 +181,10 @@ impl TGraphShard<TemporalGraph> {
         self.read_shard(|tg| Ok(tg.out_edges_len()))
     }
 
+    pub fn len_window(&self, w: Range<i64>) -> Result<usize, GraphError> {
+        self.read_shard(|tg| tg.len_window(&w))
+    }
+
     pub fn has_edge(&self, src: u64, dst: u64) -> Result<bool, GraphError> {
         self.read_shard(|tg| Ok(tg.has_edge(src, dst)))
     }
