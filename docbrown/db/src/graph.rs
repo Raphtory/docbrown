@@ -642,7 +642,7 @@ impl Graph {
 #[cfg(test)]
 mod db_tests {
     use super::*;
-    use crate::algorithms::local_triangle_count::local_triangle_count;
+    use crate::algorithms::triangle_count::local_triangle_count;
     use crate::graphgen::random_attachment::random_attachment;
     use crate::view_api::GraphViewOps;
     use csv::StringRecord;

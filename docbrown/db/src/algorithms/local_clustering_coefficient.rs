@@ -1,6 +1,6 @@
 use docbrown_core::tgraph_shard::errors::GraphError;
 
-use crate::algorithms::local_triangle_count::local_triangle_count;
+use crate::algorithms::triangle_count::local_triangle_count;
 use crate::view_api::*;
 
 pub fn local_clustering_coefficient<G: GraphViewOps>(graph: &G, v: u64) -> Result<f32, GraphError> {
