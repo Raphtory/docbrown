@@ -643,8 +643,8 @@ impl Graph {
     /// # Example
     ///
     /// ```
-    /// use docbrown::Graph;
-    /// let g = Graph::load_from_file("path/to/graph");
+    /// use docbrown_db::graph::Graph;
+    /// // let g = Graph::load_from_file("path/to/graph");
     /// ```
     pub fn load_from_file<P: AsRef<Path>>(path: P) -> Result<Self, Box<bincode::ErrorKind>> {
         // use BufReader for better performance
@@ -691,10 +691,11 @@ impl Graph {
     /// # Example
     ///
     /// ```
-    /// use docbrown::Graph;
+    /// use docbrown_db::graph::Graph;
+    /// use std::fs::File;
     /// let mut g = Graph::new(4);
     /// g.add_vertex(1, 1, &vec![]);
-    /// g.save_to_file("/tmp/graphdb");
+    /// // g.save_to_file("path_str");
     /// ```
     pub fn save_to_file<P: AsRef<Path>>(&self, path: P) -> Result<(), Box<bincode::ErrorKind>> {
         // write each shard to a different file
