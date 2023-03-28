@@ -778,7 +778,7 @@ impl Program for TriangleCountSlowS2 {
 }
 
 #[cfg(test)]
-mod program {
+mod program_test {
     use std::{cmp::Reverse, iter::once};
 
     use crate::program::algo::{connected_components, triangle_counting_fast};
@@ -815,7 +815,7 @@ mod program {
             graph.add_edge(ts, src, dst, &vec![]);
         }
 
-        let actual_tri_count = triangle_counting_fast(&graph.window(0, 96));
+        let actual_tri_count = triangle_counting_fast(&graph);
 
         assert_eq!(actual_tri_count, Some(4))
     }

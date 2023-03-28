@@ -143,6 +143,11 @@ impl<G: GraphViewOps> GraphViewInternalOps for WindowedGraph<G> {
             .vertex_refs_window(self.actual_start(t_start), self.actual_end(t_end))
     }
 
+    fn vertex_refs_shard(&self, shard: usize) -> Box<dyn Iterator<Item = VertexRef> + Send> {
+        self.graph
+            .vertex_refs_window_shard(shard, self.t_start, self.t_end)
+    }
+
     fn vertex_refs_window_shard(
         &self,
         shard: usize,

@@ -137,6 +137,11 @@ impl GraphViewInternalOps for Graph {
         )
     }
 
+    fn vertex_refs_shard(&self, shard: usize) -> Box<dyn Iterator<Item = VertexRef> + Send> {
+        let shard = self.shards[shard].clone();
+        Box::new(shard.vertices())
+    }
+
     fn vertex_refs_window_shard(
         &self,
         shard: usize,
@@ -472,8 +477,8 @@ impl GraphViewOps for Graph {
     fn vertices_shard(&self, shard: usize) -> Box<dyn Iterator<Item = VertexView<Self>> + Send> {
         let g = Arc::new(self.clone());
         Box::new(
-            g.vertices_shard(shard)
-                .map(move |v| VertexView::new(g.clone(), v.as_ref())),
+            self.vertex_refs_shard(shard)
+                .map(move |vv| VertexView::new(g.clone(), vv)),
         )
     }
 
