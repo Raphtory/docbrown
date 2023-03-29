@@ -39,8 +39,10 @@ use std::collections::HashSet;
 ///
 /// ```
 /// use docbrown_db::graph::Graph;
+/// use docbrown_db::graphgen::preferential_attachment::ba_preferential_attachment;
+///
 /// let graph = Graph::new(2);
-//  ba_preferential_attachment(&graph, 1000, 10);
+/// ba_preferential_attachment(&graph, 1000, 10);
 /// ```
 pub fn ba_preferential_attachment(
     graph: &Graph,
