@@ -1,4 +1,4 @@
-use crate::graph_window::WindowedGraph;
+use crate::graph_view::WindowedGraph;
 use docbrown_db::algorithms::reciprocity::{
     all_local_reciprocity as all_local_reciprocity_rs, global_reciprocity as global_reciprocity_rs,
     local_reciprocity as local_reciprocity_rs,

@@ -2,16 +2,16 @@ use docbrown_core as dbc;
 use docbrown_core::vertex::InputVertex;
 use docbrown_db::view_api::*;
 use docbrown_db::{graph, perspective};
+use itertools::Itertools;
 use pyo3::exceptions;
 use pyo3::exceptions::{PyException, PyTypeError};
 use pyo3::prelude::*;
-use pyo3::types::{PyIterator};
+use pyo3::types::PyIterator;
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::path::{Path, PathBuf};
-use itertools::Itertools;
 
-use crate::graph_window::{GraphWindowSet, WindowedGraph};
+use crate::graph_view::{GraphWindowSet, WindowedGraph};
 use crate::wrappers::{PerspectiveSet, Prop};
 use crate::Perspective;
 
@@ -38,43 +38,73 @@ impl Graph {
 
     //******  Graph Updates  ******//
 
-    pub fn add_vertex(&self, timestamp: i64, id: &PyAny, properties: Option<HashMap<String, Prop>>) -> PyResult<()> {
+    pub fn add_vertex(
+        &self,
+        timestamp: i64,
+        id: &PyAny,
+        properties: Option<HashMap<String, Prop>>,
+    ) -> PyResult<()> {
         let v = Self::extract_id(id)?;
-        let result = self.graph.add_vertex(timestamp, v, &Self::transform_props(properties));
+        let result = self
+            .graph
+            .add_vertex(timestamp, v, &Self::transform_props(properties));
         Self::adapt_err(result)
     }
 
-    pub fn add_vertex_properties(&self, id: &PyAny, properties: HashMap<String, Prop>) -> PyResult<()> {
+    pub fn add_vertex_properties(
+        &self,
+        id: &PyAny,
+        properties: HashMap<String, Prop>,
+    ) -> PyResult<()> {
         let v = Self::extract_id(id)?;
-        let result = self.graph.add_vertex_properties(v, &Self::transform_props(Some(properties)));
+        let result = self
+            .graph
+            .add_vertex_properties(v, &Self::transform_props(Some(properties)));
         Self::adapt_err(result)
     }
 
-    pub fn add_edge(&self, timestamp: i64, src: &PyAny, dst: &PyAny, properties: Option<HashMap<String, Prop>>) -> PyResult<()> {
+    pub fn add_edge(
+        &self,
+        timestamp: i64,
+        src: &PyAny,
+        dst: &PyAny,
+        properties: Option<HashMap<String, Prop>>,
+    ) -> PyResult<()> {
         let src = Self::extract_id(src)?;
         let dst = Self::extract_id(dst)?;
-        Ok(self.graph.add_edge(timestamp, src, dst, &Self::transform_props(properties)))
+        Ok(self
+            .graph
+            .add_edge(timestamp, src, dst, &Self::transform_props(properties)))
     }
 
-    pub fn add_edge_properties(&self, src: &PyAny, dst: &PyAny, properties: HashMap<String, Prop>) -> PyResult<()> {
+    pub fn add_edge_properties(
+        &self,
+        src: &PyAny,
+        dst: &PyAny,
+        properties: HashMap<String, Prop>,
+    ) -> PyResult<()> {
         let src = Self::extract_id(src)?;
         let dst = Self::extract_id(dst)?;
-        let result = self.graph.add_edge_properties(src, dst, &Self::transform_props(Some(properties)));
+        let result =
+            self.graph
+                .add_edge_properties(src, dst, &Self::transform_props(Some(properties)));
         Self::adapt_err(result)
     }
 
     //******  Perspective APIS  ******//
 
-    pub fn window(&self, t_start: i64, t_end: i64) -> WindowedGraph {
-        WindowedGraph::new(self, t_start, t_end)
+    pub fn window(&self, t_start: i64, t_end: i64) -> PyWindowedGraph {
+        self.graph.window(t_start, t_end).into()
     }
 
-    pub fn at(&self, end: i64) -> WindowedGraph { self.graph.at(end).into() }
+    pub fn at(&self, end: i64) -> WindowedGraph {
+        self.graph.at(end).into()
+    }
 
     pub fn latest(&self) -> WindowedGraph {
-        match self.latest_time(){
-            None =>  self.at(0),
-            Some(time) => self.at(time)
+        match self.latest_time() {
+            None => self.at(0),
+            Some(time) => self.at(time),
         }
     }
 
@@ -162,52 +192,56 @@ impl Graph {
     //******  Getter APIs ******//
     //TODO Implement LatestVertex/Edge
     //FIXME These are just placeholders for now and do not work because of the pyRef
-//     pub fn vertex(&self, v: u64) -> Option<WindowedVertex> {
-//         match self.latest_time(){
-//             None =>  None,
-//             Some(time) =>self.vertex(v)
-//         }
-//     }
-//
-//     pub fn vertex_ids(&self) -> VertexIdsIterator {
-//         match self.latest_time(){
-//             None =>  { self.at(0).vertex_ids()
-//             },
-//             Some(time) => self.at(time).vertex_ids()
-//         }
-//     }
-//slf: PyRef<'_, Self>
-//     pub fn vertices(&self) -> WindowedVertices {
-//         match self.latest_time(){
-//             None =>  {
-//                 self.at(0).vertices()
-//             },
-//             Some(time) => self.at(time).vertices()
-//         }
-//     }
-//
-//     pub fn edge(&self, src: u64, dst: u64) -> Option<WindowedEdge> {
-//         match self.latest_time(){
-//             None =>  {
-//                 None
-//             },
-//             Some(time) => self.at(time).edge(src,dst)
-//         }
-//     }
-//
-//     pub fn edges(&self) -> WindowedEdgeIterator {
-//         match self.latest_time(){
-//             None =>  {
-//                 self.at(0).edges()
-//             },
-//             Some(time) => self.at(time).edges()
-//         }
-//     }
+    //     pub fn vertex(&self, v: u64) -> Option<WindowedVertex> {
+    //         match self.latest_time(){
+    //             None =>  None,
+    //             Some(time) =>self.vertex(v)
+    //         }
+    //     }
+    //
+    //     pub fn vertex_ids(&self) -> VertexIdsIterator {
+    //         match self.latest_time(){
+    //             None =>  { self.at(0).vertex_ids()
+    //             },
+    //             Some(time) => self.at(time).vertex_ids()
+    //         }
+    //     }
+    //slf: PyRef<'_, Self>
+    //     pub fn vertices(&self) -> WindowedVertices {
+    //         match self.latest_time(){
+    //             None =>  {
+    //                 self.at(0).vertices()
+    //             },
+    //             Some(time) => self.at(time).vertices()
+    //         }
+    //     }
+    //
+    //     pub fn edge(&self, src: u64, dst: u64) -> Option<WindowedEdge> {
+    //         match self.latest_time(){
+    //             None =>  {
+    //                 None
+    //             },
+    //             Some(time) => self.at(time).edge(src,dst)
+    //         }
+    //     }
+    //
+    //     pub fn edges(&self) -> WindowedEdgeIterator {
+    //         match self.latest_time(){
+    //             None =>  {
+    //                 self.at(0).edges()
+    //             },
+    //             Some(time) => self.at(time).edges()
+    //         }
+    //     }
 }
 
 impl Graph {
     fn transform_props(props: Option<HashMap<String, Prop>>) -> Vec<(String, dbc::Prop)> {
-        props.unwrap_or_default().into_iter().map(|(key, value)| (key, value.into())).collect_vec()
+        props
+            .unwrap_or_default()
+            .into_iter()
+            .map(|(key, value)| (key, value.into()))
+            .collect_vec()
     }
 
     pub(crate) fn extract_id(id: &PyAny) -> PyResult<InputVertexBox> {
@@ -217,13 +251,13 @@ impl Graph {
                 let msg = "IDs need to be strings or an unsigned integers";
                 let number = id.extract::<u64>().map_err(|_| PyTypeError::new_err(msg))?;
                 Ok(InputVertexBox::new(number))
-            },
+            }
         }
     }
 
     fn adapt_err<E>(result: Result<(), E>) -> PyResult<()>
     where
-        E: std::error::Error
+        E: std::error::Error,
     {
         result.map_err(|e| {
             let error_log = display_error_chain::DisplayErrorChain::new(&e).to_string();
@@ -240,7 +274,7 @@ pub struct InputVertexBox {
 impl InputVertexBox {
     pub(crate) fn new<T>(vertex: T) -> InputVertexBox
     where
-        T: InputVertex
+        T: InputVertex,
     {
         InputVertexBox {
             id: vertex.id(),

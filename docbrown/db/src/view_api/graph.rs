@@ -4,6 +4,7 @@ use crate::perspective::{Perspective, PerspectiveIterator, PerspectiveSet};
 use crate::vertex::VertexView;
 use crate::vertices::Vertices;
 use crate::view_api::internal::GraphViewInternalOps;
+use docbrown_core::tgraph::VertexRef;
 use docbrown_core::vertex::InputVertex;
 use std::iter;
 
@@ -15,11 +16,11 @@ pub trait GraphViewOps: Send + Sync + Sized + GraphViewInternalOps + 'static + C
         self.num_vertices() == 0
     }
     fn num_edges(&self) -> usize;
-    fn has_vertex<T: InputVertex>(&self, v: T) -> bool;
-    fn has_edge<T: InputVertex>(&self, src: T, dst: T) -> bool;
-    fn vertex<T: InputVertex>(&self, v: T) -> Option<VertexView<Self>>;
+    fn has_vertex<T: Into<VertexRef>>(&self, v: T) -> bool;
+    fn has_edge<T: Into<VertexRef>>(&self, src: T, dst: T) -> bool;
+    fn vertex<T: Into<VertexRef>>(&self, v: T) -> Option<VertexView<Self>>;
     fn vertices(&self) -> Vertices<Self>;
-    fn edge<T: InputVertex>(&self, src: T, dst: T) -> Option<EdgeView<Self>>;
+    fn edge<T: Into<VertexRef>>(&self, src: T, dst: T) -> Option<EdgeView<Self>>;
     fn edges(&self) -> Box<dyn Iterator<Item = EdgeView<Self>> + Send>;
     fn vertices_shard(&self, shard: usize) -> Box<dyn Iterator<Item = VertexView<Self>> + Send>;
     fn window(&self, t_start: i64, t_end: i64) -> WindowedGraph<Self>;

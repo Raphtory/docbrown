@@ -1,3 +1,4 @@
+use crate::tgraph::VertexRef;
 use crate::{utils, Prop};
 
 pub trait InputVertex {
@@ -25,7 +26,7 @@ impl<'a> InputVertex for &'a str {
     }
 }
 
-impl<'a> InputVertex for String {
+impl InputVertex for String {
     fn id(&self) -> u64 {
         utils::calculate_hash(self)
     }
@@ -34,4 +35,3 @@ impl<'a> InputVertex for String {
         Some(Prop::Str(self.to_string()))
     }
 }
-

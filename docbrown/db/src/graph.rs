@@ -437,17 +437,17 @@ impl GraphViewOps for Graph {
         GraphViewInternalOps::edges_len(self)
     }
 
-    fn has_vertex<T: InputVertex>(&self, v: T) -> bool {
-        GraphViewInternalOps::has_vertex_ref(self, v.id())
+    fn has_vertex<T: Into<VertexRef>>(&self, v: T) -> bool {
+        GraphViewInternalOps::has_vertex_ref(self, v)
     }
 
-    fn has_edge<T: InputVertex>(&self, src: T, dst: T) -> bool {
-        GraphViewInternalOps::has_edge_ref(self, src.id(), dst.id())
+    fn has_edge<T: Into<VertexRef>>(&self, src: T, dst: T) -> bool {
+        GraphViewInternalOps::has_edge_ref(self, src, dst)
     }
 
-    fn vertex<T: InputVertex>(&self, v: T) -> Option<VertexView<Self>> {
-        self.vertex_ref(v.id())
-            .map(|v| VertexView::new(self.clone(), v))
+    fn vertex<T: Into<VertexRef>>(&self, v: T) -> Option<VertexView<Self>> {
+        let v = v.into().g_id;
+        self.vertex_ref(v).map(|v| VertexView::new(self.clone(), v))
     }
 
     fn vertices(&self) -> Vertices<Self> {
@@ -455,18 +455,9 @@ impl GraphViewOps for Graph {
         Vertices::new(graph)
     }
 
-    fn edge<T: InputVertex>(&self, src: T, dst: T) -> Option<EdgeView<Self>> {
-        self.edge_ref(
-            VertexRef {
-                g_id: src.id(),
-                pid: None,
-            },
-            VertexRef {
-                g_id: dst.id(),
-                pid: None,
-            },
-        )
-        .map(|e| EdgeView::new(self.clone(), e))
+    fn edge<T: Into<VertexRef>>(&self, src: T, dst: T) -> Option<EdgeView<Self>> {
+        self.edge_ref(src, dst)
+            .map(|e| EdgeView::new(self.clone(), e))
     }
 
     fn edges(&self) -> Box<dyn Iterator<Item = EdgeView<Self>> + Send> {

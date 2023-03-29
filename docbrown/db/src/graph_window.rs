@@ -419,19 +419,20 @@ impl<G: GraphViewOps> GraphViewOps for WindowedGraph<G> {
         self.edges().count()
     }
 
-    fn has_vertex<T: InputVertex>(&self, v: T) -> bool {
+    fn has_vertex<T: Into<VertexRef>>(&self, v: T) -> bool {
         self.graph
-            .has_vertex_ref_window(v.id(), self.t_start, self.t_end)
+            .has_vertex_ref_window(v, self.t_start, self.t_end)
     }
 
-    fn has_edge<T: InputVertex>(&self, src: T, dst: T) -> bool {
+    fn has_edge<T: Into<VertexRef>>(&self, src: T, dst: T) -> bool {
         self.graph
-            .has_edge_ref_window(src.id(), dst.id(), self.t_start, self.t_end)
+            .has_edge_ref_window(src, dst, self.t_start, self.t_end)
     }
 
-    fn vertex<T: InputVertex>(&self, v: T) -> Option<VertexView<Self>> {
+    fn vertex<T: Into<VertexRef>>(&self, v: T) -> Option<VertexView<Self>> {
+        let v = v.into().g_id;
         self.graph
-            .vertex_ref_window(v.id(), self.t_start, self.t_end)
+            .vertex_ref_window(v, self.t_start, self.t_end)
             .map(move |vv| VertexView::new(self.clone(), vv))
     }
 
@@ -440,9 +441,9 @@ impl<G: GraphViewOps> GraphViewOps for WindowedGraph<G> {
         Vertices::new(g)
     }
 
-    fn edge<T: InputVertex>(&self, src: T, dst: T) -> Option<EdgeView<Self>> {
+    fn edge<T: Into<VertexRef>>(&self, src: T, dst: T) -> Option<EdgeView<Self>> {
         self.graph
-            .edge_ref_window(src.id(), dst.id(), self.t_start, self.t_end)
+            .edge_ref_window(src, dst, self.t_start, self.t_end)
             .map(|ev| EdgeView::new(self.clone(), ev))
     }
 

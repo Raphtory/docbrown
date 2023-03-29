@@ -2,8 +2,11 @@ pub mod algorithms;
 pub mod graph;
 pub mod graph_gen;
 pub mod graph_loader;
-pub mod graph_window;
+pub mod graph_view;
 pub mod wrappers;
+mod util;
+pub mod edge;
+pub mod vertex;
 
 use pyo3::prelude::*;
 
