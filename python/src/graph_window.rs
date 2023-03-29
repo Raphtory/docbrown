@@ -174,10 +174,8 @@ impl WindowedVertex {
     }
 
     pub fn has_property(&self, name:String, include_static:Option<bool>) -> PyResult<bool> {
-        match include_static {
-            None => {adapt_err(self.vertex_w.has_property(name,true))}
-            Some(b) => {adapt_err(self.vertex_w.has_property(name,b))}
-        }
+        let include_static = include_static.unwrap_or(true);
+        adapt_err(self.vertex_w.has_property(name,include_static))
     }
 
     pub fn property(&self,name:String,include_static:Option<bool>) -> PyResult<Option<Prop>> {
