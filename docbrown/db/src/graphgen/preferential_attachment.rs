@@ -32,7 +32,7 @@ pub fn ba_preferential_attachment(graph: &Graph, vertices_to_add: usize, edges_p
     };
     let view = graph.window(i64::MIN, i64::MAX);
     let mut ids: Vec<u64> = view.vertices().id().collect();
-    let mut degrees: Vec<usize> = view.vertices().map(|v| v.degree()).collect();
+    let mut degrees: Vec<usize> = view.vertices().degree().collect();
     let mut edge_count: usize = degrees.iter().sum();
 
     let mut max_id = match ids.iter().max() {
@@ -42,7 +42,10 @@ pub fn ba_preferential_attachment(graph: &Graph, vertices_to_add: usize, edges_p
 
     while ids.len() < edges_per_step {
         max_id += 1;
-        graph.add_vertex(latest_time, max_id, &vec![]).map_err(|err| println!("{:?}", err)).ok();
+        graph
+            .add_vertex(latest_time, max_id, &vec![])
+            .map_err(|err| println!("{:?}", err))
+            .ok();
         degrees.push(0);
         ids.push(max_id);
     }
@@ -104,7 +107,10 @@ mod preferential_attachment_tests {
     fn only_nodes() {
         let graph = Graph::new(2);
         for i in 0..10 {
-            graph.add_vertex(i, i as u64, &vec![]).map_err(|err| println!("{:?}", err)).ok();
+            graph
+                .add_vertex(i, i as u64, &vec![])
+                .map_err(|err| println!("{:?}", err))
+                .ok();
         }
 
         ba_preferential_attachment(&graph, 1000, 5);

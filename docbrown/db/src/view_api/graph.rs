@@ -2,9 +2,8 @@ use crate::edge::EdgeView;
 use crate::graph_window::{GraphWindowSet, WindowedGraph};
 use crate::perspective::{Perspective, PerspectiveIterator, PerspectiveSet};
 use crate::vertex::VertexView;
-use crate::view_api::edge::EdgeViewOps;
+use crate::vertices::Vertices;
 use crate::view_api::internal::GraphViewInternalOps;
-use crate::view_api::vertex::VertexViewOps;
 use docbrown_core::vertex::InputVertex;
 use std::iter;
 
@@ -19,7 +18,7 @@ pub trait GraphViewOps: Send + Sync + Sized + GraphViewInternalOps + 'static + C
     fn has_vertex<T: InputVertex>(&self, v: T) -> bool;
     fn has_edge<T: InputVertex>(&self, src: T, dst: T) -> bool;
     fn vertex<T: InputVertex>(&self, v: T) -> Option<VertexView<Self>>;
-    fn vertices(&self) -> Box<dyn Iterator<Item = VertexView<Self>> + Send>;
+    fn vertices(&self) -> Vertices<Self>;
     fn edge<T: InputVertex>(&self, src: T, dst: T) -> Option<EdgeView<Self>>;
     fn edges(&self) -> Box<dyn Iterator<Item = EdgeView<Self>> + Send>;
     fn vertices_shard(&self, shard: usize) -> Box<dyn Iterator<Item = VertexView<Self>> + Send>;

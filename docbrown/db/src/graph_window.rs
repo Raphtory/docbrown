@@ -7,6 +7,7 @@ use docbrown_core::{
 
 use crate::edge::EdgeView;
 use crate::vertex::VertexView;
+use crate::vertices::Vertices;
 use crate::view_api::internal::GraphViewInternalOps;
 use crate::view_api::GraphViewOps;
 use crate::view_api::*;
@@ -400,7 +401,7 @@ impl<G: GraphViewOps> WindowedGraph<G> {
 impl<G: GraphViewOps> GraphViewOps for WindowedGraph<G> {
     fn num_vertices(&self) -> usize {
         // FIXME: This needs Optimising badly
-        self.vertices().count()
+        self.vertices().iter().count()
     }
 
     fn earliest_time(&self) -> Option<i64> {
@@ -434,13 +435,9 @@ impl<G: GraphViewOps> GraphViewOps for WindowedGraph<G> {
             .map(move |vv| VertexView::new(self.clone(), vv))
     }
 
-    fn vertices(&self) -> Box<dyn Iterator<Item = VertexView<Self>> + Send> {
+    fn vertices(&self) -> Vertices<Self> {
         let g = self.clone();
-        Box::new(
-            self.graph
-                .vertex_refs_window(self.t_start, self.t_end)
-                .map(move |vv| VertexView::new(g.clone(), vv)),
-        )
+        Vertices::new(g)
     }
 
     fn edge<T: InputVertex>(&self, src: T, dst: T) -> Option<EdgeView<Self>> {
@@ -450,7 +447,7 @@ impl<G: GraphViewOps> GraphViewOps for WindowedGraph<G> {
     }
 
     fn edges(&self) -> Box<dyn Iterator<Item = EdgeView<Self>> + Send> {
-        Box::new(self.vertices().flat_map(|v| v.out_edges()))
+        Box::new(self.vertices().iter().flat_map(|v| v.out_edges()))
     }
 
     fn vertices_shard(&self, shard: usize) -> Box<dyn Iterator<Item = VertexView<Self>> + Send> {
@@ -504,6 +501,7 @@ mod views_test {
 
         let actual = wg
             .vertices()
+            .iter()
             .map(|v| (v.id(), v.degree()))
             .collect::<Vec<_>>();
 
@@ -825,7 +823,7 @@ mod views_test {
 
         let wg = g.window(-2, 0);
 
-        let actual = wg.vertices().map(|tv| tv.id()).collect::<Vec<_>>();
+        let actual = wg.vertices().id().collect::<Vec<_>>();
 
         let expected = vec![1, 2];
 
@@ -871,7 +869,7 @@ mod views_test {
             g.add_edge(*t, *src, *dst, &vec![]);
         }
 
-        let expected = wg.vertices().map(|tv| tv.id()).collect::<Vec<_>>();
+        let expected = wg.vertices().id().collect::<Vec<_>>();
 
         assert_eq!(actual, expected);
     }

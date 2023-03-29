@@ -17,6 +17,7 @@ use docbrown_core::{
 
 use crate::edge::EdgeView;
 use crate::vertex::VertexView;
+use crate::vertices::Vertices;
 use crate::view_api::internal::GraphViewInternalOps;
 use crate::view_api::*;
 use rayon::prelude::*;
@@ -449,11 +450,9 @@ impl GraphViewOps for Graph {
             .map(|v| VertexView::new(self.clone(), v))
     }
 
-    fn vertices(&self) -> Box<dyn Iterator<Item = VertexView<Self>> + Send> {
-        let g = self.clone();
-        Box::new(
-            GraphViewInternalOps::vertex_refs(self).map(move |v| VertexView::new(g.clone(), v)),
-        )
+    fn vertices(&self) -> Vertices<Self> {
+        let graph = self.clone();
+        Vertices::new(graph)
     }
 
     fn edge<T: InputVertex>(&self, src: T, dst: T) -> Option<EdgeView<Self>> {
@@ -471,7 +470,7 @@ impl GraphViewOps for Graph {
     }
 
     fn edges(&self) -> Box<dyn Iterator<Item = EdgeView<Self>> + Send> {
-        Box::new(self.vertices().flat_map(|v| v.out_edges()))
+        Box::new(self.vertices().iter().flat_map(|v| v.out_edges()))
     }
 
     fn vertices_shard(&self, shard: usize) -> Box<dyn Iterator<Item = VertexView<Self>> + Send> {

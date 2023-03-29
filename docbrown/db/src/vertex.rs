@@ -1,4 +1,5 @@
 use crate::edge::EdgeView;
+use crate::path::{Operations, PathFromVertex};
 use crate::view_api::internal::GraphViewInternalOps;
 use crate::view_api::{GraphViewOps, VertexListOps, VertexViewOps};
 use docbrown_core::tgraph::VertexRef;
@@ -18,6 +19,12 @@ impl<G: GraphViewOps> From<VertexView<G>> for VertexRef {
     }
 }
 
+impl<G: GraphViewOps> From<&VertexView<G>> for VertexRef {
+    fn from(value: &VertexView<G>) -> Self {
+        value.vertex
+    }
+}
+
 impl<G: GraphViewOps> VertexView<G> {
     pub(crate) fn new(graph: G, vertex: VertexRef) -> VertexView<G> {
         VertexView { graph, vertex }
@@ -30,7 +37,7 @@ impl<G: GraphViewOps> VertexView<G> {
 
 impl<G: GraphViewOps> VertexViewOps for VertexView<G> {
     type Edge = EdgeView<G>;
-    type VList = Box<dyn Iterator<Item = Self> + Send>;
+    type VList = PathFromVertex<G>;
     type EList = Box<dyn Iterator<Item = Self::Edge> + Send>;
 
     fn id(&self) -> u64 {
@@ -128,55 +135,67 @@ impl<G: GraphViewOps> VertexViewOps for VertexView<G> {
 
     fn neighbours(&self) -> Self::VList {
         let g = self.graph.clone();
-        Box::new(
-            self.graph
-                .neighbours(self.vertex, Direction::BOTH)
-                .map(move |v| Self::new(g.clone(), v)),
+        PathFromVertex::new(
+            g,
+            self,
+            Operations::Neighbours {
+                dir: Direction::BOTH,
+            },
         )
     }
 
     fn neighbours_window(&self, t_start: i64, t_end: i64) -> Self::VList {
         let g = self.graph.clone();
-        Box::new(
-            self.graph
-                .neighbours_window(self.vertex, t_start, t_end, Direction::BOTH)
-                .map(move |v| Self::new(g.clone(), v)),
+        PathFromVertex::new(
+            g,
+            self,
+            Operations::NeighboursWindow {
+                dir: Direction::BOTH,
+                t_start,
+                t_end,
+            },
         )
     }
 
     fn in_neighbours(&self) -> Self::VList {
         let g = self.graph.clone();
-        Box::new(
-            self.graph
-                .neighbours(self.vertex, Direction::IN)
-                .map(move |v| Self::new(g.clone(), v)),
-        )
+        PathFromVertex::new(g, self, Operations::Neighbours { dir: Direction::IN })
     }
 
     fn in_neighbours_window(&self, t_start: i64, t_end: i64) -> Self::VList {
         let g = self.graph.clone();
-        Box::new(
-            self.graph
-                .neighbours_window(self.vertex, t_start, t_end, Direction::IN)
-                .map(move |v| Self::new(g.clone(), v)),
+        PathFromVertex::new(
+            g,
+            self,
+            Operations::NeighboursWindow {
+                dir: Direction::IN,
+                t_start,
+                t_end,
+            },
         )
     }
 
     fn out_neighbours(&self) -> Self::VList {
         let g = self.graph.clone();
-        Box::new(
-            self.graph
-                .neighbours(self.vertex, Direction::OUT)
-                .map(move |v| Self::new(g.clone(), v)),
+        PathFromVertex::new(
+            g,
+            self,
+            Operations::Neighbours {
+                dir: Direction::OUT,
+            },
         )
     }
 
     fn out_neighbours_window(&self, t_start: i64, t_end: i64) -> Self::VList {
         let g = self.graph.clone();
-        Box::new(
-            self.graph
-                .neighbours_window(self.vertex, t_start, t_end, Direction::OUT)
-                .map(move |v| Self::new(g.clone(), v)),
+        PathFromVertex::new(
+            g,
+            self,
+            Operations::NeighboursWindow {
+                dir: Direction::OUT,
+                t_start,
+                t_end,
+            },
         )
     }
 }
@@ -301,27 +320,36 @@ mod vertex_test {
         let g = crate::graph_loader::lotr_graph::lotr_graph(4);
 
         assert_eq!(g.num_edges(), 701);
-        assert_eq!(g.vertex("Gandalf").unwrap().neighbours().count(), 49);
+        assert_eq!(g.vertex("Gandalf").unwrap().neighbours().iter().count(), 49);
         assert_eq!(
             g.vertex("Gandalf")
                 .unwrap()
                 .neighbours_window(1356, 24792)
+                .iter()
                 .count(),
             34
         );
-        assert_eq!(g.vertex("Gandalf").unwrap().in_neighbours().count(), 24);
+        assert_eq!(
+            g.vertex("Gandalf").unwrap().in_neighbours().iter().count(),
+            24
+        );
         assert_eq!(
             g.vertex("Gandalf")
                 .unwrap()
                 .in_neighbours_window(1356, 24792)
+                .iter()
                 .count(),
             16
         );
-        assert_eq!(g.vertex("Gandalf").unwrap().out_neighbours().count(), 35);
+        assert_eq!(
+            g.vertex("Gandalf").unwrap().out_neighbours().iter().count(),
+            35
+        );
         assert_eq!(
             g.vertex("Gandalf")
                 .unwrap()
                 .out_neighbours_window(1356, 24792)
+                .iter()
                 .count(),
             20
         );

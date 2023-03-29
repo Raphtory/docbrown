@@ -1,7 +1,12 @@
 use crate::view_api::*;
 
 pub fn max_out_degree<G: GraphViewOps>(graph: &G) -> usize {
-    graph.vertices().map(|v| v.out_degree()).max().unwrap_or(0)
+    graph
+        .vertices()
+        .into_iter()
+        .map(|v| v.out_degree())
+        .max()
+        .unwrap_or(0)
 }
 
 pub fn max_in_degree<G: GraphViewOps>(graph: &G) -> usize {
