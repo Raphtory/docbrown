@@ -16,7 +16,7 @@ use std::cmp::{max, min};
 use std::{collections::HashMap, sync::Arc};
 
 pub struct GraphWindowSet<G: GraphViewOps> {
-    graph: G,
+    pub graph: G,
     perspectives: Box<dyn Iterator<Item = Perspective> + Send>,
 }
 
@@ -429,26 +429,24 @@ impl<G: GraphViewOps> GraphViewOps for WindowedGraph<G> {
     }
 
     fn vertex<T: InputVertex>(&self, v: T) -> Option<VertexView<Self>> {
-        let graph_w = Arc::new(self.clone());
         self.graph
             .vertex_ref_window(v.id(), self.t_start, self.t_end)
-            .map(move |vv| VertexView::new(graph_w, vv))
+            .map(move |vv| VertexView::new(self.clone(), vv))
     }
 
     fn vertices(&self) -> Box<dyn Iterator<Item = VertexView<Self>> + Send> {
-        let graph_w = self.clone();
+        let g = self.clone();
         Box::new(
             self.graph
                 .vertex_refs_window(self.t_start, self.t_end)
-                .map(move |vv| VertexView::new(Arc::new(graph_w.clone()), vv)),
+                .map(move |vv| VertexView::new(g.clone(), vv)),
         )
     }
 
     fn edge<T: InputVertex>(&self, src: T, dst: T) -> Option<EdgeView<Self>> {
-        let graph_w = self.clone();
         self.graph
             .edge_ref_window(src.id(), dst.id(), self.t_start, self.t_end)
-            .map(|ev| EdgeView::new(Arc::new(graph_w.clone()), ev))
+            .map(|ev| EdgeView::new(self.clone(), ev))
     }
 
     fn edges(&self) -> Box<dyn Iterator<Item = EdgeView<Self>> + Send> {
@@ -456,11 +454,11 @@ impl<G: GraphViewOps> GraphViewOps for WindowedGraph<G> {
     }
 
     fn vertices_shard(&self, shard: usize) -> Box<dyn Iterator<Item = VertexView<Self>> + Send> {
-        let graph_w = self.clone();
+        let g = self.clone();
         Box::new(
             self.graph
                 .vertex_refs_window_shard(shard, self.t_start, self.t_end)
-                .map(move |vv| VertexView::new(Arc::new(graph_w.clone()), vv)),
+                .map(move |vv| VertexView::new(g.clone(), vv)),
         )
     }
 

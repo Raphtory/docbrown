@@ -106,7 +106,7 @@ impl<G: GraphViewOps> LocalState<G> {
     where
         F: Fn(EvalVertexView<VertexView<G>>),
     {
-        let graph = Arc::new(self.graph.clone());
+        let graph = self.graph.clone();
 
         let iter = match self.next_vertex_set {
             None => graph.vertices_shard(self.shard),

@@ -8,8 +8,7 @@ use std::sync::Arc;
 
 #[derive(Debug)]
 pub struct VertexView<G: GraphViewOps> {
-    //FIXME: Not sure Arc is good here, maybe this should just own a graph and rely on cheap clone...
-    graph: Arc<G>,
+    pub graph: G,
     vertex: VertexRef,
 }
 
@@ -20,7 +19,7 @@ impl<G: GraphViewOps> From<VertexView<G>> for VertexRef {
 }
 
 impl<G: GraphViewOps> VertexView<G> {
-    pub(crate) fn new(graph: Arc<G>, vertex: VertexRef) -> VertexView<G> {
+    pub(crate) fn new(graph: G, vertex: VertexRef) -> VertexView<G> {
         VertexView { graph, vertex }
     }
 

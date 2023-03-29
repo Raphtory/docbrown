@@ -446,11 +446,11 @@ impl GraphViewOps for Graph {
 
     fn vertex<T: InputVertex>(&self, v: T) -> Option<VertexView<Self>> {
         self.vertex_ref(v.id())
-            .map(|v| VertexView::new(Arc::new(self.clone()), v))
+            .map(|v| VertexView::new(self.clone(), v))
     }
 
     fn vertices(&self) -> Box<dyn Iterator<Item = VertexView<Self>> + Send> {
-        let g = Arc::new(self.clone());
+        let g = self.clone();
         Box::new(
             GraphViewInternalOps::vertex_refs(self).map(move |v| VertexView::new(g.clone(), v)),
         )
@@ -467,7 +467,7 @@ impl GraphViewOps for Graph {
                 pid: None,
             },
         )
-        .map(|e| EdgeView::new(Arc::new(self.clone()), e))
+        .map(|e| EdgeView::new(self.clone(), e))
     }
 
     fn edges(&self) -> Box<dyn Iterator<Item = EdgeView<Self>> + Send> {
@@ -475,7 +475,7 @@ impl GraphViewOps for Graph {
     }
 
     fn vertices_shard(&self, shard: usize) -> Box<dyn Iterator<Item = VertexView<Self>> + Send> {
-        let g = Arc::new(self.clone());
+        let g = self.clone();
         Box::new(
             self.vertex_refs_shard(shard)
                 .map(move |vv| VertexView::new(g.clone(), vv)),

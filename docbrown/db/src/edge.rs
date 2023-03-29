@@ -7,7 +7,7 @@ use std::fmt::{Debug, Formatter};
 use std::sync::Arc;
 
 pub struct EdgeView<G: GraphViewOps> {
-    graph: Arc<G>,
+    graph: G,
     edge: EdgeRef,
 }
 
@@ -22,7 +22,7 @@ impl<G: GraphViewOps> Debug for EdgeView<G> {
 }
 
 impl<G: GraphViewOps> EdgeView<G> {
-    pub(crate) fn new(graph: Arc<G>, edge: EdgeRef) -> Self {
+    pub(crate) fn new(graph: G, edge: EdgeRef) -> Self {
         EdgeView { graph, edge }
     }
 
