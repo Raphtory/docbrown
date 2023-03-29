@@ -1,6 +1,13 @@
 //! This module contains the preferential attachment graph generation model
 //! This function is a graph generation model based upon:
 //! Barabási, Albert-László, and Réka Albert. "Emergence of scaling in random networks." science 286.5439 (1999): 509-512.
+//! # Examples
+//!
+//! ```
+//! use docbrown_db::graph::Graph;
+//! let graph = Graph::new(2);
+//  ba_preferential_attachment(&graph, 1000, 10);
+//! ```
 
 use crate::graph::Graph;
 use crate::view_api::*;
