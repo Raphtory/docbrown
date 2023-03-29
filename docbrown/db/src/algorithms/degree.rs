@@ -1,4 +1,17 @@
-//! The maximum out degree of any vertex in the graph.
+//! Varying degree calculations for the entire graph.
+//! The degree of a vertex is the number of edges connected to it.
+//!
+//! There are two types of degree: in-degree and out-degree.
+//! In-degree is the number of edges that point to a vertex.
+//! Out-degree is the number of edges that point away from a vertex.
+//!
+//! This library provides the following degree calculations:
+//! - max_out_degree - The maximum out degree of any vertex in the graph.
+//! - max_in_degree - The maximum in degree of any vertex in the graph.
+//! - min_out_degree - The minimum out degree of any vertex in the graph.
+//! - min_in_degree - The minimum in degree of any vertex in the graph.
+//! - average_degree - The average degree of all vertices in the graph.
+//!
 //!
 //! # Examples
 //!
@@ -31,6 +44,7 @@
 use crate::view_api::*;
 use docbrown_core::tgraph_shard::errors::GraphError;
 
+/// The maximum out degree of any vertex in the graph.
 pub fn max_out_degree<G: GraphViewOps>(graph: &G) -> Result<usize, GraphError> {
     let r: Result<Vec<usize>, GraphError> = graph
         .vertices()
