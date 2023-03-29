@@ -1,89 +1,61 @@
-//! This module contains functions for computing the various degrees of an entire graph.
-//!
-//! - `max_out_degree` - The maximum out degree of any vertex in the graph.
-//! - `max_in_degree` - The maximum in degree of any vertex in the graph.
-//! - `min_out_degree` - The minimum out degree of any vertex in the graph.
-//! - `min_in_degree` - The minimum in degree of any vertex in the graph.
-//! - `average_degree` - The average degree of all vertices in the graph.
-//!
-//! # Examples
-//!
-//! ```rust
-//! use docbrown_db::algorithms::degree::{average_degree, max_in_degree, min_in_degree, min_out_degree, max_out_degree};
-//! use docbrown_db::graph::Graph;
-//!  
-//!  let g = Graph::new(1);
-//!  let vs = vec![
-//!      (1, 1, 2),
-//!      (2, 1, 3),
-//!      (3, 2, 1),
-//!      (4, 3, 2),
-//!      (5, 1, 4),
-//!      (6, 4, 5),
-//!   ];
-//!
-//!  for (t, src, dst) in &vs {
-//!    g.add_edge(*t, *src, *dst, &vec![]);
-//!  };
-//!
-//! println!("max_out_degree: {}", max_out_degree(&g));
-//! println!("max_in_degree: {}", max_in_degree(&g));
-//! println!("min_out_degree: {}", min_out_degree(&g));
-//! println!("min_in_degree: {}", min_in_degree(&g));
-//! println!("average_degree: {}", average_degree(&g));
-//! ```
-//!
-
 use crate::view_api::*;
+use docbrown_core::tgraph_shard::errors::GraphError;
 
 /// The maximum out degree of any vertex in the graph.
-pub fn max_out_degree<G: GraphViewOps>(graph: &G) -> usize {
-    graph
+pub fn max_out_degree<G: GraphViewOps>(graph: &G) -> Result<usize, GraphError> {
+    let r: Result<Vec<usize>, GraphError> = graph
         .vertices()
         .into_iter()
         .map(|v| v.out_degree())
-        .max()
-        .unwrap_or(0)
+        .collect();
+
+    Ok(r?.into_iter().max().unwrap_or(0))
 }
 
 /// The maximum in degree of any vertex in the graph.
-pub fn max_in_degree<G: GraphViewOps>(graph: &G) -> usize {
-    graph
+pub fn max_in_degree<G: GraphViewOps>(graph: &G) -> Result<usize, GraphError> {
+    let r: Result<Vec<usize>, GraphError> = graph
         .vertices()
         .into_iter()
         .map(|v| v.in_degree())
-        .max()
-        .unwrap_or(0)
+        .collect();
+
+    Ok(r?.into_iter().max().unwrap_or(0))
 }
 
 /// The minimum out degree of any vertex in the graph.
-pub fn min_out_degree<G: GraphViewOps>(graph: &G) -> usize {
-    graph
+pub fn min_out_degree<G: GraphViewOps>(graph: &G) -> Result<usize, GraphError> {
+    let r: Result<Vec<usize>, GraphError> = graph
         .vertices()
         .into_iter()
         .map(|v| v.out_degree())
-        .min()
-        .unwrap_or(0)
+        .collect();
+
+    Ok(r?.into_iter().min().unwrap_or(0))
 }
 
 /// The minimum in degree of any vertex in the graph.
-pub fn min_in_degree<G: GraphViewOps>(graph: &G) -> usize {
-    graph
+pub fn min_in_degree<G: GraphViewOps>(graph: &G) -> Result<usize, GraphError> {
+    let r: Result<Vec<usize>, GraphError> = graph
         .vertices()
         .into_iter()
         .map(|v| v.in_degree())
-        .min()
-        .unwrap_or(0)
+        .collect();
+
+    Ok(r?.into_iter().min().unwrap_or(0))
 }
 
 /// The average degree of all vertices in the graph.
-pub fn average_degree<G: GraphViewOps>(graph: &G) -> f64 {
-    let degree_totals = graph
-        .vertices()
+pub fn average_degree<G: GraphViewOps>(graph: &G) -> Result<f64, GraphError> {
+    let r: Result<Vec<usize>, GraphError> =
+        graph.vertices().into_iter().map(|v| v.degree()).collect();
+
+    let degree_totals = r?
         .into_iter()
-        .map(|v| (v.degree() as f64, 1.0))
+        .map(|i| (i as f64, 1.0))
         .fold((0.0, 0.0), |acc, elem| (acc.0 + elem.0, acc.1 + elem.1));
-    degree_totals.0 / degree_totals.1
+
+    Ok(degree_totals.0 / degree_totals.1)
 }
 
 #[cfg(test)]
@@ -109,23 +81,23 @@ mod degree_test {
         ];
 
         for (t, src, dst) in &vs {
-            g.add_edge(*t, *src, *dst, &vec![]);
+            g.add_edge(*t, *src, *dst, &vec![]).unwrap();
         }
 
         let expected_max_out_degree = 3;
-        let actual_max_out_degree = max_out_degree(&g);
+        let actual_max_out_degree = max_out_degree(&g).unwrap();
 
         let expected_max_in_degree = 2;
-        let actual_max_in_degree = max_in_degree(&g);
+        let actual_max_in_degree = max_in_degree(&g).unwrap();
 
         let expected_min_out_degree = 0;
-        let actual_min_out_degree = min_out_degree(&g);
+        let actual_min_out_degree = min_out_degree(&g).unwrap();
 
         let expected_min_in_degree = 1;
-        let actual_min_in_degree = min_in_degree(&g);
+        let actual_min_in_degree = min_in_degree(&g).unwrap();
 
         let expected_average_degree = 2.0;
-        let actual_average_degree = average_degree(&g);
+        let actual_average_degree = average_degree(&g).unwrap();
 
         assert_eq!(expected_max_out_degree, actual_max_out_degree);
         assert_eq!(expected_max_in_degree, actual_max_in_degree);

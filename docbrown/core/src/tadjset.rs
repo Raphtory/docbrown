@@ -2,7 +2,7 @@
 
 use std::{
     borrow::{Borrow, BorrowMut},
-    collections::{BTreeMap},
+    collections::BTreeMap,
     hash::Hash,
     ops::{Neg, Range},
 };

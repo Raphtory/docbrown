@@ -1,5 +1,6 @@
 use crate::view_api::vertex::VertexViewOps;
 use crate::view_api::VertexListOps;
+use docbrown_core::tgraph_shard::errors::GraphError;
 use docbrown_core::Prop;
 
 /// This trait defines the operations that can be
@@ -9,7 +10,7 @@ pub trait EdgeViewOps: Sized + Send + Sync {
 
     /// gets a property of an edge with the given name
     /// includes the timestamp of the property
-    fn prop(&self, name: String) -> Vec<(i64, Prop)>;
+    fn prop(&self, name: String) -> Result<Vec<(i64, Prop)>, GraphError>;
 
     /// gets the source vertex of an edge
     fn src(&self) -> Self::Vertex;
