@@ -1,9 +1,3 @@
-use std::ops::Index;
-
-use itertools::enumerate;
-
-use crate::view_api::*;
-
 const incoming: usize = 0;
 const outgoing: usize = 1;
 const dirs2D: [(usize,usize);4] = [(0,0),(0,1),(1,0),(1,1)];
