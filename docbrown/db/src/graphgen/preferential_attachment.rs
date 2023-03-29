@@ -1,12 +1,13 @@
+//! This module contains the preferential attachment graph generation model
+//! This function is a graph generation model based upon:
+//! Barabási, Albert-László, and Réka Albert. "Emergence of scaling in random networks." science 286.5439 (1999): 509-512.
+
 use crate::graph::Graph;
 use crate::view_api::*;
 use docbrown_core::tgraph_shard::errors::GraphError;
 use rand::prelude::*;
 use std::collections::HashSet;
 
-/// This function is a graph generation model based upon:
-/// Barabási, Albert-László, and Réka Albert. "Emergence of scaling in random networks." science 286.5439 (1999): 509-512.
-///
 /// Given a graph this function will add a user defined number of vertices, each with a user defined number of edges.
 /// This is an iterative algorithm where at each `step` a vertex is added and its neighbours are chosen from the pool of nodes already within the network.
 /// For this model the neighbours are chosen proportionally based upon their degree, favouring nodes with higher degree (more connections).
