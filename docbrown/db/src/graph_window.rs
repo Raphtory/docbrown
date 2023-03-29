@@ -993,10 +993,8 @@ impl GraphViewOps for WindowedGraph {
         Ok(r.map(|i| self.actual_end(i)))
     }
 
-    /// Returns a result with the number of edges in the view or a graph error
     fn num_edges(&self) -> Result<usize, GraphError> {
-        // FIXME: This needs Optimising badly
-        Ok(self.edges().count())
+        Ok(self.graph.edges_len_window(self.t_start, self.t_end))
     }
 
     /// Returns a result with `true` if the view has a specified vertex, and `false` otherwise.

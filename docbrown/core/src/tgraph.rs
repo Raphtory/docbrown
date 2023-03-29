@@ -16,8 +16,8 @@ use crate::adj::Adj;
 use crate::props::Props;
 use crate::tprop::TProp;
 use crate::vertex::InputVertex;
-use crate::Prop;
 use crate::{bitset::BitSet, tadjset::AdjEdge, Direction};
+use crate::{Prop, Time};
 
 use self::errors::MutateGraphError;
 
@@ -91,6 +91,14 @@ impl TemporalGraph {
         self.adj_lists
             .iter()
             .map(|adj| adj.out_edges_len())
+            .reduce(|s1, s2| s1 + s2)
+            .unwrap_or(0)
+    }
+
+    pub fn out_edges_len_window(&self, w: &Range<Time>) -> usize {
+        self.adj_lists
+            .iter()
+            .map(|adj| adj.out_len_window(w))
             .reduce(|s1, s2| s1 + s2)
             .unwrap_or(0)
     }

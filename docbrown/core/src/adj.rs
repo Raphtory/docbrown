@@ -9,16 +9,19 @@ pub(crate) enum Adj {
     Solo(u64, BTreeSet<Time>),
     List {
         logical: u64,
-        out: TAdjSet<usize, i64>,         // local
-        into: TAdjSet<usize, i64>,        // local
-        remote_out: TAdjSet<usize, i64>,  // remote
-        remote_into: TAdjSet<usize, i64>, // remote
+        out: TAdjSet<usize, i64>,
+        // local
+        into: TAdjSet<usize, i64>,
+        // local
+        remote_out: TAdjSet<usize, i64>,
+        // remote
+        remote_into: TAdjSet<usize, i64>,
+        // remote
         timestamps: BTreeSet<Time>,
     },
 }
 
 impl Adj {
-
     pub(crate) fn timestamps_mut(&mut self) -> &mut BTreeSet<Time> {
         match self {
             Adj::Solo(_, timestamps) | Adj::List { timestamps, .. } => timestamps,
@@ -29,6 +32,19 @@ impl Adj {
         match self {
             Adj::Solo(_, timestamps) | Adj::List { timestamps, .. } => {
                 timestamps.range(w.clone()).next().is_some()
+            }
+        }
+    }
+
+    pub(crate) fn out_len_window(&self, w: &Range<Time>) -> usize {
+        match self {
+            Adj::Solo(_, _) => 0,
+            Adj::List { timestamps, out, remote_out, .. } => {
+                if timestamps.range(w.clone()).next().is_some() {
+                    out.len_window(w) + remote_out.len_window(w)
+                } else {
+                    0
+                }
             }
         }
     }

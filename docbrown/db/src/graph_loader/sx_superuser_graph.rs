@@ -109,10 +109,4 @@ mod sx_superuser_test {
         let graph = sx_superuser_graph(2).unwrap();
     }
 
-    #[test]
-    fn test_histogram(){
-
-        let graph = sx_superuser_graph(1).unwrap();
-
-    }
 }

@@ -20,7 +20,7 @@ use genawaiter::yield_;
 
 use crate::tgraph::{EdgeRef, TemporalGraph, VertexRef};
 use crate::vertex::InputVertex;
-use crate::{Direction, Prop};
+use crate::{Direction, Prop, Time};
 
 use self::errors::GraphError;
 use self::lock::OptionLock;
@@ -179,6 +179,10 @@ impl TGraphShard<TemporalGraph> {
 
     pub fn out_edges_len(&self) -> Result<usize, GraphError> {
         self.read_shard(|tg| Ok(tg.out_edges_len()))
+    }
+
+    pub fn out_edges_len_window(&self, w: &Range<Time>) -> Result<usize, GraphError> {
+        self.read_shard(|tg| tg.out_edges_len_window(w))
     }
 
     pub fn len_window(&self, w: Range<i64>) -> Result<usize, GraphError> {
