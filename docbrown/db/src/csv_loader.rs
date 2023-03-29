@@ -1,6 +1,56 @@
 //! Module containing functions for loading CSV files into a graph.
 //!
+//! # Example
+//! ```no_run
+//!  use docbrown_db::csv_loader::csv::CsvLoader;//!
+//!  use docbrown_db::graph::Graph;
 //!
+//!  let g = Graph::new(2);//!
+//!  let csv_path: PathBuf = [env!("CARGO_MANIFEST_DIR"), "../../resource/"]
+//!         .iter()
+//!         .collect();
+//!
+//!  println!("path = {}", csv_path.as_path().to_str().unwrap());
+//!  let csv_loader = CsvLoader::new(Path::new(&csv_path));
+//!  let has_header = true;
+//!  let r = Regex::new(r".+(lotr.csv)").unwrap();
+//!  let delimiter = ",";
+//!
+//!  csv_loader
+//!      .set_header(has_header)
+//!      .set_delimiter(delimiter)
+//!      .with_filter(r)
+//!      .load_into_graph(&g, |lotr: Lotr, g: &Graph| {
+//!          let src_id = calculate_hash(&lotr.src_id);
+//!          let dst_id = calculate_hash(&lotr.dst_id);
+//!          let time = lotr.time;
+//!
+//!          g.add_vertex(
+//!              time,
+//!              src_id,
+//!              &vec![("name".to_string(), Prop::Str("Character".to_string()))],
+//!          )
+//!          .map_err(|err| println!("{:?}", err))
+//!          .ok();
+//!          g.add_vertex(
+//!              time,
+//!              dst_id,
+//!              &vec![("name".to_string(), Prop::Str("Character".to_string()))],
+//!          )
+//!          .map_err(|err| println!("{:?}", err))
+//!          .ok();
+//!          g.add_edge(
+//!              time,
+//!              src_id,
+//!              dst_id,
+//!              &vec![(
+//!                  "name".to_string(),
+//!                  Prop::Str("Character Co-occurrence".to_string()),
+//!              )],
+//!          );
+//!      })
+//!      .expect("Csv did not parse.");
+//! ```
 //!
 
 pub mod csv {
