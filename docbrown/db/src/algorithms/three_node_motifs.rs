@@ -18,7 +18,7 @@ fn map3D(d1:usize, d2:usize, d3:usize) -> usize {
 // Two Node Motifs
 struct TwoNodeEvent{
     dir:usize,
-    time:usize,
+    time:i64,
 }
 struct TwoNodeCounter {
     count1d:[u64;2],
@@ -27,11 +27,10 @@ struct TwoNodeCounter {
 }
 impl TwoNodeCounter {
 
-    fn execute(&mut self, events:&[TwoNodeEvent], delta: usize) {
+    fn execute(&mut self, events:&[TwoNodeEvent], delta: i64) {
         let mut start = 0;
-        for item in enumerate(events) {
-            let (end, event): (usize, &TwoNodeEvent) = item;
-            while events[start].time + delta < events[end].time {
+        for event in events.iter() {
+            while events[start].time + delta < event.time {
                 self.decrement_counts(events[start].dir);
                 start +=1;
             }
@@ -99,7 +98,7 @@ impl StarCounter {
         self.post_sum[map2D(cur_edge.dir, outgoing)] -= self.post_nodes[outgoing*self.N + cur_edge.nb];
     }
     
-    fn process_current(&mut self, &cur_edge:&StarEvent) {
+    fn process_current(&mut self, cur_edge:&StarEvent) {
         self.mid_sum[map2D(incoming, cur_edge.dir)] -= self.pre_nodes[incoming*self.N + cur_edge.nb];
         self.mid_sum[map2D(outgoing, cur_edge.dir)] -= self.pre_nodes[outgoing*self.N + cur_edge.nb];
 
@@ -145,7 +144,80 @@ fn init_star_count(neighbours:Vec<usize>) -> StarCounter {
          count_pre:[0;8], count_mid:[0;8], count_post:[0;8], final_counts: [0;8] }
 }
 
-// Triad Motifs
+// Triangle Motifs
+struct TriangleEdge{
+    uv_edge:bool,
+    uorv:usize,
+    nb:usize,
+    dir:usize,
+}
+struct TriangleCounter {
+    N:usize,
+    pre_nodes:Vec<usize>,
+    post_nodes:Vec<usize>,
+    pre_sum:[usize;8],
+    mid_sum:[usize;8],
+    post_sum:[usize;8],
+    final_counts:[usize;8],
+}
+
+impl TriangleCounter {
+    fn push_pre(&mut self,cur_edge:&TriangleEdge) {
+        let (isUorV, nb, dir) = (cur_edge.uorv, cur_edge.nb, cur_edge.dir);
+        if !cur_edge.uv_edge {
+            self.pre_sum[map3D(1-isUorV, incoming, dir)] += self.pre_nodes[self.N * map2D(incoming, 1 - isUorV) + nb];
+            self.pre_sum[map3D(1-isUorV, outgoing, dir)] += self.pre_nodes[self.N * map2D(outgoing, 1 - isUorV) + nb];
+            self.pre_nodes[self.N*map2D(dir, isUorV) + nb] +=1; 
+        }
+    }
+
+    fn push_post(&mut self,cur_edge:&TriangleEdge) {
+        let (isUorV, nb, dir) = (cur_edge.uorv, cur_edge.nb, cur_edge.dir);
+        if !cur_edge.uv_edge {
+            self.post_sum[map3D(1-isUorV, incoming, dir)] += self.post_nodes[self.N * map2D(incoming, 1 - isUorV) + nb];
+            self.post_sum[map3D(1-isUorV, outgoing, dir)] += self.post_nodes[self.N * map2D(outgoing, 1 - isUorV) + nb];
+            self.post_nodes[self.N*map2D(dir, isUorV) + nb] +=1; 
+        }
+    }
+
+    fn pop_pre(&mut self, cur_edge:&TriangleEdge) {
+        let (isUorV, nb, dir) = (cur_edge.uorv, cur_edge.nb, cur_edge.dir);
+        if !cur_edge.uv_edge {
+            self.pre_nodes[self.N * map2D(dir, isUorV) + nb] -= 1;
+            self.pre_sum[map3D(isUorV, dir, incoming)] -= self.pre_nodes[self.N * map2D(incoming, 1-isUorV)];
+            self.pre_sum[map3D(isUorV, dir, outgoing)] -= self.pre_nodes[self.N * map2D(outgoing, 1-isUorV)];       
+        }
+    }
+
+    fn pop_post(&mut self, cur_edge:&TriangleEdge) {
+        let (isUorV, nb, dir) = (cur_edge.uorv, cur_edge.nb, cur_edge.dir);
+        if !cur_edge.uv_edge {
+            self.post_nodes[self.N * map2D(dir, isUorV) + nb] -= 1;
+            self.post_sum[map3D(isUorV, dir, incoming)] -= self.post_nodes[self.N * map2D(incoming, 1-isUorV)];
+            self.post_sum[map3D(isUorV, dir, outgoing)] -= self.post_nodes[self.N * map2D(outgoing, 1-isUorV)];       
+        }
+    }
+
+    fn process_current(&mut self, cur_edge:&TriangleEdge) {
+        let (isUorV, nb, dir) = (cur_edge.uorv, cur_edge.nb, cur_edge.dir);
+        if !cur_edge.uv_edge {
+            self.mid_sum[map3D(1-isUorV, incoming, dir)] -= self.pre_nodes[self.N * map2D(incoming, 1-isUorV) + nb];
+            self.mid_sum[map3D(1-isUorV, outgoing, dir)] -= self.pre_nodes[self.N * map2D(outgoing, 1-isUorV) + nb];
+            self.mid_sum[map3D(isUorV, dir, incoming)] += self.post_nodes[self.N * map2D(incoming, 1-isUorV) + nb];
+            self.mid_sum[map3D(isUorV, dir, outgoing)] += self.post_nodes[self.N * map2D(outgoing, 1-isUorV) + nb];
+        }
+        else {
+            self.final_counts[0] += self.mid_sum[map3D(dir,0,0)] + self.post_sum[map3D(dir, 0, 1)] + self.pre_sum[map3D(1-dir,1,1)];
+            self.final_counts[4] += self.mid_sum[map3D(dir,1,0)] + self.post_sum[map3D(1-dir, 0, 1)] + self.pre_sum[map3D(1-dir,0,1)];
+            self.final_counts[2] += self.mid_sum[map3D(1-dir,0,0)] + self.post_sum[map3D(dir, 1, 1)] + self.pre_sum[map3D(1-dir,1,0)];
+            self.final_counts[6] += self.mid_sum[map3D(1-dir,1,0)] + self.post_sum[map3D(1-dir, 1, 1)] + self.pre_sum[map3D(1-dir,0,0)];
+            self.final_counts[1] += self.mid_sum[map3D(dir,0,1)] + self.post_sum[map3D(dir, 0, 0)] + self.pre_sum[map3D(dir,1,1)];
+            self.final_counts[5] += self.mid_sum[map3D(dir,1,1)] + self.post_sum[map3D(1-dir, 0, 0)] + self.pre_sum[map3D(dir,0,1)];
+            self.final_counts[3] += self.mid_sum[map3D(1-dir,0,1)] + self.post_sum[map3D(dir, 1, 0)] + self.pre_sum[map3D(dir,1,0)];
+            self.final_counts[7] += self.mid_sum[map3D(1-dir,1,1)] + self.post_sum[map3D(1-dir, 1, 0)] + self.pre_sum[map3D(dir,0,0)];
+        }
+    }
+}
 
 #[cfg(test)]
 mod three_node_motifs_test {
