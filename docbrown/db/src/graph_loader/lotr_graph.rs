@@ -1,3 +1,24 @@
+//! Load the Lord of the Rings dataset into a graph.
+//! The dataset is available at https://raw.githubusercontent.com/Raphtory/Data/main/lotr.csv
+//! and is a list of interactions between characters in the Lord of the Rings books
+//! and movies. The dataset is a CSV file with the following columns:
+//!
+//! - src_id: The ID of the source character
+//! - dst_id: The ID of the destination character
+//! - time: The time of the interaction (in page)
+//!
+//! Example:
+//! ```rust
+//! use docbrown_db::graph_loader::lotr_graph::lotr_graph;
+//! use docbrown_db::graph::Graph;
+//! use docbrown_db::view_api::*;
+//!
+//! let graph = lotr_graph(1);
+//!
+//! println!("The graph has {:?} vertices", graph.num_vertices());
+//! println!("The graph has {:?} edges", graph.num_edges());
+//! ```
+
 use crate::{
     graph::Graph,
     graph_loader::{fetch_file, CsvLoader},
@@ -12,6 +33,7 @@ pub struct Lotr {
     time: i64,
 }
 
+/// Downloads the LOTR.csv file from Github
 pub fn lotr_file() -> Result<PathBuf, Box<dyn std::error::Error>> {
     fetch_file(
         "lotr.csv",
@@ -20,6 +42,8 @@ pub fn lotr_file() -> Result<PathBuf, Box<dyn std::error::Error>> {
     )
 }
 
+/// Constructs a graph from the LOTR dataset
+/// Including all edges, nodes and timestamps
 pub fn lotr_graph(shards: usize) -> Graph {
     let graph = {
         let g = Graph::new(shards);
