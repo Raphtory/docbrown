@@ -82,7 +82,7 @@ pub mod csv {
         /// # Example
         ///
         /// ```no_run
-        /// use csv_loader::csv::CsvLoader;
+        /// use docbrown_db::csv_loader::csv::CsvLoader;
         ///
         /// let loader = CsvLoader::new("/path/to/csv_file.csv");
         /// ```
@@ -104,7 +104,7 @@ pub mod csv {
         /// # Example
         ///
         /// ```no_run
-        /// use csv_loader::csv::CsvLoader;
+        /// use docbrown_db::csv_loader::csv::CsvLoader;
         /// let loader = CsvLoader::new("/path/to/csv_file.csv").set_header(true);
         /// ```
         pub fn set_header(mut self, h: bool) -> Self {
@@ -121,7 +121,7 @@ pub mod csv {
         /// # Example
         ///
         /// ```no_run
-        /// use csv_loader::csv::CsvLoader;
+        /// use docbrown_db::csv_loader::csv::CsvLoader;
         /// let loader = CsvLoader::new("/path/to/csv_file.csv").set_delimiter("|");
         /// ```
         pub fn set_delimiter(mut self, d: &str) -> Self {
@@ -138,7 +138,7 @@ pub mod csv {
         /// # Example
         ///
         /// ```no_run
-        /// use csv_loader::csv::CsvLoader;
+        /// use docbrown_db::csv_loader::csv::CsvLoader;
         /// use regex::Regex;
         ///
         /// let loader = CsvLoader::new("/path/to/csv_files")
