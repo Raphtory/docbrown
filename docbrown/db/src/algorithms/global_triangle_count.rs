@@ -23,7 +23,7 @@
 //! let windowed_graph = g.window(0, 5);
 //! let expected = 1;
 //!
-//! println!("global_triangle_count: {}", global_triangle_count(&windowed_graph));  
+//! println!("global_triangle_count: {:?}", global_triangle_count(&windowed_graph));  
 //! ```
 
 use crate::view_api::*;

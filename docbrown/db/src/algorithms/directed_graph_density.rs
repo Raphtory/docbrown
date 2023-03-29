@@ -28,7 +28,7 @@
 //! g.add_edge(*t, *src, *dst, &vec![]);
 //! }
 //!
-//! println!("graph density: {}", directed_graph_density(&windowed_graph));
+//! println!("graph density: {:?}", directed_graph_density(&windowed_graph));
 //! ```
 //!
 use crate::view_api::*;
