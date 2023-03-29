@@ -1,4 +1,4 @@
-//! Load the Reddit hyperlinks dataset into a graph.
+//! Load (a subset of) Reddit hyperlinks dataset into a graph.
 //! The dataset is available at https://snap.stanford.edu/data/soc-redditHyperlinks-body.tsv
 //! The hyperlink network represents the directed connections between two subreddits (a subreddit
 //! is a community on Reddit). We also provide subreddit embeddings. The network is extracted
@@ -6,10 +6,8 @@
 //! *NOTE: It may take a while to download the dataset
 //!
 //! ## Dataset statistics
-//! * Number of nodes (subreddits) 	55,863
-//! * Number of edges (hyperlink between subreddits) 	858,490
-//! * Edge weights (label of hyperlink) 	-1 or +1
-//! * Edge attributes 	Text property vectors
+//! * Number of nodes (subreddits) 	35,776
+//! * Number of edges (hyperlink between subreddits) 	137,821
 //! * Timespan 	Jan 2014 - April 2017
 //!
 //! ## Source
@@ -51,6 +49,10 @@ use std::path::Path;
 use std::path::PathBuf;
 
 /// Download the dataset and return the path to the file
+/// # Arguments
+/// * `timeout` - The timeout in seconds for downloading the dataset
+/// # Returns
+/// * `PathBuf` - The path to the file
 pub fn reddit_file(timeout: u64) -> Result<PathBuf, Box<dyn std::error::Error>> {
     fetch_file(
         "reddit.tsv",
@@ -69,6 +71,15 @@ where
 }
 
 /// Load the Reddit hyperlinks dataset into a graph and return it
+///
+/// # Arguments
+///
+/// * `shards` - The number of shards to use for the graph
+/// * `timeout` - The timeout in seconds for downloading the dataset
+///
+/// # Returns
+///
+/// * `Graph` - The graph containing the Reddit hyperlinks dataset
 pub fn reddit_graph(shards: usize, timeout: u64) -> Graph {
     let graph = {
         let g = Graph::new(shards);

@@ -10,7 +10,6 @@ use std::time::Duration;
 pub mod lotr_graph;
 pub mod reddit_hyperlinks;
 pub mod sx_superuser_graph;
-pub mod twitter_graph;
 
 pub fn fetch_file(
     name: &str,

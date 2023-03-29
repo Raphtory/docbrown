@@ -7,6 +7,10 @@
 //! - dst_id: The ID of the destination character
 //! - time: The time of the interaction (in page)
 //!
+//! ## Dataset statistics
+//! * Number of nodes (subreddits) 	139
+//! * Number of edges (hyperlink between subreddits) 701
+//!
 //! Example:
 //! ```rust
 //! use docbrown_db::graph_loader::lotr_graph::lotr_graph;
@@ -34,6 +38,10 @@ pub struct Lotr {
 }
 
 /// Downloads the LOTR.csv file from Github
+/// and returns the path to the file
+///
+/// # Returns
+/// - A PathBuf to the LOTR.csv file
 pub fn lotr_file() -> Result<PathBuf, Box<dyn std::error::Error>> {
     fetch_file(
         "lotr.csv",
@@ -44,6 +52,13 @@ pub fn lotr_file() -> Result<PathBuf, Box<dyn std::error::Error>> {
 
 /// Constructs a graph from the LOTR dataset
 /// Including all edges, nodes and timestamps
+///
+/// # Arguments
+///
+/// - shards: The number of shards to use for the graph
+///
+/// # Returns
+/// - A Graph containing the LOTR dataset
 pub fn lotr_graph(shards: usize) -> Graph {
     let graph = {
         let g = Graph::new(shards);
