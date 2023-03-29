@@ -14,6 +14,7 @@ use crate::wrappers::Perspective;
 use crate::algorithms::*;
 use crate::graph_gen::*;
 use crate::graph_loader::*;
+use pyo3::prelude::*;
 
 #[pymodule]
 fn raphtory(py: Python<'_>, m: &PyModule) -> PyResult<()> {
@@ -39,7 +40,6 @@ fn raphtory(py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     let graph_loader_module = PyModule::new(py, "graph_loader")?;
     graph_loader_module.add_function(wrap_pyfunction!(lotr_graph, graph_loader_module)?)?;
-    graph_loader_module.add_function(wrap_pyfunction!(twitter_graph, graph_loader_module)?)?;
     graph_loader_module.add_function(wrap_pyfunction!(
         reddit_hyperlink_graph,
         graph_loader_module

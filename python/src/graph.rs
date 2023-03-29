@@ -1,18 +1,17 @@
+use crate::graph_window::{GraphWindowSet, WindowedGraph};
+use crate::wrappers::{adapt_err, PerspectiveSet, Prop};
+use crate::Perspective;
 use docbrown_core as dbc;
 use docbrown_core::vertex::InputVertex;
 use docbrown_db::view_api::*;
 use docbrown_db::{graph, perspective};
 use itertools::Itertools;
 use pyo3::exceptions;
-use pyo3::exceptions::{PyException, PyTypeError};
+use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
 use pyo3::types::PyIterator;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-
-use crate::graph_window::{GraphWindowSet, WindowedGraph};
-use crate::wrappers::{PerspectiveSet, Prop};
-use crate::Perspective;
 
 #[pyclass]
 pub struct Graph {
@@ -47,7 +46,7 @@ impl Graph {
         let result = self
             .graph
             .add_vertex(timestamp, v, &Self::transform_props(properties));
-        Self::adapt_err(result)
+        adapt_err(result)
     }
 
     pub fn add_vertex_properties(
@@ -59,7 +58,7 @@ impl Graph {
         let result = self
             .graph
             .add_vertex_properties(v, &Self::transform_props(Some(properties)));
-        Self::adapt_err(result)
+        adapt_err(result)
     }
 
     pub fn add_edge(
@@ -71,9 +70,10 @@ impl Graph {
     ) -> PyResult<()> {
         let src = Self::extract_id(src)?;
         let dst = Self::extract_id(dst)?;
-        Ok(self
-            .graph
-            .add_edge(timestamp, src, dst, &Self::transform_props(properties)))
+        adapt_err(
+            self.graph
+                .add_edge(timestamp, src, dst, &Self::transform_props(properties)),
+        )
     }
 
     pub fn add_edge_properties(
@@ -87,7 +87,7 @@ impl Graph {
         let result =
             self.graph
                 .add_edge_properties(src, dst, &Self::transform_props(Some(properties)));
-        Self::adapt_err(result)
+        adapt_err(result)
     }
 
     //******  Perspective APIS  ******//
@@ -100,10 +100,10 @@ impl Graph {
         self.graph.at(end).into()
     }
 
-    pub fn latest(&self) -> WindowedGraph {
-        match self.latest_time() {
-            None => self.at(0),
-            Some(time) => self.at(time),
+    pub fn latest(&self) -> PyResult<WindowedGraph> {
+        match self.latest_time()? {
+            None => Ok(self.at(0)),
+            Some(time) => Ok(self.at(time)),
         }
     }
 
@@ -131,7 +131,8 @@ impl Graph {
                 self.graph.through_iter(Box::new(iter))
             }
         };
-        Ok(result.into())
+
+        adapt_err(result).map(|e| e.into())
     }
 
     //******  Saving And Loading  ******//
@@ -161,31 +162,31 @@ impl Graph {
 
     //******  Metrics APIs ******//
 
-    pub fn earliest_time(&self) -> Option<i64> {
-        self.graph.earliest_time()
+    pub fn earliest_time(&self) -> PyResult<Option<i64>> {
+        adapt_err(self.graph.earliest_time())
     }
 
-    pub fn latest_time(&self) -> Option<i64> {
-        self.graph.latest_time()
+    pub fn latest_time(&self) -> PyResult<Option<i64>> {
+        adapt_err(self.graph.latest_time())
     }
 
-    pub fn num_edges(&self) -> usize {
-        self.graph.num_edges()
+    pub fn num_edges(&self) -> PyResult<usize> {
+        adapt_err(self.graph.num_edges())
     }
 
-    pub fn num_vertices(&self) -> usize {
-        self.graph.num_vertices()
+    pub fn num_vertices(&self) -> PyResult<usize> {
+        adapt_err(self.graph.num_vertices())
     }
 
     pub fn has_vertex(&self, id: &PyAny) -> PyResult<bool> {
         let v = Self::extract_id(id)?;
-        Ok(self.graph.has_vertex(v))
+        adapt_err(self.graph.has_vertex(v))
     }
 
     pub fn has_edge(&self, src: &PyAny, dst: &PyAny) -> PyResult<bool> {
         let src = Self::extract_id(src)?;
         let dst = Self::extract_id(dst)?;
-        Ok(self.graph.has_edge(src, dst))
+        adapt_err(self.graph.has_edge(src, dst))
     }
 
     //******  Getter APIs ******//
@@ -252,16 +253,6 @@ impl Graph {
                 Ok(InputVertexBox::new(number))
             }
         }
-    }
-
-    fn adapt_err<E>(result: Result<(), E>) -> PyResult<()>
-    where
-        E: std::error::Error,
-    {
-        result.map_err(|e| {
-            let error_log = display_error_chain::DisplayErrorChain::new(&e).to_string();
-            PyException::new_err(error_log)
-        })
     }
 }
 

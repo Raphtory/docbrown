@@ -1,3 +1,6 @@
+//!  Defines the `Program` trait, which represents code that is used to evaluate
+//!  algorithms and custom code that can be run on the graph.
+
 use std::{
     cell::{Ref, RefCell},
     fmt::Debug,
@@ -131,7 +134,11 @@ impl LocalState {
             Some(ref next_vertex_set) => Box::new(
                 next_vertex_set
                     .iter()
-                    .flat_map(|&v| graph.vertex_ref(v as u64))
+                    .flat_map(|&v| {
+                        graph
+                            .vertex_ref(v as u64)
+                            .expect("vertex ID in set not available in graph")
+                    })
                     .map(|vref| VertexView::new(window_graph.clone(), vref)),
             ),
         };
@@ -369,7 +376,11 @@ impl GlobalEvalState {
 
                 for vv in prev_vertex_set
                     .iter()
-                    .flat_map(|v_id| graph.vertex_ref(*v_id))
+                    .flat_map(|v_id| {
+                        graph
+                            .vertex_ref(*v_id)
+                            .expect("Vertex ID in set not available in graph")
+                    })
                     .map(|v| WindowedVertex::new(window_graph.clone(), v))
                 {
                     let evv = EvalVertexView::new(self.ss, vv, rc_state.clone());
