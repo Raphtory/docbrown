@@ -21,13 +21,13 @@ pub trait VertexViewOps: Sized + Send + Sync {
     fn id(&self) -> u64;
 
     //TODO need to add specific windowed and non-windowed variants
-    fn has_property(&self,name:String,include_static:bool) -> bool ;
-    fn property(&self,name:String,include_static:bool) -> Option<Prop>;
-    fn properties(&self,include_static:bool) -> HashMap<String,Prop> ;
-    fn property_names(&self,include_static:bool) -> Vec<String> ;
+    fn has_property(&self,name:String,include_static:bool) ->  Result<bool,GraphError> ;
+    fn property(&self,name:String,include_static:bool) ->  Result<Option<Prop>,GraphError>;
+    fn properties(&self,include_static:bool) ->  Result<HashMap<String,Prop>,GraphError>;
+    fn property_names(&self,include_static:bool) -> Result<Vec<String>,GraphError> ;
 
-    fn has_static_property(&self,name:String)->bool;
-    fn static_property(&self,name:String)-> Option<Prop>;
+    fn has_static_property(&self,name:String)-> Result<bool,GraphError>;
+    fn static_property(&self,name:String)->  Result<Option<Prop>,GraphError>;
     /// Returns the values of a given property for the vertex, as a vector of tuples with
     /// timestamps and property values.
     ///
@@ -39,7 +39,7 @@ pub trait VertexViewOps: Sized + Send + Sync {
     ///
     /// A vector of tuples representing the values of the property for the vertex,
     /// where each tuple contains a timestamp and a property value.
-    fn property_history(&self,name:String) -> Vec<(i64, Prop)> ;
+    fn property_history(&self,name:String) ->  Result<Vec<(i64, Prop)>,GraphError> ;
     /// Returns a hashmap containing all properties of the vertex, with property names as keys and
     /// values as vectors of tuples with timestamps and property values.
     ///
@@ -48,7 +48,7 @@ pub trait VertexViewOps: Sized + Send + Sync {
     /// A hashmap representing all properties of the vertex, where keys are property names and
     /// values are vectors of tuples with timestamps and property values.
 
-    fn property_histories(&self) -> HashMap<String,Vec<(i64, Prop)>> ;
+    fn property_histories(&self) ->  Result<HashMap<String,Vec<(i64, Prop)>>,GraphError> ;
 
     /// Returns the degree (i.e., number of edges) of the vertex.
     fn degree(&self) -> Result<usize, GraphError>;
@@ -231,7 +231,7 @@ pub trait VertexListOps:
     /// The ids of vertices in the list.
     fn id(self) -> Self::ValueIterType<u64>;
 
-    fn degree(self) -> Self::ValueIterType<usize>;
+    fn degree(self) -> Result<Self::ValueIterType<usize>, GraphError>;
 
     /// Returns an iterator over the degree of the vertices within a time window.
     /// The degree of a vertex is the number of edges that connect to it in both directions.

@@ -7,6 +7,7 @@ use docbrown_core::tgraph_shard::errors::GraphError;
 use docbrown_core::Prop;
 use std::fmt::{Debug, Formatter};
 use std::sync::Arc;
+use crate::graph::Graph;
 
 pub struct EdgeView<G: GraphViewInternalOps> {
     graph: Arc<G>,
@@ -42,61 +43,61 @@ impl<G: GraphViewInternalOps> Into<EdgeRef> for EdgeView<G> {
 impl<G: GraphViewInternalOps + 'static + Send + Sync> EdgeViewOps for EdgeView<G> {
     type Vertex = VertexView<G>;
 
-    fn property(&self,name:String,include_static:bool) ->  Result<Vec<(i64, Prop)>, GraphError> {
-        let props= self.property_history(name.clone());
+    fn property(&self,name:String,include_static:bool) ->  Result<Option<Prop>, GraphError> {
+        let props= self.property_history(name.clone())?;
 
         match props.last() {
             None => {
                 if include_static {
-                    match self.graph.static_edge_prop(self.edge, name) {
-                        None => { None }
-                        Some(prop) => { Some(prop) }
+                    match self.graph.static_edge_prop(self.edge, name)? {
+                        None => { Ok(None) }
+                        Some(prop) => { Ok(Some(prop)) }
                     }
                 }
-                else {None}
+                else {Ok(None)}
             },
-            Some((_,prop)) => {Some(prop.clone())}
+            Some((_,prop)) => {Ok(Some(prop.clone()))}
         }
     }
-    fn property_history(&self,name:String) -> Vec<(i64, Prop)> {
+    fn property_history(&self,name:String) -> Result<Vec<(i64, Prop)>,GraphError> {
         //MIN MAX given as I can't get the real times from here and the internal graph sorts it out
         self.graph.temporal_edge_props_vec_window(self.edge, name,i64::MIN,i64::MAX)
     }
-    fn properties(&self,include_static:bool) -> HashMap<String,Prop> {
-        let mut props:HashMap<String,Prop> = self.property_histories().iter().map(|(key,values)| {
+    fn properties(&self,include_static:bool) -> Result<HashMap<String,Prop>,GraphError> {
+        let mut props:HashMap<String,Prop> = self.property_histories()?.iter().map(|(key,values)| {
             (key.clone(),values.last().unwrap().1.clone())
         }).collect();
 
         if include_static{
-            for prop_name in self.graph.static_edge_prop_keys(self.edge) {
-                match self.graph.static_edge_prop(self.edge,prop_name.clone()) {
+            for prop_name in self.graph.static_edge_prop_keys(self.edge)? {
+                match self.graph.static_edge_prop(self.edge,prop_name.clone())? {
                     Some(prop) => {props.insert(prop_name,prop);}
                     None => {}
                 }
             }
         }
-        props
+        Ok(props)
     }
 
-    fn property_histories(&self) -> HashMap<String,Vec<(i64, Prop)>> {
+    fn property_histories(&self) -> Result<HashMap<String,Vec<(i64, Prop)>>,GraphError> {
         self.graph.temporal_edge_props_window(self.edge,i64::MIN,i64::MAX)
     }
-    fn property_names(&self,include_static:bool) -> Vec<String> {
-        let mut names:Vec<String> = self.graph.temporal_edge_props_window(self.edge,i64::MIN,i64::MAX).into_keys().collect();
+    fn property_names(&self,include_static:bool) -> Result<Vec<String>,GraphError> {
+        let mut names:Vec<String> = self.graph.temporal_edge_props_window(self.edge,i64::MIN,i64::MAX)?.into_keys().collect();
         if include_static {
-            names.extend(self.graph.static_edge_prop_keys(self.edge))
+            names.extend(self.graph.static_edge_prop_keys(self.edge)?)
         }
-        names
+        Ok(names)
     }
-    fn has_property(&self,name:String,include_static:bool) -> bool {
-        self.property_names(include_static).contains(&name)
-    }
-
-    fn has_static_property(&self,name:String)->bool{
-        self.graph.static_edge_prop_keys(self.edge).contains(&name)
+    fn has_property(&self,name:String,include_static:bool) -> Result<bool,GraphError> {
+        Ok(self.property_names(include_static)?.contains(&name))
     }
 
-    fn static_property(&self,name:String)-> Option<Prop>{
+    fn has_static_property(&self,name:String)->Result<bool,GraphError>{
+        Ok(self.graph.static_edge_prop_keys(self.edge)?.contains(&name))
+    }
+
+    fn static_property(&self,name:String)-> Result<Option<Prop>,GraphError>{
         self.graph.static_edge_prop(self.edge,name)
     }
 

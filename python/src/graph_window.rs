@@ -6,6 +6,7 @@ use docbrown_db::graph_window;
 use docbrown_db::view_api::*;
 use itertools::Itertools;
 use pyo3::prelude::*;
+use docbrown_core::tgraph_shard::errors::GraphError;
 
 #[pyclass]
 pub struct GraphWindowSet {
@@ -168,65 +169,60 @@ impl WindowedVertex {
 
 #[pymethods]
 impl WindowedVertex {
-    pub fn __getitem__(&self, name: String) -> PyResult<Vec<(i64, Prop)>> {
-        self.property(name)
+    pub fn __getitem__(&self, name: String) -> PyResult<Option<Prop>> {
+        adapt_err(self.property(name,Some(true)))
     }
 
-    pub fn has_property(&self,name:String,include_static:Option<bool>) -> bool {
+    pub fn has_property(&self, name:String, include_static:Option<bool>) -> PyResult<bool> {
         match include_static {
-            None => {self.vertex_w.has_property(name,true)}
-            Some(b) => {self.vertex_w.has_property(name,b)}
+            None => {adapt_err(self.vertex_w.has_property(name,true))}
+            Some(b) => {adapt_err(self.vertex_w.has_property(name,b))}
         }
     }
 
-    pub fn property(&self,name:String,include_static:Option<bool>) -> Option<Prop> {
-        let res = match include_static {
-            None => {self.vertex_w.property(name,true)}
-            Some(b) => {self.vertex_w.property(name,b)}
-        };
+    pub fn property(&self,name:String,include_static:Option<bool>) -> PyResult<Option<Prop>> {
+        let include_static = include_static.unwrap_or(true);
+        let addapted = adapt_err(self.vertex_w.property(name,include_static))?;
 
-        match res{
-            None => {None}
-            Some(prop) => {Some(prop.into())}
+        match addapted{
+            None => {Ok(None)}
+            Some(prop) => {Ok(Some(prop.into()))}
         }
     }
 
-    pub fn properties(&self,include_static:Option<bool>) -> HashMap<String,Prop> {
-        match include_static {
-            None => {self.vertex_w.properties(true)}
-            Some(b) => {self.vertex_w.properties(b)}
-        }.into_iter()
+    pub fn properties(&self,include_static:Option<bool>) -> PyResult<HashMap<String,Prop>> {
+        let include_static = include_static.unwrap_or(true);
+        let addapted = adapt_err(self.vertex_w.properties(include_static))?;
+
+        Ok(addapted.into_iter()
             .map(|(k, v)| (k, v.into()))
-            .collect()
+            .collect())
     }
 
-    pub fn property_names(&self,include_static:Option<bool>) -> Vec<String> {
-        match include_static {
-            None => {self.vertex_w.property_names(true)}
-            Some(b) => {self.vertex_w.property_names(b)}
-        }
-
+    pub fn property_names(&self, include_static:Option<bool>) -> PyResult<Vec<String>> {
+        let include_static = include_static.unwrap_or(true);
+        adapt_err(self.vertex_w.property_names(include_static))
     }
 
-    pub fn property_history(&self,name:String) -> Vec<(i64, Prop)> {
-        self.vertex_w.property_history(name).into_iter()
+    pub fn property_history(&self,name:String) -> PyResult<Vec<(i64, Prop)>> {
+        Ok(adapt_err(self.vertex_w.property_history(name))?.into_iter()
             .map(|(k, v)| (k, v.into()))
-            .collect()
+            .collect())
     }
 
-    pub fn property_histories(&self) -> HashMap<String, Vec<(i64, Prop)>> {
-        self.vertex_w.property_histories().into_iter()
+    pub fn property_histories(&self) -> PyResult<HashMap<String, Vec<(i64, Prop)>>> {
+        Ok(adapt_err(self.vertex_w.property_histories())?.into_iter()
             .map(|(k, v)| (k, v.into_iter().map(|(t,p)| (t,p.into())).collect()))
-            .collect()
+            .collect())
     }
 
-    pub fn has_static_property(&self,name:String)->bool {
-        self.vertex_w.has_static_property(name)
+    pub fn has_static_property(&self, name:String) -> PyResult<bool> {
+        adapt_err(self.vertex_w.has_static_property(name))
     }
-    pub fn static_property(&self,name:String)-> Option<Prop>{
-        match self.vertex_w.static_property(name) {
-            None => {None}
-            Some(prop) => {Some(prop.into())}
+    pub fn static_property(&self,name:String)-> PyResult<Option<Prop>>{
+        match adapt_err(self.vertex_w.static_property(name))? {
+            None => {Ok(None)}
+            Some(prop) => {Ok(Some(prop.into()))}
         }
     }
 
@@ -439,71 +435,57 @@ impl From<graph_window::WindowedEdge> for WindowedEdge {
 
 #[pymethods]
 impl WindowedEdge {
-    pub fn __getitem__(&self, name: String) -> PyResult<Vec<(i64, Prop)>> {
-        self.prop(name)
-
-    pub fn has_property(&self,name:String,include_static:Option<bool>) -> bool {
-        match include_static {
-            None => {self.edge_w.has_property(name,true)}
-            Some(b) => {self.edge_w.has_property(name,b)}
-        }
-    }
-
-    pub fn property(&self,name:String,include_static:Option<bool>) -> Option<Prop> {
-        let res = match include_static {
-            None => {self.edge_w.property(name,true)}
-            Some(b) => {self.edge_w.property(name,b)}
-        };
-
-        match res{
-            None => {None}
-            Some(prop) => {Some(prop.into())}
-        }
-    }
-
-    pub fn properties(&self,include_static:Option<bool>) -> HashMap<String,Prop> {
-        match include_static {
-            None => {self.edge_w.properties(true)}
-            Some(b) => {self.edge_w.properties(b)}
-        }.into_iter()
-         .map(|(k, v)| (k, v.into()))
-         .collect()
-    }
-
-    pub fn property_names(&self,include_static:Option<bool>) -> Vec<String> {
-        match include_static {
-            None => {self.edge_w.property_names(true)}
-            Some(b) => {self.edge_w.property_names(b)}
-        }
-
-    }
-
-    pub fn property_history(&self,name:String) -> Vec<(i64, Prop)> {
-        self.edge_w.property_history(name).into_iter()
-            .map(|(k, v)| (k, v.into()))
-            .collect()
-    }
-
-    pub fn property_histories(&self) -> HashMap<String, Vec<(i64, Prop)>> {
-        self.edge_w.property_histories().into_iter()
-            .map(|(k, v)| (k, v.into_iter().map(|(t,p)| (t,p.into())).collect()))
-            .collect()
-    }
-
-    pub fn has_static_property(&self,name:String)->bool {
-        self.edge_w.has_static_property(name)
-    }
-    pub fn static_property(&self,name:String)-> Option<Prop>{
-        match self.edge_w.static_property(name) {
-            None => {None}
-            Some(prop) => {Some(prop.into())}
-        }
-    }
-
-    pub fn __getitem__(&self, name: String) -> Option<Prop> {
+    pub fn __getitem__(&self, name: String) -> PyResult<Option<Prop>> {
         self.property(name,Some(true))
     }
 
+    pub fn has_property(&self, name:String, include_static:Option<bool>) -> PyResult<bool> {
+        let include_static = include_static.unwrap_or(true);
+        adapt_err(self.edge_w.has_property(name,include_static))
+    }
+
+    pub fn property(&self,name:String,include_static:Option<bool>) -> PyResult<Option<Prop>> {
+        let include_static = include_static.unwrap_or(true);
+        match adapt_err(self.edge_w.property(name,include_static))?{
+            None => {Ok(None)}
+            Some(prop) => {Ok(Some(prop.into()))}
+        }
+    }
+
+    pub fn properties(&self,include_static:Option<bool>) -> PyResult<HashMap<String,Prop>> {
+        let include_static = include_static.unwrap_or(true);
+        Ok(adapt_err(self.edge_w.properties(include_static))?
+         .into_iter()
+         .map(|(k, v)| (k, v.into()))
+         .collect())
+    }
+
+    pub fn property_names(&self, include_static:Option<bool>) -> PyResult<Vec<String>> {
+        let include_static = include_static.unwrap_or(true);
+        adapt_err(self.edge_w.property_names(include_static))
+    }
+
+    pub fn property_history(&self,name:String) -> PyResult<Vec<(i64, Prop)>> {
+        Ok(adapt_err(self.edge_w.property_history(name))?.into_iter()
+            .map(|(k, v)| (k, v.into()))
+            .collect())
+    }
+
+    pub fn property_histories(&self) -> PyResult<HashMap<String, Vec<(i64, Prop)>>> {
+        Ok(adapt_err(self.edge_w.property_histories())?.into_iter()
+            .map(|(k, v)| (k, v.into_iter().map(|(t,p)| (t,p.into())).collect()))
+            .collect())
+    }
+
+    pub fn has_static_property(&self, name:String) -> PyResult<bool> {
+       adapt_err(self.edge_w.has_static_property(name))
+    }
+    pub fn static_property(&self,name:String)-> PyResult<Option<Prop>>{
+        match adapt_err(self.edge_w.static_property(name))? {
+            None => {Ok(None)}
+            Some(prop) => {Ok(Some(prop.into()))}
+        }
+    }
 
     pub fn id(&self) -> usize {
         self.edge_w.id()

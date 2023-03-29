@@ -496,8 +496,8 @@ impl TGraphShard<TemporalGraph> {
         self.read_shard(|tg| Ok(tg.static_vertex_prop_keys(v)))
     }
 
-    pub fn temporal_vertex_prop_keys(&self, v: u64) -> Vec<String> {
-        self.read_shard(|tg| tg.temporal_vertex_prop_keys(v))
+    pub fn temporal_vertex_prop_keys(&self, v: u64) -> Result<Vec<String>, GraphError> {
+        self.read_shard(|tg| Ok(tg.temporal_vertex_prop_keys(v)))
     }
 
     pub fn temporal_vertex_prop_vec(
@@ -539,8 +539,8 @@ impl TGraphShard<TemporalGraph> {
         self.read_shard(|tg| Ok(tg.static_edge_prop_keys(e)))
     }
 
-    pub fn temporal_edge_prop_keys(&self, e: usize) -> Vec<String> {
-        self.read_shard(|tg| tg.temporal_edge_prop_keys(e))
+    pub fn temporal_edge_prop_keys(&self, e: usize) -> Result<Vec<String>, GraphError> {
+        self.read_shard(|tg| Ok(tg.temporal_edge_prop_keys(e)))
     }
 
     pub fn temporal_edge_prop_vec(
@@ -558,6 +558,14 @@ impl TGraphShard<TemporalGraph> {
         w: Range<i64>,
     ) -> Result<Vec<(i64, Prop)>, GraphError> {
         self.read_shard(|tg| Ok(tg.temporal_edge_prop_vec_window(e, &name, w.clone())))
+    }
+
+    pub fn temporal_edge_props_window(
+        &self,
+        e: usize,
+        w: Range<i64>,
+    ) -> Result<HashMap<String, Vec<(i64, Prop)>>, GraphError> {
+        self.read_shard(|tg| Ok(tg.temporal_edge_props_window(e, w.clone())))
     }
 }
 
@@ -596,19 +604,6 @@ impl ImmutableTGraphShard<TemporalGraph> {
     pub fn vertices(&self) -> Box<dyn Iterator<Item = VertexRef> + Send + '_> {
         self.rc.vertices()
     }
-
-    pub fn temporal_edge_props_window(
-        &self,
-        e: usize,
-        w: Range<i64>,
-    ) -> HashMap<String, Vec<(i64, Prop)>> {
-        self.read_shard(|tg| tg.temporal_edge_props_window(e, w.clone()))
-
-    }
-
-
-
-}
 
     pub fn edges(
         &self,

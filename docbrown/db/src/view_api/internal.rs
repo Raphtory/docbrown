@@ -384,7 +384,7 @@ pub trait GraphViewInternalOps {
     /// Vec<String> - The keys of the static properties.
     fn static_vertex_prop_keys(&self, v: VertexRef) -> Result<Vec<String>, GraphError>;
 
-    fn temporal_vertex_prop_keys(&self, v: VertexRef) -> Vec<String>;
+    fn temporal_vertex_prop_keys(&self, v: VertexRef) ->  Result<Vec<String>,GraphError>;
 
     /// Returns a vector of all temporal values of the vertex property with the given name for the
     /// given vertex
@@ -486,7 +486,7 @@ pub trait GraphViewInternalOps {
     /// * A `Vec` of `String` containing the keys for the static properties of the given edge.
     fn static_edge_prop_keys(&self, e: EdgeRef) -> Result<Vec<String>, GraphError>;
 
-    fn temporal_edge_prop_keys(&self, e: EdgeRef) -> Vec<String>;
+    fn temporal_edge_prop_keys(&self, e: EdgeRef) ->  Result<Vec<String>,GraphError>;
 
     /// Returns a vector of tuples containing the values of the temporal property with the given name
     /// for the given edge reference.
@@ -541,7 +541,7 @@ pub trait GraphViewInternalOps {
     /// * A `HashMap` containing all the temporal properties of the given edge, where each key is the name of a
     /// temporal property and each value is a vector of tuples containing the property value and the time it was recorded.
     ///
-    fn temporal_edge_props(&self, e: EdgeRef) -> HashMap<String, Vec<(i64, Prop)>>;
+    fn temporal_edge_props(&self, e: EdgeRef) ->  Result<HashMap<String, Vec<(i64, Prop)>>,GraphError>;
 
     /// Returns a hash map containing all the temporal properties of the given edge reference within the specified
     /// time window, where each key is the name of a temporal property and each value is a vector of tuples containing
@@ -564,5 +564,5 @@ pub trait GraphViewInternalOps {
         e: EdgeRef,
         t_start: i64,
         t_end: i64,
-    ) -> HashMap<String, Vec<(i64, Prop)>>;
+    ) ->  Result<HashMap<String, Vec<(i64, Prop)>>,GraphError>;
 }

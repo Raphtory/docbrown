@@ -280,7 +280,7 @@ impl GraphViewInternalOps for WindowedGraph {
         self.graph.static_vertex_prop_keys(v)
     }
 
-    fn temporal_vertex_prop_keys(&self, v: VertexRef) -> Vec<String> {
+    fn temporal_vertex_prop_keys(&self, v: VertexRef) -> Result<Vec<String>,GraphError> {
         self.graph.temporal_vertex_prop_keys(v)
     }
 
@@ -337,10 +337,6 @@ impl GraphViewInternalOps for WindowedGraph {
         self.graph.static_edge_prop_keys(e)
     }
 
-    fn temporal_vertex_prop_keys(&self, v: VertexRef) -> Vec<String> {
-        self.graph.temporal_vertex_prop_keys(v)
-    }
-
     fn temporal_edge_props_vec(
         &self,
         e: EdgeRef,
@@ -365,7 +361,7 @@ impl GraphViewInternalOps for WindowedGraph {
         )
     }
 
-    fn temporal_edge_props(&self, e: EdgeRef) -> HashMap<String, Vec<(i64, Prop)>> {
+    fn temporal_edge_props(&self, e: EdgeRef) ->  Result<HashMap<String, Vec<(i64, Prop)>>,GraphError> {
         self.graph
             .temporal_edge_props_window(e, self.t_start, self.t_end)
     }
@@ -375,9 +371,13 @@ impl GraphViewInternalOps for WindowedGraph {
         e: EdgeRef,
         t_start: i64,
         t_end: i64,
-    ) -> HashMap<String, Vec<(i64, Prop)>> {
+    ) ->  Result<HashMap<String, Vec<(i64, Prop)>>,GraphError> {
         self.graph
             .temporal_edge_props_window(e, self.actual_start(t_start), self.actual_end(t_end))
+    }
+
+    fn temporal_edge_prop_keys(&self, e: EdgeRef) ->  Result<Vec<String>,GraphError> {
+        self.graph.temporal_edge_prop_keys(e)
     }
 }
 

@@ -10,19 +10,19 @@ pub trait EdgeViewOps: Sized + Send + Sync {
     type Vertex: VertexViewOps<Edge = Self>;
 
     //TODO need to add specific windowed and non-windowed variants
-    fn has_property(&self,name:String,include_static:bool) -> bool ;
+    fn has_property(&self,name:String,include_static:bool) -> Result<bool,GraphError> ;
 
-    fn property(&self,name:String,include_static:bool) -> Option<Prop>;
-    fn properties(&self,include_static:bool) -> HashMap<String,Prop> ;
-    fn property_names(&self,include_static:bool) -> Vec<String> ;
+    fn property(&self,name:String,include_static:bool) -> Result<Option<Prop>,GraphError>;
+    fn properties(&self,include_static:bool) -> Result<HashMap<String,Prop>,GraphError> ;
+    fn property_names(&self,include_static:bool) -> Result<Vec<String>,GraphError> ;
 
-    fn has_static_property(&self,name:String)->bool;
-    fn static_property(&self,name:String)-> Option<Prop>;
+    fn has_static_property(&self,name:String)->Result<bool,GraphError>;
+    fn static_property(&self,name:String)-> Result<Option<Prop>,GraphError>;
 
     /// gets a property of an edge with the given name
     /// includes the timestamp of the property
-    fn property_history(&self,name:String) -> Vec<(i64, Prop)> ;
-    fn property_histories(&self) -> HashMap<String,Vec<(i64, Prop)>> ;
+    fn property_history(&self,name:String) -> Result<Vec<(i64, Prop)>,GraphError> ;
+    fn property_histories(&self) -> Result<HashMap<String,Vec<(i64, Prop)>>,GraphError> ;
 
     /// gets the source vertex of an edge
     fn src(&self) -> Self::Vertex;
