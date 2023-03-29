@@ -89,8 +89,10 @@
 //! let graph = lotr_graph(3);
 //!
 //! // Get the in-degree, out-degree of Gandalf
-//! println!("Gandalf in degree: {:?}", graph.vertex("Gandalf").unwrap().unwrap().in_degree());
-//! println!("Gandalf out degree: {:?}", graph.vertex("Gandalf").unwrap().unwrap().out_degree());
+//! if let Ok(Some(gandalf)) = graph.vertex("Gandalf") {
+//!    println!("Gandalf in degree: {:?}", gandalf.in_degree());
+//!   println!("Gandalf out degree: {:?}", gandalf.out_degree());
+//! }
 //!
 //! // Run an average degree algorithm on the graph
 //! println!("Average degree: {:?}", average_degree(&graph));
