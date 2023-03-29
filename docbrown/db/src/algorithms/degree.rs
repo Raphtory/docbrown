@@ -1,4 +1,33 @@
-/// The maximum out degree of any vertex in the graph.
+//! The maximum out degree of any vertex in the graph.
+//!
+//! # Examples
+//!
+//! ```rust
+//! use docbrown_db::algorithms::degree::{max_out_degree, max_in_degree, min_out_degree, min_in_degree, average_degree};
+//! use docbrown_db::graph::Graph;
+//!
+//! let g = Graph::new(1);
+//! let windowed_graph = g.window(0, 7);
+//! let vs = vec![
+//!     (1, 1, 2),
+//!     (2, 1, 3),
+//!     (3, 2, 1),
+//!     (4, 3, 2),
+//!     (5, 1, 4),
+//!     (6, 4, 5),
+//! ];
+//!
+//! for (t, src, dst) in &vs {
+//!     g.add_edge(*t, *src, *dst, &vec![]);
+//! }
+//!
+//! print!("Max out degree: {:?}", max_out_degree(&windowed_graph));
+//! print!("Max in degree: {:?}", max_in_degree(&windowed_graph));
+//! print!("Min out degree: {:?}", min_out_degree(&windowed_graph));
+//! print!("Min in degree: {:?}", min_in_degree(&windowed_graph));
+//! print!("Average degree: {:?}", average_degree(&windowed_graph));
+//! ```
+//!
 use crate::view_api::*;
 use docbrown_core::tgraph_shard::errors::GraphError;
 
