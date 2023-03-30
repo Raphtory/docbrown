@@ -2,10 +2,15 @@
 //!
 //! # Example
 //! ```no_run
-//!  use docbrown_db::csv_loader::csv::CsvLoader;
+//!  use std::path::{Path, PathBuf};
+//! use regex::Regex;
+//! use docbrown_core::Prop;
+//! use docbrown_core::utils::calculate_hash;
+//! use docbrown_db::csv_loader::csv::CsvLoader;
 //!  use docbrown_db::graph::Graph;
+//! use docbrown_db::graph_loader::lotr_graph::Lotr;
 //!
-//!  let g = Graph::new(2);//!
+//!  let g = Graph::new(2);
 //!  let csv_path: PathBuf = [env!("CARGO_MANIFEST_DIR"), "../../resource/"]
 //!         .iter()
 //!         .collect();
