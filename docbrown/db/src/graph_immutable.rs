@@ -26,6 +26,20 @@ use docbrown_core::{
 use serde::{Deserialize, Serialize};
 
 /// A docbrown graph in a frozen state that is read-only.
+/// This graph can be queried in a read-only format avoiding any locks placed when using a
+/// non-immutable graph.
+///
+/// # Examples
+///
+/// ```rust
+/// use docbrown_db::graph::Graph;
+/// use docbrown_db::view_api::*;
+///
+/// let graph = Graph::new(2);
+/// // Add vertices and edges
+///
+/// let immutable_graph = graph.freeze();
+/// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ImmutableGraph {
     pub(crate) nr_shards: usize,
