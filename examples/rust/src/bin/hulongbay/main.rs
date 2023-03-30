@@ -1,4 +1,5 @@
 #![allow(unused_imports)]
+use std::cmp::Reverse;
 use std::collections::HashMap;
 use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
@@ -9,9 +10,15 @@ use std::{env, thread};
 
 use chrono::{DateTime, Utc};
 use docbrown_core::tgraph::TemporalGraph;
-use docbrown_core::utils;
+use docbrown_core::{state, utils};
 use docbrown_core::{Direction, Prop};
+use docbrown_db::algorithms::global_triangle_count::global_triangle_count;
 use docbrown_db::csv_loader::csv::CsvLoader;
+use docbrown_db::program::algo::{connected_components, triangle_counting_fast};
+use docbrown_db::program::{
+    GlobalEvalState, Program, TriangleCountS1, TriangleCountS2, TriangleCountSlowS2,
+};
+use itertools::Itertools;
 use regex::Regex;
 use serde::Deserialize;
 use std::fs::File;
@@ -68,8 +75,8 @@ pub fn loader(data_dir: &Path) -> Result<Graph, Box<dyn Error>> {
         println!(
             "Loaded graph from path {} with {} vertices, {} edges, took {} seconds",
             encoded_data_dir.display(),
-            g.num_vertices(),
-            g.num_edges(),
+            g.num_vertices().unwrap(),
+            g.num_edges().unwrap(),
             now.elapsed().as_secs()
         );
 
@@ -92,13 +99,14 @@ pub fn loader(data_dir: &Path) -> Result<Graph, Box<dyn Error>> {
                     dst,
                     &vec![("amount".to_owned(), Prop::U64(sent.amount_usd))],
                 )
+                .unwrap()
             })?;
 
         println!(
             "Loaded graph from CSV data files {} with {} vertices, {} edges which took {} seconds",
             encoded_data_dir.display(),
-            g.num_vertices(),
-            g.num_edges(),
+            g.num_vertices().unwrap(),
+            g.num_edges().unwrap(),
             now.elapsed().as_secs()
         );
 
@@ -113,22 +121,59 @@ fn try_main() -> Result<(), Box<dyn Error>> {
 
     let graph = loader(data_dir)?;
 
+    let min_time = graph.earliest_time().unwrap().ok_or(GraphEmptyError)?;
+    let max_time = graph.latest_time().unwrap().ok_or(GraphEmptyError)?;
+    let mid_time = (min_time + max_time) / 2;
+
     let now = Instant::now();
-    let num_edges: usize = graph.vertices().map(|v| v.out_degree()).sum();
+    let actual_tri_count = triangle_counting_fast(&graph, mid_time..max_time);
+
+    println!("Actual triangle count: {:?}", actual_tri_count);
+
+    println!(
+        "Counting triangles took {} seconds",
+        now.elapsed().as_secs()
+    );
+
+    let now = Instant::now();
+    let components = connected_components(
+        &graph,
+        graph.earliest_time().unwrap().unwrap()..graph.latest_time().unwrap().unwrap(),
+        5,
+    );
+
+    components
+        .into_iter()
+        .counts_by(|(_, cc)| cc)
+        .iter()
+        .sorted_by(|l, r| l.1.cmp(r.1))
+        .rev()
+        .take(50)
+        .for_each(|(cc, count)| {
+            println!("CC {} has {} vertices", cc, count);
+        });
+
+    println!(
+        "Connected Components took {} seconds",
+        now.elapsed().as_secs()
+    );
+
+    let now = Instant::now();
+    let num_edges: usize = graph.vertices().map(|v| v.out_degree().unwrap()).sum();
     println!(
         "Counting edges by summing degrees returned {} in {} seconds",
         num_edges,
         now.elapsed().as_secs()
     );
-    let earliest_time = graph.earliest_time().ok_or(GraphEmptyError)?;
-    let latest_time = graph.latest_time().ok_or(GraphEmptyError)?;
+    let earliest_time = graph.earliest_time().unwrap().ok_or(GraphEmptyError)?;
+    let latest_time = graph.latest_time().unwrap().ok_or(GraphEmptyError)?;
     println!("graph time range: {}-{}", earliest_time, latest_time);
     let now = Instant::now();
     let window = graph.window(i64::MIN, i64::MAX);
     println!("Creating window took {} seconds", now.elapsed().as_secs());
 
     let now = Instant::now();
-    let num_windowed_edges: usize = window.vertices().map(|v| v.out_degree()).sum();
+    let num_windowed_edges: usize = window.vertices().map(|v| v.out_degree().unwrap()).sum();
     println!(
         "Counting edges in window by summing degrees returned {} in {} seconds",
         num_windowed_edges,
@@ -136,7 +181,7 @@ fn try_main() -> Result<(), Box<dyn Error>> {
     );
 
     let now = Instant::now();
-    let num_windowed_edges2 = window.num_edges();
+    let num_windowed_edges2 = window.num_edges().unwrap();
     println!(
         "Window num_edges returned {} in {} seconds",
         num_windowed_edges2,
@@ -146,8 +191,65 @@ fn try_main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
+fn try_main_bm() -> Result<(), Box<dyn Error>> {
+    let args: Vec<String> = env::args().collect();
+    let data_dir = Path::new(args.get(1).ok_or(MissingArgumentError)?);
+
+    let graph = loader(data_dir)?;
+
+    let now = Instant::now();
+    let num_edges: usize = graph.vertices().map(|v| v.out_degree().unwrap()).sum();
+    println!(
+        "Counting edges by summing degrees returned {} in {} milliseconds",
+        num_edges,
+        now.elapsed().as_millis()
+    );
+    let earliest_time = graph.earliest_time().unwrap().ok_or(GraphEmptyError)?;
+    let latest_time = graph.latest_time().unwrap().ok_or(GraphEmptyError)?;
+    println!("graph time range: {}-{}", earliest_time, latest_time);
+
+    let now = Instant::now();
+    let num_edges2 = graph.num_edges().unwrap();
+    println!(
+        "num_edges returned {} in {} milliseconds",
+        num_edges2,
+        now.elapsed().as_millis()
+    );
+
+    println!("\n Immutable graph metrics:");
+
+    let graph = graph.freeze();
+
+    let now = Instant::now();
+    let num_edges: usize = graph
+        .vertices()
+        .map(|v| graph.degree(v, Direction::OUT))
+        .sum();
+
+    println!(
+        "Counting edges by summing degrees returned {} in {} milliseconds",
+        num_edges,
+        now.elapsed().as_millis()
+    );
+
+    let earliest_time = graph.earliest_time().ok_or(GraphEmptyError)?;
+    let latest_time = graph.latest_time().ok_or(GraphEmptyError)?;
+
+    println!("graph time range: {}-{}", earliest_time, latest_time);
+
+    let now = Instant::now();
+    let num_edges2 = graph.num_edges();
+    println!(
+        "num_edges returned {} in {} milliseconds",
+        num_edges2,
+        now.elapsed().as_millis()
+    );
+
+    Ok(())
+}
+
 fn main() {
-    if let Err(e) = try_main() {
+    if let Err(e) = try_main_bm() {
         eprintln!("Failed: {}", e);
         std::process::exit(1)
     }

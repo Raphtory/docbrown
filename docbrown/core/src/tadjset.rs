@@ -1,6 +1,8 @@
+//! A data structure for efficiently storing and querying the temporal adjacency set of a node in a temporal graph.
+
 use std::{
     borrow::{Borrow, BorrowMut},
-    collections::{BTreeMap},
+    collections::BTreeMap,
     hash::Hash,
     ops::{Neg, Range},
 };
