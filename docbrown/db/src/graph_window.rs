@@ -932,7 +932,7 @@ impl GraphViewInternalOps for WindowedGraph {
 /// ```rust
 /// use docbrown_db::graph::Graph;
 ///
-/// let graph = Graph::new();
+/// let graph = Graph::new(1);
 /// graph.add_edge(0, 1, 2, &vec![]);
 /// graph.add_edge(1, 2, 3, &vec![]);
 /// let windowed_graph = graph.window(0, 1);

@@ -120,19 +120,6 @@ impl ImmutableGraph {
 
     /// Get an immutable graph shard for a given vertex.
     ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use docbrown_db::graph::Graph;
-    /// use docbrown_db::view_api::*;
-    ///
-    /// let graph = Graph::new(2);
-    /// graph.add_vertex(0, 1, &vec![]).unwrap();
-    /// // ... Add vertices and edges ...
-    /// let immutable_graph = graph.freeze();
-    /// // Unfreeze the graph
-    /// let shard = immutable_graph.get_shard_from_v(1);
-    /// ```
     pub fn get_shard_from_v(&self, v: VertexRef) -> &ImmutableTGraphShard<TemporalGraph> {
         &self.shards[self.shard_id(v.g_id)]
     }
