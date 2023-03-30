@@ -53,6 +53,7 @@
 //! ```
 //!
 
+/// Module for loading CSV files into a graph.
 pub mod csv {
     use bzip2::read::BzDecoder;
     use flate2; // 1.0
