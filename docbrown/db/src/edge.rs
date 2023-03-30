@@ -1,4 +1,9 @@
 //! Defines the `Edge` struct, which represents an edge in the graph.
+//!
+//! Edges are used to define directed connections between verticies in the graph.
+//! Edges are identified by a unique ID, can have a direction (Ingoing, Outgoing, or Both)
+//! and can have properties associated with them.
+//!
 
 use crate::vertex::VertexView;
 use crate::view_api::internal::GraphViewInternalOps;
