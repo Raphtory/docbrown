@@ -517,11 +517,33 @@ impl GraphViewInternalOps for WindowedGraph {
             .edge_refs_window(self.actual_start(t_start), self.actual_end(t_end))
     }
 
+    /// Get an iterator of all edges as references for a given vertex and direction
+    ///
+    /// # Arguments
+    ///
+    /// - `v` - The vertex to get the edges for
+    /// - `d` - The direction of the edges
+    ///
+    /// # Returns
+    ///
+    /// An iterator over all edges in that vertex direction as references
     fn vertex_edges(&self, v: VertexRef, d: Direction) -> Box<dyn Iterator<Item = EdgeRef> + Send> {
         self.graph
             .vertex_edges_window(v, self.t_start, self.t_end, d)
     }
 
+    /// Get an iterator of all edges as references for a given vertex and direction in a window
+    ///
+    /// # Arguments
+    ///
+    /// - `v` - The vertex to get the edges for
+    /// - `t_start` - The inclusive start time of the window.
+    /// - `t_end` - The exclusive end time of the window.
+    /// - `d` - The direction of the edges
+    ///
+    /// # Returns
+    ///
+    /// An iterator over all edges in that vertex direction as references
     fn vertex_edges_window(
         &self,
         v: VertexRef,
@@ -532,6 +554,21 @@ impl GraphViewInternalOps for WindowedGraph {
         self.graph
             .vertex_edges_window(v, self.actual_start(t_start), self.actual_end(t_end), d)
     }
+
+    /// Get an iterator of all edges as references for a given vertex and direction in a window
+    /// but exploded. This means, if a timestamp has two edges, they will be returned as two
+    /// seperate edges.
+    ///
+    /// # Arguments
+    ///
+    /// - `v` - The vertex to get the edges for
+    /// - `t_start` - The inclusive start time of the window.
+    /// - `t_end` - The exclusive end time of the window.
+    /// - `d` - The direction of the edges
+    ///
+    /// # Returns
+    ///
+    /// An iterator over all edges in that vertex direction as references
 
     fn vertex_edges_window_t(
         &self,
@@ -544,10 +581,32 @@ impl GraphViewInternalOps for WindowedGraph {
             .vertex_edges_window_t(v, self.actual_start(t_start), self.actual_end(t_end), d)
     }
 
+    /// Get the neighbours of a vertex as references in a given direction
+    ///
+    /// # Arguments
+    ///
+    /// - `v` - The vertex to get the neighbours for
+    /// - `d` - The direction of the edges
+    ///
+    /// # Returns
+    ///
+    /// An iterator over all neighbours in that vertex direction as references
     fn neighbours(&self, v: VertexRef, d: Direction) -> Box<dyn Iterator<Item = VertexRef> + Send> {
         self.graph.neighbours_window(v, self.t_start, self.t_end, d)
     }
 
+    /// Get the neighbours of a vertex as references in a given direction across a window
+    ///
+    /// # Arguments
+    ///
+    /// - `v` - The vertex to get the neighbours for
+    /// - `t_start` - The inclusive start time of the window.
+    /// - `t_end` - The exclusive end time of the window.
+    /// - `d` - The direction of the edges
+    ///
+    /// # Returns
+    ///
+    /// An iterator over all neighbours in that vertex direction as references
     fn neighbours_window(
         &self,
         v: VertexRef,
@@ -559,11 +618,33 @@ impl GraphViewInternalOps for WindowedGraph {
             .neighbours_window(v, self.actual_start(t_start), self.actual_end(t_end), d)
     }
 
+    /// Get the neighbours of a vertex as vertex ids in a given direction
+    ///
+    /// # Arguments
+    ///
+    /// - `v` - The vertex to get the neighbours for
+    /// - `d` - The direction of the edges
+    ///
+    /// # Returns
+    ///
+    /// An iterator over all neighbours in that vertex direction as ids
     fn neighbours_ids(&self, v: VertexRef, d: Direction) -> Box<dyn Iterator<Item = u64> + Send> {
         self.graph
             .neighbours_ids_window(v, self.t_start, self.t_end, d)
     }
 
+    /// Get the neighbours of a vertex as vertex ids in a given direction across a window
+    ///
+    /// # Arguments
+    ///
+    /// - `v` - The vertex to get the neighbours for
+    /// - `t_start` - The inclusive start time of the window.
+    /// - `t_end` - The exclusive end time of the window.
+    /// - `d` - The direction of the edges
+    ///
+    /// # Returns
+    ///
+    /// An iterator over all neighbours in that vertex direction as ids
     fn neighbours_ids_window(
         &self,
         v: VertexRef,
@@ -575,14 +656,55 @@ impl GraphViewInternalOps for WindowedGraph {
             .neighbours_ids_window(v, self.actual_start(t_start), self.actual_end(t_end), d)
     }
 
+    /// Get the static property of a vertex
+    ///
+    /// # Arguments
+    ///
+    /// - `v` - The vertex to get the property for
+    /// - `name` - The name of the property
+    ///
+    /// # Returns
+    ///
+    /// A result of an option of a property  
+    ///
+    /// # Errors
+    ///
+    /// - `GraphError` - Raised if vertex or property does not exist
     fn static_vertex_prop(&self, v: VertexRef, name: String) -> Result<Option<Prop>, GraphError> {
         self.graph.static_vertex_prop(v, name)
     }
 
+    /// Get all static properties of a vertex
+    ///
+    /// # Arguments
+    ///
+    /// - `v` - The vertex to get the property for
+    ///
+    /// # Returns
+    ///
+    /// A result of an option of a property  
+    ///
+    /// # Errors
+    ///
+    /// - `GraphError` - Raised if vertex or property does not exist
     fn static_vertex_prop_keys(&self, v: VertexRef) -> Result<Vec<String>, GraphError> {
         self.graph.static_vertex_prop_keys(v)
     }
 
+    /// Get the temporal property of a vertex
+    ///
+    /// # Arguments
+    ///
+    /// - `v` - The vertex to get the property for
+    /// - `name` - The name of the property
+    ///
+    /// # Returns
+    ///
+    /// A result of an vector of a tuple of a timestamp and a property
+    ///
+    /// # Errors
+    ///
+    /// - `GraphError` - Raised if vertex or property does not exist
     fn temporal_vertex_prop_vec(
         &self,
         v: VertexRef,
@@ -592,6 +714,22 @@ impl GraphViewInternalOps for WindowedGraph {
             .temporal_vertex_prop_vec_window(v, name, self.t_start, self.t_end)
     }
 
+    /// Get the temporal property of a vertex in a window
+    ///
+    /// # Arguments
+    ///
+    /// - `v` - The vertex to get the property for
+    /// - `name` - The name of the property
+    /// - `t_start` - The inclusive start time of the window.
+    /// - `t_end` - The exclusive end time of the window.
+    ///
+    /// # Returns
+    ///
+    /// A result of an vector of a tuple of a timestamp and a property
+    ///
+    /// # Errors
+    ///
+    /// - `GraphError` - Raised if vertex or property does not exist
     fn temporal_vertex_prop_vec_window(
         &self,
         v: VertexRef,
@@ -607,6 +745,19 @@ impl GraphViewInternalOps for WindowedGraph {
         )
     }
 
+    /// Get all temporal properties of a vertex
+    ///
+    /// # Arguments
+    ///
+    /// - `v` - The vertex to get the property for
+    ///
+    /// # Returns
+    ///
+    /// A result of an vector of a tuple of a timestamp and a property
+    ///
+    /// # Errors
+    ///
+    /// - `GraphError` - Raised if vertex or property does not exist
     fn temporal_vertex_props(
         &self,
         v: VertexRef,
@@ -615,6 +766,22 @@ impl GraphViewInternalOps for WindowedGraph {
             .temporal_vertex_props_window(v, self.t_start, self.t_end)
     }
 
+    /// Get all temporal properties of a vertex in a window
+    ///
+    /// # Arguments
+    ///
+    /// - `v` - The vertex to get the property for
+    /// - `t_start` - The inclusive start time of the window.
+    /// - `t_end` - The exclusive end time of the window.
+    ///
+    /// # Returns
+    ///
+    /// A result of an hashmap of a tuple of a string being names and
+    /// vectors of timestamp and the property value
+    ///
+    /// # Errors
+    ///
+    /// - `GraphError` - Raised if vertex or property does not exist
     fn temporal_vertex_props_window(
         &self,
         v: VertexRef,
@@ -628,14 +795,55 @@ impl GraphViewInternalOps for WindowedGraph {
         )
     }
 
+    /// Get the static property of an edge
+    ///
+    /// # Arguments
+    ///
+    /// - `e` - The edge to get the property for
+    /// - `name` - The name of the property
+    ///
+    /// # Returns
+    ///
+    /// A result of an option of a property  or a graph error
+    ///
+    /// # Errors
+    ///
+    /// - `GraphError` - Raised if edge or property does not exist
     fn static_edge_prop(&self, e: EdgeRef, name: String) -> Result<Option<Prop>, GraphError> {
         self.graph.static_edge_prop(e, name)
     }
 
+    /// Get the names of all static properties of an edge
+    ///
+    /// # Arguments
+    ///
+    /// - `e` - The edge to get the property for
+    ///
+    /// # Returns
+    ///
+    /// A result of an vector of all property names or a graph error
+    ///
+    /// # Errors
+    ///
+    /// - `GraphError` - Raised if edge or property does not exist
     fn static_edge_prop_keys(&self, e: EdgeRef) -> Result<Vec<String>, GraphError> {
         self.graph.static_edge_prop_keys(e)
     }
 
+    /// Get the temporal property of an edge
+    ///
+    /// # Arguments
+    ///
+    /// - `e` - The edge to get the property for
+    /// - `name` - The name of the property
+    ///
+    /// # Returns
+    ///
+    /// A result of an option of a property or a graph error
+    ///
+    /// # Errors
+    ///
+    /// - `GraphError` - Raised if edge or property does not exist
     fn temporal_edge_props_vec(
         &self,
         e: EdgeRef,
@@ -645,6 +853,22 @@ impl GraphViewInternalOps for WindowedGraph {
             .temporal_edge_props_vec_window(e, name, self.t_start, self.t_end)
     }
 
+    /// Get the temporal property of an edge in a window
+    ///
+    /// # Arguments
+    ///
+    /// - `e` - The edge to get the property for
+    /// - `name` - The name of the property
+    /// - `t_start` - The inclusive start time of the window.
+    /// - `t_end` - The exclusive end time of the window.
+    ///
+    /// # Returns
+    ///
+    /// A result of an vector of a timestamp and property or a graph error
+    ///
+    /// # Errors
+    ///
+    /// - `GraphError` - Returned if edge or property does not exist
     fn temporal_edge_props_vec_window(
         &self,
         e: EdgeRef,
@@ -660,11 +884,33 @@ impl GraphViewInternalOps for WindowedGraph {
         )
     }
 
+    /// Get all temporal properties of an edge
+    ///
+    /// # Arguments
+    ///
+    /// - `e` - The edge to get the property for
+    ///
+    /// # Returns
+    ///
+    /// A hashmap containing the name of a property as a key
+    /// and the vector of a timestamp and property value
     fn temporal_edge_props(&self, e: EdgeRef) -> HashMap<String, Vec<(i64, Prop)>> {
         self.graph
             .temporal_edge_props_window(e, self.t_start, self.t_end)
     }
 
+    /// Get all temporal properties of an edge in a window
+    ///
+    /// # Arguments
+    ///
+    /// - `e` - The edge to get the property for
+    /// - `t_start` - The inclusive start time of the window.
+    /// - `t_end` - The exclusive end time of the window.
+    ///
+    /// # Returns
+    ///
+    /// A hashmap containing the name of a property as a key
+    /// and the vector of a timestamp and property value
     fn temporal_edge_props_window(
         &self,
         e: EdgeRef,
@@ -676,16 +922,47 @@ impl GraphViewInternalOps for WindowedGraph {
     }
 }
 
+/// A windowed graph is a graph that only allows access to vertices and edges within a time window.
+///
+/// This struct is used to represent a graph with a time window. It is constructed
+/// by providing a `Graph` object and a time range that defines the window.
+///
+/// # Examples
+///
+/// ```rust
+/// use docbrown_db::graph::Graph;
+///
+/// let graph = Graph::new();
+/// graph.add_edge(0, 1, 2, &vec![]);
+/// graph.add_edge(1, 2, 3, &vec![]);
+/// let windowed_graph = graph.window(0, 1);
+/// ```
 impl WindowedGraph {
+    /// Create a new windowed graph
+    ///
+    /// # Arguments
+    ///
+    /// - `graph` - The graph to create the windowed graph from
+    /// - `t_start` - The inclusive start time of the window.
+    /// - `t_end` - The exclusive end time of the window.
+    ///
+    /// # Returns
+    ///
+    /// A new windowed graph
     pub fn new(graph: Graph, t_start: i64, t_end: i64) -> Self {
         WindowedGraph {
+            // The graph to create the windowed graph from
             graph,
+            // The inclusive start time of the window
             t_start,
+            // The exclusive end time of the window
             t_end,
         }
     }
 }
 
+/// Implements `GraphViewOps` for `WindowedGraph` - the operations that can be performed
+/// on a graph view.
 impl GraphViewOps for WindowedGraph {
     type Vertex = WindowedVertex;
     type VertexIter = Self::Vertices;
@@ -693,38 +970,63 @@ impl GraphViewOps for WindowedGraph {
     type Edge = WindowedEdge;
     type Edges = Box<dyn Iterator<Item = WindowedEdge> + Send>;
 
+    /// Returns the number of vertices in the view.
     fn num_vertices(&self) -> Result<usize, GraphError> {
         // FIXME: This needs Optimising badly
         Ok(self.vertices().count())
     }
 
+    /// Returns the earliest time in the view.
     fn earliest_time(&self) -> Result<Option<i64>, GraphError> {
         // FIXME: This should return the actual earliest_time in the view, need low-level method
         let r = self.graph.earliest_time()?;
         Ok(r.map(|i| self.actual_start(i)))
     }
 
+    /// Returns a result the latest time in the view or a graph error .
     fn latest_time(&self) -> Result<Option<i64>, GraphError> {
         // FIXME: This should return the actual latest_time in the view, need low-level method
         let r = self.graph.latest_time()?;
         Ok(r.map(|i| self.actual_end(i)))
     }
 
+    /// Returns a result with the number of edges in the view or a graph error
     fn num_edges(&self) -> Result<usize, GraphError> {
         // FIXME: This needs Optimising badly
         Ok(self.edges().count())
     }
 
+    /// Returns a result with `true` if the view has a specified vertex, and `false` otherwise.
+    ///
+    /// # Arguments
+    ///
+    /// * `v` - The input vertex to check for.
     fn has_vertex<T: InputVertex>(&self, v: T) -> Result<bool, GraphError> {
         self.graph
             .has_vertex_ref_window(v.id(), self.t_start, self.t_end)
     }
 
+    /// Returns a result with `true` if the view has an edge between two specified vertices,
+    /// and `false` otherwise.
+    ///
+    /// # Arguments
+    ///
+    /// * `src` - The source vertex for the edge.
+    /// * `dst` - The destination vertex for the edge.
     fn has_edge<T: InputVertex>(&self, src: T, dst: T) -> Result<bool, GraphError> {
         self.graph
             .has_edge_ref_window(src.id(), dst.id(), self.t_start, self.t_end)
     }
 
+    /// Gets the windowed vertex object corresponding to a specified input vertex.
+    ///
+    /// # Arguments
+    ///
+    /// * `v` - The input vertex to get the windowed vertex for.
+    ///
+    /// # Returns
+    ///
+    /// A result with an option of the windowed vertex object or a graph error.
     fn vertex<T: InputVertex>(&self, v: T) -> Result<Option<WindowedVertex>, GraphError> {
         let graph_w = Arc::new(self.clone());
         let r = self
@@ -733,6 +1035,11 @@ impl GraphViewOps for WindowedGraph {
         Ok(r.map(move |vv| WindowedVertex::new(graph_w, vv)))
     }
 
+    /// Gets all vertices in the view.
+    ///
+    /// # Returns
+    ///
+    /// An iterator over all vertices in the view.
     fn vertices(&self) -> Self::Vertices {
         let graph_w = self.clone();
         Box::new(
@@ -742,6 +1049,15 @@ impl GraphViewOps for WindowedGraph {
         )
     }
 
+    /// Gets all vertices in the view in a given shard
+    ///
+    /// # Arguments
+    ///
+    /// * `shard` - The shard to get the vertices for.
+    ///
+    /// # Returns
+    ///
+    /// An iterator over all vertices in the view.
     fn vertices_shard(&self, shard: usize) -> Self::Vertices {
         let graph_w = self.clone();
         Box::new(
@@ -751,6 +1067,16 @@ impl GraphViewOps for WindowedGraph {
         )
     }
 
+    /// Returns an windowed edge if it exists between two specified vertices.
+    ///
+    /// # Arguments
+    ///
+    /// * `src` - The source vertex for the edge.
+    /// * `dst` - The destination vertex for the edge.
+    ///
+    /// # Returns
+    ///
+    /// A result with an option of the windowed edge object or a graph error.
     fn edge<T: InputVertex>(&self, src: T, dst: T) -> Result<Option<WindowedEdge>, GraphError> {
         let graph_w = self.clone();
         let r = self
@@ -759,13 +1085,20 @@ impl GraphViewOps for WindowedGraph {
         Ok(r.map(|ev| WindowedEdge::new(Arc::new(graph_w.clone()), ev)))
     }
 
+    /// Returns all windowed edges.
+    ///
+    /// # Returns
+    ///
+    /// An iterator over all edges in the view.
     fn edges(&self) -> Self::Edges {
         Box::new(self.vertices().flat_map(|v| v.out_edges()))
     }
 }
 
+/// A windowed vertex view type
 pub type WindowedVertex = VertexView<WindowedGraph>;
 
+/// A windowed edge view type
 pub type WindowedEdge = EdgeView<WindowedGraph>;
 
 #[cfg(test)]
