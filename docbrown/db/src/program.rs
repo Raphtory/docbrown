@@ -108,8 +108,12 @@ impl<G: GraphViewOps> LocalState<G> {
     {
         let graph = self.graph.clone();
 
-        let iter = match self.next_vertex_set {
-            None => graph.vertices_shard(self.shard),
+        let iter: Box<dyn Iterator<Item = VertexView<G>>> = match self.next_vertex_set {
+            None => Box::new(
+                graph
+                    .vertices_shard(self.shard)
+                    .map(|vref| VertexView::new(graph.clone(), vref)),
+            ),
             Some(ref next_vertex_set) => Box::new(
                 next_vertex_set
                     .iter()

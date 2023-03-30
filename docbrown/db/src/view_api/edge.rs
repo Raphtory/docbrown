@@ -2,7 +2,7 @@ use crate::view_api::vertex::VertexViewOps;
 use crate::view_api::VertexListOps;
 use docbrown_core::Prop;
 
-pub trait EdgeViewOps: Sized + Send + Sync {
+pub trait EdgeViewOps: Send + Sync {
     type Vertex: VertexViewOps<Edge = Self>;
 
     fn prop(&self, name: String) -> Vec<(i64, Prop)>;

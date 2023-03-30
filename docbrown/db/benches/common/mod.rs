@@ -1,6 +1,5 @@
 use criterion::{measurement::WallTime, BatchSize, Bencher, BenchmarkGroup, BenchmarkId};
 use docbrown_db::graph::Graph;
-use docbrown_db::view_api::internal::GraphViewInternalOps;
 use docbrown_db::view_api::*;
 use rand::seq::*;
 use rand::{distributions::Uniform, Rng};
@@ -186,7 +185,7 @@ pub fn run_analysis_benchmarks<F, G>(
     parameter: Option<usize>,
 ) where
     F: Fn() -> G,
-    G: GraphViewInternalOps + GraphViewOps,
+    G: GraphViewOps,
 {
     let graph = make_graph();
     let edges: HashSet<(u64, u64)> = graph

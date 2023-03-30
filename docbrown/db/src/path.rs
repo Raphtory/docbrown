@@ -1,5 +1,6 @@
 use crate::edge::EdgeView;
 use crate::vertex::VertexView;
+use crate::view_api::internal::GraphViewInternalOps;
 use crate::view_api::*;
 use docbrown_core::tgraph::VertexRef;
 use docbrown_core::{Direction, Prop};
@@ -246,7 +247,7 @@ impl<G: GraphViewOps> PathFromGraph<G> {
     }
 }
 
-pub struct PathFromVertex<G: GraphViewOps> {
+pub struct PathFromVertex<G: GraphViewOps + Clone> {
     graph: G,
     vertex: VertexRef,
     operations: Arc<Vec<Operations>>,

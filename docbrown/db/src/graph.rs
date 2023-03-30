@@ -1,5 +1,7 @@
 use crate::graph_window::{GraphWindowSet, WindowedGraph};
 use crate::perspective::{Perspective, PerspectiveIterator, PerspectiveSet};
+use itertools::Itertools;
+use std::cmp::{max, min};
 use std::{
     collections::HashMap,
     iter,
@@ -30,6 +32,36 @@ pub struct Graph {
 }
 
 impl GraphViewInternalOps for Graph {
+    fn earliest_time_global(&self) -> Option<i64> {
+        let min_from_shards = self.shards.iter().map(|shard| shard.earliest_time()).min();
+        min_from_shards.filter(|&min| min != i64::MAX)
+    }
+
+    fn earliest_time_window(&self, t_start: i64, t_end: i64) -> Option<i64> {
+        //FIXME: this is not correct, should actually be the earliest activity in window
+        let earliest = self.earliest_time_global()?;
+        if earliest > t_end {
+            None
+        } else {
+            Some(max(earliest, t_start))
+        }
+    }
+
+    fn latest_time_global(&self) -> Option<i64> {
+        let max_from_shards = self.shards.iter().map(|shard| shard.latest_time()).max();
+        max_from_shards.filter(|&max| max != i64::MIN)
+    }
+
+    fn latest_time_window(&self, t_start: i64, t_end: i64) -> Option<i64> {
+        //FIXME: this is not correct, should actually be the latest activity in window
+        let latest = self.latest_time_global()?;
+        if latest < t_start {
+            None
+        } else {
+            Some(min(latest, t_end))
+        }
+    }
+
     fn vertices_len(&self) -> usize {
         self.shards.iter().map(|shard| shard.len()).sum()
     }
@@ -59,32 +91,26 @@ impl GraphViewInternalOps for Graph {
             .sum()
     }
 
-    fn has_edge_ref<V1: Into<VertexRef>, V2: Into<VertexRef>>(&self, src: V1, dst: V2) -> bool {
-        let src: VertexRef = src.into();
-        let dst: VertexRef = dst.into();
+    fn has_edge_ref(&self, src: VertexRef, dst: VertexRef) -> bool {
         self.get_shard_from_v(src).has_edge(src.g_id, dst.g_id)
     }
 
-    fn has_edge_ref_window<V1: Into<VertexRef>, V2: Into<VertexRef>>(
+    fn has_edge_ref_window(
         &self,
-        src: V1,
-        dst: V2,
+        src: VertexRef,
+        dst: VertexRef,
         t_start: i64,
         t_end: i64,
     ) -> bool {
-        let src: VertexRef = src.into();
-        let dst: VertexRef = dst.into();
         self.get_shard_from_v(src)
             .has_edge_window(src.g_id, dst.g_id, t_start..t_end)
     }
 
-    fn has_vertex_ref<V: Into<VertexRef>>(&self, v: V) -> bool {
-        let v: VertexRef = v.into();
+    fn has_vertex_ref(&self, v: VertexRef) -> bool {
         self.get_shard_from_v(v).has_vertex(v.g_id)
     }
 
-    fn has_vertex_ref_window<V: Into<VertexRef>>(&self, v: V, t_start: i64, t_end: i64) -> bool {
-        let v: VertexRef = v.into();
+    fn has_vertex_ref_window(&self, v: VertexRef, t_start: i64, t_end: i64) -> bool {
         self.get_shard_from_v(v)
             .has_vertex_window(v.g_id, t_start..t_end)
     }
@@ -153,100 +179,17 @@ impl GraphViewInternalOps for Graph {
         Box::new(shard.vertices_window(t_start..t_end))
     }
 
-    fn vertices_par<O, F>(&self, f: F) -> Box<dyn Iterator<Item = O>>
-    where
-        O: Send + 'static,
-        F: Fn(VertexRef) -> O + Send + Sync + Copy,
-    {
-        let (tx, rx) = flume::unbounded();
-
-        let arc_tx = Arc::new(tx);
-        self.shards
-            .par_iter()
-            .flat_map(|shard| shard.vertices().par_bridge().map(f))
-            .for_each(move |o| {
-                arc_tx.send(o).unwrap();
-            });
-
-        Box::new(rx.into_iter())
-    }
-
-    fn fold_par<S, F, F2>(&self, f: F, agg: F2) -> Option<S>
-    where
-        S: Send + 'static,
-        F: Fn(VertexRef) -> S + Send + Sync + Copy,
-        F2: Fn(S, S) -> S + Sync + Send + Copy,
-    {
-        self.shards
-            .par_iter()
-            .flat_map(|shard| {
-                shard.read_shard(|tg_core| tg_core.vertices().par_bridge().map(f).reduce_with(agg))
-            })
-            .reduce_with(agg)
-    }
-
-    fn vertices_window_par<O, F>(
-        &self,
-        t_start: i64,
-        t_end: i64,
-        f: F,
-    ) -> Box<dyn Iterator<Item = O>>
-    where
-        O: Send + 'static,
-        F: Fn(VertexRef) -> O + Send + Sync + Copy,
-    {
-        let (tx, rx) = flume::unbounded();
-
-        let arc_tx = Arc::new(tx);
-        self.shards
-            .par_iter()
-            .flat_map(|shard| shard.vertices_window(t_start..t_end).par_bridge().map(f))
-            .for_each(move |o| {
-                arc_tx.send(o).unwrap();
-            });
-
-        Box::new(rx.into_iter())
-    }
-
-    fn fold_window_par<S, F, F2>(&self, t_start: i64, t_end: i64, f: F, agg: F2) -> Option<S>
-    where
-        S: Send + 'static,
-        F: Fn(VertexRef) -> S + Send + Sync + Copy,
-        F2: Fn(S, S) -> S + Sync + Send + Copy,
-    {
-        self.shards
-            .par_iter()
-            .flat_map(|shard| {
-                shard.read_shard(|tg_core| {
-                    tg_core
-                        .vertices_window(t_start..t_end)
-                        .par_bridge()
-                        .map(f)
-                        .reduce_with(agg)
-                })
-            })
-            .reduce_with(agg)
-    }
-
-    fn edge_ref<V1: Into<VertexRef>, V2: Into<VertexRef>>(
-        &self,
-        src: V1,
-        dst: V2,
-    ) -> Option<EdgeRef> {
-        let src: VertexRef = src.into();
-        let dst: VertexRef = dst.into();
+    fn edge_ref(&self, src: VertexRef, dst: VertexRef) -> Option<EdgeRef> {
         self.get_shard_from_v(src).edge(src.g_id, dst.g_id)
     }
 
-    fn edge_ref_window<V1: Into<VertexRef>, V2: Into<VertexRef>>(
+    fn edge_ref_window(
         &self,
-        src: V1,
-        dst: V2,
+        src: VertexRef,
+        dst: VertexRef,
         t_start: i64,
         t_end: i64,
     ) -> Option<EdgeRef> {
-        let src: VertexRef = src.into();
-        let dst: VertexRef = dst.into();
         self.get_shard_from_v(src)
             .edge_window(src.g_id, dst.g_id, t_start..t_end)
     }
@@ -417,63 +360,18 @@ impl GraphViewInternalOps for Graph {
     fn num_shards(&self) -> usize {
         self.nr_shards
     }
-}
 
-impl GraphViewOps for Graph {
-    fn num_vertices(&self) -> usize {
-        self.vertices_len()
-    }
-    fn earliest_time(&self) -> Option<i64> {
-        let min_from_shards = self.shards.iter().map(|shard| shard.earliest_time()).min();
-        min_from_shards.filter(|&min| min != i64::MAX)
+    fn vertices_shard(&self, shard_id: usize) -> Box<dyn Iterator<Item = VertexRef> + Send> {
+        Box::new(self.shards[shard_id].vertices())
     }
 
-    fn latest_time(&self) -> Option<i64> {
-        let max_from_shards = self.shards.iter().map(|shard| shard.latest_time()).max();
-        max_from_shards.filter(|&max| max != i64::MIN)
-    }
-
-    fn num_edges(&self) -> usize {
-        GraphViewInternalOps::edges_len(self)
-    }
-
-    fn has_vertex<T: Into<VertexRef>>(&self, v: T) -> bool {
-        GraphViewInternalOps::has_vertex_ref(self, v)
-    }
-
-    fn has_edge<T: Into<VertexRef>>(&self, src: T, dst: T) -> bool {
-        GraphViewInternalOps::has_edge_ref(self, src, dst)
-    }
-
-    fn vertex<T: Into<VertexRef>>(&self, v: T) -> Option<VertexView<Self>> {
-        let v = v.into().g_id;
-        self.vertex_ref(v).map(|v| VertexView::new(self.clone(), v))
-    }
-
-    fn vertices(&self) -> Vertices<Self> {
-        let graph = self.clone();
-        Vertices::new(graph)
-    }
-
-    fn edge<T: Into<VertexRef>>(&self, src: T, dst: T) -> Option<EdgeView<Self>> {
-        self.edge_ref(src, dst)
-            .map(|e| EdgeView::new(self.clone(), e))
-    }
-
-    fn edges(&self) -> Box<dyn Iterator<Item = EdgeView<Self>> + Send> {
-        Box::new(self.vertices().iter().flat_map(|v| v.out_edges()))
-    }
-
-    fn vertices_shard(&self, shard: usize) -> Box<dyn Iterator<Item = VertexView<Self>> + Send> {
-        let g = self.clone();
-        Box::new(
-            self.vertex_refs_shard(shard)
-                .map(move |vv| VertexView::new(g.clone(), vv)),
-        )
-    }
-
-    fn window(&self, t_start: i64, t_end: i64) -> WindowedGraph<Self> {
-        WindowedGraph::new(self.clone(), t_start, t_end)
+    fn vertices_shard_window(
+        &self,
+        shard_id: usize,
+        t_start: i64,
+        t_end: i64,
+    ) -> Box<dyn Iterator<Item = VertexRef> + Send> {
+        Box::new(self.shards[shard_id].vertices_window(t_start..t_end))
     }
 }
 
@@ -738,7 +636,7 @@ mod db_tests {
         // Load from files
         match Graph::load_from_file(Path::new(&shards_path)) {
             Ok(g) => {
-                assert!(g.has_vertex_ref(1));
+                assert!(g.has_vertex_ref(1.into()));
                 assert_eq!(g.nr_shards, 2);
             }
             Err(e) => panic!("{e}"),
@@ -752,13 +650,13 @@ mod db_tests {
         let g = Graph::new(2);
         g.add_edge(1, 7, 8, &vec![]);
 
-        assert_eq!(g.has_edge_ref(8, 7), false);
-        assert_eq!(g.has_edge_ref(7, 8), true);
+        assert_eq!(g.has_edge(8, 7), false);
+        assert_eq!(g.has_edge(7, 8), true);
 
         g.add_edge(1, 7, 9, &vec![]);
 
-        assert_eq!(g.has_edge_ref(9, 7), false);
-        assert_eq!(g.has_edge_ref(7, 9), true);
+        assert_eq!(g.has_edge(9, 7), false);
+        assert_eq!(g.has_edge(7, 9), true);
 
         g.add_edge(2, "haaroon", "northLondon", &vec![]);
         assert_eq!(g.has_edge("haaroon", "northLondon"), true);
@@ -780,13 +678,13 @@ mod db_tests {
         }
 
         assert_eq!(
-            g.edge_ref_window(1, 3, i64::MIN, i64::MAX)
+            g.edge_ref_window(1.into(), 3.into(), i64::MIN, i64::MAX)
                 .unwrap()
                 .src_g_id,
             1u64
         );
         assert_eq!(
-            g.edge_ref_window(1, 3, i64::MIN, i64::MAX)
+            g.edge_ref_window(1.into(), 3.into(), i64::MIN, i64::MAX)
                 .unwrap()
                 .dst_g_id,
             3u64
@@ -1254,7 +1152,8 @@ mod db_tests {
         }
 
         let gandalf = utils::calculate_hash(&"Gandalf");
-        assert!(g.has_vertex_ref(gandalf));
+        assert!(g.has_vertex(gandalf));
+        assert!(g.has_vertex("Gandalf"))
     }
 
     #[test]

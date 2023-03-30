@@ -12,6 +12,7 @@ use chrono::{DateTime, Utc};
 use docbrown_core::tgraph::TemporalGraph;
 use docbrown_core::{state, utils};
 use docbrown_core::{Direction, Prop};
+use docbrown_db::algorithms::global_triangle_count::global_triangle_count;
 use docbrown_db::csv_loader::csv::CsvLoader;
 use docbrown_db::program::algo::{connected_components, triangle_counting_fast};
 use docbrown_db::program::{
@@ -23,10 +24,8 @@ use serde::Deserialize;
 use std::fs::File;
 use std::io::{prelude::*, BufReader, LineWriter};
 use std::time::Instant;
-use docbrown_db::algorithms::global_triangle_count::global_triangle_count;
 
 use docbrown_db::graph::Graph;
-use docbrown_db::view_api::internal::GraphViewInternalOps;
 use docbrown_db::view_api::*;
 
 #[derive(Deserialize, std::fmt::Debug)]
@@ -125,7 +124,8 @@ fn try_main() -> Result<(), Box<dyn Error>> {
     let mid_time = (min_time + max_time) / 2;
 
     let now = Instant::now();
-    let actual_tri_count = triangle_counting_fast(&graph, mid_time..max_time);
+    let graph_w = graph.window(mid_time, max_time);
+    let actual_tri_count = triangle_counting_fast(&graph_w);
 
     println!("Actual triangle count: {:?}", actual_tri_count);
 
@@ -135,11 +135,7 @@ fn try_main() -> Result<(), Box<dyn Error>> {
     );
 
     let now = Instant::now();
-    let components = connected_components(
-        &graph,
-        graph.earliest_time().unwrap()..graph.latest_time().unwrap(),
-        5,
-    );
+    let components = connected_components(&graph, 5);
 
     components
         .into_iter()

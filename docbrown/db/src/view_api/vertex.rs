@@ -1,8 +1,8 @@
 use crate::view_api::edge::{EdgeListOps, EdgeViewOps};
-use docbrown_core::{Prop};
+use docbrown_core::Prop;
 use std::collections::HashMap;
 
-pub trait VertexViewOps: Sized + Send + Sync {
+pub trait VertexViewOps: Send + Sync {
     type Edge: EdgeViewOps<Vertex = Self>;
     type VList: VertexListOps<Vertex = Self, Edge = Self::Edge, EList = Self::EList>;
     type EList: EdgeListOps<Vertex = Self, Edge = Self::Edge>;

@@ -43,13 +43,13 @@ impl<G: GraphViewOps> Iterator for GraphWindowSet<G> {
 }
 
 #[derive(Debug, Clone)]
-pub struct WindowedGraph<G: GraphViewOps> {
+pub struct WindowedGraph<G: GraphViewInternalOps> {
     pub graph: G,
     pub t_start: i64, // inclusive
     pub t_end: i64,   // exclusive
 }
 
-impl<G: GraphViewOps> WindowedGraph<G> {
+impl<G: GraphViewInternalOps> WindowedGraph<G> {
     fn actual_start(&self, t_start: i64) -> i64 {
         max(self.t_start, t_start)
     }
@@ -59,7 +59,25 @@ impl<G: GraphViewOps> WindowedGraph<G> {
     }
 }
 
-impl<G: GraphViewOps> GraphViewInternalOps for WindowedGraph<G> {
+impl<G: GraphViewInternalOps> GraphViewInternalOps for WindowedGraph<G> {
+    fn earliest_time_global(&self) -> Option<i64> {
+        self.graph.earliest_time_window(self.t_start, self.t_end)
+    }
+
+    fn earliest_time_window(&self, t_start: i64, t_end: i64) -> Option<i64> {
+        self.graph
+            .earliest_time_window(self.actual_start(t_start), self.actual_end(t_end))
+    }
+
+    fn latest_time_global(&self) -> Option<i64> {
+        self.graph.latest_time_window(self.t_start, self.t_end)
+    }
+
+    fn latest_time_window(&self, t_start: i64, t_end: i64) -> Option<i64> {
+        self.graph
+            .latest_time_window(self.actual_start(t_start), self.actual_end(t_end))
+    }
+
     fn vertices_len(&self) -> usize {
         self.graph.vertices_len_window(self.t_start, self.t_end)
     }
@@ -78,15 +96,15 @@ impl<G: GraphViewOps> GraphViewInternalOps for WindowedGraph<G> {
             .edges_len_window(self.actual_start(t_start), self.actual_end(t_end))
     }
 
-    fn has_edge_ref<V1: Into<VertexRef>, V2: Into<VertexRef>>(&self, src: V1, dst: V2) -> bool {
+    fn has_edge_ref(&self, src: VertexRef, dst: VertexRef) -> bool {
         self.graph
             .has_edge_ref_window(src, dst, self.t_start, self.t_end)
     }
 
-    fn has_edge_ref_window<V1: Into<VertexRef>, V2: Into<VertexRef>>(
+    fn has_edge_ref_window(
         &self,
-        src: V1,
-        dst: V2,
+        src: VertexRef,
+        dst: VertexRef,
         t_start: i64,
         t_end: i64,
     ) -> bool {
@@ -94,12 +112,12 @@ impl<G: GraphViewOps> GraphViewInternalOps for WindowedGraph<G> {
             .has_edge_ref_window(src, dst, self.actual_start(t_start), self.actual_end(t_end))
     }
 
-    fn has_vertex_ref<V: Into<VertexRef>>(&self, v: V) -> bool {
+    fn has_vertex_ref(&self, v: VertexRef) -> bool {
         self.graph
             .has_vertex_ref_window(v, self.t_start, self.t_end)
     }
 
-    fn has_vertex_ref_window<V: Into<VertexRef>>(&self, v: V, t_start: i64, t_end: i64) -> bool {
+    fn has_vertex_ref_window(&self, v: VertexRef, t_start: i64, t_end: i64) -> bool {
         self.graph
             .has_vertex_ref_window(v, self.actual_start(t_start), self.actual_end(t_end))
     }
@@ -162,60 +180,15 @@ impl<G: GraphViewOps> GraphViewInternalOps for WindowedGraph<G> {
         )
     }
 
-    fn vertices_par<O, F>(&self, f: F) -> Box<dyn Iterator<Item = O>>
-    where
-        O: Send + 'static,
-        F: Fn(VertexRef) -> O + Send + Sync + Copy,
-    {
-        self.graph.vertices_window_par(self.t_start, self.t_end, f)
-    }
-
-    fn fold_par<S, F, F2>(&self, f: F, agg: F2) -> Option<S>
-    where
-        S: Send + 'static,
-        F: Fn(VertexRef) -> S + Send + Sync + Copy,
-        F2: Fn(S, S) -> S + Sync + Send + Copy,
-    {
-        self.graph.fold_window_par(self.t_start, self.t_end, f, agg)
-    }
-
-    fn vertices_window_par<O, F>(
-        &self,
-        t_start: i64,
-        t_end: i64,
-        f: F,
-    ) -> Box<dyn Iterator<Item = O>>
-    where
-        O: Send + 'static,
-        F: Fn(VertexRef) -> O + Send + Sync + Copy,
-    {
-        self.graph
-            .vertices_window_par(self.actual_start(t_start), self.actual_end(t_end), f)
-    }
-
-    fn fold_window_par<S, F, F2>(&self, t_start: i64, t_end: i64, f: F, agg: F2) -> Option<S>
-    where
-        S: Send + 'static,
-        F: Fn(VertexRef) -> S + Send + Sync + Copy,
-        F2: Fn(S, S) -> S + Sync + Send + Copy,
-    {
-        self.graph
-            .fold_window_par(self.actual_start(t_start), self.actual_end(t_end), f, agg)
-    }
-
-    fn edge_ref<V1: Into<VertexRef>, V2: Into<VertexRef>>(
-        &self,
-        src: V1,
-        dst: V2,
-    ) -> Option<EdgeRef> {
+    fn edge_ref(&self, src: VertexRef, dst: VertexRef) -> Option<EdgeRef> {
         self.graph
             .edge_ref_window(src, dst, self.t_start, self.t_end)
     }
 
-    fn edge_ref_window<V1: Into<VertexRef>, V2: Into<VertexRef>>(
+    fn edge_ref_window(
         &self,
-        src: V1,
-        dst: V2,
+        src: VertexRef,
+        dst: VertexRef,
         t_start: i64,
         t_end: i64,
     ) -> Option<EdgeRef> {
@@ -386,86 +359,33 @@ impl<G: GraphViewOps> GraphViewInternalOps for WindowedGraph<G> {
     fn num_shards(&self) -> usize {
         self.graph.num_shards()
     }
+
+    fn vertices_shard(&self, shard_id: usize) -> Box<dyn Iterator<Item = VertexRef> + Send> {
+        self.graph
+            .vertices_shard_window(shard_id, self.t_start, self.t_end)
+    }
+
+    fn vertices_shard_window(
+        &self,
+        shard_id: usize,
+        t_start: i64,
+        t_end: i64,
+    ) -> Box<dyn Iterator<Item = VertexRef> + Send> {
+        self.graph.vertices_shard_window(
+            shard_id,
+            self.actual_start(t_start),
+            self.actual_end(t_end),
+        )
+    }
 }
 
-impl<G: GraphViewOps> WindowedGraph<G> {
+impl<G: GraphViewInternalOps> WindowedGraph<G> {
     pub fn new(graph: G, t_start: i64, t_end: i64) -> Self {
         WindowedGraph {
             graph,
             t_start,
             t_end,
         }
-    }
-}
-
-impl<G: GraphViewOps> GraphViewOps for WindowedGraph<G> {
-    fn num_vertices(&self) -> usize {
-        // FIXME: This needs Optimising badly
-        self.vertices().iter().count()
-    }
-
-    fn earliest_time(&self) -> Option<i64> {
-        // FIXME: This should return the actual earliest_time in the view, need low-level method
-        Some(self.actual_start(self.graph.earliest_time()?))
-    }
-
-    fn latest_time(&self) -> Option<i64> {
-        // FIXME: This should return the actual latest_time in the view, need low-level method
-        Some(self.actual_end(self.graph.latest_time()?))
-    }
-
-    fn num_edges(&self) -> usize {
-        // FIXME: This needs Optimising badly
-        self.edges().count()
-    }
-
-    fn has_vertex<T: Into<VertexRef>>(&self, v: T) -> bool {
-        self.graph
-            .has_vertex_ref_window(v, self.t_start, self.t_end)
-    }
-
-    fn has_edge<T: Into<VertexRef>>(&self, src: T, dst: T) -> bool {
-        self.graph
-            .has_edge_ref_window(src, dst, self.t_start, self.t_end)
-    }
-
-    fn vertex<T: Into<VertexRef>>(&self, v: T) -> Option<VertexView<Self>> {
-        let v = v.into().g_id;
-        self.graph
-            .vertex_ref_window(v, self.t_start, self.t_end)
-            .map(move |vv| VertexView::new(self.clone(), vv))
-    }
-
-    fn vertices(&self) -> Vertices<Self> {
-        let g = self.clone();
-        Vertices::new(g)
-    }
-
-    fn edge<T: Into<VertexRef>>(&self, src: T, dst: T) -> Option<EdgeView<Self>> {
-        self.graph
-            .edge_ref_window(src, dst, self.t_start, self.t_end)
-            .map(|ev| EdgeView::new(self.clone(), ev))
-    }
-
-    fn edges(&self) -> Box<dyn Iterator<Item = EdgeView<Self>> + Send> {
-        Box::new(self.vertices().iter().flat_map(|v| v.out_edges()))
-    }
-
-    fn vertices_shard(&self, shard: usize) -> Box<dyn Iterator<Item = VertexView<Self>> + Send> {
-        let g = self.clone();
-        Box::new(
-            self.graph
-                .vertex_refs_window_shard(shard, self.t_start, self.t_end)
-                .map(move |vv| VertexView::new(g.clone(), vv)),
-        )
-    }
-
-    fn window(&self, t_start: i64, t_end: i64) -> WindowedGraph<Self> {
-        WindowedGraph::new(
-            self.clone(),
-            self.actual_start(t_start),
-            self.actual_end(t_end),
-        )
     }
 }
 

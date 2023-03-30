@@ -1,5 +1,4 @@
 use crate::graph::Graph;
-use crate::view_api::internal::GraphViewInternalOps;
 use crate::view_api::*;
 use rand::seq::SliceRandom;
 
@@ -25,11 +24,8 @@ use rand::seq::SliceRandom;
 /// ```
 pub fn random_attachment(graph: &Graph, vertices_to_add: usize, edges_per_step: usize) {
     let rng = &mut rand::thread_rng();
-    let mut latest_time = match graph.latest_time() {
-        None => 0,
-        Some(time) => time,
-    };
-    let mut ids: Vec<u64> = graph.vertex_ids_window(i64::MIN, i64::MAX).collect();
+    let mut latest_time = graph.latest_time().unwrap_or(0);
+    let mut ids: Vec<u64> = graph.vertices().id().collect();
     let mut max_id = match ids.iter().max() {
         Some(id) => *id,
         None => 0,
@@ -38,7 +34,10 @@ pub fn random_attachment(graph: &Graph, vertices_to_add: usize, edges_per_step: 
     while ids.len() < edges_per_step {
         max_id += 1;
         latest_time += 1;
-        graph.add_vertex(latest_time, max_id, &vec![]).map_err(|err| println!("{:?}", err)).ok();
+        graph
+            .add_vertex(latest_time, max_id, &vec![])
+            .map_err(|err| println!("{:?}", err))
+            .ok();
         ids.push(max_id);
     }
 
@@ -69,7 +68,10 @@ mod random_graph_test {
     fn only_nodes() {
         let graph = Graph::new(2);
         for i in 0..10 {
-            graph.add_vertex(i, i as u64, &vec![]).map_err(|err| println!("{:?}", err)).ok();
+            graph
+                .add_vertex(i, i as u64, &vec![])
+                .map_err(|err| println!("{:?}", err))
+                .ok();
         }
 
         random_attachment(&graph, 1000, 5);

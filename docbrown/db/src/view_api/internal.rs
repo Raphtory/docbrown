@@ -1,9 +1,16 @@
 use docbrown_core::tgraph::{EdgeRef, VertexRef};
 use docbrown_core::tgraph_shard::TGraphShard;
 use docbrown_core::{Direction, Prop};
+use rayon::prelude::*;
 use std::collections::HashMap;
+use std::sync::Arc;
 
 pub trait GraphViewInternalOps {
+    fn earliest_time_global(&self) -> Option<i64>;
+    fn earliest_time_window(&self, t_start: i64, t_end: i64) -> Option<i64>;
+    fn latest_time_global(&self) -> Option<i64>;
+    fn latest_time_window(&self, t_start: i64, t_end: i64) -> Option<i64>;
+
     fn vertices_len(&self) -> usize;
 
     fn vertices_len_window(&self, t_start: i64, t_end: i64) -> usize;
@@ -12,19 +19,14 @@ pub trait GraphViewInternalOps {
 
     fn edges_len_window(&self, t_start: i64, t_end: i64) -> usize;
 
-    fn has_edge_ref<V1: Into<VertexRef>, V2: Into<VertexRef>>(&self, src: V1, dst: V2) -> bool;
+    fn has_edge_ref(&self, src: VertexRef, dst: VertexRef) -> bool;
 
-    fn has_edge_ref_window<V1: Into<VertexRef>, V2: Into<VertexRef>>(
-        &self,
-        src: V1,
-        dst: V2,
-        t_start: i64,
-        t_end: i64,
-    ) -> bool;
+    fn has_edge_ref_window(&self, src: VertexRef, dst: VertexRef, t_start: i64, t_end: i64)
+        -> bool;
 
-    fn has_vertex_ref<V: Into<VertexRef>>(&self, v: V) -> bool;
+    fn has_vertex_ref(&self, v: VertexRef) -> bool;
 
-    fn has_vertex_ref_window<V: Into<VertexRef>>(&self, v: V, t_start: i64, t_end: i64) -> bool;
+    fn has_vertex_ref_window(&self, v: VertexRef, t_start: i64, t_end: i64) -> bool;
 
     fn degree(&self, v: VertexRef, d: Direction) -> usize;
 
@@ -55,43 +57,12 @@ pub trait GraphViewInternalOps {
         t_end: i64,
     ) -> Box<dyn Iterator<Item = VertexRef> + Send>;
 
-    fn vertices_par<O, F>(&self, f: F) -> Box<dyn Iterator<Item = O>>
-    where
-        O: Send + 'static,
-        F: Fn(VertexRef) -> O + Send + Sync + Copy;
+    fn edge_ref(&self, src: VertexRef, dst: VertexRef) -> Option<EdgeRef>;
 
-    fn fold_par<S, F, F2>(&self, f: F, agg: F2) -> Option<S>
-    where
-        S: Send + 'static,
-        F: Fn(VertexRef) -> S + Send + Sync + Copy,
-        F2: Fn(S, S) -> S + Sync + Send + Copy;
-
-    fn vertices_window_par<O, F>(
+    fn edge_ref_window(
         &self,
-        t_start: i64,
-        t_end: i64,
-        f: F,
-    ) -> Box<dyn Iterator<Item = O>>
-    where
-        O: Send + 'static,
-        F: Fn(VertexRef) -> O + Send + Sync + Copy;
-
-    fn fold_window_par<S, F, F2>(&self, t_start: i64, t_end: i64, f: F, agg: F2) -> Option<S>
-    where
-        S: Send + 'static,
-        F: Fn(VertexRef) -> S + Send + Sync + Copy,
-        F2: Fn(S, S) -> S + Sync + Send + Copy;
-
-    fn edge_ref<V1: Into<VertexRef>, V2: Into<VertexRef>>(
-        &self,
-        src: V1,
-        dst: V2,
-    ) -> Option<EdgeRef>;
-
-    fn edge_ref_window<V1: Into<VertexRef>, V2: Into<VertexRef>>(
-        &self,
-        src: V1,
-        dst: V2,
+        src: VertexRef,
+        dst: VertexRef,
         t_start: i64,
         t_end: i64,
     ) -> Option<EdgeRef>;
@@ -189,4 +160,135 @@ pub trait GraphViewInternalOps {
     ) -> HashMap<String, Vec<(i64, Prop)>>;
 
     fn num_shards(&self) -> usize;
+
+    fn vertices_shard(&self, shard_id: usize) -> Box<dyn Iterator<Item = VertexRef> + Send>;
+
+    fn vertices_shard_window(
+        &self,
+        shard_id: usize,
+        t_start: i64,
+        t_end: i64,
+    ) -> Box<dyn Iterator<Item = VertexRef> + Send>;
+}
+
+pub trait ParIterGraphOps {
+    fn vertices_par_map<O, F>(&self, f: F) -> Box<dyn Iterator<Item = O>>
+    where
+        O: Send + 'static,
+        F: Fn(VertexRef) -> O + Send + Sync + Copy;
+
+    fn vertices_par_fold<S, F, F2>(&self, f: F, agg: F2) -> Option<S>
+    where
+        S: Send + 'static,
+        F: Fn(VertexRef) -> S + Send + Sync + Copy,
+        F2: Fn(S, S) -> S + Sync + Send + Copy;
+
+    fn vertices_window_par_map<O, F>(
+        &self,
+        t_start: i64,
+        t_end: i64,
+        f: F,
+    ) -> Box<dyn Iterator<Item = O>>
+    where
+        O: Send + 'static,
+        F: Fn(VertexRef) -> O + Send + Sync + Copy;
+
+    fn vertices_window_par_fold<S, F, F2>(
+        &self,
+        t_start: i64,
+        t_end: i64,
+        f: F,
+        agg: F2,
+    ) -> Option<S>
+    where
+        S: Send + 'static,
+        F: Fn(VertexRef) -> S + Send + Sync + Copy,
+        F2: Fn(S, S) -> S + Sync + Send + Copy;
+}
+
+impl<G: GraphViewInternalOps + Send + Sync> ParIterGraphOps for G {
+    fn vertices_par_map<O, F>(&self, f: F) -> Box<dyn Iterator<Item = O>>
+    where
+        O: Send + 'static,
+        F: Fn(VertexRef) -> O + Send + Sync + Copy,
+    {
+        let (tx, rx) = flume::unbounded();
+
+        let arc_tx = Arc::new(tx);
+        (0..self.num_shards())
+            .into_par_iter()
+            .flat_map(|shard_id| self.vertices_shard(shard_id).par_bridge().map(f))
+            .for_each(move |o| {
+                arc_tx.send(o).unwrap();
+            });
+
+        Box::new(rx.into_iter())
+    }
+
+    fn vertices_par_fold<S, F, F2>(&self, f: F, agg: F2) -> Option<S>
+    where
+        S: Send + 'static,
+        F: Fn(VertexRef) -> S + Send + Sync + Copy,
+        F2: Fn(S, S) -> S + Sync + Send + Copy,
+    {
+        (0..self.num_shards())
+            .into_par_iter()
+            .flat_map(|shard_id| {
+                self.vertices_shard(shard_id)
+                    .par_bridge()
+                    .map(f)
+                    .reduce_with(agg)
+            })
+            .reduce_with(agg)
+    }
+
+    fn vertices_window_par_map<O, F>(
+        &self,
+        t_start: i64,
+        t_end: i64,
+        f: F,
+    ) -> Box<dyn Iterator<Item = O>>
+    where
+        O: Send + 'static,
+        F: Fn(VertexRef) -> O + Send + Sync + Copy,
+    {
+        let (tx, rx) = flume::unbounded();
+
+        let arc_tx = Arc::new(tx);
+        (0..self.num_shards())
+            .into_par_iter()
+            .flat_map(|shard_id| {
+                self.vertices_shard_window(shard_id, t_start, t_end)
+                    .par_bridge()
+                    .map(f)
+            })
+            .for_each(move |o| {
+                arc_tx.send(o).unwrap();
+            });
+
+        Box::new(rx.into_iter())
+    }
+
+    fn vertices_window_par_fold<S, F, F2>(
+        &self,
+        t_start: i64,
+        t_end: i64,
+        f: F,
+        agg: F2,
+    ) -> Option<S>
+    where
+        S: Send + 'static,
+        F: Fn(VertexRef) -> S + Send + Sync + Copy,
+        F2: Fn(S, S) -> S + Sync + Send + Copy,
+    {
+        (0..self.num_shards())
+            .into_par_iter()
+            .flat_map(|shard| {
+                self.vertices_shard_window(shard, t_start, t_end)
+                    .par_bridge()
+                    .map(f)
+                    .reduce_with(agg)
+            })
+            .reduce_with(agg)
+    }
 }
