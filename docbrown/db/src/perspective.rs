@@ -9,7 +9,31 @@
 //! These perpectives are used when querying the graph to determine the time bounds.
 //!
 //! # Examples
+//! ```rust
+//! use docbrown_db::algorithms::degree::average_degree;
+//! use docbrown_db::graph::Graph;
+//! use docbrown_db::perspective::Perspective;
+//! use docbrown_db::view_api::*;
 //!
+//! let graph = Graph::new(1);
+//! graph.add_edge(0, 1, 2, &vec![]);
+//! graph.add_edge(0, 1, 3, &vec![]);
+//! graph.add_edge(1, 2, 3, &vec![]);
+//! graph.add_edge(2, 2, 4, &vec![]);
+//! graph.add_edge(3, 2, 1, &vec![]);
+//!
+//! let start = graph.earliest_time().unwrap();
+//! let end = graph.latest_time().unwrap();
+//! let perspectives = Perspective::expanding(1, start, end);
+//!
+//! // A rolling perspective with a window size of 2 and a step size of 1
+//! let view_persp = graph.through_perspectives(perspectives);
+//!
+//! view_persp.iter().for_each(|(window)| {
+//!   println!("Degree: {:?}", average_degree(&window.graph));
+//! });
+//!
+//! ```
 use std::ops::Range;
 
 /// A struct representing a time range from `start` to `end`.
