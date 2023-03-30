@@ -25,12 +25,14 @@ use docbrown_core::{
 
 use serde::{Deserialize, Serialize};
 
+/// A docbrown graph in a frozen state that is read-only.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ImmutableGraph {
     pub(crate) nr_shards: usize,
     pub(crate) shards: Vec<ImmutableTGraphShard<TemporalGraph>>,
 }
 
+/// Failure if there is an issue with unfreezing a frozen graph
 #[derive(Debug, PartialEq)]
 pub struct UnfreezeFailure;
 
