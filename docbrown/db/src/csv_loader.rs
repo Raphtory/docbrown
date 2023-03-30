@@ -2,7 +2,7 @@
 //!
 //! # Example
 //! ```no_run
-//!  use docbrown_db::csv_loader::csv::CsvLoader;//!
+//!  use docbrown_db::csv_loader::csv::CsvLoader;
 //!  use docbrown_db::graph::Graph;
 //!
 //!  let g = Graph::new(2);//!
