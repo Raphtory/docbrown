@@ -45,19 +45,18 @@ impl<G: GraphViewInternalOps + 'static + Send + Sync> EdgeViewOps for EdgeView<G
 
     fn property(&self,name:String,include_static:bool) ->  Result<Option<Prop>, GraphError> {
         let props= self.property_history(name.clone())?;
-
-        match props.last() {
+        Ok(match props.last() {
             None => {
                 if include_static {
                     match self.graph.static_edge_prop(self.edge, name)? {
-                        None => { Ok(None) }
-                        Some(prop) => { Ok(Some(prop)) }
+                        None => { None}
+                        Some(prop) => { Some(prop) }
                     }
                 }
                 else {Ok(None)}
             },
-            Some((_,prop)) => {Ok(Some(prop.clone()))}
-        }
+            Some((_,prop)) => {Some(prop.clone())}
+        })
     }
     fn property_history(&self,name:String) -> Result<Vec<(i64, Prop)>,GraphError> {
         //MIN MAX given as I can't get the real times from here and the internal graph sorts it out

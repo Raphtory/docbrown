@@ -755,7 +755,7 @@ impl Program for TriangleCountS2 {
     }
 
     fn post_eval(&self, c: &mut GlobalEvalState) {
-        let _ = c.global_agg(state::def::sum::<usize>(1));
+        let _ = c.global_agg(matstate::def::sum::<usize>(1));
         c.step(|_| false)
     }
 
