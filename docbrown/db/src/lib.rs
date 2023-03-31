@@ -92,7 +92,7 @@
 //! // The graph.vertex option returns a result of an option,
 //! // so we need to unwrap the result and the option or
 //! // we can use this if let instead
-//! if let Ok(Some(gandalf)) = graph.vertex("Gandalf") {
+//! if let Some(gandalf) = graph.vertex("Gandalf") {
 //!    println!("Gandalf in degree: {:?}", gandalf.in_degree());
 //!   println!("Gandalf out degree: {:?}", gandalf.out_degree());
 //! }

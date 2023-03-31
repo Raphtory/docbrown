@@ -29,12 +29,12 @@
 //! use docbrown_db::view_api::*;
 //!
 //! let graph = Graph::new(2);
-//! graph.add_edge(0, 1, 2, &vec![]).unwrap();
-//! graph.add_edge(1, 1, 3, &vec![]).unwrap();
-//! graph.add_edge(2, 2, 3, &vec![]).unwrap();
+//! graph.add_edge(0, 1, 2, &vec![]);
+//! graph.add_edge(1, 1, 3, &vec![]);
+//! graph.add_edge(2, 2, 3, &vec![]);
 //!
 //!  let wg = graph.window(0, 1);
-//!  assert_eq!(wg.edge(1, 2).unwrap().unwrap().src().id(), 1);
+//!  assert_eq!(wg.edge(1, 2).unwrap().src().id(), 1);
 //! ```
 
 use crate::perspective::Perspective;
@@ -156,7 +156,7 @@ impl<G: GraphViewInternalOps> GraphViewInternalOps for WindowedGraph<G> {
 
     /// Returns the number of vertices in the windowed view.
     fn vertices_len(&self) -> usize {
-        Ok(self.graph.vertices_len_window(self.t_start, self.t_end))
+        self.graph.vertices_len_window(self.t_start, self.t_end)
     }
 
     /// Returns the number of vertices in the windowed view, for a window specified by start and end times.
@@ -175,8 +175,8 @@ impl<G: GraphViewInternalOps> GraphViewInternalOps for WindowedGraph<G> {
     }
 
     /// Returns the number of edges in the windowed view.
-    fn edges_len(&self) -> Result<usize, GraphError> {
-        Ok(self.graph.edges_len_window(self.t_start, self.t_end))
+    fn edges_len(&self) -> usize {
+        self.graph.edges_len_window(self.t_start, self.t_end)
     }
 
     /// Returns the number of edges in the windowed view, for a window specified by start and end times.
@@ -208,7 +208,7 @@ impl<G: GraphViewInternalOps> GraphViewInternalOps for WindowedGraph<G> {
     /// # Errors
     ///
     /// Returns an error if either `src` or `dst` is not a valid vertex.
-    fn has_edge_ref(&self, src: VertexRef, dst: VertexRef) -> Result<bool, GraphError> {
+    fn has_edge_ref(&self, src: VertexRef, dst: VertexRef) -> bool {
         self.graph
             .has_edge_ref_window(src, dst, self.t_start, self.t_end)
     }
@@ -235,7 +235,7 @@ impl<G: GraphViewInternalOps> GraphViewInternalOps for WindowedGraph<G> {
         dst: VertexRef,
         t_start: i64,
         t_end: i64,
-    ) -> Result<bool, GraphError> {
+    ) -> bool {
         self.graph
             .has_edge_ref_window(src, dst, self.actual_start(t_start), self.actual_end(t_end))
     }
@@ -253,7 +253,7 @@ impl<G: GraphViewInternalOps> GraphViewInternalOps for WindowedGraph<G> {
     /// # Errors
     ///
     /// Returns an error if `v` is not a valid vertex.
-    fn has_vertex_ref(&self, v: VertexRef) -> Result<bool, GraphError> {
+    fn has_vertex_ref(&self, v: VertexRef) -> bool{
         self.graph
             .has_vertex_ref_window(v, self.t_start, self.t_end)
     }
@@ -278,7 +278,7 @@ impl<G: GraphViewInternalOps> GraphViewInternalOps for WindowedGraph<G> {
         v: VertexRef,
         t_start: i64,
         t_end: i64,
-    ) -> Result<bool, GraphError> {
+    ) -> bool {
         self.graph
             .has_vertex_ref_window(v, self.actual_start(t_start), self.actual_end(t_end))
     }
@@ -297,7 +297,7 @@ impl<G: GraphViewInternalOps> GraphViewInternalOps for WindowedGraph<G> {
     /// # Errors
     ///
     /// Returns an error if `v` is not a valid vertex.
-    fn degree(&self, v: VertexRef, d: Direction) -> Result<usize, GraphError> {
+    fn degree(&self, v: VertexRef, d: Direction) -> usize {
         self.graph.degree_window(v, self.t_start, self.t_end, d)
     }
 
@@ -323,7 +323,7 @@ impl<G: GraphViewInternalOps> GraphViewInternalOps for WindowedGraph<G> {
         t_start: i64,
         t_end: i64,
         d: Direction,
-    ) -> Result<usize, GraphError> {
+    ) -> usize {
         self.graph
             .degree_window(v, self.actual_start(t_start), self.actual_end(t_end), d)
     }
@@ -341,7 +341,7 @@ impl<G: GraphViewInternalOps> GraphViewInternalOps for WindowedGraph<G> {
     /// # Errors
     ///
     /// Returns an error if `v` is not a valid vertex.
-    fn vertex_ref(&self, v: u64) -> Result<Option<VertexRef>, GraphError> {
+    fn vertex_ref(&self, v: u64) -> Option<VertexRef> {
         self.graph.vertex_ref_window(v, self.t_start, self.t_end)
     }
 
@@ -365,7 +365,7 @@ impl<G: GraphViewInternalOps> GraphViewInternalOps for WindowedGraph<G> {
         v: u64,
         t_start: i64,
         t_end: i64,
-    ) -> Result<Option<VertexRef>, GraphError> {
+    ) -> Option<VertexRef> {
         self.graph
             .vertex_ref_window(v, self.actual_start(t_start), self.actual_end(t_end))
     }
@@ -444,7 +444,7 @@ impl<G: GraphViewInternalOps> GraphViewInternalOps for WindowedGraph<G> {
     /// # Errors
     ///
     /// Returns an error if `src` or `dst` are not valid vertices.
-    fn edge_ref(&self, src: VertexRef, dst: VertexRef) -> Result<Option<EdgeRef>, GraphError> {
+    fn edge_ref(&self, src: VertexRef, dst: VertexRef) -> Option<EdgeRef> {
         self.graph
             .edge_ref_window(src, dst, self.t_start, self.t_end)
     }
@@ -471,7 +471,7 @@ impl<G: GraphViewInternalOps> GraphViewInternalOps for WindowedGraph<G> {
         dst: VertexRef,
         t_start: i64,
         t_end: i64,
-    ) -> Result<Option<EdgeRef>, GraphError> {
+    ) -> Option<EdgeRef> {
         self.graph
             .edge_ref_window(src, dst, self.actual_start(t_start), self.actual_end(t_end))
     }
@@ -657,7 +657,7 @@ impl<G: GraphViewInternalOps> GraphViewInternalOps for WindowedGraph<G> {
     /// # Errors
     ///
     /// - `GraphError` - Raised if vertex or property does not exist
-    fn static_vertex_prop(&self, v: VertexRef, name: String) -> Result<Option<Prop>, GraphError> {
+    fn static_vertex_prop(&self, v: VertexRef, name: String) -> Option<Prop> {
         self.graph.static_vertex_prop(v, name)
     }
 
@@ -674,7 +674,7 @@ impl<G: GraphViewInternalOps> GraphViewInternalOps for WindowedGraph<G> {
     /// # Errors
     ///
     /// - `GraphError` - Raised if vertex or property does not exist
-    fn static_vertex_prop_keys(&self, v: VertexRef) -> Result<Vec<String>, GraphError> {
+    fn static_vertex_prop_keys(&self, v: VertexRef) -> Vec<String> {
         self.graph.static_vertex_prop_keys(v)
     }
 
@@ -696,7 +696,7 @@ impl<G: GraphViewInternalOps> GraphViewInternalOps for WindowedGraph<G> {
         &self,
         v: VertexRef,
         name: String,
-    ) -> Result<Vec<(i64, Prop)>, GraphError> {
+    ) -> Vec<(i64, Prop)> {
         self.graph
             .temporal_vertex_prop_vec_window(v, name, self.t_start, self.t_end)
     }
@@ -723,7 +723,7 @@ impl<G: GraphViewInternalOps> GraphViewInternalOps for WindowedGraph<G> {
         name: String,
         t_start: i64,
         t_end: i64,
-    ) -> Result<Vec<(i64, Prop)>, GraphError> {
+    ) -> Vec<(i64, Prop)> {
         self.graph.temporal_vertex_prop_vec_window(
             v,
             name,
@@ -748,7 +748,7 @@ impl<G: GraphViewInternalOps> GraphViewInternalOps for WindowedGraph<G> {
     fn temporal_vertex_props(
         &self,
         v: VertexRef,
-    ) -> Result<HashMap<String, Vec<(i64, Prop)>>, GraphError> {
+    ) -> HashMap<String, Vec<(i64, Prop)>>{
         self.graph
             .temporal_vertex_props_window(v, self.t_start, self.t_end)
     }
@@ -774,7 +774,7 @@ impl<G: GraphViewInternalOps> GraphViewInternalOps for WindowedGraph<G> {
         v: VertexRef,
         t_start: i64,
         t_end: i64,
-    ) -> Result<HashMap<String, Vec<(i64, Prop)>>, GraphError> {
+    ) -> HashMap<String, Vec<(i64, Prop)>> {
         self.graph.temporal_vertex_props_window(
             v,
             self.actual_start(t_start),
@@ -796,7 +796,7 @@ impl<G: GraphViewInternalOps> GraphViewInternalOps for WindowedGraph<G> {
     /// # Errors
     ///
     /// - `GraphError` - Raised if edge or property does not exist
-    fn static_edge_prop(&self, e: EdgeRef, name: String) -> Result<Option<Prop>, GraphError> {
+    fn static_edge_prop(&self, e: EdgeRef, name: String) -> Option<Prop> {
         self.graph.static_edge_prop(e, name)
     }
 
@@ -813,7 +813,7 @@ impl<G: GraphViewInternalOps> GraphViewInternalOps for WindowedGraph<G> {
     /// # Errors
     ///
     /// - `GraphError` - Raised if edge or property does not exist
-    fn static_edge_prop_keys(&self, e: EdgeRef) -> Result<Vec<String>, GraphError> {
+    fn static_edge_prop_keys(&self, e: EdgeRef) -> Vec<String> {
         self.graph.static_edge_prop_keys(e)
     }
 
@@ -835,7 +835,7 @@ impl<G: GraphViewInternalOps> GraphViewInternalOps for WindowedGraph<G> {
         &self,
         e: EdgeRef,
         name: String,
-    ) -> Result<Vec<(i64, Prop)>, GraphError> {
+    ) -> Vec<(i64, Prop)> {
         self.graph
             .temporal_edge_props_vec_window(e, name, self.t_start, self.t_end)
     }
@@ -862,7 +862,7 @@ impl<G: GraphViewInternalOps> GraphViewInternalOps for WindowedGraph<G> {
         name: String,
         t_start: i64,
         t_end: i64,
-    ) -> Result<Vec<(i64, Prop)>, GraphError> {
+    ) -> Vec<(i64, Prop)> {
         self.graph.temporal_edge_props_vec_window(
             e,
             name,
@@ -940,6 +940,7 @@ impl<G: GraphViewInternalOps> GraphViewInternalOps for WindowedGraph<G> {
 ///
 /// ```rust
 /// use docbrown_db::graph::Graph;
+/// use docbrown_db::view_api::GraphViewOps;
 ///
 /// let graph = Graph::new(1);
 /// graph.add_edge(0, 1, 2, &vec![]);
@@ -1001,7 +1002,7 @@ mod views_test {
         let actual = wg
             .vertices()
             .iter()
-            .map(|v| (v.id(), v.degree().unwrap()))
+            .map(|v| (v.id(), v.degree()))
             .collect::<Vec<_>>();
 
         let expected = vec![(2, 1), (1, 2)];
@@ -1027,8 +1028,8 @@ mod views_test {
         }
 
         let wg = g.window(i64::MIN, i64::MAX);
-        assert_eq!(wg.edge(1, 3).unwrap().unwrap().src().id(), 1);
-        assert_eq!(wg.edge(1, 3).unwrap().unwrap().dst().id(), 3);
+        assert_eq!(wg.edge(1, 3).unwrap().src().id(), 1);
+        assert_eq!(wg.edge(1, 3).unwrap().dst().id(), 3);
     }
 
     #[test]
@@ -1050,7 +1051,7 @@ mod views_test {
 
         let wg = WindowedGraph::new(g, -1, 1);
 
-        assert_eq!(wg.vertex(1).unwrap().unwrap().id(), 1);
+        assert_eq!(wg.vertex(1).unwrap().id(), 1);
     }
 
     #[test]
@@ -1072,7 +1073,7 @@ mod views_test {
         }
 
         let wg = WindowedGraph::new(g, 1, 2);
-        assert!(!wg.has_vertex(262).unwrap())
+        assert!(!wg.has_vertex(262))
     }
 
     #[quickcheck]
@@ -1105,7 +1106,7 @@ mod views_test {
 
         let (i, v) = vs.get(rand_test_index).expect("test index in range");
         if (start..end).contains(i) {
-            if wg.has_vertex(*v).unwrap() {
+            if wg.has_vertex(*v) {
                 TestResult::passed()
             } else {
                 TestResult::error(format!(
@@ -1115,7 +1116,7 @@ mod views_test {
                 ))
             }
         } else {
-            if !wg.has_vertex(*v).unwrap() {
+            if !wg.has_vertex(*v) {
                 TestResult::passed()
             } else {
                 TestResult::error(format!(
@@ -1155,7 +1156,7 @@ mod views_test {
 
         let (i, e) = edges.get(rand_test_index).expect("test index in range");
         if (start..end).contains(i) {
-            if wg.has_edge(e.0, e.1).unwrap() {
+            if wg.has_edge(e.0, e.1) {
                 TestResult::passed()
             } else {
                 TestResult::error(format!(
@@ -1165,7 +1166,7 @@ mod views_test {
                 ))
             }
         } else {
-            if !wg.has_edge(e.0, e.1).unwrap() {
+            if !wg.has_edge(e.0, e.1) {
                 TestResult::passed()
             } else {
                 TestResult::error(format!("Edge {:?} was in window {:?}", (i, e), start..end))
@@ -1191,7 +1192,7 @@ mod views_test {
         }
 
         let wg = WindowedGraph::new(g, window.start, window.end);
-        TestResult::from_bool(wg.num_edges().unwrap() == true_edge_count)
+        TestResult::from_bool(wg.num_edges() == true_edge_count)
     }
 
     #[quickcheck]
@@ -1206,7 +1207,7 @@ mod views_test {
             });
         let w = g.window(i64::MIN, i64::MAX);
         g.edges()
-            .all(|e| w.has_edge(e.src().id(), e.dst().id()).unwrap())
+            .all(|e| w.has_edge(e.src().id(), e.dst().id()))
     }
 
     #[quickcheck]
@@ -1220,7 +1221,7 @@ mod views_test {
             g.add_edge(t, 0, dst, &vec![]).unwrap();
         }
         let w = g.window(i64::MIN, i64::MAX);
-        w.num_edges().unwrap() == n
+        w.num_edges() == n
     }
 
     #[test]

@@ -89,7 +89,7 @@ pub mod algo {
     ///     graph.add_edge(ts, src, dst, &vec![]);
     /// }
     ///
-    /// let actual_tri_count = triangle_counting_fast(&graph, 0..96);
+    /// let actual_tri_count = triangle_counting_fast(&graph);
     /// ```
     ///
     pub fn triangle_counting_fast<G: GraphViewOps>(g: &G) -> Option<usize> {
@@ -422,7 +422,7 @@ impl<G: GraphViewOps> GlobalEvalState<G> {
     ///
     /// A new `Context` object.
     pub fn new(g: G, keep_past_state: bool) -> Self {
-        let n_parts = g.nr_shards;
+        let n_parts = g.num_shards();
         let mut states = Vec::with_capacity(n_parts);
         for _ in 0..n_parts {
             states.push(Arc::new(parking_lot::RwLock::new(Some(
@@ -819,6 +819,7 @@ impl<G: GraphViewOps> EvalVertexView<G> {
     pub fn neighbours_in(&self) -> impl Iterator<Item = Self> + '_ {
         self.vv
             .in_neighbours()
+            .iter()
             .map(move |vv| EvalVertexView::new(self.ss, vv, self.state.clone()))
     }
 
@@ -829,6 +830,7 @@ impl<G: GraphViewOps> EvalVertexView<G> {
     pub fn neighbours(&self) -> impl Iterator<Item = Self> + '_ {
         self.vv
             .neighbours()
+            .iter()
             .map(move |vv| EvalVertexView::new(self.ss, vv, self.state.clone()))
     }
 }

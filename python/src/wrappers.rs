@@ -1,3 +1,4 @@
+use pyo3::exceptions::PyException;
 use docbrown_core as db_c;
 use docbrown_db::perspective;
 use docbrown_db::perspective::PerspectiveSet;
@@ -91,8 +92,8 @@ impl NestedU64Iter {
     fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
         slf
     }
-    fn __next__(mut slf: PyRefMut<'_, Self>) -> PyResult<Option<IdIterable>> {
-        slf.iter.next().transpose()
+    fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<U64Iter> {
+        slf.iter.next()
     }
 }
 
@@ -221,4 +222,14 @@ impl From<PyPerspective> for perspective::Perspective {
 #[derive(Clone)]
 pub struct PyPerspectiveSet {
     pub(crate) ps: PerspectiveSet,
+}
+
+pub fn adapt_err<U, E>(result: Result<U, E>) -> PyResult<U>
+    where
+        E: std::error::Error,
+{
+    result.map_err(|e| {
+        let error_log = display_error_chain::DisplayErrorChain::new(&e).to_string();
+        PyException::new_err(error_log)
+    })
 }

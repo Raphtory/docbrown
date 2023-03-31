@@ -54,7 +54,7 @@ impl<G: GraphViewOps> VertexView<G> {
     ///
     /// A vector of `(i64, Prop)` tuples where the `i64` value is the timestamp of the
     /// property value and `Prop` is the value itself.
-    pub fn prop(&self, name: String) -> Result<Vec<(i64, Prop)>, GraphError> {
+    pub fn prop(&self, name: String) -> Vec<(i64, Prop)> {
         self.graph.temporal_vertex_prop_vec(self.vertex, name)
     }
 
@@ -65,7 +65,7 @@ impl<G: GraphViewOps> VertexView<G> {
     /// A HashMap with the names of the properties as keys and a vector of `(i64, Prop)` tuples
     /// as values. The `i64` value is the timestamp of the property value and `Prop`
     /// is the value itself.
-    pub fn props(&self) -> Result<HashMap<String, Vec<(i64, Prop)>>, GraphError> {
+    pub fn props(&self) -> HashMap<String, Vec<(i64, Prop)>> {
         self.graph.temporal_vertex_props(self.vertex)
     }
 
@@ -74,7 +74,7 @@ impl<G: GraphViewOps> VertexView<G> {
     /// # Returns
     ///
     /// The degree of this vertex.
-    pub fn degree(&self) -> Result<usize, GraphError> {
+    pub fn degree(&self) -> usize {
         self.graph.degree(self.vertex, Direction::BOTH)
     }
 
@@ -88,7 +88,7 @@ impl<G: GraphViewOps> VertexView<G> {
     /// # Returns
     ///
     /// The degree of this vertex in the given time window.
-    pub fn degree_window(&self, t_start: i64, t_end: i64) -> Result<usize, GraphError> {
+    pub fn degree_window(&self, t_start: i64, t_end: i64) -> usize {
         self.graph
             .degree_window(self.vertex, t_start, t_end, Direction::BOTH)
     }
@@ -98,7 +98,7 @@ impl<G: GraphViewOps> VertexView<G> {
     /// # Returns
     ///
     /// The in-degree of this vertex.
-    pub fn in_degree(&self) -> Result<usize, GraphError> {
+    pub fn in_degree(&self) -> usize{
         self.graph.degree(self.vertex, Direction::IN)
     }
 
@@ -112,7 +112,7 @@ impl<G: GraphViewOps> VertexView<G> {
     /// # Returns
     ///
     /// The in-degree of this vertex in the given time window.
-    pub fn in_degree_window(&self, t_start: i64, t_end: i64) -> Result<usize, GraphError> {
+    pub fn in_degree_window(&self, t_start: i64, t_end: i64) -> usize {
         self.graph
             .degree_window(self.vertex, t_start, t_end, Direction::IN)
     }
@@ -122,7 +122,7 @@ impl<G: GraphViewOps> VertexView<G> {
     /// # Returns
     ///
     /// The out-degree of this vertex.
-    pub fn out_degree(&self) -> Result<usize, GraphError> {
+    pub fn out_degree(&self) -> usize {
         self.graph.degree(self.vertex, Direction::OUT)
     }
 
@@ -378,9 +378,9 @@ impl<G: GraphViewOps> VertexListOps for Box<dyn Iterator<Item = VertexView<G>> +
     /// # Returns
     ///
     /// An iterator over the vertex properties in this list.
-    fn prop(self, name: String) -> Result<Self::ValueIterType<Vec<(i64, Prop)>>, GraphError> {
-        let r: Result<Vec<_>, _> = self.map(move |v| v.prop(name.clone())).collect();
-        Ok(Box::new(r?.into_iter()))
+    fn prop(self, name: String) -> Self::ValueIterType<Vec<(i64, Prop)>> {
+        let r: Vec<_> = self.map(move |v| v.prop(name.clone())).collect();
+        Box::new(r.into_iter())
     }
 
     /// Get all vertex properties in this list.
@@ -388,9 +388,9 @@ impl<G: GraphViewOps> VertexListOps for Box<dyn Iterator<Item = VertexView<G>> +
     /// # Returns
     ///
     /// An iterator over all vertex properties in this list.
-    fn props(self) -> Result<Self::ValueIterType<HashMap<String, Vec<(i64, Prop)>>>, GraphError> {
-        let r: Result<Vec<_>, _> = self.map(|v| v.props()).collect();
-        Ok(Box::new(r?.into_iter()))
+    fn props(self) -> Self::ValueIterType<HashMap<String, Vec<(i64, Prop)>>> {
+        let r: Vec<_> = self.map(|v| v.props()).collect();
+        Box::new(r.into_iter())
     }
 
     /// Get the degree of this vertices
@@ -398,9 +398,9 @@ impl<G: GraphViewOps> VertexListOps for Box<dyn Iterator<Item = VertexView<G>> +
     /// # Returns
     ///
     /// An iterator over the degree of this vertices
-    fn degree(self) -> Result<Self::ValueIterType<usize>, GraphError> {
-        let r: Result<Vec<_>, _> = self.map(|v| v.degree()).collect();
-        Ok(Box::new(r?.into_iter()))
+    fn degree(self) -> Self::ValueIterType<usize> {
+        let r: Vec<_> = self.map(|v| v.degree()).collect();
+        Box::new(r.into_iter())
     }
 
     /// Get the degree of this vertices in the given time window.
@@ -417,9 +417,9 @@ impl<G: GraphViewOps> VertexListOps for Box<dyn Iterator<Item = VertexView<G>> +
         self,
         t_start: i64,
         t_end: i64,
-    ) -> Result<Self::ValueIterType<usize>, GraphError> {
-        let r: Result<Vec<_>, _> = self.map(move |v| v.degree_window(t_start, t_end)).collect();
-        Ok(Box::new(r?.into_iter()))
+    ) -> Self::ValueIterType<usize> {
+        let r: Vec<_> = self.map(move |v| v.degree_window(t_start, t_end)).collect();
+        Box::new(r.into_iter())
     }
 
     /// Get the in degree of these vertices
@@ -427,9 +427,9 @@ impl<G: GraphViewOps> VertexListOps for Box<dyn Iterator<Item = VertexView<G>> +
     /// # Returns
     ///
     /// An iterator over the in degree of these vertices
-    fn in_degree(self) -> Result<Self::ValueIterType<usize>, GraphError> {
-        let r: Result<Vec<_>, _> = self.map(|v| v.in_degree()).collect();
-        Ok(Box::new(r?.into_iter()))
+    fn in_degree(self) -> Self::ValueIterType<usize> {
+        let r: Vec<_> = self.map(|v| v.in_degree()).collect();
+        Box::new(r.into_iter())
     }
 
     /// Get the in degree of these vertices in the given time window.
@@ -446,11 +446,11 @@ impl<G: GraphViewOps> VertexListOps for Box<dyn Iterator<Item = VertexView<G>> +
         self,
         t_start: i64,
         t_end: i64,
-    ) -> Result<Self::ValueIterType<usize>, GraphError> {
-        let r: Result<Vec<_>, _> = self
+    ) -> Self::ValueIterType<usize> {
+        let r: Vec<_> = self
             .map(move |v| v.in_degree_window(t_start, t_end))
             .collect();
-        Ok(Box::new(r?.into_iter()))
+        Box::new(r.into_iter())
     }
 
     /// Get the out degree of these vertices
@@ -458,9 +458,9 @@ impl<G: GraphViewOps> VertexListOps for Box<dyn Iterator<Item = VertexView<G>> +
     /// # Returns
     ///
     /// An iterator over the out degree of these vertices
-    fn out_degree(self) -> Result<Self::ValueIterType<usize>, GraphError> {
-        let r: Result<Vec<_>, _> = self.map(|v| v.out_degree()).collect();
-        Ok(Box::new(r?.into_iter()))
+    fn out_degree(self) -> Self::ValueIterType<usize> {
+        let r: Vec<_> = self.map(|v| v.out_degree()).collect();
+        Box::new(r.into_iter())
     }
 
     /// Get the out degree of these vertices in the given time window.
@@ -477,11 +477,11 @@ impl<G: GraphViewOps> VertexListOps for Box<dyn Iterator<Item = VertexView<G>> +
         self,
         t_start: i64,
         t_end: i64,
-    ) -> Result<Self::ValueIterType<usize>, GraphError> {
-        let r: Result<Vec<_>, _> = self
+    ) -> Self::ValueIterType<usize> {
+        let r: Vec<_> = self
             .map(move |v| v.out_degree_window(t_start, t_end))
             .collect();
-        Ok(Box::new(r?.into_iter()))
+        Box::new(r.into_iter())
     }
 
     /// Get the edges of these vertices.
@@ -631,38 +631,32 @@ mod vertex_test {
     fn test_all_degrees_window() {
         let g = crate::graph_loader::lotr_graph::lotr_graph(4);
 
-        assert_eq!(g.num_edges().unwrap(), 701);
-        assert_eq!(g.vertex("Gandalf").unwrap().unwrap().degree().unwrap(), 49);
+        assert_eq!(g.num_edges(), 701);
+        assert_eq!(g.vertex("Gandalf").unwrap().degree(), 49);
         assert_eq!(
             g.vertex("Gandalf")
                 .unwrap()
-                .unwrap()
-                .degree_window(1356, 24792)
-                .unwrap(),
+                .degree_window(1356, 24792),
             34
         );
         assert_eq!(
-            g.vertex("Gandalf").unwrap().unwrap().in_degree().unwrap(),
+            g.vertex("Gandalf").unwrap().in_degree(),
             24
         );
         assert_eq!(
             g.vertex("Gandalf")
                 .unwrap()
-                .unwrap()
-                .in_degree_window(1356, 24792)
-                .unwrap(),
+                .in_degree_window(1356, 24792),
             16
         );
         assert_eq!(
-            g.vertex("Gandalf").unwrap().unwrap().out_degree().unwrap(),
+            g.vertex("Gandalf").unwrap().out_degree(),
             35
         );
         assert_eq!(
             g.vertex("Gandalf")
                 .unwrap()
-                .unwrap()
-                .out_degree_window(1356, 24792)
-                .unwrap(),
+                .out_degree_window(1356, 24792),
             20
         );
     }
@@ -671,14 +665,13 @@ mod vertex_test {
     fn test_all_neighbours_window() {
         let g = crate::graph_loader::lotr_graph::lotr_graph(4);
 
-        assert_eq!(g.num_edges().unwrap(), 701);
+        assert_eq!(g.num_edges(), 701);
         assert_eq!(
-            g.vertex("Gandalf").unwrap().unwrap().neighbours().count(),
+            g.vertex("Gandalf").unwrap().neighbours().iter().count(),
             49
         );
         assert_eq!(
             g.vertex("Gandalf")
-                .unwrap()
                 .unwrap()
                 .neighbours_window(1356, 24792)
                 .iter()
@@ -688,7 +681,6 @@ mod vertex_test {
         assert_eq!(
             g.vertex("Gandalf")
                 .unwrap()
-                .unwrap()
                 .in_neighbours()
                 .iter()
                 .count(),
@@ -696,7 +688,6 @@ mod vertex_test {
         );
         assert_eq!(
             g.vertex("Gandalf")
-                .unwrap()
                 .unwrap()
                 .in_neighbours_window(1356, 24792)
                 .iter()
@@ -706,7 +697,6 @@ mod vertex_test {
         assert_eq!(
             g.vertex("Gandalf")
                 .unwrap()
-                .unwrap()
                 .out_neighbours()
                 .iter()
                 .count(),
@@ -714,7 +704,6 @@ mod vertex_test {
         );
         assert_eq!(
             g.vertex("Gandalf")
-                .unwrap()
                 .unwrap()
                 .out_neighbours_window(1356, 24792)
                 .iter()
@@ -727,32 +716,29 @@ mod vertex_test {
     fn test_all_edges_window() {
         let g = crate::graph_loader::lotr_graph::lotr_graph(4);
 
-        assert_eq!(g.num_edges().unwrap(), 701);
-        assert_eq!(g.vertex("Gandalf").unwrap().unwrap().edges().count(), 59);
+        assert_eq!(g.num_edges(), 701);
+        assert_eq!(g.vertex("Gandalf").unwrap().edges().count(), 59);
         assert_eq!(
             g.vertex("Gandalf")
-                .unwrap()
                 .unwrap()
                 .edges_window(1356, 24792)
                 .count(),
             36
         );
-        assert_eq!(g.vertex("Gandalf").unwrap().unwrap().in_edges().count(), 24);
+        assert_eq!(g.vertex("Gandalf").unwrap().in_edges().count(), 24);
         assert_eq!(
             g.vertex("Gandalf")
-                .unwrap()
                 .unwrap()
                 .in_edges_window(1356, 24792)
                 .count(),
             16
         );
         assert_eq!(
-            g.vertex("Gandalf").unwrap().unwrap().out_edges().count(),
+            g.vertex("Gandalf").unwrap().out_edges().count(),
             35
         );
         assert_eq!(
             g.vertex("Gandalf")
-                .unwrap()
                 .unwrap()
                 .out_edges_window(1356, 24792)
                 .count(),

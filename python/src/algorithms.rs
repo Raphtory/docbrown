@@ -15,12 +15,12 @@ use docbrown_db::algorithms::local_triangle_count::local_triangle_count as local
 use pyo3::prelude::*;
 
 #[pyfunction]
-pub(crate) fn local_triangle_count(g: &PyGraphView, v: u64) -> usize {
+pub(crate) fn local_triangle_count(g: &PyGraphView, v: u64) -> Option<usize> {
     local_triangle_count_rs(&g.graph, v)
 }
 
 #[pyfunction]
-pub(crate) fn local_clustering_coefficient(g: &PyGraphView, v: u64) -> f32 {
+pub(crate) fn local_clustering_coefficient(g: &PyGraphView, v: u64) -> Option<f32> {
     local_clustering_coefficient_rs(&g.graph, v)
 }
 

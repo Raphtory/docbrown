@@ -25,6 +25,7 @@
 //! ```rust
 //! use docbrown_db::algorithms::reciprocity::{all_local_reciprocity, global_reciprocity, local_reciprocity};
 //! use docbrown_db::graph::Graph;
+//! use docbrown_db::view_api::GraphViewOps;
 //! let g = Graph::new(1);
 //! let vs = vec![
 //!     (1, 1, 2),
@@ -74,24 +75,23 @@ pub fn global_reciprocity<G: GraphViewOps>(graph: &G) -> f64 {
 
 /// Returns the reciprocity of every vertex in the graph as a tuple of
 /// vector id and the reciprocity
-pub fn all_local_reciprocity<G: GraphViewOps>(graph: &G) -> Result<Vec<(u64, f64)>, GraphError> {
+pub fn all_local_reciprocity<G: GraphViewOps>(graph: &G) -> Vec<(u64, f64)>{
     graph
         .vertices()
         .into_iter()
         .map(|v| {
-            let lr = local_reciprocity(graph, v.id());
-            lr.map(move |r| (v.id(), r))
+            (v.id(), local_reciprocity(graph, v.id()))
         })
         .collect()
 }
 
 /// Returns the reciprocity value of a single vertex
-pub fn local_reciprocity<G: GraphViewOps>(graph: &G, v: u64) -> Result<f64, GraphError> {
-    match graph.vertex(v)? {
-        None => Ok(0 as f64),
+pub fn local_reciprocity<G: GraphViewOps>(graph: &G, v: u64) -> f64 {
+    match graph.vertex(v) {
+        None => 0 as f64,
         Some(vertex) => {
             let intersection = get_reciprocal_edge_count(&vertex);
-            Ok(2.0 * intersection.2 as f64 / (intersection.0 + intersection.1) as f64)
+            2.0 * intersection.2 as f64 / (intersection.0 + intersection.1) as f64
         }
     }
 }
@@ -122,13 +122,13 @@ mod reciprocity_test {
 
         let windowed_graph = g.window(0, 2);
         let expected = 0.0;
-        let actual = local_reciprocity(&windowed_graph, 5).unwrap();
+        let actual = local_reciprocity(&windowed_graph, 5);
         assert_eq!(actual, expected);
 
         let expected: Vec<(u64, f64)> =
             vec![(1, 0.4), (2, 2.0 / 3.0), (3, 0.5), (4, 2.0 / 3.0), (5, 0.0)];
 
-        let mut actual = all_local_reciprocity(&windowed_graph).unwrap();
+        let mut actual = all_local_reciprocity(&windowed_graph);
         actual.sort_by(|a, b| a.0.cmp(&b.0));
         assert_eq!(actual, expected);
 

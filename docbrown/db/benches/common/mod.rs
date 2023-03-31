@@ -226,7 +226,7 @@ pub fn run_analysis_benchmarks<F, G>(
     );
 
     bench(group, "num_vertices", parameter, |b: &mut Bencher| {
-        b.iter(|| graph.num_vertices().unwrap())
+        b.iter(|| graph.num_vertices())
     });
 
     bench(group, "max_id", parameter, |b: &mut Bencher| {
@@ -238,7 +238,7 @@ pub fn run_analysis_benchmarks<F, G>(
             graph
                 .vertices()
                 .into_iter()
-                .map(|v| v.degree().unwrap())
+                .map(|v| v.degree())
                 .max()
         })
     });
@@ -251,9 +251,8 @@ pub fn run_analysis_benchmarks<F, G>(
             let mut rng = rand::thread_rng();
             let v = graph
                 .vertex(*vertices.choose(&mut rng).expect("non-empty graph"))
-                .expect("existing vertex")
-                .expect("Some vertex");
-            b.iter(|| v.neighbours().degree().unwrap().max())
+                .expect("existing vertex");
+            b.iter(|| v.neighbours().degree().max())
         },
     );
 }

@@ -9,6 +9,7 @@ use pyo3::exceptions::{PyException, PyTypeError};
 use pyo3::prelude::*;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use crate::wrappers::adapt_err;
 
 #[pyclass(name="Graph", extends=PyGraphView)]
 pub struct PyGraph {
