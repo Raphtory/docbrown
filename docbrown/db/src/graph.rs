@@ -1,12 +1,7 @@
-use crate::graph_window::{GraphWindowSet, WindowedGraph};
-use crate::perspective::{Perspective, PerspectiveIterator, PerspectiveSet};
-use itertools::Itertools;
 use std::cmp::{max, min};
 use std::{
     collections::HashMap,
-    iter,
     path::{Path, PathBuf},
-    sync::Arc,
 };
 
 use docbrown_core::{
@@ -17,11 +12,7 @@ use docbrown_core::{
     Direction, Prop,
 };
 
-use crate::edge::EdgeView;
-use crate::vertex::VertexView;
-use crate::vertices::Vertices;
 use crate::view_api::internal::GraphViewInternalOps;
-use crate::view_api::*;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -521,6 +512,7 @@ mod db_tests {
     use uuid::Uuid;
 
     use crate::algorithms::local_triangle_count::local_triangle_count;
+    use crate::perspective::Perspective;
     use crate::view_api::GraphViewOps;
 
     use super::*;

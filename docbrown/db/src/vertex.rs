@@ -1,11 +1,9 @@
 use crate::edge::{EdgeList, EdgeView};
 use crate::path::{Operations, PathFromVertex};
-use crate::view_api::internal::GraphViewInternalOps;
 use crate::view_api::{GraphViewOps, VertexListOps};
 use docbrown_core::tgraph::VertexRef;
 use docbrown_core::{Direction, Prop};
 use std::collections::HashMap;
-use std::sync::Arc;
 
 #[derive(Debug, Clone)]
 pub struct VertexView<G: GraphViewOps> {
@@ -28,10 +26,6 @@ impl<G: GraphViewOps> From<&VertexView<G>> for VertexRef {
 impl<G: GraphViewOps> VertexView<G> {
     pub(crate) fn new(graph: G, vertex: VertexRef) -> VertexView<G> {
         VertexView { graph, vertex }
-    }
-
-    pub(crate) fn as_ref(&self) -> VertexRef {
-        self.vertex
     }
 }
 

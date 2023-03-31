@@ -2,6 +2,8 @@ pub mod csv {
     use bzip2::read::BzDecoder;
     use flate2; // 1.0
     use flate2::read::GzDecoder;
+    use rayon::prelude::*;
+    use regex::Regex;
     use serde::de::DeserializeOwned;
     use std::collections::VecDeque;
     use std::error::Error;
@@ -10,10 +12,6 @@ pub mod csv {
     use std::io::BufReader;
     use std::path::{Path, PathBuf};
     use std::{fs, io};
-
-    use crate::graph::Graph;
-    use rayon::prelude::*;
-    use regex::Regex;
 
     #[derive(Debug)]
     pub enum CsvErr {
@@ -259,12 +257,16 @@ mod csv_loader_test {
                     time,
                     src_id,
                     &vec![("name".to_string(), Prop::Str("Character".to_string()))],
-                ).map_err(|err| println!("{:?}", err)).ok();
+                )
+                .map_err(|err| println!("{:?}", err))
+                .ok();
                 g.add_vertex(
                     time,
                     dst_id,
                     &vec![("name".to_string(), Prop::Str("Character".to_string()))],
-                ).map_err(|err| println!("{:?}", err)).ok();
+                )
+                .map_err(|err| println!("{:?}", err))
+                .ok();
                 g.add_edge(
                     time,
                     src_id,

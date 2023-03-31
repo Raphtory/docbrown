@@ -1,20 +1,12 @@
-use crate::graph::Graph;
 use crate::perspective::Perspective;
+use crate::view_api::internal::GraphViewInternalOps;
+use crate::view_api::GraphViewOps;
 use docbrown_core::{
     tgraph::{EdgeRef, VertexRef},
     Direction, Prop,
 };
-
-use crate::edge::EdgeView;
-use crate::vertex::VertexView;
-use crate::vertices::Vertices;
-use crate::view_api::internal::GraphViewInternalOps;
-use crate::view_api::GraphViewOps;
-use crate::view_api::*;
-use docbrown_core::tgraph_shard::TGraphShard;
-use docbrown_core::vertex::InputVertex;
 use std::cmp::{max, min};
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
 
 pub struct GraphWindowSet<G: GraphViewOps> {
     pub graph: G,

@@ -1,4 +1,3 @@
-use crate::tgraph::VertexRef;
 use crate::{utils, Prop};
 
 pub trait InputVertex {

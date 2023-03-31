@@ -2,7 +2,6 @@ use crate::dynamic::DynamicGraph;
 use crate::vertex::PyVertex;
 use crate::wrappers::Prop;
 use docbrown_db::edge::EdgeView;
-use docbrown_db::view_api::GraphViewOps;
 use itertools::Itertools;
 use pyo3::{pyclass, pymethods, PyRef, PyRefMut};
 

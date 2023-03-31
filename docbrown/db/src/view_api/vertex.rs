@@ -1,4 +1,3 @@
-use crate::path::PathFromVertex;
 use crate::vertex::VertexView;
 use crate::view_api::edge::EdgeListOps;
 use crate::view_api::GraphViewOps;

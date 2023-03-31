@@ -1,10 +1,8 @@
 use crate::vertex::VertexView;
-use crate::view_api::internal::GraphViewInternalOps;
 use crate::view_api::{EdgeListOps, GraphViewOps};
 use docbrown_core::tgraph::{EdgeRef, VertexRef};
 use docbrown_core::Prop;
 use std::fmt::{Debug, Formatter};
-use std::sync::Arc;
 
 pub struct EdgeView<G: GraphViewOps> {
     graph: G,
@@ -79,4 +77,4 @@ impl<G: GraphViewOps> EdgeListOps for Box<dyn Iterator<Item = EdgeView<G>> + Sen
     }
 }
 
-pub type EdgeList<G: GraphViewOps> = Box<dyn Iterator<Item = EdgeView<G>> + Send>;
+pub type EdgeList<G> = Box<dyn Iterator<Item = EdgeView<G>> + Send>;

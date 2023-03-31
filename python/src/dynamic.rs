@@ -59,7 +59,7 @@ impl GraphViewInternalOps for DynamicGraph {
     }
 
     fn has_edge_ref(&self, src: VertexRef, dst: VertexRef) -> bool {
-        self.has_edge_ref(src, dst)
+        self.0.has_edge_ref(src, dst)
     }
 
     fn has_edge_ref_window(

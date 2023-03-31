@@ -1,15 +1,6 @@
-use itertools::Itertools;
-use pyo3::prelude::*;
-use std::borrow::Borrow;
-
 use docbrown_core as db_c;
-use docbrown_db::vertices::Vertices;
-use docbrown_db::view_api::*;
-use docbrown_db::{graph_window, perspective};
-
-use crate::edge::PyEdge;
-use crate::vertex::PyVertex;
-use crate::vertex::{PyPathFromGraph, PyPathFromVertex};
+use docbrown_db::perspective;
+use pyo3::prelude::*;
 
 #[derive(FromPyObject, Debug, Clone)]
 pub enum Prop {
@@ -228,5 +219,5 @@ impl From<Perspective> for perspective::Perspective {
 #[pyclass]
 #[derive(Clone)]
 pub struct PerspectiveSet {
-    pub(crate) ps: perspective::PerspectiveSet,
+    ps: perspective::PerspectiveSet,
 }

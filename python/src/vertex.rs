@@ -6,10 +6,8 @@ use docbrown_core::tgraph::VertexRef;
 use docbrown_db::path::{PathFromGraph, PathFromVertex};
 use docbrown_db::vertex::VertexView;
 use docbrown_db::vertices::Vertices;
-use docbrown_db::view_api::internal::GraphViewInternalOps;
-use docbrown_db::view_api::*;
 use itertools::Itertools;
-use pyo3::{pyclass, pymethods, Py, PyRef, PyRefMut, PyResult, Python};
+use pyo3::{pyclass, pymethods, PyRef, PyRefMut};
 use std::collections::HashMap;
 
 #[pyclass(name = "Vertex")]

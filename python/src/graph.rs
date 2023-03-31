@@ -1,22 +1,19 @@
 use crate::dynamic::DynamicGraph;
 use docbrown_core as dbc;
 use docbrown_core::vertex::InputVertex;
+use docbrown_db::graph;
 use docbrown_db::graph::Graph;
 use docbrown_db::view_api::*;
-use docbrown_db::{graph, perspective};
 use itertools::Itertools;
 use pyo3::exceptions;
 use pyo3::exceptions::{PyException, PyTypeError};
 use pyo3::prelude::*;
-use pyo3::types::PyIterator;
 use std::collections::HashMap;
-use std::fmt::Display;
 use std::path::{Path, PathBuf};
 
-use crate::graph_view::{PyGraphView, PyGraphWindowSet};
+use crate::graph_view::PyGraphView;
 use crate::util::extract_vertex_ref;
-use crate::wrappers::{PerspectiveSet, Prop};
-use crate::Perspective;
+use crate::wrappers::Prop;
 
 #[pyclass(name="Graph", extends=PyGraphView)]
 pub struct PyGraph {

@@ -1,5 +1,4 @@
 use docbrown_core::tgraph::{EdgeRef, VertexRef};
-use docbrown_core::tgraph_shard::TGraphShard;
 use docbrown_core::{Direction, Prop};
 use rayon::prelude::*;
 use std::collections::HashMap;

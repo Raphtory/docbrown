@@ -5,6 +5,8 @@ use std::{
     sync::Arc,
 };
 
+use crate::vertex::VertexView;
+use crate::view_api::GraphViewOps;
 use docbrown_core::{
     agg::Accumulator,
     state::{self, AccId, ShuffleComputeState},
@@ -13,10 +15,6 @@ use docbrown_core::{
 use itertools::Itertools;
 use rayon::prelude::*;
 use rustc_hash::{FxHashMap, FxHashSet};
-
-use crate::vertex::VertexView;
-use crate::view_api::GraphViewOps;
-use crate::view_api::*;
 
 pub mod algo {
 

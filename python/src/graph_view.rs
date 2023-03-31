@@ -1,21 +1,9 @@
-use std::collections::HashMap;
-use std::sync::Arc;
-
 use crate::dynamic::DynamicGraph;
 use crate::edge::{PyEdge, PyEdgeIter};
 use crate::util::extract_vertex_ref;
 use crate::vertex::{PyVertex, PyVertices};
-use crate::{graph::PyGraph, wrappers::*};
-use crate::{util, wrappers};
-use docbrown_core::tgraph::VertexRef;
-use docbrown_db::edge::EdgeView;
-use docbrown_db::graph_window;
 use docbrown_db::graph_window::GraphWindowSet;
-use docbrown_db::vertex::VertexView;
-use docbrown_db::view_api::internal::GraphViewInternalOps;
 use docbrown_db::view_api::*;
-use itertools::Itertools;
-use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
 
 #[pyclass(name = "GraphView", frozen, subclass)]
@@ -47,7 +35,7 @@ impl PyGraphWindowSet {
     fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
         slf
     }
-    fn __next__(mut slf: PyRefMut<'_, Self>, py: Python) -> Option<PyGraphView> {
+    fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<PyGraphView> {
         slf.window_set.next().map(|g| g.into())
     }
 }
@@ -73,20 +61,20 @@ impl PyGraphView {
     }
 
     pub fn has_vertex(&self, vertex: &PyAny) -> PyResult<bool> {
-        let v = util::extract_vertex_ref(vertex)?;
+        let v = extract_vertex_ref(vertex)?;
         Ok(self.graph.has_vertex(v))
     }
 
     pub fn has_edge(&self, src: &PyAny, dst: &PyAny) -> PyResult<bool> {
-        let src = util::extract_vertex_ref(src)?;
-        let dst = util::extract_vertex_ref(dst)?;
+        let src = extract_vertex_ref(src)?;
+        let dst = extract_vertex_ref(dst)?;
         Ok(self.graph.has_edge(src, dst))
     }
 
     //******  Getter APIs ******//
 
     pub fn vertex(&self, id: &PyAny) -> PyResult<Option<PyVertex>> {
-        let v = util::extract_vertex_ref(id)?;
+        let v = extract_vertex_ref(id)?;
         Ok(self.graph.vertex(v).map(|v| v.into()))
     }
 

@@ -4,7 +4,6 @@ use crate::vertex::VertexView;
 use crate::view_api::*;
 use docbrown_core::{Direction, Prop};
 use std::collections::HashMap;
-use std::iter::Map;
 
 pub struct Vertices<G: GraphViewOps> {
     graph: G,

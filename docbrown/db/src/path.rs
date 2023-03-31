@@ -1,6 +1,5 @@
 use crate::edge::EdgeView;
 use crate::vertex::VertexView;
-use crate::view_api::internal::GraphViewInternalOps;
 use crate::view_api::*;
 use docbrown_core::tgraph::VertexRef;
 use docbrown_core::{Direction, Prop};

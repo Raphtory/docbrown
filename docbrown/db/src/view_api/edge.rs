@@ -1,6 +1,5 @@
 use crate::edge::EdgeView;
 use crate::view_api::{GraphViewOps, VertexListOps};
-use docbrown_core::Prop;
 
 pub trait EdgeListOps:
     IntoIterator<Item = EdgeView<Self::Graph>, IntoIter = Self::IterType> + Sized + Send

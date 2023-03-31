@@ -5,9 +5,7 @@ use crate::vertex::VertexView;
 use crate::vertices::Vertices;
 use crate::view_api::internal::GraphViewInternalOps;
 use docbrown_core::tgraph::VertexRef;
-use docbrown_core::vertex::InputVertex;
 use std::iter;
-use std::sync::Arc;
 
 pub trait GraphViewOps: Send + Sync + Sized + GraphViewInternalOps + 'static + Clone {
     fn num_vertices(&self) -> usize;
