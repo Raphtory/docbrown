@@ -668,7 +668,7 @@ impl GlobalEvalState {
 ///
 /// The entry contains a reference to a `ShuffleComputeState` and an `AccId` representing the accumulator
 /// for which the entry is being accessed. It also contains the index of the entry in the shuffle table
-/// and the sub-shuffle index.
+/// and the super-step index.
 pub struct Entry<'a, A: StateType, IN, OUT, ACC: Accumulator<A, IN, OUT>> {
     state: Ref<'a, ShuffleComputeState<CS>>,
     acc_id: AccId<A, IN, OUT, ACC>,
@@ -685,7 +685,7 @@ impl<'a, A: StateType, IN, OUT, ACC: Accumulator<A, IN, OUT>> Entry<'a, A, IN, O
     /// * `state` - A reference to a `ShuffleComputeState` instance.
     /// * `acc_id` - An `AccId` representing the accumulator for which the entry is being accessed.
     /// * `i` - The index of the entry in the shuffle table.
-    /// * `ss` - The sub-shuffle index.
+    /// * `ss` - The super-step index.
     pub fn new(
         state: Ref<'a, ShuffleComputeState<CS>>,
         acc_id: AccId<A, IN, OUT, ACC>,
@@ -708,7 +708,7 @@ impl<'a, A: StateType, IN, OUT, ACC: Accumulator<A, IN, OUT>> Entry<'a, A, IN, O
 
 /// `EvalVertexView` represents a view of a vertex in a computation graph.
 ///
-/// The view contains the sub-shuffle index, the `WindowedVertex` representing the vertex, and a shared
+/// The view contains the super-step index, the `WindowedVertex` representing the vertex, and a shared
 /// reference to the `ShuffleComputeState`.
 pub struct EvalVertexView {
     ss: usize,
@@ -814,12 +814,12 @@ impl EvalVertexView {
             .unwrap()
     }
 
-    /// Create a new `EvalVertexView` from the given sub-shuffle index, `WindowedVertex` and
+    /// Create a new `EvalVertexView` from the given super-step index, `WindowedVertex` and
     /// `ShuffleComputeState`.
     ///
     /// # Arguments
     ///
-    /// * `ss` - The sub-shuffle index.
+    /// * `ss` - The super-step index.
     /// * `vv` - The `WindowedVertex` representing the vertex.
     /// * `state` - The `ShuffleComputeState` shared between all `EvalVertexView`s.
     ///
