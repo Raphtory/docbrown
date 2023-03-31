@@ -847,7 +847,7 @@ mod program_test {
             graph.add_edge(ts, src, dst, &vec![]);
         }
 
-        let mut program_s1 = TriangleCountSlowS2 {};
+        let program_s1 = TriangleCountSlowS2 {};
         let agg = state::def::sum::<usize>(0);
 
         let windowed_graph = graph.window(0, 95);
@@ -894,7 +894,7 @@ mod program_test {
             graph.add_edge(ts, src, dst, &vec![]);
         }
 
-        let mut program_s1 = TriangleCountSlowS2 {};
+        let program_s1 = TriangleCountSlowS2 {};
         let agg = state::def::sum::<usize>(0);
         let graph_window = graph.window(0, 64);
 
@@ -1059,7 +1059,7 @@ mod program_test {
 
         let results: FxHashMap<u64, u64> = connected_components(&graph_window, usize::MAX)
             .into_iter()
-            .map(|(k, v)| (k, v as u64))
+            .map(|(k, v)| (k, v))
             .collect();
 
         assert_eq!(
@@ -1117,7 +1117,7 @@ mod program_test {
 
         let results: FxHashMap<u64, u64> = connected_components(&graph_window, usize::MAX)
             .into_iter()
-            .map(|(k, v)| (k, v as u64))
+            .map(|(k, v)| (k, v))
             .collect();
 
         assert_eq!(
@@ -1163,7 +1163,7 @@ mod program_test {
 
     #[quickcheck]
     fn circle_graph_the_smallest_value_is_the_cc(vs: Vec<u64>) {
-        if vs.len() > 0 {
+        if !vs.is_empty() {
             let vs = vs.into_iter().unique().collect::<Vec<u64>>();
 
             let smallest = vs.iter().min().unwrap();

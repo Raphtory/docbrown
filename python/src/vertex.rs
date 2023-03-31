@@ -1,6 +1,5 @@
 use crate::dynamic::DynamicGraph;
 use crate::edge::PyEdgeIter;
-use crate::wrappers;
 use crate::wrappers::{NestedU64Iter, NestedUsizeIter, Prop, U64Iter, UsizeIter};
 use docbrown_core::tgraph::VertexRef;
 use docbrown_db::path::{PathFromGraph, PathFromVertex};
@@ -50,7 +49,7 @@ impl PyVertex {
                 let prop = p
                     .into_iter()
                     .map(|(t, p)| (t, p.into()))
-                    .collect::<Vec<(i64, wrappers::Prop)>>();
+                    .collect::<Vec<(i64, Prop)>>();
                 (n, prop)
             })
             .into_iter()
@@ -160,8 +159,7 @@ impl From<Vertices<DynamicGraph>> for PyVertices {
 #[pymethods]
 impl PyVertices {
     fn __iter__(&self) -> PyVertexIterator {
-        let iter = Box::new(self.vertices.iter().map(|v| PyVertex::from(v)));
-        PyVertexIterator { iter }
+        self.vertices.iter().into()
     }
 
     fn id(&self) -> U64Iter {

@@ -133,11 +133,12 @@ pub mod csv {
             Ok(paths)
         }
 
+        //FIXME: loader function should return a result for reporting parsing errors
         pub fn load_into_graph<F, REC, G>(&self, g: &G, loader: F) -> Result<(), CsvErr>
         where
-            REC: DeserializeOwned + std::fmt::Debug,
-            F: Fn(REC, &G) -> () + Send + Sync,
-            G: std::marker::Sync,
+            REC: DeserializeOwned + Debug,
+            F: Fn(REC, &G) + Send + Sync,
+            G: Sync,
         {
             let paths = self.files_vec()?;
             paths
@@ -153,7 +154,7 @@ pub mod csv {
             loader: &F,
         ) -> Result<(), CsvErr>
         where
-            REC: DeserializeOwned + std::fmt::Debug,
+            REC: DeserializeOwned + Debug,
             F: Fn(REC, &G) -> (),
         {
             let file_path: PathBuf = path.into();

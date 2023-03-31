@@ -217,7 +217,7 @@ pub trait StateType: PartialEq + Clone + Debug + Send + Sync + 'static {}
 #[derive(Debug)]
 pub struct ComputeStateMap(Box<dyn DynArray + 'static>);
 
-pub trait ComputeState: Debug + Clone{
+pub trait ComputeState: Debug + Clone {
     fn clone_current_into_other(&mut self, ss: usize);
 
     fn new_mutable_primitive<T: StateType>(zero: T) -> Self;
@@ -302,6 +302,57 @@ impl ComputeState for ComputeStateMap {
         }))
     }
 
+    fn read<A: 'static, IN, OUT, ACC: Accumulator<A, IN, OUT>>(
+        &self,
+        ss: usize,
+        i: usize,
+    ) -> Option<OUT> {
+        let current = self
+            .current()
+            .as_any()
+            .downcast_ref::<MapArray<A>>()
+            .unwrap();
+        current
+            .map
+            .get(&(i as u64))
+            .map(|v| ACC::finish(&v[ss % 2]))
+    }
+
+    fn read_ref<A: StateType, IN, OUT, ACC: Accumulator<A, IN, OUT>>(
+        &self,
+        ss: usize,
+        i: usize,
+    ) -> Option<&A> {
+        let current = self
+            .current()
+            .as_any()
+            .downcast_ref::<MapArray<A>>()
+            .unwrap();
+        current.map.get(&(i as u64)).map(|v| &v[ss % 2])
+    }
+
+    fn iter<A: StateType>(&self, ss: usize) -> Box<dyn Iterator<Item = (usize, &A)> + '_> {
+        let current = self
+            .current()
+            .as_any()
+            .downcast_ref::<MapArray<A>>()
+            .unwrap();
+        Box::new(
+            current
+                .map
+                .iter()
+                .map(move |(k, v)| (*k as usize, &v[ss % 2])),
+        )
+    }
+
+    fn iter_keys(&self) -> Box<dyn Iterator<Item = u64> + '_> {
+        self.current().iter_keys()
+    }
+
+    fn iter_keys_changed(&self, ss: usize) -> Box<dyn Iterator<Item = u64> + '_> {
+        self.current().iter_keys_changed(ss)
+    }
+
     fn agg<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(&mut self, ss: usize, a: IN, i: usize)
     where
         A: StateType,
@@ -333,6 +384,18 @@ impl ComputeState for ComputeStateMap {
             .entry(i as u64)
             .or_insert_with(|| [zero.clone(), zero.clone()]);
         ACC::combine(&mut entry[ss % 2], a);
+    }
+
+    fn merge<A, IN, OUT, ACC: Accumulator<A, IN, OUT>, CS2: ComputeState>(
+        &mut self,
+        other: &CS2,
+        ss: usize,
+    ) where
+        A: StateType,
+    {
+        other.iter::<A>(ss).for_each(|(i, a)| {
+            self.combine::<A, IN, OUT, ACC>(ss, a, i);
+        });
     }
 
     fn finalize<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(&self, ss: usize) -> Vec<OUT>
@@ -368,69 +431,6 @@ impl ComputeState for ComputeStateMap {
             .iter()
             .map(|(k, v)| (k, ACC::finish(&v[ss % 2])))
             .fold(b, |b, (k, out)| f(b, k, out))
-    }
-
-    fn read<A: 'static, IN, OUT, ACC: Accumulator<A, IN, OUT>>(
-        &self,
-        ss: usize,
-        i: usize,
-    ) -> Option<OUT> {
-        let current = self
-            .current()
-            .as_any()
-            .downcast_ref::<MapArray<A>>()
-            .unwrap();
-        current
-            .map
-            .get(&(i as u64))
-            .map(|v| ACC::finish(&v[ss % 2]))
-    }
-
-    fn merge<A, IN, OUT, ACC: Accumulator<A, IN, OUT>, CS2: ComputeState>(
-        &mut self,
-        other: &CS2,
-        ss: usize,
-    ) where
-        A: StateType,
-    {
-        other.iter::<A>(ss).for_each(|(i, a)| {
-            self.combine::<A, IN, OUT, ACC>(ss, a, i);
-        });
-    }
-
-    fn iter<A: StateType>(&self, ss: usize) -> Box<dyn Iterator<Item = (usize, &A)> + '_> {
-        let current = self
-            .current()
-            .as_any()
-            .downcast_ref::<MapArray<A>>()
-            .unwrap();
-        Box::new(
-            current
-                .map
-                .iter()
-                .map(move |(k, v)| (*k as usize, &v[ss % 2])),
-        )
-    }
-
-    fn iter_keys(&self) -> Box<dyn Iterator<Item = u64> + '_> {
-        self.current().iter_keys()
-    }
-
-    fn iter_keys_changed(&self, ss: usize) -> Box<dyn Iterator<Item = u64> + '_> {
-        self.current().iter_keys_changed(ss)
-    }
-
-    fn read_ref<A: StateType, IN, OUT, ACC: Accumulator<A, IN, OUT>>(
-        &self,
-        ss: usize,
-        i: usize,
-    ) -> Option<&A> {
-        let current = self
-            .current()
-            .as_any()
-            .downcast_ref::<MapArray<A>>()
-            .unwrap();
-        current.map.get(&(i as u64)).map(|v| &v[ss % 2])
     }
 }
 
@@ -487,7 +487,10 @@ impl<CS: ComputeState + Send + Clone> ShardComputeState<CS> {
     ) where
         A: StateType,
     {
-        match (self.states.get_mut(&agg_ref.id), other.states.get(&agg_ref.id)) {
+        match (
+            self.states.get_mut(&agg_ref.id),
+            other.states.get(&agg_ref.id),
+        ) {
             (Some(self_cs), Some(other_cs)) => {
                 self_cs.merge::<A, IN, OUT, ACC, CS>(other_cs, ss);
             }
@@ -496,7 +499,6 @@ impl<CS: ComputeState + Send + Clone> ShardComputeState<CS> {
             }
             _ => {}
         }
-
     }
 
     fn read<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(
@@ -585,7 +587,7 @@ impl<CS: ComputeState + Send + Sync> ShuffleComputeState<CS> {
     where
         A: StateType,
         OUT: StateType,
-        F: Fn(B, &u64, OUT) -> B + std::marker::Copy,
+        F: Fn(B, &u64, OUT) -> B + Copy,
     {
         let out_b = self
             .parts

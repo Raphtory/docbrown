@@ -634,7 +634,7 @@ mod db_tests {
             Err(e) => panic!("{e}"),
         }
 
-        tmp_docbrown_path.close();
+        tmp_docbrown_path.close().unwrap();
     }
 
     #[test]

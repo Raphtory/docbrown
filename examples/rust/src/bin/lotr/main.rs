@@ -1,5 +1,5 @@
+use docbrown_core::Prop;
 use docbrown_core::{state, utils};
-use docbrown_core::{Direction, Prop};
 use docbrown_db::program::{
     GlobalEvalState, Program, TriangleCountS1, TriangleCountS2, TriangleCountSlowS2,
 };
@@ -8,7 +8,6 @@ use docbrown_db::{csv_loader::csv::CsvLoader, graph::Graph};
 use serde::Deserialize;
 use std::path::PathBuf;
 use std::{env, path::Path, time::Instant};
-use docbrown_db::view_api::{GraphViewOps, VertexViewOps};
 
 #[derive(Deserialize, std::fmt::Debug)]
 pub struct Lotr {
@@ -108,7 +107,7 @@ fn main() {
     let mut program_s2 = TriangleCountS2 {};
     let agg = state::def::sum::<u64>(1);
 
-    let mut gs = GlobalEvalState::new(graph.clone(), i64::MIN..i64::MAX, false);
+    let mut gs = GlobalEvalState::new(graph.clone(), false);
 
     program_s1.run_step(&graph, &mut gs);
 
@@ -121,7 +120,7 @@ fn main() {
     let mut program = TriangleCountSlowS2 {};
     let agg = state::def::sum::<usize>(0);
 
-    let mut gs = GlobalEvalState::new(graph.clone(), i64::MIN..i64::MAX, false);
+    let mut gs = GlobalEvalState::new(graph.clone(), false);
 
     program.run_step(&graph, &mut gs);
 

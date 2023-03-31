@@ -32,7 +32,7 @@ impl IntoPy<PyObject> for Prop {
 impl From<Prop> for db_c::Prop {
     fn from(prop: Prop) -> db_c::Prop {
         match prop {
-            Prop::Str(string) => db_c::Prop::Str(string.clone()),
+            Prop::Str(string) => db_c::Prop::Str(string),
             Prop::I32(i32) => db_c::Prop::I32(i32),
             Prop::I64(i64) => db_c::Prop::I64(i64),
             Prop::U32(u32) => db_c::Prop::U32(u32),
@@ -47,7 +47,7 @@ impl From<Prop> for db_c::Prop {
 impl From<db_c::Prop> for Prop {
     fn from(prop: db_c::Prop) -> Prop {
         match prop {
-            db_c::Prop::Str(string) => Prop::Str(string.clone()),
+            db_c::Prop::Str(string) => Prop::Str(string),
             db_c::Prop::I32(i32) => Prop::I32(i32),
             db_c::Prop::I64(i64) => Prop::I64(i64),
             db_c::Prop::U32(u32) => Prop::U32(u32),

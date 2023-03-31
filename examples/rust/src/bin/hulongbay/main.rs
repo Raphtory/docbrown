@@ -28,7 +28,7 @@ use std::time::Instant;
 use docbrown_db::graph::Graph;
 use docbrown_db::view_api::*;
 
-#[derive(Deserialize, std::fmt::Debug)]
+#[derive(Deserialize, Debug)]
 pub struct Edge {
     _unknown0: i64,
     _unknown1: i64,
@@ -154,7 +154,7 @@ fn try_main() -> Result<(), Box<dyn Error>> {
     );
 
     let now = Instant::now();
-    let num_edges: usize = graph.vertices().map(|v| v.out_degree()).sum();
+    let num_edges: usize = graph.vertices().out_degree().sum();
     println!(
         "Counting edges by summing degrees returned {} in {} seconds",
         num_edges,
@@ -168,7 +168,7 @@ fn try_main() -> Result<(), Box<dyn Error>> {
     println!("Creating window took {} seconds", now.elapsed().as_secs());
 
     let now = Instant::now();
-    let num_windowed_edges: usize = window.vertices().map(|v| v.out_degree()).sum();
+    let num_windowed_edges: usize = window.vertices().out_degree().sum();
     println!(
         "Counting edges in window by summing degrees returned {} in {} seconds",
         num_windowed_edges,

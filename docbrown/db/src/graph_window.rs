@@ -499,8 +499,8 @@ mod views_test {
         vs.dedup_by_key(|v| v.1); // Have each vertex only once to avoid headaches
         vs.sort_by_key(|v| v.0); // Sorted by time
 
-        let rand_start_index = rand::thread_rng().gen_range(0..vs.len());
-        let rand_end_index = rand::thread_rng().gen_range(rand_start_index..vs.len());
+        let rand_start_index = thread_rng().gen_range(0..vs.len());
+        let rand_end_index = thread_rng().gen_range(rand_start_index..vs.len());
 
         let g = Graph::new(2);
 
@@ -515,7 +515,7 @@ mod views_test {
 
         let wg = WindowedGraph::new(g, start, end);
 
-        let rand_test_index: usize = rand::thread_rng().gen_range(0..vs.len());
+        let rand_test_index: usize = thread_rng().gen_range(0..vs.len());
 
         let (i, v) = vs.get(rand_test_index).expect("test index in range");
         if (start..end).contains(i) {
@@ -551,8 +551,8 @@ mod views_test {
         edges.dedup_by_key(|e| e.1); // Have each edge only once to avoid headaches
         edges.sort_by_key(|e| e.0); // Sorted by time
 
-        let rand_start_index = rand::thread_rng().gen_range(0..edges.len());
-        let rand_end_index = rand::thread_rng().gen_range(rand_start_index..edges.len());
+        let rand_start_index = thread_rng().gen_range(0..edges.len());
+        let rand_end_index = thread_rng().gen_range(rand_start_index..edges.len());
 
         let g = Graph::new(2);
 
@@ -565,7 +565,7 @@ mod views_test {
 
         let wg = WindowedGraph::new(g, start, end);
 
-        let rand_test_index: usize = rand::thread_rng().gen_range(0..edges.len());
+        let rand_test_index: usize = thread_rng().gen_range(0..edges.len());
 
         let (i, e) = edges.get(rand_test_index).expect("test index in range");
         if (start..end).contains(i) {
@@ -592,7 +592,7 @@ mod views_test {
         edges.sort_by_key(|e| e.1); // Sorted by edge
         edges.dedup_by_key(|e| e.1); // Have each edge only once to avoid headaches
 
-        let mut window: [i64; 2] = rand::thread_rng().gen();
+        let mut window: [i64; 2] = thread_rng().gen();
         window.sort();
         let window = window[0]..window[1];
         let true_edge_count = edges.iter().filter(|e| window.contains(&e.0)).count();

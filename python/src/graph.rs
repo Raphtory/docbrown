@@ -1,11 +1,9 @@
 use crate::dynamic::DynamicGraph;
 use docbrown_core as dbc;
 use docbrown_core::vertex::InputVertex;
-use docbrown_db::graph;
 use docbrown_db::graph::Graph;
 use docbrown_db::view_api::*;
 use itertools::Itertools;
-use pyo3::exceptions;
 use pyo3::exceptions::{PyException, PyTypeError};
 use pyo3::prelude::*;
 use std::collections::HashMap;
@@ -17,7 +15,7 @@ use crate::wrappers::Prop;
 
 #[pyclass(name="Graph", extends=PyGraphView)]
 pub struct PyGraph {
-    pub(crate) graph: graph::Graph,
+    pub(crate) graph: Graph,
 }
 
 impl From<Graph> for PyGraph {
@@ -87,9 +85,9 @@ impl PyGraph {
     ) -> PyResult<()> {
         let src = Self::extract_id(src)?;
         let dst = Self::extract_id(dst)?;
-        Ok(self
-            .graph
-            .add_edge(timestamp, src, dst, &Self::transform_props(properties)))
+        self.graph
+            .add_edge(timestamp, src, dst, &Self::transform_props(properties));
+        Ok(())
     }
 
     pub fn add_edge_properties(
@@ -115,9 +113,9 @@ impl PyGraph {
 
         match Graph::load_from_file(file_path) {
             Ok(g) => Self::py_from_db_graph(g),
-            Err(e) => Err(exceptions::PyException::new_err(format!(
+            Err(e) => Err(PyException::new_err(format!(
                 "Failed to load graph from the files. Reason: {}",
-                e.to_string()
+                e
             ))),
         }
     }
@@ -125,9 +123,9 @@ impl PyGraph {
     pub fn save_to_file(&self, path: String) -> PyResult<()> {
         match self.graph.save_to_file(Path::new(&path)) {
             Ok(()) => Ok(()),
-            Err(e) => Err(exceptions::PyException::new_err(format!(
+            Err(e) => Err(PyException::new_err(format!(
                 "Failed to save graph to the files. Reason: {}",
-                e.to_string()
+                e
             ))),
         }
     }

@@ -1,6 +1,6 @@
 use std::{
     borrow::{Borrow, BorrowMut},
-    collections::{BTreeMap},
+    collections::BTreeMap,
     hash::Hash,
     ops::{Neg, Range},
 };
@@ -22,7 +22,7 @@ const SMALL_SET: usize = 1024;
  *
  *  */
 #[derive(Debug, Default, Serialize, Deserialize, PartialEq)]
-pub enum TAdjSet<V: Ord + TryInto<usize> + std::hash::Hash, Time: Copy + Ord> {
+pub enum TAdjSet<V: Ord + TryInto<usize> + Hash, Time: Copy + Ord> {
     #[default]
     Empty,
     One(Time, V, AdjEdge),
