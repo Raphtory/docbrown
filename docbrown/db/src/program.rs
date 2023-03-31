@@ -145,7 +145,7 @@ impl LocalState {
     ///
     /// # Arguments
     ///
-    /// * `ss` - The shard size.
+    /// * `ss` - `The evaluation super step.
     /// * `shard` - The shard index.
     /// * `graph` - The graph to be processed.
     /// * `window` - The range of the window.
@@ -269,7 +269,7 @@ impl LocalState {
 ///
 /// # Arguments
 ///
-/// * `ss`: an unsigned integer that represents the current state of the system.
+/// * `ss`: represents the number of steps the evaluation loop ran for.
 ///  * `g`: an instance of the Graph struct.
 ///  * `window`: a range of signed integers that represents the window of the computation.
 ///  * `keep_past_state`: a boolean that indicates whether past state should be retained.
@@ -819,7 +819,7 @@ impl EvalVertexView {
     ///
     /// # Arguments
     ///
-    /// * `ss` - The super-step index.
+    /// * `ss` - super-step counter
     /// * `vv` - The `WindowedVertex` representing the vertex.
     /// * `state` - The `ShuffleComputeState` shared between all `EvalVertexView`s.
     ///
