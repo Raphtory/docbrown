@@ -1,9 +1,7 @@
 use crate::dynamic::DynamicGraph;
 use crate::edge::PyEdgeIter;
 use crate::wrappers;
-use crate::wrappers::{
-    Direction, NestedU64Iter, NestedUsizeIter, Operations, Prop, U64Iter, UsizeIter,
-};
+use crate::wrappers::{NestedU64Iter, NestedUsizeIter, Prop, U64Iter, UsizeIter};
 use docbrown_core::tgraph::VertexRef;
 use docbrown_db::path::{PathFromGraph, PathFromVertex};
 use docbrown_db::vertex::VertexView;

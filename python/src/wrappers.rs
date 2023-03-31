@@ -11,39 +11,6 @@ use crate::edge::PyEdge;
 use crate::vertex::PyVertex;
 use crate::vertex::{PyPathFromGraph, PyPathFromVertex};
 
-#[derive(Copy, Clone)]
-pub(crate) enum Direction {
-    OUT,
-    IN,
-    BOTH,
-    OutWindow { t_start: i64, t_end: i64 },
-    InWindow { t_start: i64, t_end: i64 },
-    BothWindow { t_start: i64, t_end: i64 },
-}
-
-impl From<Direction> for db_c::Direction {
-    fn from(d: Direction) -> db_c::Direction {
-        match d {
-            Direction::OUT => db_c::Direction::OUT,
-            Direction::IN => db_c::Direction::IN,
-            Direction::BOTH => db_c::Direction::BOTH,
-            Direction::OutWindow { t_start, t_end } => db_c::Direction::OUT,
-            Direction::InWindow { t_start, t_end } => db_c::Direction::IN,
-            Direction::BothWindow { t_start, t_end } => db_c::Direction::BOTH,
-        }
-    }
-}
-
-#[derive(Copy, Clone)]
-pub(crate) enum Operations {
-    OutNeighbours,
-    InNeighbours,
-    Neighbours,
-    InNeighboursWindow { t_start: i64, t_end: i64 },
-    OutNeighboursWindow { t_start: i64, t_end: i64 },
-    NeighboursWindow { t_start: i64, t_end: i64 },
-}
-
 #[derive(FromPyObject, Debug, Clone)]
 pub enum Prop {
     Str(String),
