@@ -164,7 +164,7 @@ impl GraphViewInternalOps for WindowedGraph {
 
     /// Returns the number of edges in the windowed view.
     fn edges_len(&self) -> Result<usize, GraphError> {
-        Ok(self.graph.edges_len_window(self.t_start, self.t_end))
+        self.graph.edges_len_window(self.t_start, self.t_end)
     }
 
     /// Returns the number of edges in the windowed view, for a window specified by start and end times.
@@ -177,7 +177,7 @@ impl GraphViewInternalOps for WindowedGraph {
     /// # Returns
     ///
     /// The number of edges in the windowed view for the given window.
-    fn edges_len_window(&self, t_start: i64, t_end: i64) -> usize {
+    fn edges_len_window(&self, t_start: i64, t_end: i64) -> Result<usize, GraphError> {
         self.graph
             .edges_len_window(self.actual_start(t_start), self.actual_end(t_end))
     }
@@ -975,7 +975,7 @@ impl GraphViewOps for WindowedGraph {
             .graph
             .shards
             .iter()
-            .map(|s| s.len_window(self.t_start..self.t_end))
+            .filter_map(|s| s.len_window(self.t_start..self.t_end).ok())
             .sum())
     }
 
@@ -994,7 +994,7 @@ impl GraphViewOps for WindowedGraph {
     }
 
     fn num_edges(&self) -> Result<usize, GraphError> {
-        Ok(self.graph.edges_len_window(self.t_start, self.t_end))
+        self.graph.edges_len_window(self.t_start, self.t_end)
     }
 
     /// Returns a result with `true` if the view has a specified vertex, and `false` otherwise.

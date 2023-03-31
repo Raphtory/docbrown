@@ -82,11 +82,12 @@ impl GraphViewInternalOps for Graph {
         Ok(vs?.iter().sum())
     }
 
-    fn edges_len_window(&self, t_start: i64, t_end: i64) -> usize {
-        self.shards
+    fn edges_len_window(&self, t_start: i64, t_end: i64) -> Result<usize, GraphError> {
+        Ok(self
+            .shards
             .iter()
-            .map(|shard| shard.out_edges_len_window(&(t_start..t_end)))
-            .sum()
+            .filter_map(|shard| shard.out_edges_len_window(&(t_start..t_end)).ok())
+            .sum())
     }
 
     fn has_edge_ref<V1: Into<VertexRef>, V2: Into<VertexRef>>(

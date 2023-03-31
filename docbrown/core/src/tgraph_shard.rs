@@ -152,11 +152,11 @@ impl TGraphShard<TemporalGraph> {
     #[inline(always)]
     fn read_shard<A, F>(&self, f: F) -> Result<A, GraphError>
     where
-        F: Fn(&TemporalGraph) -> Result<A, GraphError>,
+        F: Fn(&TemporalGraph) -> A,
     {
         let binding = self.rc.read();
         let shard = binding.as_ref().ok_or(GraphError::IllegalGraphAccess)?;
-        f(&shard)
+        Ok(f(&shard))
     }
 
     pub fn freeze(&self) -> ImmutableTGraphShard<TemporalGraph> {
@@ -166,19 +166,19 @@ impl TGraphShard<TemporalGraph> {
     }
 
     pub fn earliest_time(&self) -> Result<i64, GraphError> {
-        self.read_shard(|tg| Ok(tg.earliest_time))
+        self.read_shard(|tg| tg.earliest_time)
     }
 
     pub fn latest_time(&self) -> Result<i64, GraphError> {
-        self.read_shard(|tg| Ok(tg.latest_time))
+        self.read_shard(|tg| tg.latest_time)
     }
 
     pub fn len(&self) -> Result<usize, GraphError> {
-        self.read_shard(|tg| Ok(tg.len()))
+        self.read_shard(|tg| tg.len())
     }
 
     pub fn out_edges_len(&self) -> Result<usize, GraphError> {
-        self.read_shard(|tg| Ok(tg.out_edges_len()))
+        self.read_shard(|tg| tg.out_edges_len())
     }
 
     pub fn out_edges_len_window(&self, w: &Range<Time>) -> Result<usize, GraphError> {
@@ -190,19 +190,19 @@ impl TGraphShard<TemporalGraph> {
     }
 
     pub fn has_edge(&self, src: u64, dst: u64) -> Result<bool, GraphError> {
-        self.read_shard(|tg| Ok(tg.has_edge(src, dst)))
+        self.read_shard(|tg| tg.has_edge(src, dst))
     }
 
     pub fn has_edge_window(&self, src: u64, dst: u64, w: Range<i64>) -> Result<bool, GraphError> {
-        self.read_shard(|tg| Ok(tg.has_edge_window(src, dst, &w)))
+        self.read_shard(|tg| tg.has_edge_window(src, dst, &w))
     }
 
     pub fn has_vertex(&self, v: u64) -> Result<bool, GraphError> {
-        self.read_shard(|tg| Ok(tg.has_vertex(v)))
+        self.read_shard(|tg| tg.has_vertex(v))
     }
 
     pub fn has_vertex_window(&self, v: u64, w: Range<i64>) -> Result<bool, GraphError> {
-        self.read_shard(|tg| Ok(tg.has_vertex_window(v, &w)))
+        self.read_shard(|tg| tg.has_vertex_window(v, &w))
     }
 
     pub fn add_vertex<T: InputVertex>(
@@ -271,19 +271,19 @@ impl TGraphShard<TemporalGraph> {
     }
 
     pub fn degree(&self, v: u64, d: Direction) -> Result<usize, GraphError> {
-        self.read_shard(|tg: &TemporalGraph| Ok(tg.degree(v, d)))
+        self.read_shard(|tg: &TemporalGraph| tg.degree(v, d))
     }
 
     pub fn degree_window(&self, v: u64, w: Range<i64>, d: Direction) -> Result<usize, GraphError> {
-        self.read_shard(|tg: &TemporalGraph| Ok(tg.degree_window(v, &w, d)))
+        self.read_shard(|tg: &TemporalGraph| tg.degree_window(v, &w, d))
     }
 
     pub fn vertex(&self, v: u64) -> Result<Option<VertexRef>, GraphError> {
-        self.read_shard(|tg| Ok(tg.vertex(v)))
+        self.read_shard(|tg| tg.vertex(v))
     }
 
     pub fn vertex_window(&self, v: u64, w: Range<i64>) -> Result<Option<VertexRef>, GraphError> {
-        self.read_shard(|tg| Ok(tg.vertex_window(v, &w)))
+        self.read_shard(|tg| tg.vertex_window(v, &w))
     }
 
     pub fn vertex_ids(&self) -> Box<dyn Iterator<Item = u64> + Send> {
@@ -347,7 +347,7 @@ impl TGraphShard<TemporalGraph> {
     }
 
     pub fn edge(&self, src: u64, dst: u64) -> Result<Option<EdgeRef>, GraphError> {
-        self.read_shard(|tg| Ok(tg.edge(src, dst)))
+        self.read_shard(|tg| tg.edge(src, dst))
     }
 
     pub fn edge_window(
@@ -356,7 +356,7 @@ impl TGraphShard<TemporalGraph> {
         dst: u64,
         w: Range<i64>,
     ) -> Result<Option<EdgeRef>, GraphError> {
-        self.read_shard(|tg| Ok(tg.edge_window(src, dst, &w)))
+        self.read_shard(|tg| tg.edge_window(src, dst, &w))
     }
 
     pub fn vertex_edges(&self, v: u64, d: Direction) -> Box<dyn Iterator<Item = EdgeRef> + Send> {
@@ -497,11 +497,11 @@ impl TGraphShard<TemporalGraph> {
     }
 
     pub fn static_vertex_prop(&self, v: u64, name: String) -> Result<Option<Prop>, GraphError> {
-        self.read_shard(|tg| Ok(tg.static_vertex_prop(v, &name)))
+        self.read_shard(|tg| tg.static_vertex_prop(v, &name))
     }
 
     pub fn static_vertex_prop_keys(&self, v: u64) -> Result<Vec<String>, GraphError> {
-        self.read_shard(|tg| Ok(tg.static_vertex_prop_keys(v)))
+        self.read_shard(|tg| tg.static_vertex_prop_keys(v))
     }
 
     pub fn temporal_vertex_prop_vec(
@@ -509,7 +509,7 @@ impl TGraphShard<TemporalGraph> {
         v: u64,
         name: String,
     ) -> Result<Vec<(i64, Prop)>, GraphError> {
-        self.read_shard(|tg| Ok(tg.temporal_vertex_prop_vec(v, &name)))
+        self.read_shard(|tg| tg.temporal_vertex_prop_vec(v, &name))
     }
 
     pub fn temporal_vertex_prop_vec_window(
@@ -518,14 +518,14 @@ impl TGraphShard<TemporalGraph> {
         name: String,
         w: Range<i64>,
     ) -> Result<Vec<(i64, Prop)>, GraphError> {
-        self.read_shard(|tg| Ok(tg.temporal_vertex_prop_vec_window(v, &name, &w)))
+        self.read_shard(|tg| tg.temporal_vertex_prop_vec_window(v, &name, &w))
     }
 
     pub fn temporal_vertex_props(
         &self,
         v: u64,
     ) -> Result<HashMap<String, Vec<(i64, Prop)>>, GraphError> {
-        self.read_shard(|tg| Ok(tg.temporal_vertex_props(v)))
+        self.read_shard(|tg| tg.temporal_vertex_props(v))
     }
 
     pub fn temporal_vertex_props_window(
@@ -533,14 +533,14 @@ impl TGraphShard<TemporalGraph> {
         v: u64,
         w: Range<i64>,
     ) -> Result<HashMap<String, Vec<(i64, Prop)>>, GraphError> {
-        self.read_shard(|tg| Ok(tg.temporal_vertex_props_window(v, &w)))
+        self.read_shard(|tg| tg.temporal_vertex_props_window(v, &w))
     }
     pub fn static_edge_prop(&self, e: usize, name: String) -> Result<Option<Prop>, GraphError> {
-        self.read_shard(|tg| Ok(tg.static_edge_prop(e, &name)))
+        self.read_shard(|tg| tg.static_edge_prop(e, &name))
     }
 
     pub fn static_edge_prop_keys(&self, e: usize) -> Result<Vec<String>, GraphError> {
-        self.read_shard(|tg| Ok(tg.static_edge_prop_keys(e)))
+        self.read_shard(|tg| tg.static_edge_prop_keys(e))
     }
 
     pub fn temporal_edge_prop_vec(
@@ -548,7 +548,7 @@ impl TGraphShard<TemporalGraph> {
         e: usize,
         name: String,
     ) -> Result<Vec<(i64, Prop)>, GraphError> {
-        self.read_shard(|tg| Ok(tg.temporal_edge_prop_vec(e, &name)))
+        self.read_shard(|tg| tg.temporal_edge_prop_vec(e, &name))
     }
 
     pub fn temporal_edge_props_vec_window(
@@ -557,7 +557,7 @@ impl TGraphShard<TemporalGraph> {
         name: String,
         w: Range<i64>,
     ) -> Result<Vec<(i64, Prop)>, GraphError> {
-        self.read_shard(|tg| Ok(tg.temporal_edge_prop_vec_window(e, &name, w.clone())))
+        self.read_shard(|tg| tg.temporal_edge_prop_vec_window(e, &name, w.clone()))
     }
 }
 

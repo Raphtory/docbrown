@@ -1,10 +1,7 @@
 //! A data structure for representing temporal graphs.
 
-use std::collections::BTreeSet;
-use std::fmt::{Display, Formatter};
 use std::{
     collections::{BTreeMap, HashMap},
-    mem,
     ops::Range,
 };
 
@@ -977,20 +974,9 @@ impl TemporalGraph {
     ) -> usize {
         match &mut self.adj_lists[dst_pid] {
             entry @ Adj::Solo(_, _) => {
-                let edge_id = self.props.get_next_available_edge_id();
-
-                entry.timestamps_mut().insert(t);
-                let mut timestamps = BTreeSet::new();
-
-                mem::swap(&mut timestamps, entry.timestamps_mut());
-
-                let edge = AdjEdge::new(edge_id, !remote_edge);
-
-                *entry = Adj::new_into(dst_gid, src, t, edge);
-
-                mem::swap(&mut timestamps, entry.timestamps_mut());
-
-                edge_id
+                // this is guaranteed to suceed
+                *entry = entry.as_list().unwrap();
+                self.link_inbound_edge(t, dst_gid, src, dst_pid, remote_edge)
             }
             Adj::List {
                 into,
@@ -1022,24 +1008,15 @@ impl TemporalGraph {
     ) -> usize {
         match &mut self.adj_lists[src_pid] {
             entry @ Adj::Solo(_, _) => {
-                let edge_id = self.props.get_next_available_edge_id();
-
-                let edge = AdjEdge::new(edge_id, !remote_edge);
-
-                entry.timestamps_mut().insert(t);
-
-                let mut timestamps = BTreeSet::new();
-
-                mem::swap(&mut timestamps, entry.timestamps_mut());
-
-                *entry = Adj::new_out(src_gid, dst, t, edge);
-
-                mem::swap(&mut timestamps, entry.timestamps_mut());
-
-                edge_id
+                // this is guaranteed to suceed
+                *entry = entry.as_list().unwrap();
+                self.link_outbound_edge(t, src_gid, src_pid, dst, remote_edge)
             }
             Adj::List {
-                out, remote_out, ..
+                out,
+                remote_out,
+                timestamps,
+                ..
             } => {
                 let list = if remote_edge { remote_out } else { out };
                 let edge_id: usize = list

@@ -2,7 +2,10 @@ use std::{collections::BTreeSet, ops::Range};
 
 use serde::{Deserialize, Serialize};
 
-use crate::{tadjset::{AdjEdge, TAdjSet}, Time};
+use crate::{
+    tadjset::{AdjEdge, TAdjSet},
+    Time,
+};
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub(crate) enum Adj {
@@ -22,9 +25,21 @@ pub(crate) enum Adj {
 }
 
 impl Adj {
-    pub(crate) fn timestamps_mut(&mut self) -> &mut BTreeSet<Time> {
+    pub(crate) fn as_list(&mut self) -> Option<Self> {
+        let mut swap_me_ts = BTreeSet::new();
         match self {
-            Adj::Solo(_, timestamps) | Adj::List { timestamps, .. } => timestamps,
+            Adj::Solo(logical, timestamps) => {
+                std::mem::swap(&mut swap_me_ts, timestamps);
+                Some(Adj::List {
+                    logical: *logical,
+                    out: TAdjSet::default(),
+                    into: TAdjSet::default(),
+                    remote_out: TAdjSet::default(),
+                    remote_into: TAdjSet::default(),
+                    timestamps: swap_me_ts,
+                })
+            }
+            _ => None,
         }
     }
 
@@ -39,7 +54,12 @@ impl Adj {
     pub(crate) fn out_len_window(&self, w: &Range<Time>) -> usize {
         match self {
             Adj::Solo(_, _) => 0,
-            Adj::List { timestamps, out, remote_out, .. } => {
+            Adj::List {
+                timestamps,
+                out,
+                remote_out,
+                ..
+            } => {
                 if timestamps.range(w.clone()).next().is_some() {
                     out.len_window(w) + remote_out.len_window(w)
                 } else {
