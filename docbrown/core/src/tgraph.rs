@@ -177,6 +177,7 @@ impl TemporalGraph {
             None => {
                 let physical_id: usize = self.adj_lists.len();
                 self.adj_lists.push(Adj::Solo(v.id(), [t].into()));
+                self.adj_lists[physical_id].register_event(t);
 
                 self.logical_to_physical.insert(v.id(), physical_id);
 
