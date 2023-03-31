@@ -5,7 +5,7 @@ use crate::dynamic::DynamicGraph;
 use crate::edge::{PyEdge, PyEdgeIter};
 use crate::util::extract_vertex_ref;
 use crate::vertex::{PyVertex, PyVertices};
-use crate::{graph::Graph, wrappers::*};
+use crate::{graph::PyGraph, wrappers::*};
 use crate::{util, wrappers};
 use docbrown_core::tgraph::VertexRef;
 use docbrown_db::edge::EdgeView;
@@ -18,7 +18,7 @@ use itertools::Itertools;
 use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
 
-#[pyclass(name = "GraphView")]
+#[pyclass(name = "GraphView", frozen, subclass)]
 pub struct PyGraphView {
     pub(crate) graph: DynamicGraph,
 }
@@ -102,5 +102,13 @@ impl PyGraphView {
 
     pub fn edges(&self) -> PyEdgeIter {
         self.graph.edges().into()
+    }
+
+    pub fn __repr__(&self) -> String {
+        format!(
+            "GraphView(vertices={}, edges={})",
+            self.num_vertices(),
+            self.num_edges()
+        )
     }
 }

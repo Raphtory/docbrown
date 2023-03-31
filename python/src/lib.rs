@@ -1,28 +1,28 @@
 pub mod algorithms;
+mod dynamic;
+pub mod edge;
 pub mod graph;
 pub mod graph_gen;
 pub mod graph_loader;
 pub mod graph_view;
-pub mod wrappers;
 mod util;
-pub mod edge;
 pub mod vertex;
-mod dynamic;
+pub mod wrappers;
 
 use pyo3::prelude::*;
 
 use crate::algorithms::{all_local_reciprocity, global_reciprocity, local_reciprocity};
-use crate::graph::Graph;
+use crate::graph::PyGraph;
 use crate::wrappers::Perspective;
 
-use pyo3::prelude::*;
 use crate::algorithms::*;
 use crate::graph_gen::*;
 use crate::graph_loader::*;
+use pyo3::prelude::*;
 
 #[pymodule]
 fn raphtory(py: Python<'_>, m: &PyModule) -> PyResult<()> {
-    m.add_class::<Graph>()?;
+    m.add_class::<PyGraph>()?;
     m.add_class::<Perspective>()?;
 
     let algorithm_module = PyModule::new(py, "algorithms")?;
@@ -43,9 +43,9 @@ fn raphtory(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_submodule(algorithm_module)?;
 
     let graph_loader_module = PyModule::new(py, "graph_loader")?;
-    graph_loader_module.add_function(wrap_pyfunction!(lotr_graph, graph_loader_module)?)?;
-    graph_loader_module.add_function(wrap_pyfunction!(twitter_graph, graph_loader_module)?)?;
-    graph_loader_module.add_function(wrap_pyfunction!(reddit_hyperlink_graph, graph_loader_module)?)?;
+    // graph_loader_module.add_function(wrap_pyfunction!(lotr_graph, graph_loader_module)?)?;
+    // graph_loader_module.add_function(wrap_pyfunction!(twitter_graph, graph_loader_module)?)?;
+    // graph_loader_module.add_function(wrap_pyfunction!(reddit_hyperlink_graph, graph_loader_module)?)?;
     m.add_submodule(graph_loader_module)?;
 
     let graph_gen_module = PyModule::new(py, "graph_gen")?;

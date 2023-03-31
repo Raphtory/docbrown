@@ -1,5 +1,7 @@
+use crate::dynamic::DynamicGraph;
 use docbrown_core as dbc;
 use docbrown_core::vertex::InputVertex;
+use docbrown_db::graph::Graph;
 use docbrown_db::view_api::*;
 use docbrown_db::{graph, perspective};
 use itertools::Itertools;
@@ -16,25 +18,40 @@ use crate::util::extract_vertex_ref;
 use crate::wrappers::{PerspectiveSet, Prop};
 use crate::Perspective;
 
-#[pyclass]
-pub struct Graph {
+#[pyclass(name="Graph", extends=PyGraphView)]
+pub struct PyGraph {
     pub(crate) graph: graph::Graph,
 }
 
-impl Graph {
-    pub fn from_db_graph(db_graph: graph::Graph) -> Self {
-        Self { graph: db_graph }
+impl From<Graph> for PyGraph {
+    fn from(value: Graph) -> Self {
+        Self { graph: value }
+    }
+}
+
+impl PyGraph {
+    pub fn py_from_db_graph(db_graph: Graph) -> PyResult<Py<PyGraph>> {
+        Python::with_gil(|py| {
+            Py::new(
+                py,
+                (PyGraph::from(db_graph.clone()), PyGraphView::from(db_graph)),
+            )
+        })
     }
 }
 
 #[pymethods]
-impl Graph {
+impl PyGraph {
     #[new]
     #[pyo3(signature = (nr_shards=1))]
-    pub fn new(nr_shards: usize) -> Self {
-        Self {
-            graph: graph::Graph::new(nr_shards),
-        }
+    pub fn py_new(nr_shards: usize) -> (Self, PyGraphView) {
+        let graph = Graph::new(nr_shards);
+        (
+            Self {
+                graph: graph.clone(),
+            },
+            PyGraphView::from(DynamicGraph::from(graph)),
+        )
     }
 
     //******  Graph Updates  ******//
@@ -115,12 +132,13 @@ impl Graph {
 
     //******  Saving And Loading  ******//
 
+    // Alternative constructors are tricky, see: https://gist.github.com/redshiftzero/648e4feeff3843ffd9924f13625f839c
     #[staticmethod]
-    pub fn load_from_file(path: String) -> PyResult<Self> {
+    pub fn load_from_file(path: String) -> PyResult<Py<PyGraph>> {
         let file_path: PathBuf = [env!("CARGO_MANIFEST_DIR"), &path].iter().collect();
 
-        match graph::Graph::load_from_file(file_path) {
-            Ok(g) => Ok(Graph { graph: g }),
+        match Graph::load_from_file(file_path) {
+            Ok(g) => Self::py_from_db_graph(g),
             Err(e) => Err(exceptions::PyException::new_err(format!(
                 "Failed to load graph from the files. Reason: {}",
                 e.to_string()
@@ -213,7 +231,7 @@ impl Graph {
     //     }
 }
 
-impl Graph {
+impl PyGraph {
     fn transform_props(props: Option<HashMap<String, Prop>>) -> Vec<(String, dbc::Prop)> {
         props
             .unwrap_or_default()
