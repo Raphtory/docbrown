@@ -708,7 +708,7 @@ impl<'a, A: StateType, IN, OUT, ACC: Accumulator<A, IN, OUT>> Entry<'a, A, IN, O
 
 /// `EvalVertexView` represents a view of a vertex in a computation graph.
 ///
-/// The view contains the super-step index, the `WindowedVertex` representing the vertex, and a shared
+/// The view contains the evaluation step, the `WindowedVertex` representing the vertex, and a shared
 /// reference to the `ShuffleComputeState`.
 pub struct EvalVertexView {
     ss: usize,
