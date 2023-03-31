@@ -421,7 +421,7 @@ impl<G: GraphViewOps> GlobalEvalState<G> {
     /// # Return Value
     ///
     /// A new `Context` object.
-    pub fn new(g: Graph, window: Range<i64>, keep_past_state: bool) -> Self {
+    pub fn new(g: G, keep_past_state: bool) -> Self {
         let n_parts = g.nr_shards;
         let mut states = Vec::with_capacity(n_parts);
         for _ in 0..n_parts {

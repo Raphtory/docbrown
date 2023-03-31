@@ -13,7 +13,7 @@ pub trait GraphViewInternalOps {
     fn latest_time_global(&self) -> Option<i64>;
     fn latest_time_window(&self, t_start: i64, t_end: i64) -> Option<i64>;
     /// Returns the total number of vertices in the graph.
-    fn vertices_len(&self) -> Result<usize, GraphError>;
+    fn vertices_len(&self) -> usize;
 
     /// Returns the number of vertices in the graph that were created between
     /// the start (t_start) and end (t_end) timestamps (inclusive).
@@ -24,7 +24,7 @@ pub trait GraphViewInternalOps {
     fn vertices_len_window(&self, t_start: i64, t_end: i64) -> usize;
 
     /// Returns the total number of edges in the graph.
-    fn edges_len(&self) -> Result<usize, GraphError>;
+    fn edges_len(&self) -> usize;
 
     /// Returns the number of edges in the graph that were created between the
     /// start (t_start) and end (t_end) timestamps (inclusive).
@@ -75,7 +75,7 @@ pub trait GraphViewInternalOps {
     ///
     /// * `v` - VertexRef of the vertex to check.
     /// * `d` - Direction of the edges to count.
-    fn degree(&self, v: VertexRef, d: Direction) -> Result<usize, GraphError>;
+    fn degree(&self, v: VertexRef, d: Direction) -> usize;
 
     /// Returns the number of edges that point towards or from the specified vertex (v)
     /// created between the start (t_start) and end (t_end) timestamps (inclusive) based
@@ -85,20 +85,14 @@ pub trait GraphViewInternalOps {
     /// * `v` - VertexRef of the vertex to check.
     /// * `t_start` - The start time of the window (inclusive).
     /// * `t_end` - The end time of the window (exclusive).
-    fn degree_window(
-        &self,
-        v: VertexRef,
-        t_start: i64,
-        t_end: i64,
-        d: Direction,
-    ) -> Result<usize, GraphError>;
+    fn degree_window(&self, v: VertexRef, t_start: i64, t_end: i64, d: Direction) -> usize;
 
     /// Returns the VertexRef that corresponds to the specified vertex ID (v).
     /// Returns None if the vertex ID is not present in the graph.
     /// # Arguments
     ///
     /// * `v` - The vertex ID to lookup.
-    fn vertex_ref(&self, v: u64) -> Result<Option<VertexRef>, GraphError>;
+    fn vertex_ref(&self, v: u64) -> Option<VertexRef>;
 
     /// Returns the VertexRef that corresponds to the specified vertex ID (v) created
     /// between the start (t_start) and end (t_end) timestamps (inclusive).
@@ -111,12 +105,7 @@ pub trait GraphViewInternalOps {
     ///
     /// # Returns
     /// * `Option<VertexRef>` - The VertexRef of the vertex if it exists in the graph.
-    fn vertex_ref_window(
-        &self,
-        v: u64,
-        t_start: i64,
-        t_end: i64,
-    ) -> Result<Option<VertexRef>, GraphError>;
+    fn vertex_ref_window(&self, v: u64, t_start: i64, t_end: i64) -> Option<VertexRef>;
 
     /// Retuns all the vertex IDs in the graph.
     /// # Returns
@@ -361,7 +350,7 @@ pub trait GraphViewInternalOps {
     /// # Returns
     ///
     /// Option<Prop> - The property value if it exists.
-    fn static_vertex_prop(&self, v: VertexRef, name: String) -> Result<Option<Prop>, GraphError>;
+    fn static_vertex_prop(&self, v: VertexRef, name: String) -> Option<Prop>;
 
     /// Gets the keys of static properties of a given vertex
     ///
@@ -372,7 +361,7 @@ pub trait GraphViewInternalOps {
     /// # Returns
     ///
     /// Vec<String> - The keys of the static properties.
-    fn static_vertex_prop_keys(&self, v: VertexRef) -> Result<Vec<String>, GraphError>;
+    fn static_vertex_prop_keys(&self, v: VertexRef) -> Vec<String>;
 
     /// Returns a vector of all temporal values of the vertex property with the given name for the
     /// given vertex
@@ -389,11 +378,7 @@ pub trait GraphViewInternalOps {
     /// A vector of tuples representing the temporal values of the property for the given vertex
     /// that fall within the specified time window, where the first element of each tuple is the timestamp
     /// and the second element is the property value.
-    fn temporal_vertex_prop_vec(
-        &self,
-        v: VertexRef,
-        name: String,
-    ) -> Result<Vec<(i64, Prop)>, GraphError>;
+    fn temporal_vertex_prop_vec(&self, v: VertexRef, name: String) -> Vec<(i64, Prop)>;
 
     /// Returns a vector of all temporal values of the vertex property with the given name for the given vertex
     /// that fall within the specified time window.
@@ -416,7 +401,7 @@ pub trait GraphViewInternalOps {
         name: String,
         t_start: i64,
         t_end: i64,
-    ) -> Result<Vec<(i64, Prop)>, GraphError>;
+    ) -> Vec<(i64, Prop)>;
 
     /// Returns a map of all temporal values of the vertex properties for the given vertex.
     /// The keys of the map are the names of the properties, and the values are vectors of tuples
@@ -427,10 +412,7 @@ pub trait GraphViewInternalOps {
     ///
     /// # Returns
     /// - A map of all temporal values of the vertex properties for the given vertex.
-    fn temporal_vertex_props(
-        &self,
-        v: VertexRef,
-    ) -> Result<HashMap<String, Vec<(i64, Prop)>>, GraphError>;
+    fn temporal_vertex_props(&self, v: VertexRef) -> HashMap<String, Vec<(i64, Prop)>>;
 
     /// Returns a map of all temporal values of the vertex properties for the given vertex
     /// that fall within the specified time window.
@@ -448,7 +430,7 @@ pub trait GraphViewInternalOps {
         v: VertexRef,
         t_start: i64,
         t_end: i64,
-    ) -> Result<HashMap<String, Vec<(i64, Prop)>>, GraphError>;
+    ) -> HashMap<String, Vec<(i64, Prop)>>;
 
     /// Returns a vector of all temporal values of the edge property with the given name for the
     /// given edge reference.
@@ -461,7 +443,7 @@ pub trait GraphViewInternalOps {
     /// # Returns
     ///
     /// A property if it exists
-    fn static_edge_prop(&self, e: EdgeRef, name: String) -> Result<Option<Prop>, GraphError>;
+    fn static_edge_prop(&self, e: EdgeRef, name: String) -> Option<Prop>;
 
     /// Returns a vector of keys for the static properties of the given edge reference.
     ///
@@ -472,7 +454,7 @@ pub trait GraphViewInternalOps {
     /// # Returns
     ///
     /// * A `Vec` of `String` containing the keys for the static properties of the given edge.
-    fn static_edge_prop_keys(&self, e: EdgeRef) -> Result<Vec<String>, GraphError>;
+    fn static_edge_prop_keys(&self, e: EdgeRef) -> Vec<String>;
 
     /// Returns a vector of tuples containing the values of the temporal property with the given name
     /// for the given edge reference.
@@ -485,11 +467,7 @@ pub trait GraphViewInternalOps {
     /// # Returns
     ///
     /// * A `Vec` of tuples containing the values of the temporal property with the given name for the given edge.
-    fn temporal_edge_props_vec(
-        &self,
-        e: EdgeRef,
-        name: String,
-    ) -> Result<Vec<(i64, Prop)>, GraphError>;
+    fn temporal_edge_props_vec(&self, e: EdgeRef, name: String) -> Vec<(i64, Prop)>;
 
     /// Returns a vector of tuples containing the values of the temporal property with the given name
     /// for the given edge reference within the specified time window.
@@ -512,7 +490,7 @@ pub trait GraphViewInternalOps {
         name: String,
         t_start: i64,
         t_end: i64,
-    ) -> Result<Vec<(i64, Prop)>, GraphError>;
+    ) -> Vec<(i64, Prop)>;
 
     /// Returns a hash map containing all the temporal properties of the given edge reference,
     /// where each key is the name of a temporal property and each value is a vector of tuples containing

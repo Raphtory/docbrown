@@ -57,8 +57,7 @@ pub struct GraphWindowSet<G: GraphViewOps> {
     perspectives: Box<dyn Iterator<Item = Perspective> + Send>,
 }
 
-impl<G: GraphViewOps> Iterator for GraphWindowSet<G> {
-    type Item = WindowedGraph<G>;
+impl<G: GraphViewOps> GraphWindowSet<G> {
     /// Constructs a new `GraphWindowSet` object.
     ///
     /// # Arguments
@@ -70,9 +69,9 @@ impl<G: GraphViewOps> Iterator for GraphWindowSet<G> {
     ///
     /// A new `GraphWindowSet` object.
     pub fn new(
-        graph: Graph,
+        graph: G,
         perspectives: Box<dyn Iterator<Item = Perspective> + Send>,
-    ) -> GraphWindowSet {
+    ) -> GraphWindowSet<G> {
         GraphWindowSet {
             graph,
             perspectives,
@@ -274,7 +273,12 @@ impl<G: GraphViewInternalOps> GraphViewInternalOps for WindowedGraph<G> {
     /// # Errors
     ///
     /// Returns an error if `v` is not a valid vertex.
-    fn has_vertex_ref_window(&self, v: VertexRef, t_start: i64, t_end: i64) -> Result<bool, GraphError> {
+    fn has_vertex_ref_window(
+        &self,
+        v: VertexRef,
+        t_start: i64,
+        t_end: i64,
+    ) -> Result<bool, GraphError> {
         self.graph
             .has_vertex_ref_window(v, self.actual_start(t_start), self.actual_end(t_end))
     }

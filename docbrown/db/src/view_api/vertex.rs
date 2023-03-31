@@ -31,19 +31,19 @@ pub trait VertexListOps:
     /// # Returns
     /// An iterator of the values of the given property name including the times when it changed
     /// as a vector of tuples of the form (time, property).
-    fn prop(self, name: String) -> Result<Self::ValueIterType<Vec<(i64, Prop)>>, GraphError>;
+    fn prop(self, name: String) -> Self::ValueIterType<Vec<(i64, Prop)>>;
 
     /// Returns an iterator over all vertex properties.
     ///
     /// # Returns
     /// An iterator over all vertex properties.
-    fn props(self) -> Result<Self::ValueIterType<HashMap<String, Vec<(i64, Prop)>>>, GraphError>;
+    fn props(self) -> Self::ValueIterType<HashMap<String, Vec<(i64, Prop)>>>;
 
     /// Returns an iterator over the degree of the vertices.
     ///
     /// # Returns
     /// An iterator over the degree of the vertices.
-    fn degree(self) -> Result<Self::ValueIterType<usize>, GraphError>;
+    fn degree(self) -> Self::ValueIterType<usize>;
 
     /// Returns an iterator over the degree of the vertices within a time window.
     /// The degree of a vertex is the number of edges that connect to it in both directions.
@@ -56,18 +56,14 @@ pub trait VertexListOps:
     /// # Returns
     ///
     /// An iterator over the degree of the vertices within the given time window.
-    fn degree_window(
-        self,
-        t_start: i64,
-        t_end: i64,
-    ) -> Result<Self::ValueIterType<usize>, GraphError>;
+    fn degree_window(self, t_start: i64, t_end: i64) -> Self::ValueIterType<usize>;
 
     /// Returns an iterator over the in-degree of the vertices.
     /// The in-degree of a vertex is the number of edges that connect to it from other vertices.
     ///
     /// # Returns
     /// An iterator over the in-degree of the vertices.
-    fn in_degree(self) -> Result<Self::ValueIterType<usize>, GraphError>;
+    fn in_degree(self) -> Self::ValueIterType<usize>;
 
     /// Returns an iterator over the in-degree of the vertices within a time window.
     /// The in-degree of a vertex is the number of edges that connects to it from other vertices.
@@ -80,11 +76,7 @@ pub trait VertexListOps:
     /// # Returns
     ///
     /// An iterator over the in-degree of the vertices within the given time window.
-    fn in_degree_window(
-        self,
-        t_start: i64,
-        t_end: i64,
-    ) -> Result<Self::ValueIterType<usize>, GraphError>;
+    fn in_degree_window(self, t_start: i64, t_end: i64) -> Self::ValueIterType<usize>;
 
     /// Returns an iterator over the out-degree of the vertices.
     /// The out-degree of a vertex is the number of edges that connects to it from the vertex.
@@ -92,7 +84,7 @@ pub trait VertexListOps:
     /// # Returns
     ///
     /// An iterator over the out-degree of the vertices.
-    fn out_degree(self) -> Result<Self::ValueIterType<usize>, GraphError>;
+    fn out_degree(self) -> Self::ValueIterType<usize>;
 
     /// Returns an iterator over the out-degree of the vertices within a time window.
     /// The out-degree of a vertex is the number of edges that connects to it from the vertex.
@@ -105,11 +97,7 @@ pub trait VertexListOps:
     /// # Returns
     ///
     /// An iterator over the out-degree of the vertices within the given time window.
-    fn out_degree_window(
-        self,
-        t_start: i64,
-        t_end: i64,
-    ) -> Result<Self::ValueIterType<usize>, GraphError>;
+    fn out_degree_window(self, t_start: i64, t_end: i64) -> Self::ValueIterType<usize>;
 
     /// Returns an iterator over the edges of the vertices.
     fn edges(self) -> Self::EList;

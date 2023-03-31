@@ -20,8 +20,8 @@
 use crate::graph_immutable::ImmutableGraph;
 use crate::graph_window::{GraphWindowSet, WindowedGraph};
 use crate::perspective::{Perspective, PerspectiveIterator, PerspectiveSet};
-use std::cmp::{max, min};
 use itertools::Itertools;
+use std::cmp::{max, min};
 use std::{
     collections::HashMap,
     iter,
@@ -87,10 +87,10 @@ impl GraphViewInternalOps for Graph {
         }
     }
 
-    fn vertices_len(&self) -> Result<usize, GraphError> {
+    fn vertices_len(&self) -> usize {
         let vs: Result<Vec<usize>, GraphError> =
             self.shards.iter().map(|shard| shard.len()).collect();
-        Ok(vs?.iter().sum())
+        vs.iter().sum())
     }
 
     fn vertices_len_window(&self, t_start: i64, t_end: i64) -> usize {
@@ -123,11 +123,7 @@ impl GraphViewInternalOps for Graph {
             .sum()
     }
 
-    fn has_edge_ref(
-        &self,
-        src: VertexRef,
-        dst: VertexRef,
-    ) -> Result<bool, GraphError> {
+    fn has_edge_ref(&self, src: VertexRef, dst: VertexRef) -> Result<bool, GraphError> {
         Ok(self.get_shard_from_v(src).has_edge(src.g_id, dst.g_id)?)
     }
 
@@ -232,11 +228,7 @@ impl GraphViewInternalOps for Graph {
         Box::new(shard.vertices_window(t_start..t_end))
     }
 
-    fn edge_ref(
-        &self,
-        src: VertexRef,
-        dst: VertexRef,
-    ) -> Result<Option<EdgeRef>, GraphError> {
+    fn edge_ref(&self, src: VertexRef, dst: VertexRef) -> Result<Option<EdgeRef>, GraphError> {
         self.get_shard_from_v(src).edge(src.g_id, dst.g_id)
     }
 
@@ -465,7 +457,7 @@ impl Graph {
     /// // Freeze the mutable graph into an immutable graph
     /// let immutable_graph = mutable_graph.freeze();
     /// ```
-    pub fn freeze(&self) -> ImmutableGraph {
+    pub fn freeze(self) -> ImmutableGraph {
         ImmutableGraph {
             nr_shards: self.nr_shards,
             shards: self.shards.iter().map(|s| s.freeze()).collect_vec(),

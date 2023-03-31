@@ -136,7 +136,7 @@ impl<G: GraphViewOps> VertexView<G> {
     /// # Returns
     ///
     /// The out-degree of this vertex in the given time window.
-    pub fn out_degree_window(&self, t_start: i64, t_end: i64) -> Result<usize, GraphError> {
+    pub fn out_degree_window(&self, t_start: i64, t_end: i64) -> usize {
         self.graph
             .degree_window(self.vertex, t_start, t_end, Direction::OUT)
     }
@@ -146,7 +146,7 @@ impl<G: GraphViewOps> VertexView<G> {
     /// # Returns
     ///
     /// An iterator over the edges that are incident to this vertex.
-    pub fn edges(&self) -> Self::EList {
+    pub fn edges(&self) -> Box<dyn Iterator<Item = EdgeView<G>> + Send> {
         let g = self.graph.clone();
         Box::new(
             self.graph
@@ -689,7 +689,8 @@ mod vertex_test {
             g.vertex("Gandalf")
                 .unwrap()
                 .unwrap()
-                .in_neighbours().iter()
+                .in_neighbours()
+                .iter()
                 .count(),
             24
         );
@@ -706,7 +707,8 @@ mod vertex_test {
             g.vertex("Gandalf")
                 .unwrap()
                 .unwrap()
-                .out_neighbours().iter()
+                .out_neighbours()
+                .iter()
                 .count(),
             35
         );
