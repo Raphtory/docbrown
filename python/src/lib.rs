@@ -13,7 +13,7 @@ use pyo3::prelude::*;
 
 use crate::algorithms::{all_local_reciprocity, global_reciprocity, local_reciprocity};
 use crate::graph::PyGraph;
-use crate::wrappers::Perspective;
+use crate::wrappers::PyPerspective;
 
 use crate::algorithms::*;
 use crate::graph_gen::*;
@@ -22,7 +22,7 @@ use crate::graph_loader::*;
 #[pymodule]
 fn raphtory(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_class::<PyGraph>()?;
-    m.add_class::<Perspective>()?;
+    m.add_class::<PyPerspective>()?;
 
     let algorithm_module = PyModule::new(py, "algorithms")?;
     algorithm_module.add_function(wrap_pyfunction!(global_reciprocity, algorithm_module)?)?;

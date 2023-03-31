@@ -1,5 +1,6 @@
 use docbrown_core as db_c;
 use docbrown_db::perspective;
+use docbrown_db::perspective::PerspectiveSet;
 use pyo3::prelude::*;
 
 #[derive(FromPyObject, Debug, Clone)]
@@ -162,24 +163,24 @@ impl From<Box<dyn Iterator<Item = usize> + Send>> for UsizeIter {
 }
 
 #[derive(Clone)]
-#[pyclass]
-pub struct Perspective {
+#[pyclass(name = "Perspective")]
+pub struct PyPerspective {
     pub start: Option<i64>,
     pub end: Option<i64>,
 }
 
 #[pymethods]
-impl Perspective {
+impl PyPerspective {
     #[new]
     #[pyo3(signature = (start=None, end=None))]
     fn new(start: Option<i64>, end: Option<i64>) -> Self {
-        Perspective { start, end }
+        PyPerspective { start, end }
     }
 
     #[staticmethod]
     #[pyo3(signature = (step, start=None, end=None))]
-    fn expanding(step: u64, start: Option<i64>, end: Option<i64>) -> PerspectiveSet {
-        PerspectiveSet {
+    fn expanding(step: u64, start: Option<i64>, end: Option<i64>) -> PyPerspectiveSet {
+        PyPerspectiveSet {
             ps: perspective::Perspective::expanding(step, start, end),
         }
     }
@@ -191,24 +192,24 @@ impl Perspective {
         step: Option<u64>,
         start: Option<i64>,
         end: Option<i64>,
-    ) -> PerspectiveSet {
-        PerspectiveSet {
+    ) -> PyPerspectiveSet {
+        PyPerspectiveSet {
             ps: perspective::Perspective::rolling(window, step, start, end),
         }
     }
 }
 
-impl From<perspective::Perspective> for Perspective {
+impl From<perspective::Perspective> for PyPerspective {
     fn from(value: perspective::Perspective) -> Self {
-        Perspective {
+        PyPerspective {
             start: value.start,
             end: value.end,
         }
     }
 }
 
-impl From<Perspective> for perspective::Perspective {
-    fn from(value: Perspective) -> Self {
+impl From<PyPerspective> for perspective::Perspective {
+    fn from(value: PyPerspective) -> Self {
         perspective::Perspective {
             start: value.start,
             end: value.end,
@@ -216,8 +217,8 @@ impl From<Perspective> for perspective::Perspective {
     }
 }
 
-#[pyclass]
+#[pyclass(name = "PerspectiveSet")]
 #[derive(Clone)]
-pub struct PerspectiveSet {
-    ps: perspective::PerspectiveSet,
+pub struct PyPerspectiveSet {
+    pub(crate) ps: PerspectiveSet,
 }

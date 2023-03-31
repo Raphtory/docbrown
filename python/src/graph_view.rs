@@ -2,9 +2,12 @@ use crate::dynamic::DynamicGraph;
 use crate::edge::{PyEdge, PyEdgeIter};
 use crate::util::extract_vertex_ref;
 use crate::vertex::{PyVertex, PyVertices};
+use crate::wrappers::{PyPerspective, PyPerspectiveSet};
 use docbrown_db::graph_window::GraphWindowSet;
+use docbrown_db::perspective::Perspective;
 use docbrown_db::view_api::*;
 use pyo3::prelude::*;
+use pyo3::types::PyIterator;
 
 #[pyclass(name = "GraphView", frozen, subclass)]
 pub struct PyGraphView {
@@ -103,7 +106,30 @@ impl PyGraphView {
     }
 
     fn through(&self, perspectives: &PyAny) -> PyResult<PyGraphWindowSet> {
-        todo!()
+        struct PyPerspectiveIterator {
+            pub iter: Py<PyIterator>,
+        }
+        unsafe impl Send for PyPerspectiveIterator {} // iter is used by holding the GIL
+        impl Iterator for PyPerspectiveIterator {
+            type Item = Perspective;
+            fn next(&mut self) -> Option<Self::Item> {
+                Python::with_gil(|py| {
+                    let item = self.iter.as_ref(py).next()?.ok()?;
+                    Some(item.extract::<PyPerspective>().ok()?.into())
+                })
+            }
+        }
+
+        let result = match perspectives.extract::<PyPerspectiveSet>() {
+            Ok(perspective_set) => self.graph.through_perspectives(perspective_set.ps),
+            Err(_) => {
+                let iter = PyPerspectiveIterator {
+                    iter: Py::from(perspectives.iter()?),
+                };
+                self.graph.through_iter(Box::new(iter))
+            }
+        };
+        Ok(result.into())
     }
 
     pub fn __repr__(&self) -> String {
