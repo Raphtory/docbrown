@@ -37,9 +37,10 @@ pub trait GraphViewOps: Send + Sync + Sized + GraphViewInternalOps + 'static + C
         &self,
         perspectives: Box<dyn Iterator<Item = Perspective> + Send>,
     ) -> GraphWindowSet<Self> {
-        let iter = match (self.earliest_time(), self.latest_time()) {
-            (Some(start), Some(end)) => perspectives,
-            _ => Box::new(iter::empty::<Perspective>()),
+        let iter = if self.earliest_time().is_some() && self.latest_time().is_some() {
+            perspectives
+        } else {
+            Box::new(iter::empty::<Perspective>())
         };
         GraphWindowSet::new(self.clone(), iter)
     }
