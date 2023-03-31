@@ -10,6 +10,7 @@
 //!
 //! # Examples
 //! ```rust
+//! use std::os::macos::raw::stat;
 //! use docbrown_db::algorithms::degree::average_degree;
 //! use docbrown_db::graph::Graph;
 //! use docbrown_db::perspective::Perspective;
@@ -29,9 +30,9 @@
 //! // A rolling perspective with a window size of 2 and a step size of 1
 //! let view_persp = graph.through_perspectives(perspectives);
 //!
-//! view_persp.iter().for_each(|(window)| {
+//! for window in view_persp {
 //!   println!("Degree: {:?}", average_degree(&window.graph));
-//! });
+//! }
 //!
 //! ```
 use std::ops::Range;
