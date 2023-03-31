@@ -1044,41 +1044,10 @@ impl Program for SimpleConnectedComponents {
     }
 }
 
-/// A triangle counting algorithm
+/// Step 1 for the triangle counting algorithm
 pub struct TriangleCountS1 {}
 
-/// A triangle counting algorithm
-///
-/// # Example
-///
-/// ```rust
-/// use std::{cmp::Reverse, iter::once};
-/// use docbrown_db::program::algo::triangle_counting_fast;
-/// let graph = Graph::new(2);
-///
-/// let edges = vec![
-///     // triangle 1
-///     (1, 2, 1),
-///     (2, 3, 1),
-///     (3, 1, 1),
-///     //triangle 2
-///     (4, 5, 1),
-///     (5, 6, 1),
-///     (6, 4, 1),
-///     // triangle 4 and 5
-///     (7, 8, 2),
-///     (8, 9, 3),
-///     (9, 7, 4),
-///     (8, 10, 5),
-///     (10, 9, 6),
-/// ];
-///
-/// for (src, dst, ts) in edges {
-///     graph.add_edge(ts, src, dst, &vec![]);
-/// }
-///
-/// let actual_tri_count = triangle_counting_fast(&graph, 0..96);
-/// ```
+/// Step 1 for the triangle counting algorithm
 impl Program for TriangleCountS1 {
     fn local_eval(&self, c: &LocalState) {
         let neighbors_set = c.agg(state::def::hash_set(0));
@@ -1106,10 +1075,10 @@ impl Program for TriangleCountS1 {
     }
 }
 
-/// A triangle counting algorithm
+/// Step 2 for the triangle counting algorithm
 pub struct TriangleCountS2 {}
 
-/// A triangle counting algorithm
+/// Step 2 for the triangle counting algorithm
 impl Program for TriangleCountS2 {
     type Out = Option<usize>;
     fn local_eval(&self, c: &LocalState) {
@@ -1157,10 +1126,10 @@ impl Program for TriangleCountS2 {
     }
 }
 
-/// A slower triangle counting algorithm
+/// A slower Step 2 for the triangle counting algorithm
 pub struct TriangleCountSlowS2 {}
 
-/// A slower triangle counting algorithm
+/// A slower Step 2 for the triangle counting algorithm
 impl Program for TriangleCountSlowS2 {
     fn local_eval(&self, c: &LocalState) {
         let count = c.global_agg(state::def::sum::<usize>(0));
