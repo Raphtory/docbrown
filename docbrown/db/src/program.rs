@@ -76,6 +76,7 @@ pub mod algo {
     /// # Example
     /// ```rust
     /// use std::{cmp::Reverse, iter::once};
+    /// use docbrown_db::graph::Graph;
     /// use docbrown_db::program::algo::triangle_counting_fast;
     /// let graph = Graph::new(2);
     ///
