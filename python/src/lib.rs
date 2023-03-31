@@ -43,9 +43,12 @@ fn raphtory(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_submodule(algorithm_module)?;
 
     let graph_loader_module = PyModule::new(py, "graph_loader")?;
-    // graph_loader_module.add_function(wrap_pyfunction!(lotr_graph, graph_loader_module)?)?;
-    // graph_loader_module.add_function(wrap_pyfunction!(twitter_graph, graph_loader_module)?)?;
-    // graph_loader_module.add_function(wrap_pyfunction!(reddit_hyperlink_graph, graph_loader_module)?)?;
+    graph_loader_module.add_function(wrap_pyfunction!(lotr_graph, graph_loader_module)?)?;
+    graph_loader_module.add_function(wrap_pyfunction!(twitter_graph, graph_loader_module)?)?;
+    graph_loader_module.add_function(wrap_pyfunction!(
+        reddit_hyperlink_graph,
+        graph_loader_module
+    )?)?;
     m.add_submodule(graph_loader_module)?;
 
     let graph_gen_module = PyModule::new(py, "graph_gen")?;
