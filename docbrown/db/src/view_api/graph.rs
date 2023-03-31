@@ -6,21 +6,48 @@ use crate::vertices::Vertices;
 use crate::view_api::internal::GraphViewInternalOps;
 use docbrown_core::tgraph::VertexRef;
 use std::iter;
+use docbrown_core::tgraph_shard::errors::GraphError;
 
+/// This trait GraphViewOps defines operations for accessing
+/// information about a graph. The trait has associated types
+/// that are used to define the type of the vertices, edges
+/// and the corresponding iterators.
 pub trait GraphViewOps: Send + Sync + Sized + GraphViewInternalOps + 'static + Clone {
-    fn num_vertices(&self) -> usize;
-    fn earliest_time(&self) -> Option<i64>;
-    fn latest_time(&self) -> Option<i64>;
-    fn is_empty(&self) -> bool {
-        self.num_vertices() == 0
+    /// Return the number of vertices in the graph.
+    fn num_vertices(&self) -> Result<usize, GraphError>;
+
+    /// Return the earliest timestamp in the graph.
+    fn earliest_time(&self) -> Result<Option<i64>, GraphError>;
+
+    /// Return the latest timestamp in the graph.
+    fn latest_time(&self) -> Result<Option<i64>, GraphError>;
+
+    /// Check if the graph is empty.
+    fn is_empty(&self) -> Result<bool, GraphError> {
+        Ok(self.num_vertices()? == 0)
     }
-    fn num_edges(&self) -> usize;
-    fn has_vertex<T: Into<VertexRef>>(&self, v: T) -> bool;
-    fn has_edge<T: Into<VertexRef>>(&self, src: T, dst: T) -> bool;
-    fn vertex<T: Into<VertexRef>>(&self, v: T) -> Option<VertexView<Self>>;
+
+    /// Return the number of edges in the graph.
+    fn num_edges(&self) -> Result<usize, GraphError>;
+
+    /// Check if the graph contains a vertex `v`.
+    fn has_vertex<T: Into<VertexRef>>(&self, v: T) -> Result<bool, GraphError>;
+
+    /// Check if the graph contains an edge given a pair of vertices `(src, dst)`.
+    fn has_edge<T: Into<VertexRef>>(&self, src: T, dst: T) -> Result<bool, GraphError>;
+
+    /// Get a vertex `v`.
+    fn vertex<T: Into<VertexRef>>(&self, v: T) -> Result<Option<VertexView<Self>>, GraphError>;
+
+    /// Return a View of the vertices in the Graph
     fn vertices(&self) -> Vertices<Self>;
-    fn edge<T: Into<VertexRef>>(&self, src: T, dst: T) -> Option<EdgeView<Self>>;
+
+    /// Get an edge `(src, dst)`.
+    fn edge<T: Into<VertexRef>>(&self, src: T, dst: T) -> Result<Option<Self::Edge>, GraphError>;
+
+    /// Return an iterator over all edges in the graph.
     fn edges(&self) -> Box<dyn Iterator<Item = EdgeView<Self>> + Send>;
+
     fn window(&self, t_start: i64, t_end: i64) -> WindowedGraph<Self>;
     fn at(&self, end: i64) -> WindowedGraph<Self> {
         self.window(i64::MIN, end.saturating_add(1))

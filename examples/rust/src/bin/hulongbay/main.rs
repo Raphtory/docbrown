@@ -74,8 +74,8 @@ pub fn loader(data_dir: &Path) -> Result<Graph, Box<dyn Error>> {
         println!(
             "Loaded graph from path {} with {} vertices, {} edges, took {} seconds",
             encoded_data_dir.display(),
-            g.num_vertices(),
-            g.num_edges(),
+            g.num_vertices().unwrap(),
+            g.num_edges().unwrap(),
             now.elapsed().as_secs()
         );
 
@@ -98,13 +98,14 @@ pub fn loader(data_dir: &Path) -> Result<Graph, Box<dyn Error>> {
                     dst,
                     &vec![("amount".to_owned(), Prop::U64(sent.amount_usd))],
                 )
+                .unwrap()
             })?;
 
         println!(
             "Loaded graph from CSV data files {} with {} vertices, {} edges which took {} seconds",
             encoded_data_dir.display(),
-            g.num_vertices(),
-            g.num_edges(),
+            g.num_vertices().unwrap(),
+            g.num_edges().unwrap(),
             now.elapsed().as_secs()
         );
 
@@ -119,8 +120,8 @@ fn try_main() -> Result<(), Box<dyn Error>> {
 
     let graph = loader(data_dir)?;
 
-    let min_time = graph.earliest_time().ok_or(GraphEmptyError)?;
-    let max_time = graph.latest_time().ok_or(GraphEmptyError)?;
+    let min_time = graph.earliest_time().unwrap().ok_or(GraphEmptyError)?;
+    let max_time = graph.latest_time().unwrap().ok_or(GraphEmptyError)?;
     let mid_time = (min_time + max_time) / 2;
 
     let now = Instant::now();
@@ -160,8 +161,8 @@ fn try_main() -> Result<(), Box<dyn Error>> {
         num_edges,
         now.elapsed().as_secs()
     );
-    let earliest_time = graph.earliest_time().ok_or(GraphEmptyError)?;
-    let latest_time = graph.latest_time().ok_or(GraphEmptyError)?;
+    let earliest_time = graph.earliest_time().unwrap().ok_or(GraphEmptyError)?;
+    let latest_time = graph.latest_time().unwrap().ok_or(GraphEmptyError)?;
     println!("graph time range: {}-{}", earliest_time, latest_time);
     let now = Instant::now();
     let window = graph.window(i64::MIN, i64::MAX);
@@ -176,7 +177,7 @@ fn try_main() -> Result<(), Box<dyn Error>> {
     );
 
     let now = Instant::now();
-    let num_windowed_edges2 = window.num_edges();
+    let num_windowed_edges2 = window.num_edges().unwrap();
     println!(
         "Window num_edges returned {} in {} seconds",
         num_windowed_edges2,
@@ -186,8 +187,65 @@ fn try_main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
+fn try_main_bm() -> Result<(), Box<dyn Error>> {
+    let args: Vec<String> = env::args().collect();
+    let data_dir = Path::new(args.get(1).ok_or(MissingArgumentError)?);
+
+    let graph = loader(data_dir)?;
+
+    let now = Instant::now();
+    let num_edges: usize = graph.vertices().map(|v| v.out_degree().unwrap()).sum();
+    println!(
+        "Counting edges by summing degrees returned {} in {} milliseconds",
+        num_edges,
+        now.elapsed().as_millis()
+    );
+    let earliest_time = graph.earliest_time().unwrap().ok_or(GraphEmptyError)?;
+    let latest_time = graph.latest_time().unwrap().ok_or(GraphEmptyError)?;
+    println!("graph time range: {}-{}", earliest_time, latest_time);
+
+    let now = Instant::now();
+    let num_edges2 = graph.num_edges().unwrap();
+    println!(
+        "num_edges returned {} in {} milliseconds",
+        num_edges2,
+        now.elapsed().as_millis()
+    );
+
+    println!("\n Immutable graph metrics:");
+
+    let graph = graph.freeze();
+
+    let now = Instant::now();
+    let num_edges: usize = graph
+        .vertices()
+        .map(|v| graph.degree(v, Direction::OUT))
+        .sum();
+
+    println!(
+        "Counting edges by summing degrees returned {} in {} milliseconds",
+        num_edges,
+        now.elapsed().as_millis()
+    );
+
+    let earliest_time = graph.earliest_time().ok_or(GraphEmptyError)?;
+    let latest_time = graph.latest_time().ok_or(GraphEmptyError)?;
+
+    println!("graph time range: {}-{}", earliest_time, latest_time);
+
+    let now = Instant::now();
+    let num_edges2 = graph.num_edges();
+    println!(
+        "num_edges returned {} in {} milliseconds",
+        num_edges2,
+        now.elapsed().as_millis()
+    );
+
+    Ok(())
+}
+
 fn main() {
-    if let Err(e) = try_main() {
+    if let Err(e) = try_main_bm() {
         eprintln!("Failed: {}", e);
         std::process::exit(1)
     }

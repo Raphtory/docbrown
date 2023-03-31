@@ -58,7 +58,7 @@ impl PyGraph {
         let result = self
             .graph
             .add_vertex(timestamp, v, &Self::transform_props(properties));
-        Self::adapt_err(result)
+        adapt_err(result)
     }
 
     pub fn add_vertex_properties(
@@ -70,7 +70,7 @@ impl PyGraph {
         let result = self
             .graph
             .add_vertex_properties(v, &Self::transform_props(Some(properties)));
-        Self::adapt_err(result)
+        adapt_err(result)
     }
 
     pub fn add_edge(
@@ -82,9 +82,10 @@ impl PyGraph {
     ) -> PyResult<()> {
         let src = Self::extract_id(src)?;
         let dst = Self::extract_id(dst)?;
-        self.graph
-            .add_edge(timestamp, src, dst, &Self::transform_props(properties));
-        Ok(())
+        adapt_err(
+            self.graph
+                .add_edge(timestamp, src, dst, &Self::transform_props(properties)),
+        )
     }
 
     pub fn add_edge_properties(
@@ -98,7 +99,7 @@ impl PyGraph {
         let result =
             self.graph
                 .add_edge_properties(src, dst, &Self::transform_props(Some(properties)));
-        Self::adapt_err(result)
+        adapt_err(result)
     }
 
     //******  Saving And Loading  ******//
@@ -146,16 +147,6 @@ impl PyGraph {
                 Ok(InputVertexBox::new(number))
             }
         }
-    }
-
-    fn adapt_err<E>(result: Result<(), E>) -> PyResult<()>
-    where
-        E: std::error::Error,
-    {
-        result.map_err(|e| {
-            let error_log = display_error_chain::DisplayErrorChain::new(&e).to_string();
-            PyException::new_err(error_log)
-        })
     }
 }
 

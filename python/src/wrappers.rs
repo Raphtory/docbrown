@@ -91,8 +91,8 @@ impl NestedU64Iter {
     fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
         slf
     }
-    fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<U64Iter> {
-        slf.iter.next()
+    fn __next__(mut slf: PyRefMut<'_, Self>) -> PyResult<Option<IdIterable>> {
+        slf.iter.next().transpose()
     }
 }
 

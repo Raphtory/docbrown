@@ -8,14 +8,6 @@ pub(crate) fn lotr_graph(shards: usize) -> PyResult<Py<PyGraph>> {
 }
 
 #[pyfunction]
-#[pyo3(signature = (shards=1))]
-pub(crate) fn twitter_graph(shards: usize) -> PyResult<Py<PyGraph>> {
-    PyGraph::py_from_db_graph(docbrown_db::graph_loader::twitter_graph::twitter_graph(
-        shards,
-    ))
-}
-
-#[pyfunction]
 #[pyo3(signature = (shards=1,timeout_seconds=600))]
 pub(crate) fn reddit_hyperlink_graph(shards: usize, timeout_seconds: u64) -> PyResult<Py<PyGraph>> {
     PyGraph::py_from_db_graph(docbrown_db::graph_loader::reddit_hyperlinks::reddit_graph(

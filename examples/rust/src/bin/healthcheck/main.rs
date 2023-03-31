@@ -42,7 +42,7 @@ mod test {
 
         load::<REC>(&g1, &gn, path);
 
-        assert_eq!(g1.vertices_len(), gn.vertices_len());
+        assert_eq!(g1.vertices_len().unwrap(), gn.vertices_len().unwrap());
         // NON-TEMPORAL TESTS HERE!
 
         let mut expect_1 = g1.vertex_refs().map(|v| v.g_id).collect::<Vec<_>>();
@@ -54,8 +54,8 @@ mod test {
         assert_eq!(expect_1, expect_n, "Graphs are not equal {n_parts}");
 
         for v_ref in g1.vertex_refs() {
-            let v1 = g1.vertex(v_ref.g_id).unwrap().id();
-            let vn = gn.vertex(v_ref.g_id).unwrap().id();
+            let v1 = g1.vertex(v_ref.g_id).unwrap().unwrap().id();
+            let vn = gn.vertex(v_ref.g_id).unwrap().unwrap().id();
 
             assert_eq!(v1, vn, "Graphs are not equal {n_parts}");
             let v_id = v1;
@@ -76,8 +76,8 @@ mod test {
                 assert_eq!(expect_1, expect_n, "Graphs are not equal {n_parts}");
 
                 // now we test degrees
-                let expect_1 = g1.degree(v_id.into(), d);
-                let expect_n = gn.degree(v_id.into(), d);
+                let expect_1 = g1.degree(v_id.into(), d).unwrap();
+                let expect_n = gn.degree(v_id.into(), d).unwrap();
 
                 assert_eq!(expect_1, expect_n, "Graphs are not equal {n_parts} {d:?}");
             }
@@ -102,8 +102,8 @@ mod test {
         assert_eq!(expected_1, expected_n, "Graphs are not equal {n_parts}");
 
         for v_ref in g1.vertex_refs_window(t_start, t_end) {
-            let v1 = g1.vertex(v_ref.g_id).unwrap().id();
-            let vn = gn.vertex(v_ref.g_id).unwrap().id();
+            let v1 = g1.vertex(v_ref.g_id).unwrap().unwrap().id();
+            let vn = gn.vertex(v_ref.g_id).unwrap().unwrap().id();
 
             assert_eq!(v1, vn, "Graphs are not equal {n_parts}");
             let v_id = v1;
@@ -124,8 +124,8 @@ mod test {
                 assert_eq!(expected_1, expected_n, "Graphs are not equal {n_parts}");
 
                 // now we test degrees
-                let expected_1 = g1.degree_window(v_id.into(), t_start, t_end, d);
-                let expected_n = gn.degree_window(v_id.into(), t_start, t_end, d);
+                let expected_1 = g1.degree_window(v_id.into(), t_start, t_end, d).unwrap();
+                let expected_n = gn.degree_window(v_id.into(), t_start, t_end, d).unwrap();
 
                 assert_eq!(
                     expected_1, expected_n,
@@ -137,9 +137,9 @@ mod test {
         let mut expected_1 = g1
             .vertex_refs_window(t_start, t_end)
             .map(|id| {
-                let deg = g1.degree_window(id, t_start, t_end, Direction::BOTH);
-                let out_deg = g1.degree_window(id, t_start, t_end, Direction::OUT);
-                let in_deg = g1.degree_window(id, t_start, t_end, Direction::IN);
+                let deg = g1.degree_window(id, t_start, t_end, Direction::BOTH).unwrap();
+                let out_deg = g1.degree_window(id, t_start, t_end, Direction::OUT).unwrap();
+                let in_deg = g1.degree_window(id, t_start, t_end, Direction::IN).unwrap();
                 (id.g_id, deg, out_deg, in_deg)
             })
             .collect::<Vec<_>>();
@@ -148,9 +148,9 @@ mod test {
         let mut expected_n = gn
             .vertex_refs_window(t_start, t_end)
             .map(|id| {
-                let deg = gn.degree_window(id, t_start, t_end, Direction::BOTH);
-                let out_deg = gn.degree_window(id, t_start, t_end, Direction::OUT);
-                let in_deg = gn.degree_window(id, t_start, t_end, Direction::IN);
+                let deg = gn.degree_window(id, t_start, t_end, Direction::BOTH).unwrap();
+                let out_deg = gn.degree_window(id, t_start, t_end, Direction::OUT).unwrap();
+                let in_deg = gn.degree_window(id, t_start, t_end, Direction::IN).unwrap();
                 (id.g_id, deg, out_deg, in_deg)
             })
             .collect::<Vec<_>>();
@@ -163,19 +163,32 @@ mod test {
         let wg1 = g1.window(t_start, t_end);
         let wgn = gn.window(t_start, t_end);
 
-        assert_eq!(wg1.vertices_len(), wgn.vertices_len());
+        assert_eq!(wg1.vertices_len().unwrap(), wgn.vertices_len().unwrap());
 
         let mut expected_1 = wg1
             .vertices()
             .iter()
-            .map(|vs| (vs.id(), vs.degree(), vs.out_degree(), vs.in_degree()))
+            .map(|vs| {
+                (
+                    vs.id(),
+                    vs.degree().unwrap(),
+                    vs.out_degree().unwrap(),
+                    vs.in_degree().unwrap(),
+                )
+            })
             .collect::<Vec<_>>();
         expected_1.sort_by(|v1, v2| v1.0.cmp(&v2.0));
 
         let mut expected_n = wgn
-            .vertices()
-            .iter()
-            .map(|vs| (vs.id(), vs.degree(), vs.out_degree(), vs.in_degree()))
+            .vertices().iter()
+            .map(|vs| {
+                (
+                    vs.id(),
+                    vs.degree().unwrap(),
+                    vs.out_degree().unwrap(),
+                    vs.in_degree().unwrap(),
+                )
+            })
             .collect::<Vec<_>>();
 
         expected_n.sort_by(|v1, v2| v1.0.cmp(&v2.0));
