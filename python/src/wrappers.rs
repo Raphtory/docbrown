@@ -3,6 +3,7 @@ use itertools::Itertools;
 use pyo3::exceptions::PyException;
 use pyo3::prelude::*;
 use std::borrow::Borrow;
+use std::fmt;
 
 use docbrown_core as db_c;
 use docbrown_db::view_api::*;
@@ -53,6 +54,22 @@ pub enum Prop {
     F32(f32),
     F64(f64),
     Bool(bool),
+}
+
+
+impl fmt::Display for Prop {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Prop::Str(value) => write!(f, "{}", value),
+            Prop::I32(value) => write!(f, "{}", value),
+            Prop::I64(value) => write!(f, "{}", value),
+            Prop::U32(value) => write!(f, "{}", value),
+            Prop::U64(value) => write!(f, "{}", value),
+            Prop::F32(value) => write!(f, "{}", value),
+            Prop::F64(value) => write!(f,"{}", value),
+            Prop::Bool(value) => write!(f, "{}", value)
+        }
+    }
 }
 
 impl IntoPy<PyObject> for Prop {
@@ -280,7 +297,7 @@ impl WindowedVertices {
             .__iter__(py)
             .iter
             .take(11)
-            .map(|v| v.__repr__())
+            .map(|v| v.__repr__().unwrap_or("vertex inaccessible".to_string()))
             .collect_vec();
         if values.len() < 11 {
             "WindowedVertices(".to_string() + &values.join(", ") + ")"
@@ -617,7 +634,7 @@ impl WindowedVertexIterable {
             .unwrap()
             .iter
             .take(11)
-            .map(|v| v.__repr__())
+            .map(|v| v.__repr__().unwrap_or("vertex inaccessible".to_string()))
             .collect_vec();
         if values.len() < 11 {
             "WindowedVertexIterable(".to_string() + &values.join(", ") + ")"

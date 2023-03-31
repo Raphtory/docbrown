@@ -6,7 +6,7 @@ use docbrown_db::graph_window;
 use docbrown_db::view_api::*;
 use itertools::Itertools;
 use pyo3::prelude::*;
-use docbrown_core::tgraph_shard::errors::GraphError;
+
 
 #[pyclass]
 pub struct GraphWindowSet {
@@ -128,6 +128,16 @@ impl WindowedGraph {
             iter: Box::new(self.graph_w.edges().map(|te| te.into())),
         }
     }
+
+    pub fn __repr__(&self) -> PyResult<String> {
+        let num_edges = adapt_err(self.graph_w.num_edges())?;
+        let num_vertices = adapt_err(self.graph_w.num_vertices())?;
+        let earliest_time = adapt_err(self.graph_w.earliest_time())?.unwrap_or_default();
+        let latest_time = adapt_err(self.graph_w.latest_time())?.unwrap_or_default();
+
+        Ok(format!("Graph(NumEdges({:?}), NumVertices({:?}), EarliestTime({:?}), LatestTime({:?}))", 
+        num_edges, num_vertices, earliest_time, latest_time))
+    }
 }
 
 #[pyclass]
@@ -176,6 +186,10 @@ impl WindowedVertex {
     pub fn has_property(&self, name:String, include_static:Option<bool>) -> PyResult<bool> {
         let include_static = include_static.unwrap_or(true);
         adapt_err(self.vertex_w.has_property(name,include_static))
+    }
+
+    pub fn name(&self) -> PyResult<String> {
+        adapt_err(self.vertex_w.name())
     }
 
     pub fn property(&self,name:String,include_static:Option<bool>) -> PyResult<Option<Prop>> {
@@ -415,8 +429,18 @@ impl WindowedVertex {
         }
     }
 
-    pub fn __repr__(&self) -> String {
-        format!("Vertex({})", self.id)
+    pub fn __repr__(&self) -> PyResult<String> {
+        let properties: String = "{".to_string() + &self.properties(Some(true))?
+                        .iter()
+                        .map(|(k,v)| k.to_string() + " : " + &v.to_string())
+                        .join(", ") + &"}".to_string();
+
+        let property_string = if properties.is_empty() {
+         "Properties({})".to_string()
+        } else {
+         format!("Properties({})", properties)
+        };
+        Ok(format!("Vertex(VertexName({}), {})", self.name()?.trim_matches('"'), property_string))
     }
 }
 
@@ -497,5 +521,21 @@ impl WindowedEdge {
     fn dst(&self) -> u64 {
         //FIXME can't currently return the WindowedVertex as can't create a Py<WindowedGraph>
         self.edge_w.dst().id()
+    }
+
+    pub fn __repr__(&self) -> PyResult<String> {
+       let properties = "{".to_string() + &self.properties(Some(true))?
+                                .iter()
+                                .map(|(k,v)| k.to_string() + " : " + &v.to_string())
+                                .join(", ") + &"}".to_string();
+       let property_string = if properties.is_empty() {
+        "Properties({})".to_string()
+       } else {
+        format!("Properties({})", properties)
+       };
+       let source = adapt_err(self.edge_w.src().name())?;
+       let target = adapt_err(self.edge_w.dst().name())?;
+        Ok(format!("Edge(Src({}), Dst({}), {}", source.trim_matches('"'), target.trim_matches('"'), property_string))
+       
     }
 }

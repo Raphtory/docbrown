@@ -189,6 +189,16 @@ impl Graph {
         adapt_err(self.graph.has_edge(src, dst))
     }
 
+    pub fn __repr__(&self) -> PyResult<String> {
+        let num_edges = adapt_err(self.graph.num_edges())?;
+        let num_vertices = adapt_err(self.graph.num_vertices())?;
+        let earliest_time = adapt_err(self.graph.earliest_time())?.unwrap_or_default();
+        let latest_time = adapt_err(self.graph.latest_time())?.unwrap_or_default();
+
+        Ok(format!("Graph(NumEdges({:?}), NumVertices({:?}), EarliestTime({:?}), LatestTime({:?}))", 
+        num_edges, num_vertices, earliest_time, latest_time))
+    }   
+
     //******  Getter APIs ******//
     //TODO Implement LatestVertex/Edge
     //FIXME These are just placeholders for now and do not work because of the pyRef
