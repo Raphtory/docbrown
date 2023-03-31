@@ -1,25 +1,27 @@
+use crate::dynamic::DynamicGraph;
+use crate::edge::PyEdgeIter;
 use crate::wrappers;
 use crate::wrappers::{
-    DegreeIterable, Direction, IdIterable, NestedDegreeIterable, NestedIdIterable,
-    NestedU64Iterator, NestedUsizeIter, Operations, Prop, PyPathFromVertex, U64Iterator, USizeIter,
-    WindowedEdgeIterator,
+    Direction, NestedU64Iter, NestedUsizeIter, Operations, Prop, U64Iter, UsizeIter,
 };
 use docbrown_core::tgraph::VertexRef;
 use docbrown_db::path::{PathFromGraph, PathFromVertex};
 use docbrown_db::vertex::VertexView;
 use docbrown_db::vertices::Vertices;
-use docbrown_db::view_api::{GraphViewOps, VertexListOps, VertexViewOps};
+use docbrown_db::view_api::internal::GraphViewInternalOps;
+use docbrown_db::view_api::*;
 use itertools::Itertools;
 use pyo3::{pyclass, pymethods, Py, PyRef, PyRefMut, PyResult, Python};
 use std::collections::HashMap;
 
 #[pyclass(name = "Vertex")]
+#[derive(Clone)]
 pub struct PyVertex {
-    vertex: VertexView<Box<dyn GraphViewOps>>,
+    vertex: VertexView<DynamicGraph>,
 }
 
-impl From<VertexView<Box<dyn GraphViewOps>>> for PyVertex {
-    fn from(value: VertexView<G>) -> Self {
+impl From<VertexView<DynamicGraph>> for PyVertex {
+    fn from(value: VertexView<DynamicGraph>) -> Self {
         PyVertex { vertex: value }
     }
 }
@@ -83,48 +85,33 @@ impl PyVertex {
                 .out_degree_window(t_start.unwrap_or(i64::MIN), t_end.unwrap_or(i64::MAX)),
         }
     }
-    pub fn edges(&self, t_start: Option<i64>, t_end: Option<i64>) -> WindowedEdgeIterator {
-        match (t_start, t_end) {
-            (None, None) => WindowedEdgeIterator {
-                iter: Box::new(self.vertex.edges().map(|te| te.into())),
-            },
-            _ => WindowedEdgeIterator {
-                iter: Box::new(
-                    self.vertex
-                        .edges_window(t_start.unwrap_or(i64::MIN), t_end.unwrap_or(i64::MAX))
-                        .map(|te| te.into()),
-                ),
-            },
+    pub fn edges(&self, t_start: Option<i64>, t_end: Option<i64>) -> PyEdgeIter {
+        if t_start.is_none() && t_end.is_none() {
+            self.vertex.edges().into()
+        } else {
+            self.vertex
+                .edges_window(t_start.unwrap_or(i64::MIN), t_end.unwrap_or(i64::MAX))
+                .into()
         }
     }
 
-    pub fn in_edges(&self, t_start: Option<i64>, t_end: Option<i64>) -> WindowedEdgeIterator {
-        match (t_start, t_end) {
-            (None, None) => WindowedEdgeIterator {
-                iter: Box::new(self.vertex.in_edges().map(|te| te.into())),
-            },
-            _ => WindowedEdgeIterator {
-                iter: Box::new(
-                    self.vertex
-                        .in_edges_window(t_start.unwrap_or(i64::MIN), t_end.unwrap_or(i64::MAX))
-                        .map(|te| te.into()),
-                ),
-            },
+    pub fn in_edges(&self, t_start: Option<i64>, t_end: Option<i64>) -> PyEdgeIter {
+        if t_start.is_none() && t_end.is_none() {
+            self.vertex.in_edges().into()
+        } else {
+            self.vertex
+                .in_edges_window(t_start.unwrap_or(i64::MIN), t_end.unwrap_or(i64::MAX))
+                .into()
         }
     }
 
-    pub fn out_edges(&self, t_start: Option<i64>, t_end: Option<i64>) -> WindowedEdgeIterator {
-        match (t_start, t_end) {
-            (None, None) => WindowedEdgeIterator {
-                iter: Box::new(self.vertex.out_edges().map(|te| te.into())),
-            },
-            _ => WindowedEdgeIterator {
-                iter: Box::new(
-                    self.vertex
-                        .out_edges_window(t_start.unwrap_or(i64::MIN), t_end.unwrap_or(i64::MAX))
-                        .map(|te| te.into()),
-                ),
-            },
+    pub fn out_edges(&self, t_start: Option<i64>, t_end: Option<i64>) -> PyEdgeIter {
+        if t_start.is_none() && t_end.is_none() {
+            self.vertex.out_edges().into()
+        } else {
+            self.vertex
+                .out_edges_window(t_start.unwrap_or(i64::MIN), t_end.unwrap_or(i64::MAX))
+                .into()
         }
     }
 
@@ -159,17 +146,17 @@ impl PyVertex {
     }
 
     pub fn __repr__(&self) -> String {
-        format!("Vertex({})", self.id)
+        format!("Vertex({})", self.vertex.id())
     }
 }
 
 #[pyclass(name = "Vertices")]
 pub struct PyVertices {
-    pub(crate) vertices: Vertices<Box<dyn GraphViewOps>>,
+    pub(crate) vertices: Vertices<DynamicGraph>,
 }
 
-impl From<Vertices<Box<dyn GraphViewOps>>> for PyVertices {
-    fn from(value: Vertices<Box<dyn GraphViewOps>>) -> Self {
+impl From<Vertices<DynamicGraph>> for PyVertices {
+    fn from(value: Vertices<DynamicGraph>) -> Self {
         Self { vertices: value }
     }
 }
@@ -181,7 +168,7 @@ impl PyVertices {
         PyVertexIterator { iter }
     }
 
-    fn id(&self) -> U64Iterator {
+    fn id(&self) -> U64Iter {
         self.vertices.id().into()
     }
 
@@ -215,7 +202,7 @@ impl PyVertices {
         }
     }
 
-    fn in_degree(&self, t_start: Option<i64>, t_end: Option<i64>) -> NestedUsizeIter {
+    fn in_degree(&self, t_start: Option<i64>, t_end: Option<i64>) -> UsizeIter {
         if t_start.is_none() && t_end.is_none() {
             self.vertices.in_degree().into()
         } else {
@@ -225,12 +212,7 @@ impl PyVertices {
         }
     }
 
-    fn out_degree(
-        &self,
-        py: Python,
-        t_start: Option<i64>,
-        t_end: Option<i64>,
-    ) -> PyResult<DegreeIterable> {
+    fn out_degree(&self, t_start: Option<i64>, t_end: Option<i64>) -> UsizeIter {
         if t_start.is_none() && t_end.is_none() {
             self.vertices.out_degree().into()
         } else {
@@ -240,7 +222,7 @@ impl PyVertices {
         }
     }
 
-    fn degree(&self, t_start: Option<i64>, t_end: Option<i64>) -> NestedUsizeIter {
+    fn degree(&self, t_start: Option<i64>, t_end: Option<i64>) -> UsizeIter {
         if t_start.is_none() && t_end.is_none() {
             self.vertices.degree().into()
         } else {
@@ -267,16 +249,16 @@ impl PyVertices {
 
 #[pyclass(name = "PathFromGraph")]
 pub struct PyPathFromGraph {
-    path: PathFromGraph<Box<dyn GraphViewOps>>,
+    path: PathFromGraph<DynamicGraph>,
 }
 
 #[pymethods]
 impl PyPathFromGraph {
-    fn __iter__(&self) -> NestedVertexIterator {
+    fn __iter__(&self) -> PathIterator {
         self.path.iter().into()
     }
 
-    fn id(&self) -> NestedU64Iterator {
+    fn id(&self) -> NestedU64Iter {
         self.path.id().into()
     }
 
@@ -355,13 +337,19 @@ impl PyPathFromGraph {
     }
 }
 
-#[pyclass(name = "PathFromVertex")]
-pub struct PyPathFromVertex {
-    path: PathFromVertex<Box<dyn GraphViewOps>>,
+impl From<PathFromGraph<DynamicGraph>> for PyPathFromGraph {
+    fn from(value: PathFromGraph<DynamicGraph>) -> Self {
+        Self { path: value }
+    }
 }
 
-impl From<PathFromVertex<Box<dyn GraphViewOps>>> for PyPathFromVertex {
-    fn from(value: PathFromVertex<Box<dyn GraphViewOps>>) -> Self {
+#[pyclass(name = "PathFromVertex")]
+pub struct PyPathFromVertex {
+    path: PathFromVertex<DynamicGraph>,
+}
+
+impl From<PathFromVertex<DynamicGraph>> for PyPathFromVertex {
+    fn from(value: PathFromVertex<DynamicGraph>) -> Self {
         Self { path: value }
     }
 }
@@ -372,7 +360,7 @@ impl PyPathFromVertex {
         self.path.iter().into()
     }
 
-    fn id(&self) -> U64Iterator {
+    fn id(&self) -> U64Iter {
         self.path.id().into()
     }
 
@@ -406,7 +394,7 @@ impl PyPathFromVertex {
         }
     }
 
-    fn in_degree(&self, t_start: Option<i64>, t_end: Option<i64>) -> USizeIter {
+    fn in_degree(&self, t_start: Option<i64>, t_end: Option<i64>) -> UsizeIter {
         if t_start.is_none() && t_end.is_none() {
             self.path.in_degree().into()
         } else {
@@ -416,7 +404,7 @@ impl PyPathFromVertex {
         }
     }
 
-    fn out_degree(&self, t_start: Option<i64>, t_end: Option<i64>) -> USizeIter {
+    fn out_degree(&self, t_start: Option<i64>, t_end: Option<i64>) -> UsizeIter {
         if t_start.is_none() && t_end.is_none() {
             self.path.out_degree().into()
         } else {
@@ -426,7 +414,7 @@ impl PyPathFromVertex {
         }
     }
 
-    fn degree(&self, t_start: Option<i64>, t_end: Option<i64>) -> USizeIter {
+    fn degree(&self, t_start: Option<i64>, t_end: Option<i64>) -> UsizeIter {
         if t_start.is_none() && t_end.is_none() {
             self.path.degree().into()
         } else {
@@ -456,6 +444,14 @@ pub struct PyVertexIterator {
     iter: Box<dyn Iterator<Item = PyVertex> + Send>,
 }
 
+impl From<Box<dyn Iterator<Item = VertexView<DynamicGraph>> + Send>> for PyVertexIterator {
+    fn from(value: Box<dyn Iterator<Item = VertexView<DynamicGraph>> + Send>) -> Self {
+        Self {
+            iter: Box::new(value.map(|v| v.into())),
+        }
+    }
+}
+
 impl IntoIterator for PyVertexIterator {
     type Item = PyVertex;
     type IntoIter = Box<dyn Iterator<Item = PyVertex> + Send>;
@@ -482,11 +478,11 @@ impl From<Box<dyn Iterator<Item = PyVertex> + Send>> for PyVertexIterator {
 }
 
 #[pyclass]
-pub struct NestedVertexIterator {
+pub struct PathIterator {
     pub(crate) iter: Box<dyn Iterator<Item = PyPathFromVertex> + Send>,
 }
 
-impl IntoIterator for NestedVertexIterator {
+impl IntoIterator for PathIterator {
     type Item = PyPathFromVertex;
     type IntoIter = Box<dyn Iterator<Item = PyPathFromVertex> + Send>;
 
@@ -495,8 +491,16 @@ impl IntoIterator for NestedVertexIterator {
     }
 }
 
+impl From<Box<dyn Iterator<Item = PathFromVertex<DynamicGraph>> + Send>> for PathIterator {
+    fn from(value: Box<dyn Iterator<Item = PathFromVertex<DynamicGraph>> + Send>) -> Self {
+        Self {
+            iter: Box::new(value.map(|path| path.into())),
+        }
+    }
+}
+
 #[pymethods]
-impl NestedVertexIterator {
+impl PathIterator {
     fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
         slf
     }

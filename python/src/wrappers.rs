@@ -7,7 +7,8 @@ use docbrown_db::vertices::Vertices;
 use docbrown_db::view_api::*;
 use docbrown_db::{graph_window, perspective};
 
-use crate::graph_view::{WindowedEdge, WindowedGraph, WindowedVertex};
+use crate::edge::PyEdge;
+use crate::vertex::PyVertex;
 use crate::vertex::{PyPathFromGraph, PyPathFromVertex};
 
 #[derive(Copy, Clone)]
@@ -101,12 +102,12 @@ impl From<db_c::Prop> for Prop {
 }
 
 #[pyclass]
-pub struct U64Iterator {
+pub struct U64Iter {
     iter: Box<dyn Iterator<Item = u64> + Send>,
 }
 
 #[pymethods]
-impl U64Iterator {
+impl U64Iter {
     fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
         slf
     }
@@ -115,36 +116,34 @@ impl U64Iterator {
     }
 }
 
-impl From<Box<dyn Iterator<Item = u64> + Send>> for U64Iterator {
+impl From<Box<dyn Iterator<Item = u64> + Send>> for U64Iter {
     fn from(value: Box<dyn Iterator<Item = u64> + Send>) -> Self {
         Self { iter: value }
     }
 }
 
 #[pyclass]
-pub struct NestedU64Iterator {
-    iter: Box<dyn Iterator<Item = U64Iterator> + Send>,
+pub struct NestedU64Iter {
+    iter: Box<dyn Iterator<Item = U64Iter> + Send>,
 }
 
 #[pymethods]
-impl NestedU64Iterator {
+impl NestedU64Iter {
     fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
         slf
     }
-    fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<U64Iterator> {
+    fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<U64Iter> {
         slf.iter.next()
     }
 }
 
-impl From<Box<dyn Iterator<Item = U64Iterator> + Send>> for NestedU64Iterator {
-    fn from(value: Box<dyn Iterator<Item = U64Iterator> + Send>) -> Self {
+impl From<Box<dyn Iterator<Item = U64Iter> + Send>> for NestedU64Iter {
+    fn from(value: Box<dyn Iterator<Item = U64Iter> + Send>) -> Self {
         Self { iter: value }
     }
 }
 
-impl From<Box<dyn Iterator<Item = Box<dyn Iterator<Item = u64> + Send>> + Send>>
-    for NestedU64Iterator
-{
+impl From<Box<dyn Iterator<Item = Box<dyn Iterator<Item = u64> + Send>> + Send>> for NestedU64Iter {
     fn from(value: Box<dyn Iterator<Item = Box<dyn Iterator<Item = u64> + Send>> + Send>) -> Self {
         let iter = Box::new(value.map(|iter| iter.into()));
         Self { iter }
@@ -153,7 +152,7 @@ impl From<Box<dyn Iterator<Item = Box<dyn Iterator<Item = u64> + Send>> + Send>>
 
 #[pyclass]
 pub struct NestedUsizeIter {
-    iter: Box<dyn Iterator<Item = PyResult<DegreeIterable>> + Send>,
+    iter: Box<dyn Iterator<Item = UsizeIter> + Send>,
 }
 
 #[pymethods]
@@ -161,18 +160,35 @@ impl NestedUsizeIter {
     fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
         slf
     }
-    fn __next__(mut slf: PyRefMut<'_, Self>) -> PyResult<Option<DegreeIterable>> {
-        slf.iter.next().transpose()
+    fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<UsizeIter> {
+        slf.iter.next()
+    }
+}
+
+impl From<Box<dyn Iterator<Item = UsizeIter> + Send>> for NestedUsizeIter {
+    fn from(value: Box<dyn Iterator<Item = UsizeIter> + Send>) -> Self {
+        Self { iter: value }
+    }
+}
+
+impl From<Box<dyn Iterator<Item = Box<dyn Iterator<Item = usize> + Send>> + Send>>
+    for NestedUsizeIter
+{
+    fn from(
+        value: Box<dyn Iterator<Item = Box<dyn Iterator<Item = usize> + Send>> + Send>,
+    ) -> Self {
+        let iter = Box::new(value.map(|iter| iter.into()));
+        Self { iter }
     }
 }
 
 #[pyclass]
-pub struct USizeIter {
+pub struct UsizeIter {
     iter: Box<dyn Iterator<Item = usize> + Send>,
 }
 
 #[pymethods]
-impl USizeIter {
+impl UsizeIter {
     fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
         slf
     }
@@ -181,12 +197,11 @@ impl USizeIter {
     }
 }
 
-impl From<Box<dyn Iterator<Item = usize> + Send>> for USizeIter {
+impl From<Box<dyn Iterator<Item = usize> + Send>> for UsizeIter {
     fn from(value: Box<dyn Iterator<Item = usize> + Send>) -> Self {
         Self { iter: value }
     }
 }
-
 
 #[derive(Clone)]
 #[pyclass]

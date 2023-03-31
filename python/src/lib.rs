@@ -7,6 +7,7 @@ pub mod wrappers;
 mod util;
 pub mod edge;
 pub mod vertex;
+mod dynamic;
 
 use pyo3::prelude::*;
 

@@ -104,7 +104,7 @@ impl<G: GraphViewOps> LocalState<G> {
 
     fn step<F>(&self, f: F)
     where
-        F: Fn(EvalVertexView<VertexView<G>>),
+        F: Fn(EvalVertexView<G>),
     {
         let graph = self.graph.clone();
 
@@ -318,7 +318,7 @@ impl<G: GraphViewOps> GlobalEvalState<G> {
 
     fn step<F>(&mut self, f: F)
     where
-        F: Fn(EvalVertexView<VertexView<G>>) -> bool + Sync,
+        F: Fn(EvalVertexView<G>) -> bool + Sync,
     {
         println!("START BROADCAST STATE");
         self.broadcast_state();
@@ -401,13 +401,13 @@ impl<'a, A: StateType, IN, OUT, ACC: Accumulator<A, IN, OUT>> Entry<'a, A, IN, O
     }
 }
 
-pub struct EvalVertexView<V: VertexViewOps> {
+pub struct EvalVertexView<G: GraphViewOps> {
     ss: usize,
-    vv: V,
+    vv: VertexView<G>,
     state: Rc<RefCell<ShuffleComputeState<CS>>>,
 }
 
-impl<V: VertexViewOps> EvalVertexView<V> {
+impl<G: GraphViewOps> EvalVertexView<G> {
     pub fn update<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(
         &self,
         agg_r: &AggRef<A, IN, OUT, ACC>,
@@ -495,7 +495,7 @@ impl<V: VertexViewOps> EvalVertexView<V> {
             .unwrap()
     }
 
-    pub fn new(ss: usize, vv: V, state: Rc<RefCell<ShuffleComputeState<CS>>>) -> Self {
+    pub fn new(ss: usize, vv: VertexView<G>, state: Rc<RefCell<ShuffleComputeState<CS>>>) -> Self {
         Self { ss, vv, state }
     }
 

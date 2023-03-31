@@ -1,39 +1,43 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use crate::{util, wrappers};
+use crate::dynamic::DynamicGraph;
+use crate::edge::{PyEdge, PyEdgeIter};
+use crate::util::extract_vertex_ref;
+use crate::vertex::{PyVertex, PyVertices};
 use crate::{graph::Graph, wrappers::*};
+use crate::{util, wrappers};
 use docbrown_core::tgraph::VertexRef;
 use docbrown_db::edge::EdgeView;
 use docbrown_db::graph_window;
 use docbrown_db::graph_window::GraphWindowSet;
 use docbrown_db::vertex::VertexView;
+use docbrown_db::view_api::internal::GraphViewInternalOps;
 use docbrown_db::view_api::*;
 use itertools::Itertools;
 use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
-use crate::vertex::{PyVertex, PyVertices};
 
 #[pyclass(name = "GraphView")]
 pub struct PyGraphView {
-    graph: Box<dyn GraphViewOps>,
+    pub(crate) graph: DynamicGraph,
 }
 
 impl<G: GraphViewOps> From<G> for PyGraphView {
     fn from(value: G) -> Self {
         PyGraphView {
-            graph: Box::new(value),
+            graph: DynamicGraph::new(value),
         }
     }
 }
 
 #[pyclass(name = "PyGraphWindowSet")]
 pub struct PyGraphWindowSet {
-    window_set: GraphWindowSet<Box<dyn GraphViewOps>>,
+    window_set: GraphWindowSet<DynamicGraph>,
 }
 
-impl From<GraphWindowSet<Box<dyn GraphViewOps>>> for PyGraphWindowSet {
-    fn from(value: GraphWindowSet<Box<dyn GraphViewOps>>) -> Self {
+impl From<GraphWindowSet<DynamicGraph>> for PyGraphWindowSet {
+    fn from(value: GraphWindowSet<DynamicGraph>) -> Self {
         Self { window_set: value }
     }
 }
@@ -83,22 +87,20 @@ impl PyGraphView {
 
     pub fn vertex(&self, id: &PyAny) -> PyResult<Option<PyVertex>> {
         let v = util::extract_vertex_ref(id)?;
-        Ok(self.graph.vertex(v).map(v.into()))
+        Ok(self.graph.vertex(v).map(|v| v.into()))
     }
 
     pub fn vertices(&self) -> PyVertices {
         self.graph.vertices().into()
     }
 
-    pub fn edge(&self, src: &PyAny, dst: &PyAny) -> PyResult<Option<WindowedEdge>> {
-        let src = Graph::extract_id(src)?;
-        let dst = Graph::extract_id(dst)?;
-        Ok(self.graph_w.edge(src, dst).map(|we| we.into()))
+    pub fn edge(&self, src: &PyAny, dst: &PyAny) -> PyResult<Option<PyEdge>> {
+        let src = extract_vertex_ref(src)?;
+        let dst = extract_vertex_ref(dst)?;
+        Ok(self.graph.edge(src, dst).map(|we| we.into()))
     }
 
-    pub fn edges(&self) -> WindowedEdgeIterator {
-        WindowedEdgeIterator {
-            iter: Box::new(self.graph_w.edges().map(|te| te.into())),
-        }
+    pub fn edges(&self) -> PyEdgeIter {
+        self.graph.edges().into()
     }
 }

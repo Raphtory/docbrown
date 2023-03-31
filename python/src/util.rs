@@ -1,7 +1,7 @@
-use pyo3::{PyAny, PyResult};
+use crate::vertex::PyVertex;
 use docbrown_core::tgraph::VertexRef;
 use pyo3::exceptions::PyTypeError;
-use crate::vertex::PyVertex;
+use pyo3::{PyAny, PyResult};
 
 pub fn extract_vertex_ref(vref: &PyAny) -> PyResult<VertexRef> {
     if let Ok(s) = vref.extract::<String>() {
@@ -11,6 +11,6 @@ pub fn extract_vertex_ref(vref: &PyAny) -> PyResult<VertexRef> {
     } else if let Ok(v) = vref.extract::<PyVertex>() {
         Ok(v.into())
     } else {
-        PyTypeError::new_err("Not a valid vertex")
+        Err(PyTypeError::new_err("Not a valid vertex"))
     }
 }

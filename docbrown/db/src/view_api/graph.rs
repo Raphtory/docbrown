@@ -4,7 +4,6 @@ use crate::perspective::{Perspective, PerspectiveIterator, PerspectiveSet};
 use crate::vertex::VertexView;
 use crate::vertices::Vertices;
 use crate::view_api::internal::GraphViewInternalOps;
-use crate::view_api::VertexViewOps;
 use docbrown_core::tgraph::VertexRef;
 use docbrown_core::vertex::InputVertex;
 use std::iter;

@@ -1,13 +1,13 @@
-use crate::edge::EdgeView;
+use crate::edge::{EdgeList, EdgeView};
 use crate::path::{Operations, PathFromVertex};
 use crate::view_api::internal::GraphViewInternalOps;
-use crate::view_api::{GraphViewOps, VertexListOps, VertexViewOps};
+use crate::view_api::{GraphViewOps, VertexListOps};
 use docbrown_core::tgraph::VertexRef;
 use docbrown_core::{Direction, Prop};
 use std::collections::HashMap;
 use std::sync::Arc;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct VertexView<G: GraphViewOps> {
     pub graph: G,
     vertex: VertexRef,
@@ -35,105 +35,101 @@ impl<G: GraphViewOps> VertexView<G> {
     }
 }
 
-impl<G: GraphViewOps> VertexViewOps for VertexView<G> {
-    type Edge = EdgeView<G>;
-    type VList = PathFromVertex<G>;
-    type EList = Box<dyn Iterator<Item = Self::Edge> + Send>;
-
-    fn id(&self) -> u64 {
+impl<G: GraphViewOps> VertexView<G> {
+    pub fn id(&self) -> u64 {
         self.vertex.g_id
     }
 
-    fn prop(&self, name: String) -> Vec<(i64, Prop)> {
+    pub fn prop(&self, name: String) -> Vec<(i64, Prop)> {
         self.graph.temporal_vertex_prop_vec(self.vertex, name)
     }
 
-    fn props(&self) -> HashMap<String, Vec<(i64, Prop)>> {
+    pub fn props(&self) -> HashMap<String, Vec<(i64, Prop)>> {
         self.graph.temporal_vertex_props(self.vertex)
     }
 
-    fn degree(&self) -> usize {
+    pub fn degree(&self) -> usize {
         self.graph.degree(self.vertex, Direction::BOTH)
     }
 
-    fn degree_window(&self, t_start: i64, t_end: i64) -> usize {
+    pub fn degree_window(&self, t_start: i64, t_end: i64) -> usize {
         self.graph
             .degree_window(self.vertex, t_start, t_end, Direction::BOTH)
     }
 
-    fn in_degree(&self) -> usize {
+    pub fn in_degree(&self) -> usize {
         self.graph.degree(self.vertex, Direction::IN)
     }
 
-    fn in_degree_window(&self, t_start: i64, t_end: i64) -> usize {
+    pub fn in_degree_window(&self, t_start: i64, t_end: i64) -> usize {
         self.graph
             .degree_window(self.vertex, t_start, t_end, Direction::IN)
     }
 
-    fn out_degree(&self) -> usize {
+    pub fn out_degree(&self) -> usize {
         self.graph.degree(self.vertex, Direction::OUT)
     }
 
-    fn out_degree_window(&self, t_start: i64, t_end: i64) -> usize {
+    pub fn out_degree_window(&self, t_start: i64, t_end: i64) -> usize {
         self.graph
             .degree_window(self.vertex, t_start, t_end, Direction::OUT)
     }
 
-    fn edges(&self) -> Self::EList {
+    pub fn edges(&self) -> EdgeList<G> {
         let g = self.graph.clone();
         Box::new(
             self.graph
                 .vertex_edges(self.vertex, Direction::BOTH)
-                .map(move |e| Self::Edge::new(g.clone(), e)),
+                .map(move |e| EdgeView::new(g.clone(), e)),
         )
     }
 
-    fn edges_window(&self, t_start: i64, t_end: i64) -> Self::EList {
+    pub fn edges_window(&self, t_start: i64, t_end: i64) -> EdgeList<G> {
         let g = self.graph.clone();
         Box::new(
             self.graph
                 .vertex_edges_window(self.vertex, t_start, t_end, Direction::BOTH)
-                .map(move |e| Self::Edge::new(g.clone(), e)),
+                .map(move |e| EdgeView::new(g.clone(), e)),
         )
     }
 
-    fn in_edges(&self) -> Self::EList {
+    pub fn in_edges(&self) -> EdgeList<G> {
         let g = self.graph.clone();
         Box::new(
             self.graph
                 .vertex_edges(self.vertex, Direction::IN)
-                .map(move |e| Self::Edge::new(g.clone(), e)),
+                .map(move |e| EdgeView::new(g.clone(), e)),
         )
     }
 
-    fn in_edges_window(&self, t_start: i64, t_end: i64) -> Self::EList {
+    pub fn in_edges_window(&self, t_start: i64, t_end: i64) -> EdgeList<G> {
         let g = self.graph.clone();
         Box::new(
             self.graph
                 .vertex_edges_window(self.vertex, t_start, t_end, Direction::IN)
-                .map(move |e| Self::Edge::new(g.clone(), e)),
+                .map(move |e| EdgeView::new(g.clone(), e)),
         )
     }
 
-    fn out_edges(&self) -> Self::EList {
+    pub fn out_edges(&self) -> EdgeList<G> {
         let g = self.graph.clone();
         Box::new(
             self.graph
                 .vertex_edges(self.vertex, Direction::OUT)
-                .map(move |e| Self::Edge::new(g.clone(), e)),
+                .map(move |e| EdgeView::new(g.clone(), e)),
         )
     }
 
-    fn out_edges_window(&self, t_start: i64, t_end: i64) -> Self::EList {
+    pub fn out_edges_window(&self, t_start: i64, t_end: i64) -> EdgeList<G> {
         let g = self.graph.clone();
         Box::new(
             self.graph
                 .vertex_edges_window(self.vertex, t_start, t_end, Direction::OUT)
-                .map(move |e| Self::Edge::new(g.clone(), e)),
+                .map(move |e| EdgeView::new(g.clone(), e)),
         )
     }
 
-    fn neighbours(&self) -> Self::VList {
+    pub fn neighbours(&self) -> PathFromVertex<G> {
         let g = self.graph.clone();
         PathFromVertex::new(
             g,
@@ -144,7 +140,7 @@ impl<G: GraphViewOps> VertexViewOps for VertexView<G> {
         )
     }
 
-    fn neighbours_window(&self, t_start: i64, t_end: i64) -> Self::VList {
+    pub fn neighbours_window(&self, t_start: i64, t_end: i64) -> PathFromVertex<G> {
         let g = self.graph.clone();
         PathFromVertex::new(
             g,
@@ -157,12 +153,12 @@ impl<G: GraphViewOps> VertexViewOps for VertexView<G> {
         )
     }
 
-    fn in_neighbours(&self) -> Self::VList {
+    pub fn in_neighbours(&self) -> PathFromVertex<G> {
         let g = self.graph.clone();
         PathFromVertex::new(g, self, Operations::Neighbours { dir: Direction::IN })
     }
 
-    fn in_neighbours_window(&self, t_start: i64, t_end: i64) -> Self::VList {
+    pub fn in_neighbours_window(&self, t_start: i64, t_end: i64) -> PathFromVertex<G> {
         let g = self.graph.clone();
         PathFromVertex::new(
             g,
@@ -175,7 +171,7 @@ impl<G: GraphViewOps> VertexViewOps for VertexView<G> {
         )
     }
 
-    fn out_neighbours(&self) -> Self::VList {
+    pub fn out_neighbours(&self) -> PathFromVertex<G> {
         let g = self.graph.clone();
         PathFromVertex::new(
             g,
@@ -186,7 +182,7 @@ impl<G: GraphViewOps> VertexViewOps for VertexView<G> {
         )
     }
 
-    fn out_neighbours_window(&self, t_start: i64, t_end: i64) -> Self::VList {
+    pub fn out_neighbours_window(&self, t_start: i64, t_end: i64) -> PathFromVertex<G> {
         let g = self.graph.clone();
         PathFromVertex::new(
             g,
@@ -201,10 +197,9 @@ impl<G: GraphViewOps> VertexViewOps for VertexView<G> {
 }
 
 impl<G: GraphViewOps> VertexListOps for Box<dyn Iterator<Item = VertexView<G>> + Send> {
-    type Vertex = VertexView<G>;
-    type Edge = EdgeView<G>;
-    type EList = Box<dyn Iterator<Item = Self::Edge> + Send>;
-    type IterType = Box<dyn Iterator<Item = Self::Vertex> + Send>;
+    type Graph = G;
+    type IterType = Box<dyn Iterator<Item = VertexView<Self::Graph>> + Send>;
+    type EList = Box<dyn Iterator<Item = EdgeView<Self::Graph>> + Send>;
     type ValueIterType<U> = Box<dyn Iterator<Item = U> + Send>;
 
     fn id(self) -> Self::ValueIterType<u64> {

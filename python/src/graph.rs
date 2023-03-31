@@ -11,7 +11,8 @@ use std::collections::HashMap;
 use std::fmt::Display;
 use std::path::{Path, PathBuf};
 
-use crate::graph_view::{GraphWindowSet, WindowedGraph};
+use crate::graph_view::{PyGraphView, PyGraphWindowSet};
+use crate::util::extract_vertex_ref;
 use crate::wrappers::{PerspectiveSet, Prop};
 use crate::Perspective;
 
@@ -93,46 +94,23 @@ impl Graph {
 
     //******  Perspective APIS  ******//
 
-    pub fn window(&self, t_start: i64, t_end: i64) -> PyWindowedGraph {
+    pub fn window(&self, t_start: i64, t_end: i64) -> PyGraphView {
         self.graph.window(t_start, t_end).into()
     }
 
-    pub fn at(&self, end: i64) -> WindowedGraph {
+    pub fn at(&self, end: i64) -> PyGraphView {
         self.graph.at(end).into()
     }
 
-    pub fn latest(&self) -> WindowedGraph {
+    pub fn latest(&self) -> PyGraphView {
         match self.latest_time() {
             None => self.at(0),
             Some(time) => self.at(time),
         }
     }
 
-    fn through(&self, perspectives: &PyAny) -> PyResult<GraphWindowSet> {
-        struct PyPerspectiveIterator {
-            pub iter: Py<PyIterator>,
-        }
-        unsafe impl Send for PyPerspectiveIterator {} // iter is used by holding the GIL
-        impl Iterator for PyPerspectiveIterator {
-            type Item = perspective::Perspective;
-            fn next(&mut self) -> Option<Self::Item> {
-                Python::with_gil(|py| {
-                    let item = self.iter.as_ref(py).next()?.ok()?;
-                    Some(item.extract::<Perspective>().ok()?.into())
-                })
-            }
-        }
-
-        let result = match perspectives.extract::<PerspectiveSet>() {
-            Ok(perspective_set) => self.graph.through_perspectives(perspective_set.ps),
-            Err(_) => {
-                let iter = PyPerspectiveIterator {
-                    iter: Py::from(perspectives.iter()?),
-                };
-                self.graph.through_iter(Box::new(iter))
-            }
-        };
-        Ok(result.into())
+    fn through(&self, perspectives: &PyAny) -> PyResult<PyGraphWindowSet> {
+        todo!()
     }
 
     //******  Saving And Loading  ******//
@@ -179,13 +157,13 @@ impl Graph {
     }
 
     pub fn has_vertex(&self, id: &PyAny) -> PyResult<bool> {
-        let v = Self::extract_id(id)?;
+        let v = extract_vertex_ref(id)?;
         Ok(self.graph.has_vertex(v))
     }
 
     pub fn has_edge(&self, src: &PyAny, dst: &PyAny) -> PyResult<bool> {
-        let src = Self::extract_id(src)?;
-        let dst = Self::extract_id(dst)?;
+        let src = extract_vertex_ref(src)?;
+        let dst = extract_vertex_ref(dst)?;
         Ok(self.graph.has_edge(src, dst))
     }
 

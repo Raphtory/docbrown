@@ -1,17 +1,18 @@
-use pyo3::{pyclass, pymethods};
-use docbrown_db::edge::EdgeView;
-use docbrown_db::view_api::{EdgeViewOps, GraphViewOps};
-use itertools::Itertools;
+use crate::dynamic::DynamicGraph;
 use crate::vertex::PyVertex;
 use crate::wrappers::Prop;
+use docbrown_db::edge::EdgeView;
+use docbrown_db::view_api::GraphViewOps;
+use itertools::Itertools;
+use pyo3::{pyclass, pymethods, PyRef, PyRefMut};
 
 #[pyclass(name = "Edge")]
 pub struct PyEdge {
-    pub(crate) edge: EdgeView<Box<dyn GraphViewOps>>,
+    pub(crate) edge: EdgeView<DynamicGraph>,
 }
 
-impl From<EdgeView<Box<dyn GraphViewOps>>> for PyEdge {
-    fn from(value: EdgeView<Box<dyn GraphViewOps>>) -> Self {
+impl From<EdgeView<DynamicGraph>> for PyEdge {
+    fn from(value: EdgeView<DynamicGraph>) -> Self {
         Self { edge: value }
     }
 }
@@ -39,6 +40,35 @@ impl PyEdge {
     }
 
     fn dst(&self) -> PyVertex {
-        self.edge_w.dst().into()
+        self.edge.dst().into()
+    }
+}
+
+#[pyclass(name = "EdgeIterator")]
+pub struct PyEdgeIter {
+    iter: Box<dyn Iterator<Item = PyEdge> + Send>,
+}
+
+#[pymethods]
+impl PyEdgeIter {
+    fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
+        slf
+    }
+    fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<PyEdge> {
+        slf.iter.next()
+    }
+}
+
+impl From<Box<dyn Iterator<Item = PyEdge> + Send>> for PyEdgeIter {
+    fn from(value: Box<dyn Iterator<Item = PyEdge> + Send>) -> Self {
+        Self { iter: value }
+    }
+}
+
+impl From<Box<dyn Iterator<Item = EdgeView<DynamicGraph>> + Send>> for PyEdgeIter {
+    fn from(value: Box<dyn Iterator<Item = EdgeView<DynamicGraph>> + Send>) -> Self {
+        Self {
+            iter: Box::new(value.map(|e| e.into())),
+        }
     }
 }

@@ -1,6 +1,6 @@
 use crate::vertex::VertexView;
 use crate::view_api::internal::GraphViewInternalOps;
-use crate::view_api::{EdgeListOps, EdgeViewOps, GraphViewOps};
+use crate::view_api::{EdgeListOps, GraphViewOps};
 use docbrown_core::tgraph::{EdgeRef, VertexRef};
 use docbrown_core::Prop;
 use std::fmt::{Debug, Formatter};
@@ -37,41 +37,38 @@ impl<G: GraphViewOps> From<EdgeView<G>> for EdgeRef {
     }
 }
 
-impl<G: GraphViewOps> EdgeViewOps for EdgeView<G> {
-    type Vertex = VertexView<G>;
-
-    fn prop(&self, name: String) -> Vec<(i64, Prop)> {
+impl<G: GraphViewOps> EdgeView<G> {
+    pub fn prop(&self, name: String) -> Vec<(i64, Prop)> {
         self.graph.temporal_edge_props_vec(self.edge, name)
     }
 
-    fn src(&self) -> Self::Vertex {
+    pub fn src(&self) -> VertexView<G> {
         //FIXME: Make local ids on EdgeReference optional
         let vertex = VertexRef {
             g_id: self.edge.src_g_id,
             pid: None,
         };
-        Self::Vertex::new(self.graph.clone(), vertex)
+        VertexView::new(self.graph.clone(), vertex)
     }
 
-    fn dst(&self) -> Self::Vertex {
+    pub fn dst(&self) -> VertexView<G> {
         //FIXME: Make local ids on EdgeReference optional
         let vertex = VertexRef {
             g_id: self.edge.dst_g_id,
             pid: None,
         };
-        Self::Vertex::new(self.graph.clone(), vertex)
+        VertexView::new(self.graph.clone(), vertex)
     }
 
-    fn id(&self) -> usize {
+    pub fn id(&self) -> usize {
         self.edge.edge_id
     }
 }
 
 impl<G: GraphViewOps> EdgeListOps for Box<dyn Iterator<Item = EdgeView<G>> + Send> {
-    type Vertex = VertexView<G>;
-    type VList = Box<dyn Iterator<Item = Self::Vertex> + Send>;
-    type Edge = EdgeView<G>;
-    type IterType = Box<dyn Iterator<Item = Self::Edge> + Send>;
+    type Graph = G;
+    type VList = Box<dyn Iterator<Item = VertexView<G>> + Send>;
+    type IterType = Box<dyn Iterator<Item = EdgeView<G>> + Send>;
 
     fn src(self) -> Self::VList {
         Box::new(self.map(|e| e.src()))
@@ -81,3 +78,5 @@ impl<G: GraphViewOps> EdgeListOps for Box<dyn Iterator<Item = EdgeView<G>> + Sen
         Box::new(self.into_iter().map(|e| e.dst()))
     }
 }
+
+pub type EdgeList<G: GraphViewOps> = Box<dyn Iterator<Item = EdgeView<G>> + Send>;

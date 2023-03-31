@@ -1,62 +1,16 @@
-use crate::view_api::edge::{EdgeListOps, EdgeViewOps};
+use crate::path::PathFromVertex;
+use crate::vertex::VertexView;
+use crate::view_api::edge::EdgeListOps;
+use crate::view_api::GraphViewOps;
 use docbrown_core::Prop;
 use std::collections::HashMap;
 
-pub trait VertexViewOps: Send + Sync {
-    type Edge: EdgeViewOps<Vertex = Self>;
-    type VList: VertexListOps<Vertex = Self, Edge = Self::Edge, EList = Self::EList>;
-    type EList: EdgeListOps<Vertex = Self, Edge = Self::Edge>;
-
-    fn id(&self) -> u64;
-
-    fn prop(&self, name: String) -> Vec<(i64, Prop)>;
-
-    fn props(&self) -> HashMap<String, Vec<(i64, Prop)>>;
-
-    fn degree(&self) -> usize;
-
-    fn degree_window(&self, t_start: i64, t_end: i64) -> usize;
-
-    fn in_degree(&self) -> usize;
-
-    fn in_degree_window(&self, t_start: i64, t_end: i64) -> usize;
-
-    fn out_degree(&self) -> usize;
-
-    fn out_degree_window(&self, t_start: i64, t_end: i64) -> usize;
-
-    fn edges(&self) -> Self::EList;
-
-    fn edges_window(&self, t_start: i64, t_end: i64) -> Self::EList;
-
-    fn in_edges(&self) -> Self::EList;
-
-    fn in_edges_window(&self, t_start: i64, t_end: i64) -> Self::EList;
-
-    fn out_edges(&self) -> Self::EList;
-
-    fn out_edges_window(&self, t_start: i64, t_end: i64) -> Self::EList;
-
-    fn neighbours(&self) -> Self::VList;
-
-    fn neighbours_window(&self, t_start: i64, t_end: i64) -> Self::VList;
-
-    fn in_neighbours(&self) -> Self::VList;
-
-    fn in_neighbours_window(&self, t_start: i64, t_end: i64) -> Self::VList;
-
-    fn out_neighbours(&self) -> Self::VList;
-
-    fn out_neighbours_window(&self, t_start: i64, t_end: i64) -> Self::VList;
-}
-
 pub trait VertexListOps:
-    IntoIterator<Item = Self::Vertex, IntoIter = Self::IterType> + Sized + Send
+    IntoIterator<Item = VertexView<Self::Graph>, IntoIter = Self::IterType> + Sized + Send
 {
-    type Vertex: VertexViewOps<Edge = Self::Edge>;
-    type Edge: EdgeViewOps<Vertex = Self::Vertex>;
-    type EList: EdgeListOps<Vertex = Self::Vertex, Edge = Self::Edge>;
-    type IterType: Iterator<Item = Self::Vertex> + Send;
+    type Graph: GraphViewOps;
+    type IterType: Iterator<Item = VertexView<Self::Graph>> + Send;
+    type EList: EdgeListOps<Graph = Self::Graph>;
     type ValueIterType<U>: Iterator<Item = U> + Send;
 
     fn id(self) -> Self::ValueIterType<u64>;

@@ -1,7 +1,8 @@
+use crate::vertex::VertexView;
 use crate::view_api::*;
 use std::collections::HashSet;
 
-fn get_reciprocal_edge_count<V: VertexViewOps>(v: &V) -> (u64, u64, u64) {
+fn get_reciprocal_edge_count<G: GraphViewOps>(v: &VertexView<G>) -> (u64, u64, u64) {
     let out_neighbours: HashSet<u64> = v.out_neighbours().id().filter(|x| *x != v.id()).collect();
     let in_neighbours: HashSet<u64> = v.in_neighbours().id().filter(|x| *x != v.id()).collect();
     (
