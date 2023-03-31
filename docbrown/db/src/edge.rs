@@ -53,7 +53,7 @@ impl<G: GraphViewInternalOps + 'static + Send + Sync> EdgeViewOps for EdgeView<G
                         Some(prop) => { Some(prop) }
                     }
                 }
-                else {Ok(None)}
+                else {  None}
             },
             Some((_,prop)) => {Some(prop.clone())}
         })

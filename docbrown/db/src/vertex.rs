@@ -53,7 +53,7 @@ impl<G: GraphViewInternalOps + 'static + Send + Sync> VertexViewOps for VertexVi
                         Some(prop) => { Some(prop) }
                     }
                 }
-                else {Ok(None)}
+                else {None}
             },
             Some((_,prop)) => {Some(prop.clone())}
         })
