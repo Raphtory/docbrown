@@ -57,7 +57,6 @@ pub struct Graph {
 }
 
 impl GraphViewInternalOps for Graph {
-
     fn earliest_time_global(&self) -> Option<i64> {
         let min_from_shards = self.shards.iter().map(|shard| shard.earliest_time()).min();
         min_from_shards.filter(|&min| min != i64::MAX)
@@ -89,8 +88,7 @@ impl GraphViewInternalOps for Graph {
     }
 
     fn vertices_len(&self) -> usize {
-        let vs: Vec<usize> =
-            self.shards.iter().map(|shard| shard.len()).collect();
+        let vs: Vec<usize> = self.shards.iter().map(|shard| shard.len()).collect();
         vs.iter().sum()
     }
 
@@ -135,8 +133,7 @@ impl GraphViewInternalOps for Graph {
         t_start: i64,
         t_end: i64,
     ) -> bool {
-        self
-            .get_shard_from_v(src)
+        self.get_shard_from_v(src)
             .has_edge_window(src.g_id, dst.g_id, t_start..t_end)
     }
 
@@ -144,12 +141,7 @@ impl GraphViewInternalOps for Graph {
         self.get_shard_from_v(v).has_vertex(v.g_id)
     }
 
-    fn has_vertex_ref_window(
-        &self,
-        v: VertexRef,
-        t_start: i64,
-        t_end: i64,
-    ) -> bool {
+    fn has_vertex_ref_window(&self, v: VertexRef, t_start: i64, t_end: i64) -> bool {
         self.get_shard_from_v(v)
             .has_vertex_window(v.g_id, t_start..t_end)
     }
@@ -158,13 +150,7 @@ impl GraphViewInternalOps for Graph {
         self.get_shard_from_v(v).degree(v.g_id, d)
     }
 
-    fn degree_window(
-        &self,
-        v: VertexRef,
-        t_start: i64,
-        t_end: i64,
-        d: Direction,
-    ) -> usize {
+    fn degree_window(&self, v: VertexRef, t_start: i64, t_end: i64, d: Direction) -> usize {
         self.get_shard_from_v(v)
             .degree_window(v.g_id, t_start..t_end, d)
     }
@@ -173,12 +159,7 @@ impl GraphViewInternalOps for Graph {
         self.get_shard_from_id(v).vertex(v)
     }
 
-    fn vertex_ref_window(
-        &self,
-        v: u64,
-        t_start: i64,
-        t_end: i64,
-    ) -> Option<VertexRef> {
+    fn vertex_ref_window(&self, v: u64, t_start: i64, t_end: i64) -> Option<VertexRef> {
         self.get_shard_from_id(v).vertex_window(v, t_start..t_end)
     }
 
@@ -338,11 +319,7 @@ impl GraphViewInternalOps for Graph {
         self.get_shard_from_v(v).static_vertex_prop_keys(v.g_id)
     }
 
-    fn temporal_vertex_prop_vec(
-        &self,
-        v: VertexRef,
-        name: String,
-    ) -> Vec<(i64, Prop)> {
+    fn temporal_vertex_prop_vec(&self, v: VertexRef, name: String) -> Vec<(i64, Prop)> {
         self.get_shard_from_v(v)
             .temporal_vertex_prop_vec(v.g_id, name)
     }
@@ -358,10 +335,7 @@ impl GraphViewInternalOps for Graph {
             .temporal_vertex_prop_vec_window(v.g_id, name, t_start..t_end)
     }
 
-    fn temporal_vertex_props(
-        &self,
-        v: VertexRef,
-    ) -> HashMap<String, Vec<(i64, Prop)>> {
+    fn temporal_vertex_props(&self, v: VertexRef) -> HashMap<String, Vec<(i64, Prop)>> {
         self.get_shard_from_v(v).temporal_vertex_props(v.g_id)
     }
 
@@ -383,11 +357,7 @@ impl GraphViewInternalOps for Graph {
         self.get_shard_from_e(e).static_edge_prop_keys(e.edge_id)
     }
 
-    fn temporal_edge_props_vec(
-        &self,
-        e: EdgeRef,
-        name: String,
-    ) -> Vec<(i64, Prop)> {
+    fn temporal_edge_props_vec(&self, e: EdgeRef, name: String) -> Vec<(i64, Prop)> {
         self.get_shard_from_e(e)
             .temporal_edge_prop_vec(e.edge_id, name)
     }
@@ -1229,10 +1199,7 @@ mod db_tests {
         g.add_edge_properties(33, 11, &vec![("a".to_string(), Prop::U64(3311))])
             .unwrap();
 
-        assert_eq!(
-            g.static_vertex_prop_keys(11.into()),
-            vec!["a", "b", "c"]
-        );
+        assert_eq!(g.static_vertex_prop_keys(11.into()), vec!["a", "b", "c"]);
         assert_eq!(g.static_vertex_prop_keys(22.into()), vec!["b"]);
         assert!(g.static_vertex_prop_keys(33.into()).is_empty());
         assert_eq!(g.static_edge_prop_keys(edge1111), vec!["d"]);
@@ -1255,10 +1222,7 @@ mod db_tests {
             g.static_vertex_prop(22.into(), "b".to_string()),
             Some(Prop::U64(22))
         );
-        assert_eq!(
-            g.static_vertex_prop(22.into(), "a".to_string()),
-            None
-        );
+        assert_eq!(g.static_vertex_prop(22.into(), "a".to_string()), None);
         assert_eq!(
             g.static_edge_prop(edge1111, "d".to_string()),
             Some(Prop::U64(1111))

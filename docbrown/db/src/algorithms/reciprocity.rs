@@ -75,13 +75,11 @@ pub fn global_reciprocity<G: GraphViewOps>(graph: &G) -> f64 {
 
 /// Returns the reciprocity of every vertex in the graph as a tuple of
 /// vector id and the reciprocity
-pub fn all_local_reciprocity<G: GraphViewOps>(graph: &G) -> Vec<(u64, f64)>{
+pub fn all_local_reciprocity<G: GraphViewOps>(graph: &G) -> Vec<(u64, f64)> {
     graph
         .vertices()
         .into_iter()
-        .map(|v| {
-            (v.id(), local_reciprocity(graph, v.id()))
-        })
+        .map(|v| (v.id(), local_reciprocity(graph, v.id())))
         .collect()
 }
 

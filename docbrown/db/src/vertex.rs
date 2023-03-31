@@ -98,7 +98,7 @@ impl<G: GraphViewOps> VertexView<G> {
     /// # Returns
     ///
     /// The in-degree of this vertex.
-    pub fn in_degree(&self) -> usize{
+    pub fn in_degree(&self) -> usize {
         self.graph.degree(self.vertex, Direction::IN)
     }
 
@@ -413,11 +413,7 @@ impl<G: GraphViewOps> VertexListOps for Box<dyn Iterator<Item = VertexView<G>> +
     /// # Returns
     ///
     /// An iterator over the degree of this vertices in the given time window.
-    fn degree_window(
-        self,
-        t_start: i64,
-        t_end: i64,
-    ) -> Self::ValueIterType<usize> {
+    fn degree_window(self, t_start: i64, t_end: i64) -> Self::ValueIterType<usize> {
         let r: Vec<_> = self.map(move |v| v.degree_window(t_start, t_end)).collect();
         Box::new(r.into_iter())
     }
@@ -442,11 +438,7 @@ impl<G: GraphViewOps> VertexListOps for Box<dyn Iterator<Item = VertexView<G>> +
     /// # Returns
     ///
     /// An iterator over the in degree of these vertices in the given time window.
-    fn in_degree_window(
-        self,
-        t_start: i64,
-        t_end: i64,
-    ) -> Self::ValueIterType<usize> {
+    fn in_degree_window(self, t_start: i64, t_end: i64) -> Self::ValueIterType<usize> {
         let r: Vec<_> = self
             .map(move |v| v.in_degree_window(t_start, t_end))
             .collect();
@@ -473,11 +465,7 @@ impl<G: GraphViewOps> VertexListOps for Box<dyn Iterator<Item = VertexView<G>> +
     /// # Returns
     ///
     /// An iterator over the out degree of these vertices in the given time window.
-    fn out_degree_window(
-        self,
-        t_start: i64,
-        t_end: i64,
-    ) -> Self::ValueIterType<usize> {
+    fn out_degree_window(self, t_start: i64, t_end: i64) -> Self::ValueIterType<usize> {
         let r: Vec<_> = self
             .map(move |v| v.out_degree_window(t_start, t_end))
             .collect();
@@ -633,30 +621,15 @@ mod vertex_test {
 
         assert_eq!(g.num_edges(), 701);
         assert_eq!(g.vertex("Gandalf").unwrap().degree(), 49);
+        assert_eq!(g.vertex("Gandalf").unwrap().degree_window(1356, 24792), 34);
+        assert_eq!(g.vertex("Gandalf").unwrap().in_degree(), 24);
         assert_eq!(
-            g.vertex("Gandalf")
-                .unwrap()
-                .degree_window(1356, 24792),
-            34
-        );
-        assert_eq!(
-            g.vertex("Gandalf").unwrap().in_degree(),
-            24
-        );
-        assert_eq!(
-            g.vertex("Gandalf")
-                .unwrap()
-                .in_degree_window(1356, 24792),
+            g.vertex("Gandalf").unwrap().in_degree_window(1356, 24792),
             16
         );
+        assert_eq!(g.vertex("Gandalf").unwrap().out_degree(), 35);
         assert_eq!(
-            g.vertex("Gandalf").unwrap().out_degree(),
-            35
-        );
-        assert_eq!(
-            g.vertex("Gandalf")
-                .unwrap()
-                .out_degree_window(1356, 24792),
+            g.vertex("Gandalf").unwrap().out_degree_window(1356, 24792),
             20
         );
     }
@@ -666,10 +639,7 @@ mod vertex_test {
         let g = crate::graph_loader::lotr_graph::lotr_graph(4);
 
         assert_eq!(g.num_edges(), 701);
-        assert_eq!(
-            g.vertex("Gandalf").unwrap().neighbours().iter().count(),
-            49
-        );
+        assert_eq!(g.vertex("Gandalf").unwrap().neighbours().iter().count(), 49);
         assert_eq!(
             g.vertex("Gandalf")
                 .unwrap()
@@ -679,11 +649,7 @@ mod vertex_test {
             34
         );
         assert_eq!(
-            g.vertex("Gandalf")
-                .unwrap()
-                .in_neighbours()
-                .iter()
-                .count(),
+            g.vertex("Gandalf").unwrap().in_neighbours().iter().count(),
             24
         );
         assert_eq!(
@@ -695,11 +661,7 @@ mod vertex_test {
             16
         );
         assert_eq!(
-            g.vertex("Gandalf")
-                .unwrap()
-                .out_neighbours()
-                .iter()
-                .count(),
+            g.vertex("Gandalf").unwrap().out_neighbours().iter().count(),
             35
         );
         assert_eq!(
@@ -733,10 +695,7 @@ mod vertex_test {
                 .count(),
             16
         );
-        assert_eq!(
-            g.vertex("Gandalf").unwrap().out_edges().count(),
-            35
-        );
+        assert_eq!(g.vertex("Gandalf").unwrap().out_edges().count(), 35);
         assert_eq!(
             g.vertex("Gandalf")
                 .unwrap()

@@ -1,5 +1,6 @@
 use crate::dynamic::DynamicGraph;
 use crate::graph_view::PyGraphView;
+use crate::wrappers::adapt_err;
 use crate::wrappers::Prop;
 use docbrown_core as dbc;
 use docbrown_core::vertex::InputVertex;
@@ -9,7 +10,6 @@ use pyo3::exceptions::{PyException, PyTypeError};
 use pyo3::prelude::*;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use crate::wrappers::adapt_err;
 
 #[pyclass(name="Graph", extends=PyGraphView)]
 pub struct PyGraph {

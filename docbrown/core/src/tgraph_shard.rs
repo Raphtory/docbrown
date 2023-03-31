@@ -342,12 +342,7 @@ impl TGraphShard<TemporalGraph> {
         self.read_shard(|tg| tg.edge(src, dst))
     }
 
-    pub fn edge_window(
-        &self,
-        src: u64,
-        dst: u64,
-        w: Range<i64>,
-    ) -> Option<EdgeRef>  {
+    pub fn edge_window(&self, src: u64, dst: u64, w: Range<i64>) -> Option<EdgeRef> {
         self.read_shard(|tg| tg.edge_window(src, dst, &w))
     }
 
@@ -496,12 +491,8 @@ impl TGraphShard<TemporalGraph> {
         self.read_shard(|tg| tg.static_vertex_prop_keys(v))
     }
 
-    pub fn temporal_vertex_prop_vec(
-        &self,
-        v: u64,
-        name: String,
-    ) -> Vec<(i64, Prop)> {
-        self.read_shard(|tg|tg.temporal_vertex_prop_vec(v, &name))
+    pub fn temporal_vertex_prop_vec(&self, v: u64, name: String) -> Vec<(i64, Prop)> {
+        self.read_shard(|tg| tg.temporal_vertex_prop_vec(v, &name))
     }
 
     pub fn temporal_vertex_prop_vec_window(
@@ -513,10 +504,7 @@ impl TGraphShard<TemporalGraph> {
         self.read_shard(|tg| (tg.temporal_vertex_prop_vec_window(v, &name, &w)))
     }
 
-    pub fn temporal_vertex_props(
-        &self,
-        v: u64,
-    ) -> HashMap<String, Vec<(i64, Prop)>> {
+    pub fn temporal_vertex_props(&self, v: u64) -> HashMap<String, Vec<(i64, Prop)>> {
         self.read_shard(|tg| tg.temporal_vertex_props(v))
     }
 
@@ -524,7 +512,7 @@ impl TGraphShard<TemporalGraph> {
         &self,
         v: u64,
         w: Range<i64>,
-    ) -> HashMap<String, Vec<(i64, Prop)>>{
+    ) -> HashMap<String, Vec<(i64, Prop)>> {
         self.read_shard(|tg| tg.temporal_vertex_props_window(v, &w))
     }
     pub fn static_edge_prop(&self, e: usize, name: String) -> Option<Prop> {
@@ -535,11 +523,7 @@ impl TGraphShard<TemporalGraph> {
         self.read_shard(|tg| tg.static_edge_prop_keys(e))
     }
 
-    pub fn temporal_edge_prop_vec(
-        &self,
-        e: usize,
-        name: String,
-    ) -> Vec<(i64, Prop)> {
+    pub fn temporal_edge_prop_vec(&self, e: usize, name: String) -> Vec<(i64, Prop)> {
         self.read_shard(|tg| tg.temporal_edge_prop_vec(e, &name))
     }
 
@@ -772,47 +756,23 @@ mod temporal_graph_partition_test {
         g.add_edge(9, 102, 104, &vec![]).unwrap();
         g.add_edge(9, 110, 104, &vec![]).unwrap();
 
-        assert_eq!(
-            g.degree_window(101, 0i64..i64::MAX, Direction::IN),
-            1
-        );
+        assert_eq!(g.degree_window(101, 0i64..i64::MAX, Direction::IN), 1);
         assert_eq!(g.degree_window(100, 0..i64::MAX, Direction::IN), 0);
         assert_eq!(g.degree_window(101, 0..1, Direction::IN), 0);
         assert_eq!(g.degree_window(101, 10..20, Direction::IN), 0);
         assert_eq!(g.degree_window(105, 0..i64::MAX, Direction::IN), 0);
         assert_eq!(g.degree_window(104, 0..i64::MAX, Direction::IN), 2);
-        assert_eq!(
-            g.degree_window(101, 0..i64::MAX, Direction::OUT),
-            1
-        );
-        assert_eq!(
-            g.degree_window(103, 0..i64::MAX, Direction::OUT),
-            0
-        );
-        assert_eq!(
-            g.degree_window(105, 0..i64::MAX, Direction::OUT),
-            0
-        );
+        assert_eq!(g.degree_window(101, 0..i64::MAX, Direction::OUT), 1);
+        assert_eq!(g.degree_window(103, 0..i64::MAX, Direction::OUT), 0);
+        assert_eq!(g.degree_window(105, 0..i64::MAX, Direction::OUT), 0);
         assert_eq!(g.degree_window(101, 0..1, Direction::OUT), 0);
         assert_eq!(g.degree_window(101, 10..20, Direction::OUT), 0);
-        assert_eq!(
-            g.degree_window(100, 0..i64::MAX, Direction::OUT),
-            2
-        );
-        assert_eq!(
-            g.degree_window(101, 0..i64::MAX, Direction::BOTH),
-            2
-        );
-        assert_eq!(
-            g.degree_window(100, 0..i64::MAX, Direction::BOTH),
-            2
-        );
+        assert_eq!(g.degree_window(100, 0..i64::MAX, Direction::OUT), 2);
+        assert_eq!(g.degree_window(101, 0..i64::MAX, Direction::BOTH), 2);
+        assert_eq!(g.degree_window(100, 0..i64::MAX, Direction::BOTH), 2);
         assert_eq!(g.degree_window(100, 0..1, Direction::BOTH), 0);
         assert_eq!(g.degree_window(100, 10..20, Direction::BOTH), 0);
-        assert_eq!(
-            g.degree_window(105, 0..i64::MAX, Direction::BOTH),
-            0
-        );
+        assert_eq!(g.degree_window(105, 0..i64::MAX, Direction::BOTH), 0);
     }
 
     #[test]

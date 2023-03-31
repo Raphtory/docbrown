@@ -56,7 +56,7 @@ use docbrown_core::tgraph_shard::errors::GraphError;
 /// measures the degree to which nodes in a graph tend to cluster together
 pub fn local_clustering_coefficient<G: GraphViewOps>(graph: &G, v: u64) -> Option<f32> {
     if let Some(vertex) = graph.vertex(v) {
-        if let Some(triangle_count) = local_triangle_count(graph, v){
+        if let Some(triangle_count) = local_triangle_count(graph, v) {
             let triangle_count = triangle_count as f32;
             let degree = vertex.degree() as f32;
             if degree > 1.0 {
@@ -64,11 +64,12 @@ pub fn local_clustering_coefficient<G: GraphViewOps>(graph: &G, v: u64) -> Optio
             } else {
                 Some(0.0)
             }
+        } else {
+            None
         }
-        else {None}
+    } else {
+        None
     }
-    else {None}
-
 }
 
 #[cfg(test)]

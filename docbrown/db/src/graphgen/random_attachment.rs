@@ -40,11 +40,7 @@ use rand::seq::SliceRandom;
 /// let graph = Graph::new(2);
 /// random_attachment(&graph, 1000, 10);
 /// ```
-pub fn random_attachment(
-    graph: &Graph,
-    vertices_to_add: usize,
-    edges_per_step: usize,
-) {
+pub fn random_attachment(graph: &Graph, vertices_to_add: usize, edges_per_step: usize) {
     let rng = &mut rand::thread_rng();
     let mut latest_time = match graph.latest_time() {
         None => 0,

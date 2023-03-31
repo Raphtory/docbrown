@@ -1,7 +1,7 @@
-use pyo3::exceptions::PyException;
 use docbrown_core as db_c;
 use docbrown_db::perspective;
 use docbrown_db::perspective::PerspectiveSet;
+use pyo3::exceptions::PyException;
 use pyo3::prelude::*;
 
 #[derive(FromPyObject, Debug, Clone)]
@@ -225,8 +225,8 @@ pub struct PyPerspectiveSet {
 }
 
 pub fn adapt_err<U, E>(result: Result<U, E>) -> PyResult<U>
-    where
-        E: std::error::Error,
+where
+    E: std::error::Error,
 {
     result.map_err(|e| {
         let error_log = display_error_chain::DisplayErrorChain::new(&e).to_string();

@@ -37,8 +37,7 @@ use docbrown_core::tgraph_shard::errors::GraphError;
 
 /// Measures how dense or sparse a graph is
 pub fn directed_graph_density<G: GraphViewOps>(graph: &G) -> f32 {
-    graph.num_edges() as f32
-        / (graph.num_vertices() as f32 * (graph.num_vertices() as f32 - 1.0))
+    graph.num_edges() as f32 / (graph.num_vertices() as f32 * (graph.num_vertices() as f32 - 1.0))
 }
 
 #[cfg(test)]

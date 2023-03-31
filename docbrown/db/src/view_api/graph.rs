@@ -13,7 +13,6 @@ use std::iter;
 /// that are used to define the type of the vertices, edges
 /// and the corresponding iterators.
 pub trait GraphViewOps: Send + Sync + Sized + GraphViewInternalOps + 'static + Clone {
-
     /// Return the number of vertices in the graph.
     fn num_vertices(&self) -> usize;
 
@@ -75,7 +74,6 @@ pub trait GraphViewOps: Send + Sync + Sized + GraphViewInternalOps + 'static + C
 }
 
 impl<G: Send + Sync + Sized + GraphViewInternalOps + 'static + Clone> GraphViewOps for G {
-
     fn num_vertices(&self) -> usize {
         self.vertices_len()
     }

@@ -58,7 +58,6 @@ impl<G: GraphViewOps> From<EdgeView<G>> for EdgeRef {
 }
 
 impl<G: GraphViewOps> EdgeView<G> {
-
     /// Returns the properties associated with the given property name for the edge.
     ///
     /// # Arguments

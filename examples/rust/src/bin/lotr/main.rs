@@ -3,8 +3,8 @@ use docbrown_core::{state, utils};
 use docbrown_db::program::{
     GlobalEvalState, Program, TriangleCountS1, TriangleCountS2, TriangleCountSlowS2,
 };
+use docbrown_db::view_api::GraphViewOps;
 use docbrown_db::view_api::*;
-use docbrown_db::view_api::{GraphViewOps};
 use docbrown_db::{csv_loader::csv::CsvLoader, graph::Graph};
 use serde::Deserialize;
 use std::path::PathBuf;

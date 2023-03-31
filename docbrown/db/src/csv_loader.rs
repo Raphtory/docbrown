@@ -313,7 +313,7 @@ pub mod csv {
             F: Fn(REC, &G) + Send + Sync,
             G: Sync,
         {
-//FIXME: loader function should return a result for reporting parsing errors
+            //FIXME: loader function should return a result for reporting parsing errors
             let paths = self.files_vec()?;
             paths
                 .par_iter()

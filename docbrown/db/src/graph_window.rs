@@ -253,7 +253,7 @@ impl<G: GraphViewInternalOps> GraphViewInternalOps for WindowedGraph<G> {
     /// # Errors
     ///
     /// Returns an error if `v` is not a valid vertex.
-    fn has_vertex_ref(&self, v: VertexRef) -> bool{
+    fn has_vertex_ref(&self, v: VertexRef) -> bool {
         self.graph
             .has_vertex_ref_window(v, self.t_start, self.t_end)
     }
@@ -273,12 +273,7 @@ impl<G: GraphViewInternalOps> GraphViewInternalOps for WindowedGraph<G> {
     /// # Errors
     ///
     /// Returns an error if `v` is not a valid vertex.
-    fn has_vertex_ref_window(
-        &self,
-        v: VertexRef,
-        t_start: i64,
-        t_end: i64,
-    ) -> bool {
+    fn has_vertex_ref_window(&self, v: VertexRef, t_start: i64, t_end: i64) -> bool {
         self.graph
             .has_vertex_ref_window(v, self.actual_start(t_start), self.actual_end(t_end))
     }
@@ -317,13 +312,7 @@ impl<G: GraphViewInternalOps> GraphViewInternalOps for WindowedGraph<G> {
     /// # Errors
     ///
     /// Returns an error if `v` is not a valid vertex.
-    fn degree_window(
-        &self,
-        v: VertexRef,
-        t_start: i64,
-        t_end: i64,
-        d: Direction,
-    ) -> usize {
+    fn degree_window(&self, v: VertexRef, t_start: i64, t_end: i64, d: Direction) -> usize {
         self.graph
             .degree_window(v, self.actual_start(t_start), self.actual_end(t_end), d)
     }
@@ -360,12 +349,7 @@ impl<G: GraphViewInternalOps> GraphViewInternalOps for WindowedGraph<G> {
     /// # Errors
     ///
     /// Returns an error if `v` is not a valid vertex.
-    fn vertex_ref_window(
-        &self,
-        v: u64,
-        t_start: i64,
-        t_end: i64,
-    ) -> Option<VertexRef> {
+    fn vertex_ref_window(&self, v: u64, t_start: i64, t_end: i64) -> Option<VertexRef> {
         self.graph
             .vertex_ref_window(v, self.actual_start(t_start), self.actual_end(t_end))
     }
@@ -692,11 +676,7 @@ impl<G: GraphViewInternalOps> GraphViewInternalOps for WindowedGraph<G> {
     /// # Errors
     ///
     /// - `GraphError` - Raised if vertex or property does not exist
-    fn temporal_vertex_prop_vec(
-        &self,
-        v: VertexRef,
-        name: String,
-    ) -> Vec<(i64, Prop)> {
+    fn temporal_vertex_prop_vec(&self, v: VertexRef, name: String) -> Vec<(i64, Prop)> {
         self.graph
             .temporal_vertex_prop_vec_window(v, name, self.t_start, self.t_end)
     }
@@ -745,10 +725,7 @@ impl<G: GraphViewInternalOps> GraphViewInternalOps for WindowedGraph<G> {
     /// # Errors
     ///
     /// - `GraphError` - Raised if vertex or property does not exist
-    fn temporal_vertex_props(
-        &self,
-        v: VertexRef,
-    ) -> HashMap<String, Vec<(i64, Prop)>>{
+    fn temporal_vertex_props(&self, v: VertexRef) -> HashMap<String, Vec<(i64, Prop)>> {
         self.graph
             .temporal_vertex_props_window(v, self.t_start, self.t_end)
     }
@@ -831,11 +808,7 @@ impl<G: GraphViewInternalOps> GraphViewInternalOps for WindowedGraph<G> {
     /// # Errors
     ///
     /// - `GraphError` - Raised if edge or property does not exist
-    fn temporal_edge_props_vec(
-        &self,
-        e: EdgeRef,
-        name: String,
-    ) -> Vec<(i64, Prop)> {
+    fn temporal_edge_props_vec(&self, e: EdgeRef, name: String) -> Vec<(i64, Prop)> {
         self.graph
             .temporal_edge_props_vec_window(e, name, self.t_start, self.t_end)
     }
@@ -1206,8 +1179,7 @@ mod views_test {
                     .unwrap()
             });
         let w = g.window(i64::MIN, i64::MAX);
-        g.edges()
-            .all(|e| w.has_edge(e.src().id(), e.dst().id()))
+        g.edges().all(|e| w.has_edge(e.src().id(), e.dst().id()))
     }
 
     #[quickcheck]
