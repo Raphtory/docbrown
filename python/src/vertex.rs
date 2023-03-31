@@ -29,6 +29,10 @@ impl From<PyVertex> for VertexRef {
 
 #[pymethods]
 impl PyVertex {
+    pub fn id(&self) -> u64 {
+        self.vertex.id()
+    }
+
     pub fn __getitem__(&self, name: String) -> Vec<(i64, Prop)> {
         self.prop(name)
     }
