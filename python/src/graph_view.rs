@@ -104,6 +104,20 @@ impl PyGraphView {
         self.graph.edges().into()
     }
 
+    //******  Perspective APIS  ******//
+
+    pub fn window(&self, t_start: i64, t_end: i64) -> PyGraphView {
+        self.graph.window(t_start, t_end).into()
+    }
+
+    pub fn at(&self, end: i64) -> PyGraphView {
+        self.graph.at(end).into()
+    }
+
+    fn through(&self, perspectives: &PyAny) -> PyResult<PyGraphWindowSet> {
+        todo!()
+    }
+
     pub fn __repr__(&self) -> String {
         format!(
             "GraphView(vertices={}, edges={})",

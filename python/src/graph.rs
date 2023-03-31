@@ -109,27 +109,6 @@ impl PyGraph {
         Self::adapt_err(result)
     }
 
-    //******  Perspective APIS  ******//
-
-    pub fn window(&self, t_start: i64, t_end: i64) -> PyGraphView {
-        self.graph.window(t_start, t_end).into()
-    }
-
-    pub fn at(&self, end: i64) -> PyGraphView {
-        self.graph.at(end).into()
-    }
-
-    pub fn latest(&self) -> PyGraphView {
-        match self.latest_time() {
-            None => self.at(0),
-            Some(time) => self.at(time),
-        }
-    }
-
-    fn through(&self, perspectives: &PyAny) -> PyResult<PyGraphWindowSet> {
-        todo!()
-    }
-
     //******  Saving And Loading  ******//
 
     // Alternative constructors are tricky, see: https://gist.github.com/redshiftzero/648e4feeff3843ffd9924f13625f839c
