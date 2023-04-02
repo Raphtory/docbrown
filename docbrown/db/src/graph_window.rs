@@ -189,7 +189,7 @@ impl<G: GraphViewInternalOps> GraphViewInternalOps for WindowedGraph<G> {
     /// # Returns
     ///
     /// The number of edges in the windowed view for the given window.
-    fn edges_len_window(&self, t_start: i64, t_end: i64) -> Result<usize, GraphError> {
+    fn edges_len_window(&self, t_start: i64, t_end: i64) -> usize {
         self.graph
             .edges_len_window(self.actual_start(t_start), self.actual_end(t_end))
     }

@@ -32,7 +32,7 @@ pub trait GraphViewInternalOps {
     ///
     /// * `t_start` - The start time of the window (inclusive).
     /// * `t_end` - The end time of the window (exclusive).
-    fn edges_len_window(&self, t_start: i64, t_end: i64) -> Result<usize, GraphError>;
+    fn edges_len_window(&self, t_start: i64, t_end: i64) -> usize;
 
     /// Returns true if the graph contains an edge between the source vertex
     /// (src) and the destination vertex (dst).
