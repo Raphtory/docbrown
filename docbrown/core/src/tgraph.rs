@@ -10,7 +10,7 @@ use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
 
 use crate::adj::Adj;
-use crate::props::Props;
+use crate::props::{IllegalMutate, Props};
 use crate::tprop::TProp;
 use crate::vertex::InputVertex;
 use crate::{bitset::BitSet, tadjset::AdjEdge, Direction};
@@ -1233,6 +1233,18 @@ impl VertexRef {
 impl From<u64> for VertexRef {
     fn from(value: u64) -> Self {
         Self::new_remote(value)
+    }
+}
+
+impl From<String> for VertexRef {
+    fn from(value: String) -> Self {
+        value.id().into()
+    }
+}
+
+impl From<&str> for VertexRef {
+    fn from(value: &str) -> Self {
+        value.id().into()
     }
 }
 
