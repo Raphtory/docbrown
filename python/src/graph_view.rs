@@ -63,8 +63,8 @@ impl PyGraphView {
         self.graph.num_vertices()
     }
 
-    pub fn has_vertex(&self, vertex: &PyAny) -> PyResult<bool> {
-        let v = extract_vertex_ref(vertex)?;
+    pub fn has_vertex(&self, id: &PyAny) -> PyResult<bool> {
+        let v = extract_vertex_ref(id)?;
         Ok(self.graph.has_vertex(v))
     }
 
