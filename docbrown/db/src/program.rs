@@ -111,7 +111,6 @@ pub mod algo {
         let tc = TripletCount {};
         tc.run_step(g, &mut gs);
         let res = tc.produce_output(g, &gs);
-        println!("Triplet count: {}", res);
         res
     }
 
@@ -121,15 +120,14 @@ pub mod algo {
         tc.run_step(g, &mut gs);
         let tc = TriangleCountS2 {};
         tc.run_step(g, &mut gs);
-        // let tc_val = tc.produce_output(g, &gs).unwrap_or(0);
-        // println!("TC: {}", tc_val);
-        let tc_val = 2.0;
-        let triplets = TripletCount {};
-        triplets.run_step(g, &mut gs);
-        let output = triplets.produce_output(g, &gs);
+        let tc_val = tc.produce_output(g, &gs).unwrap_or(0);
 
-        println!("Triplets: {}", output);
-        if output == 0 || tc_val == 0.0 {
+        let mut gss = GlobalEvalState::new(g.clone(), false);
+        let triplets = TripletCount {};
+        triplets.run_step(g, &mut gss);
+        let output = triplets.produce_output(g, &gss);
+
+        if output == 0 || tc_val == 0 {
             0.0
         } else {
             3.0 * tc_val as f64 / output as f64
@@ -1635,20 +1633,17 @@ mod program_test {
 
         let graph_at = graph.at(1);
 
-        // let tri_count = triangle_counting_fast(&graph_at);
-        // let exp_tri_count = Some(2);
-        // assert_eq!(tri_count, exp_tri_count);
+        let tri_count = triangle_counting_fast(&graph_at);
+        let exp_tri_count = Some(2);
+        assert_eq!(tri_count, exp_tri_count);
 
         let res_triplet_count = triplet_count(&graph_at);
         let exp_triplet_count = 20;
-        // assert_eq!(res_triplet_count, exp_triplet_count);
-
-        // let exp_tri_count = Some(2);
-        // let exp_triplet_count = 20;
+        assert_eq!(res_triplet_count, exp_triplet_count);
 
         let results = global_clustering_coefficient(&graph_at);
-        // let expected = 3.0 * exp_tri_count.unwrap() as f64 / exp_triplet_count as f64;
-        // assert_eq!(results, 0.3);
+        let expected = 3.0 * exp_tri_count.unwrap() as f64 / exp_triplet_count as f64;
+        assert_eq!(results, 0.3);
     }
 
     #[quickcheck]
