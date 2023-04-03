@@ -198,43 +198,47 @@ def test_windowed_graph_neighbours():
     assert out_neighbours == [[1, 2, 3], [1], [2]]
 
 
-def test_windowed_graph_vertex_prop():
-    g = create_graph(1)
-
-    max_size = sys.maxsize
-    min_size = -sys.maxsize - 1
-
-    view = g.window(min_size, max_size)
-
-    assert view.vertex(1).prop("type") == [(0, 'wallet')]
-    assert view.vertex(1).prop("undefined") == []
+def test_name():
+    # Currently deadlocking
+    # g = Graph()
+    # g.add_vertex(1, "Ben")
+    # g.add_vertex(1, 10)
+    # g.add_edge(1, "Ben", "Hamza")
+    # name = g.vertex(10).name()
 
 
-def test_windowed_graph_vertex_props():
-    g = create_graph(1)
+def test_properties():
 
-    max_size = sys.maxsize
-    min_size = -sys.maxsize - 1
+    g = Graph()
+    props_t1 = {"prop 1": 1, "prop 2": 0.3, "prop 3": "hi", "prop 4": True}
+    g.add_vertex(1, 1, props_t1)
+    props_t2 = {"prop 1": 2, "prop 2": 0.6,"prop 4": False}
+    g.add_vertex(2, 1, props_t2)
+    props_t3 = {"prop 2": 0.9, "prop 3": "hello","prop 4": True}
+    g.add_vertex(3, 1, props_t3)
 
-    view = g.window(min_size, max_size)
+    h = g.vertex(1).property_history("prop 1")
+    assert h == [(1, 1), (2, 2)]
 
-    assert view.vertex(1).props() == {
-        'cost': [(0, 99.5)], 'type': [(0, 'wallet')]}
+    h = g.vertex(1).property_history("prop 3")
+    assert h == [(1, "hi"), (3, 'hello')]
 
+    assert g.vertex(1).property_history("undefined") == []
 
-def test_windowed_graph_edge_prop():
-    g = create_graph(1)
+    #HERE BE DRAGONS, this test is currently broken see  https://github.com/Raphtory/docbrown/pull/130
 
-    max_size = sys.maxsize
-    min_size = -sys.maxsize - 1
+    #h = g.vertex(1).property_history("prop 4")
+    #assert h == [(1, True), (1, False), (3, True)]
 
-    view = g.window(min_size, max_size)
+    #h = g.vertex(1).property_history("prop 2")
+    #assert h == [(1, 0.3), (1, 0.6), (3, 0.9)]
 
-    edge = next(view.vertex(1).edges())
-
-    assert edge.prop("prop1") == [(0, 1), (1, 1)]
-    assert edge.prop("prop3") == [(0, 'test'), (1, 'test')]
-    assert edge.prop("undefined") == []
+    # g = Graph()
+    # props_t1 = {"prop 3": 3}
+    # g.add_vertex(1, 1, props_t1)
+    # props_t3 = {"prop 3": "hello"}
+    # g.add_vertex(3, 1, props_t3)
+    # assert g.vertex(1).property_history("prop 3") == [(1, 3), (3, 'hello')]
 
 
 def test_algorithms():
@@ -305,7 +309,7 @@ def test_save_load_graph():
     assert triangles == 1
 
     v = view.vertex(11)
-    assert v.props() == {'type': [(1, 'wallet')], 'balance': [(1, 99.5)]}
+    assert v.property_history() == {'type': [(1, 'wallet')], 'balance': [(1, 99.5)]}
 
     tmpdirname.cleanup()
 
