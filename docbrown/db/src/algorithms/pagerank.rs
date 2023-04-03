@@ -215,8 +215,8 @@ impl Program for UnweightedPageRankS2 {
         let max_diff: AggRef<MulF32, MulF32, MulF32, MaxDef<MulF32>> = c.global_agg(self.max_diff.clone());
 
         c.step(|s| {
-            let r = s.read(&recv_score);
-            s.update(&score, MulF32(r.0));
+            println!("{:?}", s.read(&recv_score));
+            s.update(&score, MulF32(s.read(&recv_score).0));
             let prev = s.read_prev(&score);
             let curr = s.read(&score);
             s.global_update(&max_diff, MulF32(abs((prev - curr).0)));

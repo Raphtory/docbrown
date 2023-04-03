@@ -317,6 +317,8 @@ impl ComputeState for ComputeStateMap {
             .unwrap();
         current
             .map
+            .remove_entry(&(i as u64));
+        current.map
             .insert(i as u64, [current.zero.clone(), current.zero.clone()]);
     }
 
