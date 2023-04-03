@@ -8,6 +8,7 @@ from raphtory import Perspective
 from raphtory import graph_loader
 import tempfile
 
+
 def create_graph(num_shards):
     g = Graph(num_shards)
     edges = [
@@ -25,7 +26,7 @@ def create_graph(num_shards):
 
     for e in edges:
         g.add_edge(e[0], e[1], e[2], {"prop1": 1,
-                   "prop2": 9.8, "prop3": "test"})
+                                      "prop2": 9.8, "prop3": "test"})
 
     return g
 
@@ -121,15 +122,15 @@ def test_windowed_graph_edges():
             edges.append([e.src().id(), e.dst().id()])
 
     assert edges == [
-            [1, 1],
-            [1, 1],
-            [1, 2],
-            [1, 3],
-            [1, 2],
-            [3, 2],
-            [1, 3],
-            [3, 2]
-        ]
+        [1, 1],
+        [1, 1],
+        [1, 2],
+        [1, 3],
+        [1, 2],
+        [3, 2],
+        [1, 3],
+        [3, 2]
+    ]
 
     tedges = [v.in_edges() for v in view.vertices()]
     in_edges = []
@@ -138,12 +139,12 @@ def test_windowed_graph_edges():
             in_edges.append([e.src().id(), e.dst().id()])
 
     assert in_edges == [
-            [1, 1],
-            [1, 2],
-            [3, 2],
-            [1, 3]
-        ]
-    
+        [1, 1],
+        [1, 2],
+        [3, 2],
+        [1, 3]
+    ]
+
     tedges = [v.out_edges() for v in view.vertices()]
     out_edges = []
     for e_iter in tedges:
@@ -151,11 +152,11 @@ def test_windowed_graph_edges():
             out_edges.append([e.src().id(), e.dst().id()])
 
     assert out_edges == [
-            [1, 1],
-            [1, 2],
-            [1, 3],
-            [3, 2]
-        ]
+        [1, 1],
+        [1, 2],
+        [1, 3],
+        [3, 2]
+    ]
 
 
 def test_windowed_graph_vertex_ids():
@@ -163,7 +164,7 @@ def test_windowed_graph_vertex_ids():
 
     vs = [v for v in g.window(-1, 2).vertices().id()]
     vs.sort()
-    assert vs == [1, 2] # this makes clear that the end of the range is exclusive
+    assert vs == [1, 2]  # this makes clear that the end of the range is exclusive
 
     vs = [v for v in g.window(-5, 3).vertices().id()]
     vs.sort()
@@ -238,7 +239,6 @@ def test_windowed_graph_edge_prop():
 
 
 def test_algorithms():
-
     g = Graph(1)
 
     g.add_edge(1, 1, 2, {"prop1": 1})
@@ -264,6 +264,7 @@ def test_algorithms():
     assert min_in_degree == 1
     assert clustering_coefficient == 1.0
 
+
 def test_perspective_set():
     g = create_graph(1)
 
@@ -279,6 +280,7 @@ def test_perspective_set():
     views = g.through(perspectives)
     assert len(list(views)) == 2
 
+
 def test_save_load_graph():
     g = create_graph(1)
     g.add_vertex(1, 11, {"type": "wallet", "balance": 99.5})
@@ -291,23 +293,24 @@ def test_save_load_graph():
     tmpdirname = tempfile.TemporaryDirectory()
     g.save_to_file(tmpdirname.name)
 
-    del(g)
+    del (g)
 
     g = Graph.load_from_file(tmpdirname.name)
 
-    view = g.window(0,10)
+    view = g.window(0, 10)
     assert g.has_vertex(13)
     assert view.vertex(13).in_degree() == 1
     assert view.vertex(13).out_degree() == 1
     assert view.vertex(13).degree() == 2
 
-    triangles = algorithms.local_triangle_count(view,13) # How many triangles is 13 involved in
+    triangles = algorithms.local_triangle_count(view, 13)  # How many triangles is 13 involved in
     assert triangles == 1
 
     v = view.vertex(11)
     assert v.props() == {'type': [(1, 'wallet')], 'balance': [(1, 99.5)]}
 
     tmpdirname.cleanup()
+
 
 def test_graph_at():
     g = create_graph(1)
@@ -319,15 +322,17 @@ def test_graph_at():
     view = g.at(7)
     assert view.vertex(3).degree() == 2
 
+
 def test_add_node_string():
     g = Graph(1)
 
     g.add_vertex(0, 1, {})
     g.add_vertex(1, "haaroon", {})
-    g.add_vertex(1, "haaroon", {}) # add same vertex twice used to cause an exception
+    g.add_vertex(1, "haaroon", {})  # add same vertex twice used to cause an exception
 
     assert g.has_vertex(1)
     assert g.has_vertex("haaroon")
+
 
 def test_add_edge_string():
     g = Graph(1)
@@ -343,6 +348,7 @@ def test_add_edge_string():
     assert g.has_edge(1, 2)
     assert g.has_edge("haaroon", "ben")
 
+
 def test_all_neighbours_window():
     g = Graph(4)
     g.add_edge(1, 1, 2, {})
@@ -356,6 +362,7 @@ def test_all_neighbours_window():
     assert list(v.in_neighbours(0, 2).id()) == [1]
     assert list(v.out_neighbours(0, 2).id()) == [3]
     assert list(v.neighbours(0, 2).id()) == [1, 3]
+
 
 def test_all_degrees_window():
     g = Graph(4)
@@ -379,6 +386,7 @@ def test_all_degrees_window():
     assert v.degree(t_start=2) == 2
     assert v.degree(t_end=3) == 2
 
+
 def test_all_edge_window():
     g = Graph(4)
     g.add_edge(1, 1, 2, {})
@@ -391,15 +399,16 @@ def test_all_edge_window():
 
     view = g.at(4)
     v = view.vertex(2)
-    assert list(map(lambda e: e.id(),  v.in_edges(0, 4))) == [1, 3, 5]
-    assert list(map(lambda e: e.id(),  v.in_edges(t_end=4))) == [1, 3, 5]
-    assert list(map(lambda e: e.id(),  v.in_edges(t_start=2))) == [3, 5]
-    assert list(map(lambda e: e.id(),  v.out_edges(0, 4))) == [2]
-    assert list(map(lambda e: e.id(),  v.out_edges(t_end=3))) == [2]
-    assert list(map(lambda e: e.id(),  v.out_edges(t_start=2))) == [6]
-    assert sorted(list(map(lambda e: e.id(),  v.edges(0, 4)))) == [1, 2, 3, 5]
-    assert sorted(list(map(lambda e: e.id(),  v.edges(t_end=4)))) == [1, 2, 3, 5]
-    assert sorted(list(map(lambda e: e.id(),  v.edges(t_start=1)))) == [1, 2, 3, 5, 6]
+    assert list(map(lambda e: e.id(), v.in_edges(0, 4))) == [1, 3, 5]
+    assert list(map(lambda e: e.id(), v.in_edges(t_end=4))) == [1, 3, 5]
+    assert list(map(lambda e: e.id(), v.in_edges(t_start=2))) == [3, 5]
+    assert list(map(lambda e: e.id(), v.out_edges(0, 4))) == [2]
+    assert list(map(lambda e: e.id(), v.out_edges(t_end=3))) == [2]
+    assert list(map(lambda e: e.id(), v.out_edges(t_start=2))) == [6]
+    assert sorted(list(map(lambda e: e.id(), v.edges(0, 4)))) == [1, 2, 3, 5]
+    assert sorted(list(map(lambda e: e.id(), v.edges(t_end=4)))) == [1, 2, 3, 5]
+    assert sorted(list(map(lambda e: e.id(), v.edges(t_start=1)))) == [1, 2, 3, 5, 6]
+
 
 def test_static_prop_change():
     # with pytest.raises(Exception):
@@ -419,3 +428,28 @@ def test_static_prop_change():
     # with pytest.raises(Exception, match=re.escape(expected_msg)):
     with pytest.raises(Exception):
         g.add_vertex_properties(1, {"name": "value2"})
+
+
+def test_triplet_count():
+    g = Graph(1)
+
+    g.add_edge(0, 1, 2, {})
+    g.add_edge(0, 2, 3, {})
+    g.add_edge(0, 3, 1, {})
+
+    v = g.at(1)
+    assert algorithms.triplet_count(v) == 3
+
+
+def test_global_clustering_coeffficient():
+    g = Graph(1)
+
+    g.add_edge(0, 1, 2, {})
+    g.add_edge(0, 2, 3, {})
+    g.add_edge(0, 3, 1, {})
+    g.add_edge(0, 4, 2, {})
+    g.add_edge(0, 4, 1, {})
+    g.add_edge(0, 5, 2, {})
+
+    v = g.at(1)
+    assert algorithms.global_clustering_coefficient(v) == 0.5454545454545454
