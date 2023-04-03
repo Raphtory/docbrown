@@ -658,8 +658,8 @@ impl<G: GraphViewInternalOps> GraphViewInternalOps for WindowedGraph<G> {
     /// # Errors
     ///
     /// - `GraphError` - Raised if vertex or property does not exist
-    fn static_vertex_prop_keys(&self, v: VertexRef) -> Vec<String> {
-        self.graph.static_vertex_prop_keys(v)
+    fn static_vertex_prop_names(&self, v: VertexRef) -> Vec<String> {
+        self.graph.static_vertex_prop_names(v)
     }
 
     /// Get the temporal property of a vertex
@@ -790,8 +790,8 @@ impl<G: GraphViewInternalOps> GraphViewInternalOps for WindowedGraph<G> {
     /// # Errors
     ///
     /// - `GraphError` - Raised if edge or property does not exist
-    fn static_edge_prop_keys(&self, e: EdgeRef) -> Vec<String> {
-        self.graph.static_edge_prop_keys(e)
+    fn static_edge_prop_names(&self, e: EdgeRef) -> Vec<String> {
+        self.graph.static_edge_prop_names(e)
     }
 
     /// Get the temporal property of an edge
