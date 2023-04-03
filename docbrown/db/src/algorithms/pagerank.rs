@@ -242,11 +242,9 @@ mod page_rank_tests {
 
         assert_eq!(
             results,
-            vec![
-                (5, 13.25), (7, 13.25), (1, 13.25), (3, 13.25)
-            ]
-            .into_iter()
-            .collect::<FxHashMap<u64, f32>>()
+            vec![(5, 13.25), (7, 13.25), (1, 13.25), (3, 13.25)]
+                .into_iter()
+                .collect::<FxHashMap<u64, f32>>()
         );
     }
 }

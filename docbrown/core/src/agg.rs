@@ -126,11 +126,11 @@ where
 }
 
 pub mod set {
+    use super::*;
+    use crate::state::StateType;
     use roaring::{RoaringBitmap, RoaringTreemap};
     use rustc_hash::FxHashSet;
     use std::hash::Hash;
-    use crate::state::StateType;
-    use super::*;
 
     pub struct Set<A: StateType + Hash + Eq> {
         _marker: PhantomData<A>,
@@ -202,10 +202,10 @@ pub mod set {
 }
 
 pub mod topk {
-    use std::{cmp::Reverse, collections::BTreeSet, marker::PhantomData};
-    use itertools::Itertools;
-    use crate::state::StateType;
     use super::*;
+    use crate::state::StateType;
+    use itertools::Itertools;
+    use std::{cmp::Reverse, collections::BTreeSet, marker::PhantomData};
 
     pub struct TopK<A: StateType + Ord, const N: usize> {
         _marker: PhantomData<A>,
