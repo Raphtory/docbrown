@@ -107,6 +107,18 @@ pub trait GraphViewInternalOps {
     /// * `Option<VertexRef>` - The VertexRef of the vertex if it exists in the graph.
     fn vertex_ref_window(&self, v: u64, t_start: i64, t_end: i64) -> Option<VertexRef>;
 
+    /// Return the earliest time for a vertex
+    fn vertex_earliest_time(&self, v: VertexRef) -> Option<i64>;
+
+    /// Return the earliest time for a vertex in a window
+    fn vertex_earliest_time_window(&self, v: VertexRef, t_start: i64, t_end: i64) -> Option<i64>;
+
+    /// Return the latest time for a vertex
+    fn vertex_latest_time(&self, v: VertexRef) -> Option<i64>;
+
+    /// Return the latest time for a vertex in a window
+    fn vertex_latest_time_window(&self, v: VertexRef, t_start: i64, t_end: i64) -> Option<i64>;
+
     /// Retuns all the vertex IDs in the graph.
     /// # Returns
     /// * `Box<dyn Iterator<Item = u64> + Send>` - An iterator over all the vertex IDs in the graph.
@@ -230,6 +242,23 @@ pub trait GraphViewInternalOps {
     /// Box<dyn Iterator<Item = EdgeRef> + Send> -  A boxed iterator that yields references to
     /// the edges connected to the vertex.
     fn vertex_edges(&self, v: VertexRef, d: Direction) -> Box<dyn Iterator<Item = EdgeRef> + Send>;
+
+    /// Returns an iterator over the exploded edges connected to a given vertex in a given direction.
+    ///
+    /// # Arguments
+    ///
+    /// * `v` - A reference to the vertex for which the edges are being queried.
+    /// * `d` - The direction in which to search for edges.
+    ///
+    /// # Returns
+    ///
+    /// Box<dyn Iterator<Item = EdgeRef> + Send> -  A boxed iterator that yields references to
+    /// the edges connected to the vertex.
+    fn vertex_edges_t(
+        &self,
+        v: VertexRef,
+        d: Direction,
+    ) -> Box<dyn Iterator<Item = EdgeRef> + Send>;
 
     /// Returns an iterator over the edges connected to a given vertex within a
     /// specified time window in a given direction.

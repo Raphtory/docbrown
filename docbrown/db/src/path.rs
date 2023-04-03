@@ -151,29 +151,10 @@ impl<G: GraphViewOps> PathFromGraph<G> {
         Box::new(self.iter().map(|it| it.degree()))
     }
 
-    pub fn degree_window(
-        &self,
-        t_start: i64,
-        t_end: i64,
-    ) -> Box<dyn Iterator<Item = Box<dyn Iterator<Item = usize> + Send>> + Send> {
-        Box::new(self.iter().map(move |it| it.degree_window(t_start, t_end)))
-    }
-
     pub fn in_degree(
         &self,
     ) -> Box<dyn Iterator<Item = Box<dyn Iterator<Item = usize> + Send>> + Send> {
         Box::new(self.iter().map(|it| it.in_degree()))
-    }
-
-    pub fn in_degree_window(
-        &self,
-        t_start: i64,
-        t_end: i64,
-    ) -> Box<dyn Iterator<Item = Box<dyn Iterator<Item = usize> + Send>> + Send> {
-        Box::new(
-            self.iter()
-                .map(move |it| it.in_degree_window(t_start, t_end)),
-        )
     }
 
     pub fn out_degree(
@@ -182,27 +163,8 @@ impl<G: GraphViewOps> PathFromGraph<G> {
         Box::new(self.iter().map(|it| it.out_degree()))
     }
 
-    pub fn out_degree_window(
-        &self,
-        t_start: i64,
-        t_end: i64,
-    ) -> Box<dyn Iterator<Item = Box<dyn Iterator<Item = usize> + Send>> + Send> {
-        Box::new(
-            self.iter()
-                .map(move |it| it.out_degree_window(t_start, t_end)),
-        )
-    }
-
     pub fn edges(&self) -> Box<dyn Iterator<Item = Box<dyn Iterator<Item = EdgeView<G>> + Send>>> {
         Box::new(self.iter().map(|it| it.edges()))
-    }
-
-    pub fn edges_window(
-        &self,
-        t_start: i64,
-        t_end: i64,
-    ) -> Box<dyn Iterator<Item = Box<dyn Iterator<Item = EdgeView<G>> + Send>>> {
-        Box::new(self.iter().map(move |it| it.edges_window(t_start, t_end)))
     }
 
     pub fn in_edges(
@@ -211,50 +173,15 @@ impl<G: GraphViewOps> PathFromGraph<G> {
         Box::new(self.iter().map(|it| it.in_edges()))
     }
 
-    pub fn in_edges_window(
-        &self,
-        t_start: i64,
-        t_end: i64,
-    ) -> Box<dyn Iterator<Item = Box<dyn Iterator<Item = EdgeView<G>> + Send>>> {
-        Box::new(
-            self.iter()
-                .map(move |it| it.in_edges_window(t_start, t_end)),
-        )
-    }
-
     pub fn out_edges(
         &self,
     ) -> Box<dyn Iterator<Item = Box<dyn Iterator<Item = EdgeView<G>> + Send>>> {
         Box::new(self.iter().map(|it| it.out_edges()))
     }
 
-    pub fn out_edges_window(
-        &self,
-        t_start: i64,
-        t_end: i64,
-    ) -> Box<dyn Iterator<Item = Box<dyn Iterator<Item = EdgeView<G>> + Send>>> {
-        Box::new(
-            self.iter()
-                .map(move |it| it.out_edges_window(t_start, t_end)),
-        )
-    }
-
     pub fn neighbours(&self) -> Self {
         let mut new_ops = (*self.operations).clone();
         new_ops.push(Operations::Neighbours {
-            dir: Direction::BOTH,
-        });
-        Self {
-            graph: self.graph.clone(),
-            operations: Arc::new(new_ops),
-        }
-    }
-
-    pub fn neighbours_window(&self, t_start: i64, t_end: i64) -> Self {
-        let mut new_ops = (*self.operations).clone();
-        new_ops.push(Operations::NeighboursWindow {
-            t_start,
-            t_end,
             dir: Direction::BOTH,
         });
         Self {
@@ -272,35 +199,9 @@ impl<G: GraphViewOps> PathFromGraph<G> {
         }
     }
 
-    pub fn in_neighbours_window(&self, t_start: i64, t_end: i64) -> Self {
-        let mut new_ops = (*self.operations).clone();
-        new_ops.push(Operations::NeighboursWindow {
-            t_start,
-            t_end,
-            dir: Direction::IN,
-        });
-        Self {
-            graph: self.graph.clone(),
-            operations: Arc::new(new_ops),
-        }
-    }
-
     pub fn out_neighbours(&self) -> Self {
         let mut new_ops = (*self.operations).clone();
         new_ops.push(Operations::Neighbours {
-            dir: Direction::OUT,
-        });
-        Self {
-            graph: self.graph.clone(),
-            operations: Arc::new(new_ops),
-        }
-    }
-
-    pub fn out_neighbours_window(&self, t_start: i64, t_end: i64) -> Self {
-        let mut new_ops = (*self.operations).clone();
-        new_ops.push(Operations::NeighboursWindow {
-            t_start,
-            t_end,
             dir: Direction::OUT,
         });
         Self {
@@ -398,91 +299,29 @@ impl<G: GraphViewOps> PathFromVertex<G> {
         self.iter().degree()
     }
 
-    pub fn degree_window(
-        &self,
-        t_start: i64,
-        t_end: i64,
-    ) -> Box<dyn Iterator<Item = usize> + Send> {
-        self.iter().degree_window(t_start, t_end)
-    }
-
     pub fn in_degree(&self) -> Box<dyn Iterator<Item = usize> + Send> {
         self.iter().in_degree()
-    }
-
-    pub fn in_degree_window(
-        &self,
-        t_start: i64,
-        t_end: i64,
-    ) -> Box<dyn Iterator<Item = usize> + Send> {
-        self.iter().in_degree_window(t_start, t_end)
     }
 
     pub fn out_degree(&self) -> Box<dyn Iterator<Item = usize> + Send> {
         self.iter().out_degree()
     }
 
-    pub fn out_degree_window(
-        &self,
-        t_start: i64,
-        t_end: i64,
-    ) -> Box<dyn Iterator<Item = usize> + Send> {
-        self.iter().out_degree_window(t_start, t_end)
-    }
-
     pub fn edges(&self) -> Box<dyn Iterator<Item = EdgeView<G>> + Send> {
         self.iter().edges()
-    }
-
-    pub fn edges_window(
-        &self,
-        t_start: i64,
-        t_end: i64,
-    ) -> Box<dyn Iterator<Item = EdgeView<G>> + Send> {
-        self.iter().edges_window(t_start, t_end)
     }
 
     pub fn in_edges(&self) -> Box<dyn Iterator<Item = EdgeView<G>> + Send> {
         self.iter().in_edges()
     }
 
-    pub fn in_edges_window(
-        &self,
-        t_start: i64,
-        t_end: i64,
-    ) -> Box<dyn Iterator<Item = EdgeView<G>> + Send> {
-        self.iter().in_edges_window(t_start, t_end)
-    }
-
     pub fn out_edges(&self) -> Box<dyn Iterator<Item = EdgeView<G>> + Send> {
         self.iter().out_edges()
-    }
-
-    pub fn out_edges_window(
-        &self,
-        t_start: i64,
-        t_end: i64,
-    ) -> Box<dyn Iterator<Item = EdgeView<G>> + Send> {
-        self.iter().out_edges_window(t_start, t_end)
     }
 
     pub fn neighbours(&self) -> Self {
         let mut new_ops = (*self.operations).clone();
         new_ops.push(Operations::Neighbours {
-            dir: Direction::BOTH,
-        });
-        Self {
-            graph: self.graph.clone(),
-            vertex: self.vertex,
-            operations: Arc::new(new_ops),
-        }
-    }
-
-    pub fn neighbours_window(&self, t_start: i64, t_end: i64) -> Self {
-        let mut new_ops = (*self.operations).clone();
-        new_ops.push(Operations::NeighboursWindow {
-            t_start,
-            t_end,
             dir: Direction::BOTH,
         });
         Self {
@@ -502,37 +341,9 @@ impl<G: GraphViewOps> PathFromVertex<G> {
         }
     }
 
-    pub fn in_neighbours_window(&self, t_start: i64, t_end: i64) -> Self {
-        let mut new_ops = (*self.operations).clone();
-        new_ops.push(Operations::NeighboursWindow {
-            t_start,
-            t_end,
-            dir: Direction::IN,
-        });
-        Self {
-            graph: self.graph.clone(),
-            vertex: self.vertex,
-            operations: Arc::new(new_ops),
-        }
-    }
-
     pub fn out_neighbours(&self) -> Self {
         let mut new_ops = (*self.operations).clone();
         new_ops.push(Operations::Neighbours {
-            dir: Direction::OUT,
-        });
-        Self {
-            graph: self.graph.clone(),
-            vertex: self.vertex,
-            operations: Arc::new(new_ops),
-        }
-    }
-
-    pub fn out_neighbours_window(&self, t_start: i64, t_end: i64) -> Self {
-        let mut new_ops = (*self.operations).clone();
-        new_ops.push(Operations::NeighboursWindow {
-            t_start,
-            t_end,
             dir: Direction::OUT,
         });
         Self {

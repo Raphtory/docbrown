@@ -148,17 +148,17 @@ impl TGraphShard<TemporalGraph> {
     {
         let mut binding = self.rc.write();
         let mut shard = binding.as_mut().ok_or(GraphError::IllegalGraphAccess)?;
-        f(&mut shard)
+        f(shard)
     }
 
     #[inline(always)]
     fn read_shard<A, F>(&self, f: F) -> A
     where
-        F: Fn(&TemporalGraph) -> A,
+        F: FnOnce(&TemporalGraph) -> A,
     {
         let binding = self.rc.read();
         let shard = binding.as_ref().unwrap();
-        f(&shard)
+        f(shard)
     }
 
     pub fn freeze(&self) -> ImmutableTGraphShard<TemporalGraph> {
@@ -278,6 +278,22 @@ impl TGraphShard<TemporalGraph> {
 
     pub fn degree_window(&self, v: u64, w: Range<i64>, d: Direction) -> usize {
         self.read_shard(|tg: &TemporalGraph| tg.degree_window(v, &w, d))
+    }
+
+    pub fn vertex_earliest_time(&self, v: VertexRef) -> Option<i64> {
+        self.read_shard(|tg| tg.vertex_earliest_time(v))
+    }
+
+    pub fn vertex_earliest_time_window(&self, v: VertexRef, w: Range<i64>) -> Option<i64> {
+        self.read_shard(move |tg| tg.vertex_earliest_time_window(v, w))
+    }
+
+    pub fn vertex_latest_time(&self, v: VertexRef) -> Option<i64> {
+        self.read_shard(|tg| tg.vertex_latest_time(v))
+    }
+
+    pub fn vertex_latest_time_window(&self, v: VertexRef, w: Range<i64>) -> Option<i64> {
+        self.read_shard(|tg| tg.vertex_latest_time_window(v, w))
     }
 
     pub fn vertex(&self, v: u64) -> Option<VertexRef> {

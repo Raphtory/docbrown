@@ -10,3 +10,4 @@ pub use edge::EdgeListOps;
 pub use graph::GraphViewOps;
 pub use time::TimeOps;
 pub use vertex::VertexListOps;
+pub use vertex::VertexViewOps;

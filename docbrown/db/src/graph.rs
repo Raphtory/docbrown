@@ -157,6 +157,24 @@ impl GraphViewInternalOps for Graph {
         self.get_shard_from_id(v).vertex_window(v, t_start..t_end)
     }
 
+    fn vertex_earliest_time(&self, v: VertexRef) -> Option<i64> {
+        self.get_shard_from_v(v).vertex_earliest_time(v)
+    }
+
+    fn vertex_earliest_time_window(&self, v: VertexRef, t_start: i64, t_end: i64) -> Option<i64> {
+        self.get_shard_from_v(v)
+            .vertex_earliest_time_window(v, t_start..t_end)
+    }
+
+    fn vertex_latest_time(&self, v: VertexRef) -> Option<i64> {
+        self.get_shard_from_v(v).vertex_latest_time(v)
+    }
+
+    fn vertex_latest_time_window(&self, v: VertexRef, t_start: i64, t_end: i64) -> Option<i64> {
+        self.get_shard_from_v(v)
+            .vertex_latest_time_window(v, t_start..t_end)
+    }
+
     fn vertex_ids(&self) -> Box<dyn Iterator<Item = u64> + Send> {
         let shards = self.shards.clone();
         Box::new(shards.into_iter().flat_map(|s| s.vertex_ids()))
@@ -243,6 +261,18 @@ impl GraphViewInternalOps for Graph {
 
     fn vertex_edges(&self, v: VertexRef, d: Direction) -> Box<dyn Iterator<Item = EdgeRef> + Send> {
         Box::new(self.get_shard_from_v(v).vertex_edges(v.g_id, d))
+    }
+
+    fn vertex_edges_t(
+        &self,
+        v: VertexRef,
+        d: Direction,
+    ) -> Box<dyn Iterator<Item = EdgeRef> + Send> {
+        // FIXME: missing low-level implementation
+        Box::new(
+            self.get_shard_from_v(v)
+                .vertex_edges_window_t(v.g_id, i64::MIN..i64::MAX, d),
+        )
     }
 
     fn vertex_edges_window(

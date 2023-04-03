@@ -2,7 +2,9 @@
 
 use crate::edge::{EdgeList, EdgeView};
 use crate::path::{Operations, PathFromVertex};
-use crate::view_api::{GraphViewOps, VertexListOps};
+use crate::vertex_window::WindowedVertex;
+use crate::view_api::vertex::VertexViewOps;
+use crate::view_api::{GraphViewOps, TimeOps, VertexListOps};
 use docbrown_core::tgraph::VertexRef;
 use docbrown_core::tgraph_shard::errors::GraphError;
 use docbrown_core::{Direction, Prop};
@@ -11,7 +13,7 @@ use std::collections::HashMap;
 #[derive(Debug, Clone)]
 pub struct VertexView<G: GraphViewOps> {
     pub graph: G,
-    vertex: VertexRef,
+    pub(crate) vertex: VertexRef,
 }
 
 impl<G: GraphViewOps> From<VertexView<G>> for VertexRef {
@@ -34,13 +36,10 @@ impl<G: GraphViewOps> VertexView<G> {
 }
 
 /// View of a Vertex in a Graph
-impl<G: GraphViewOps> VertexView<G> {
-    /// Get the ID of this vertex.
-    ///
-    /// # Returns
-    ///
-    /// The ID of this vertex.
-    pub fn id(&self) -> u64 {
+impl<G: GraphViewOps> VertexViewOps for VertexView<G> {
+    type Graph = G;
+
+    fn id(&self) -> u64 {
         self.vertex.g_id
     }
 
@@ -144,84 +143,19 @@ impl<G: GraphViewOps> VertexView<G> {
         self.graph.static_vertex_prop(self.vertex, name)
     }
 
-    /// Get the degree of this vertex (i.e., the number of edges that are incident to it).
-    ///
-    /// # Returns
-    ///
-    /// The degree of this vertex.
     pub fn degree(&self) -> usize {
         self.graph.degree(self.vertex, Direction::BOTH)
     }
 
-    /// Get the degree of this vertex in the given time window.
-    ///
-    /// # Arguments
-    ///
-    /// * `t_start` - The start of the time window (inclusive).
-    /// * `t_end` - The end of the time window (exclusive).
-    ///
-    /// # Returns
-    ///
-    /// The degree of this vertex in the given time window.
-    pub fn degree_window(&self, t_start: i64, t_end: i64) -> usize {
-        self.graph
-            .degree_window(self.vertex, t_start, t_end, Direction::BOTH)
-    }
-
-    /// Get the in-degree of this vertex (i.e., the number of edges that point into it).
-    ///
-    /// # Returns
-    ///
-    /// The in-degree of this vertex.
-    pub fn in_degree(&self) -> usize {
+    fn in_degree(&self) -> usize {
         self.graph.degree(self.vertex, Direction::IN)
     }
 
-    /// Get the in-degree of this vertex in the given time window.
-    ///
-    /// # Arguments
-    ///
-    /// * `t_start` - The start of the time window (inclusive).
-    /// * `t_end` - The end of the time window (exclusive).
-    ///
-    /// # Returns
-    ///
-    /// The in-degree of this vertex in the given time window.
-    pub fn in_degree_window(&self, t_start: i64, t_end: i64) -> usize {
-        self.graph
-            .degree_window(self.vertex, t_start, t_end, Direction::IN)
-    }
-
-    /// Get the out-degree of this vertex (i.e., the number of edges that point out of it).
-    ///
-    /// # Returns
-    ///
-    /// The out-degree of this vertex.
-    pub fn out_degree(&self) -> usize {
+    fn out_degree(&self) -> usize {
         self.graph.degree(self.vertex, Direction::OUT)
     }
 
-    /// Get the out-degree of this vertex in the given time window.
-    ///
-    /// # Arguments
-    ///
-    /// * `t_start` - The start of the time window (inclusive
-    /// * `t_end` - The end of the time window (exclusive).
-    ///
-    /// # Returns
-    ///
-    /// The out-degree of this vertex in the given time window.
-    pub fn out_degree_window(&self, t_start: i64, t_end: i64) -> usize {
-        self.graph
-            .degree_window(self.vertex, t_start, t_end, Direction::OUT)
-    }
-
-    /// Get the edges that are incident to this vertex.
-    ///
-    /// # Returns
-    ///
-    /// An iterator over the edges that are incident to this vertex.
-    pub fn edges(&self) -> Box<dyn Iterator<Item = EdgeView<G>> + Send> {
+    fn edges(&self) -> EdgeList<G> {
         let g = self.graph.clone();
         Box::new(
             self.graph
@@ -230,31 +164,7 @@ impl<G: GraphViewOps> VertexView<G> {
         )
     }
 
-    /// Get the edges that are incident to this vertex in the given time window.
-    ///
-    /// # Arguments
-    ///
-    /// * `t_start` - The start of the time window (inclusive).
-    /// * `t_end` - The end of the time window (exclusive).
-    ///
-    /// # Returns
-    ///
-    /// An iterator over the edges that are incident to this vertex in the given time window.
-    pub fn edges_window(&self, t_start: i64, t_end: i64) -> EdgeList<G> {
-        let g = self.graph.clone();
-        Box::new(
-            self.graph
-                .vertex_edges_window(self.vertex, t_start, t_end, Direction::BOTH)
-                .map(move |e| EdgeView::new(g.clone(), e)),
-        )
-    }
-
-    /// Get the edges that point into this vertex.
-    ///
-    /// # Returns
-    ///
-    /// An iterator over the edges that point into this vertex.
-    pub fn in_edges(&self) -> EdgeList<G> {
+    fn in_edges(&self) -> EdgeList<G> {
         let g = self.graph.clone();
         Box::new(
             self.graph
@@ -263,31 +173,7 @@ impl<G: GraphViewOps> VertexView<G> {
         )
     }
 
-    /// Get the edges that point into this vertex in the given time window.
-    ///
-    /// # Arguments
-    ///
-    /// * `t_start` - The start of the time window (inclusive).
-    /// * `t_end` - The end of the time window (exclusive).
-    ///
-    /// # Returns
-    ///
-    /// An iterator over the edges that point into this vertex in the given time window.
-    pub fn in_edges_window(&self, t_start: i64, t_end: i64) -> EdgeList<G> {
-        let g = self.graph.clone();
-        Box::new(
-            self.graph
-                .vertex_edges_window(self.vertex, t_start, t_end, Direction::IN)
-                .map(move |e| EdgeView::new(g.clone(), e)),
-        )
-    }
-
-    /// Get the edges that point out of this vertex.
-    ///
-    /// # Returns
-    ///
-    /// An iterator over the edges that point out of this vertex.
-    pub fn out_edges(&self) -> EdgeList<G> {
+    fn out_edges(&self) -> EdgeList<G> {
         let g = self.graph.clone();
         Box::new(
             self.graph
@@ -296,31 +182,7 @@ impl<G: GraphViewOps> VertexView<G> {
         )
     }
 
-    /// Get the edges that point out of this vertex in the given time window.
-    ///
-    /// # Arguments
-    ///
-    /// * `t_start` - The start of the time window (inclusive).
-    /// * `t_end` - The end of the time window (exclusive).
-    ///
-    /// # Returns
-    ///
-    /// An iterator over the edges that point out of this vertex in the given time window.
-    pub fn out_edges_window(&self, t_start: i64, t_end: i64) -> EdgeList<G> {
-        let g = self.graph.clone();
-        Box::new(
-            self.graph
-                .vertex_edges_window(self.vertex, t_start, t_end, Direction::OUT)
-                .map(move |e| EdgeView::new(g.clone(), e)),
-        )
-    }
-
-    /// Get the neighbours of this vertex.
-    ///
-    /// # Returns
-    ///
-    /// An iterator over the neighbours of this vertex.
-    pub fn neighbours(&self) -> PathFromVertex<G> {
+    fn neighbours(&self) -> PathFromVertex<G> {
         let g = self.graph.clone();
         PathFromVertex::new(
             g,
@@ -331,118 +193,67 @@ impl<G: GraphViewOps> VertexView<G> {
         )
     }
 
-    /// Get the neighbours of this vertex in the given time window.
-    ///
-    /// # Arguments
-    ///
-    /// * `t_start` - The start of the time window (inclusive).
-    /// * `t_end` - The end of the time window (exclusive).
-    ///
-    /// # Returns
-    ///
-    /// An iterator over the neighbours of this vertex in the given time window.
-    pub fn neighbours_window(&self, t_start: i64, t_end: i64) -> PathFromVertex<G> {
-        let g = self.graph.clone();
-        PathFromVertex::new(
-            g,
-            self,
-            Operations::NeighboursWindow {
-                dir: Direction::BOTH,
-                t_start,
-                t_end,
-            },
-        )
-    }
-
-    /// Get the neighbours of this vertex that point into this vertex.
-    ///
-    /// # Returns
-    ///
-    /// An iterator over the neighbours of this vertex that point into this vertex.
-    pub fn in_neighbours(&self) -> PathFromVertex<G> {
+    fn in_neighbours(&self) -> PathFromVertex<G> {
         let g = self.graph.clone();
         PathFromVertex::new(g, self, Operations::Neighbours { dir: Direction::IN })
     }
 
-    /// Get the neighbours of this vertex that point into this vertex in the given time window.
-    ///
-    /// # Arguments
-    ///
-    /// * `t_start` - The start of the time window (inclusive).
-    /// * `t_end` - The end of the time window (exclusive).
-    ///
-    /// # Returns
-    ///
-    /// An iterator over the neighbours of this vertex that point into this vertex in the given time window.
-    pub fn in_neighbours_window(&self, t_start: i64, t_end: i64) -> PathFromVertex<G> {
-        let g = self.graph.clone();
-        PathFromVertex::new(
-            g,
-            self,
-            Operations::NeighboursWindow {
-                dir: Direction::IN,
-                t_start,
-                t_end,
-            },
-        )
-    }
-
-    /// Get the neighbours of this vertex that point out of this vertex.
-    ///
-    /// # Returns
-    ///
-    /// An iterator over the neighbours of this vertex that point out of this vertex.
-    pub fn out_neighbours(&self) -> PathFromVertex<G> {
+    fn out_neighbours(&self) -> PathFromVertex<G> {
         let g = self.graph.clone();
         PathFromVertex::new(
             g,
             self,
             Operations::Neighbours {
                 dir: Direction::OUT,
-            },
-        )
-    }
-
-    /// Get the neighbours of this vertex that point out of this vertex in the given time window.
-    ///
-    /// # Arguments
-    ///
-    /// * `t_start` - The start of the time window (inclusive).
-    /// * `t_end` - The end of the time window (exclusive).
-    ///
-    /// # Returns
-    ///
-    /// An iterator over the neighbours of this vertex that point out of this vertex in the given time window.
-    pub fn out_neighbours_window(&self, t_start: i64, t_end: i64) -> PathFromVertex<G> {
-        let g = self.graph.clone();
-        PathFromVertex::new(
-            g,
-            self,
-            Operations::NeighboursWindow {
-                dir: Direction::OUT,
-                t_start,
-                t_end,
             },
         )
     }
 }
 
+impl<G: GraphViewOps> TimeOps for VertexView<G> {
+    type WindowedView = WindowedVertex<G>;
+
+    fn earliest_time(&self) -> Option<i64> {
+        self.graph.vertex_earliest_time(self.vertex)
+    }
+
+    fn latest_time(&self) -> Option<i64> {
+        self.graph.vertex_latest_time(self.vertex)
+    }
+
+    fn window(&self, t_start: i64, t_end: i64) -> Self::WindowedView {
+        WindowedVertex::from_vertex(self, t_start, t_end)
+    }
+}
+
 /// Implementation of the VertexListOps trait for an iterator of VertexView objects.
 ///
-impl<G: GraphViewOps> VertexListOps for Box<dyn Iterator<Item = VertexView<G>> + Send> {
+impl<G: GraphViewOps, V: VertexViewOps<Graph = G> + 'static> VertexListOps
+    for Box<dyn Iterator<Item = V> + Send>
+{
     type Graph = G;
-    type IterType = Box<dyn Iterator<Item = VertexView<Self::Graph>> + Send>;
+    type Vertex = V;
+    type IterType = Box<dyn Iterator<Item = V> + Send>;
     type EList = Box<dyn Iterator<Item = EdgeView<Self::Graph>> + Send>;
+    type VList = Box<dyn Iterator<Item = VertexView<Self::Graph>> + Send>;
     type ValueIterType<U> = Box<dyn Iterator<Item = U> + Send>;
 
-    /// Get the vertex ids in this list.
-    ///
-    /// # Returns
-    ///
-    /// An iterator over the vertex ids in this list.
+    fn earliest_time(self) -> Self::ValueIterType<Option<i64>> {
+        Box::new(self.map(|v| v.earliest_time()))
+    }
+
+    fn latest_time(self) -> Self::ValueIterType<Option<i64>> {
+        Box::new(self.map(|v| v.latest_time()))
+    }
+
+    fn window(self, t_start: i64, t_end: i64) -> Self::ValueIterType<<V as TimeOps>::WindowedView> {
+        Box::new(self.map(move |v| v.window(t_start, t_end)))
+    }
+
     fn id(self) -> Self::ValueIterType<u64> {
         Box::new(self.map(|v| v.id()))
     }
+
 
     fn name(self) -> Self::ValueIterType<String> {
         Box::new(self.map(|v| v.name()))
@@ -494,221 +305,43 @@ impl<G: GraphViewOps> VertexListOps for Box<dyn Iterator<Item = VertexView<G>> +
         Box::new(r.into_iter())
     }
 
-    /// Get the degree of this vertices
-    ///
-    /// # Returns
-    ///
-    /// An iterator over the degree of this vertices
     fn degree(self) -> Self::ValueIterType<usize> {
         let r: Vec<_> = self.map(|v| v.degree()).collect();
         Box::new(r.into_iter())
     }
 
-    /// Get the degree of this vertices in the given time window.
-    ///
-    /// # Arguments
-    ///
-    /// * `t_start` - The start of the time window (inclusive).
-    /// * `t_end` - The end of the time window (exclusive).
-    ///
-    /// # Returns
-    ///
-    /// An iterator over the degree of this vertices in the given time window.
-    fn degree_window(self, t_start: i64, t_end: i64) -> Self::ValueIterType<usize> {
-        let r: Vec<_> = self.map(move |v| v.degree_window(t_start, t_end)).collect();
-        Box::new(r.into_iter())
-    }
-
-    /// Get the in degree of these vertices
-    ///
-    /// # Returns
-    ///
-    /// An iterator over the in degree of these vertices
     fn in_degree(self) -> Self::ValueIterType<usize> {
         let r: Vec<_> = self.map(|v| v.in_degree()).collect();
         Box::new(r.into_iter())
     }
 
-    /// Get the in degree of these vertices in the given time window.
-    ///
-    /// # Arguments
-    ///
-    /// * `t_start` - The start of the time window (inclusive).
-    /// * `t_end` - The end of the time window (exclusive).
-    ///
-    /// # Returns
-    ///
-    /// An iterator over the in degree of these vertices in the given time window.
-    fn in_degree_window(self, t_start: i64, t_end: i64) -> Self::ValueIterType<usize> {
-        let r: Vec<_> = self
-            .map(move |v| v.in_degree_window(t_start, t_end))
-            .collect();
-        Box::new(r.into_iter())
-    }
-
-    /// Get the out degree of these vertices
-    ///
-    /// # Returns
-    ///
-    /// An iterator over the out degree of these vertices
     fn out_degree(self) -> Self::ValueIterType<usize> {
         let r: Vec<_> = self.map(|v| v.out_degree()).collect();
         Box::new(r.into_iter())
     }
 
-    /// Get the out degree of these vertices in the given time window.
-    ///
-    /// # Arguments
-    ///
-    /// * `t_start` - The start of the time window (inclusive).
-    /// * `t_end` - The end of the time window (exclusive).
-    ///
-    /// # Returns
-    ///
-    /// An iterator over the out degree of these vertices in the given time window.
-    fn out_degree_window(self, t_start: i64, t_end: i64) -> Self::ValueIterType<usize> {
-        let r: Vec<_> = self
-            .map(move |v| v.out_degree_window(t_start, t_end))
-            .collect();
-        Box::new(r.into_iter())
-    }
-
-    /// Get the edges of these vertices.
-    ///
-    /// # Returns
-    ///
-    /// An iterator over the edges of these vertices.
     fn edges(self) -> Self::EList {
         Box::new(self.flat_map(|v| v.edges()))
     }
 
-    /// Get the edges of these vertices in the given time window.
-    ///
-    /// # Arguments
-    ///
-    /// * `t_start` - The start of the time window (inclusive).
-    /// * `t_end` - The end of the time window (exclusive).
-    ///
-    /// # Returns
-    ///
-    /// An iterator over the edges of these vertices in the given time window.
-    fn edges_window(self, t_start: i64, t_end: i64) -> Self::EList {
-        Box::new(self.flat_map(move |v| v.edges_window(t_start, t_end)))
-    }
-
-    /// Get the in edges of these vertices.
-    ///
-    /// # Returns
-    ///
-    /// An iterator over the in edges of these vertices.
     fn in_edges(self) -> Self::EList {
         Box::new(self.flat_map(|v| v.in_edges()))
     }
 
-    /// Get the in edges of these vertices in the given time window.
-    ///
-    /// # Arguments
-    ///
-    /// * `t_start` - The start of the time window (inclusive).
-    /// * `t_end` - The end of the time window (exclusive).
-    ///
-    /// # Returns
-    ///
-    /// An iterator over the in edges of these vertices in the given time window.
-    fn in_edges_window(self, t_start: i64, t_end: i64) -> Self::EList {
-        Box::new(self.flat_map(move |v| v.in_edges_window(t_start, t_end)))
-    }
-
-    /// Get the out edges of these vertices.
-    ///
-    /// # Returns
-    ///
-    /// An iterator over the out edges of these vertices.
     fn out_edges(self) -> Self::EList {
         Box::new(self.flat_map(|v| v.out_edges()))
     }
 
-    /// Get the out edges of these vertices in the given time window.
-    ///
-    /// # Arguments
-    ///
-    /// * `t_start` - The start of the time window (inclusive).
-    /// * `t_end` - The end of the time window (exclusive).
-    ///
-    /// # Returns
-    ///
-    /// An iterator over the out edges of these vertices in the given time window.
-    fn out_edges_window(self, t_start: i64, t_end: i64) -> Self::EList {
-        Box::new(self.flat_map(move |v| v.out_edges_window(t_start, t_end)))
-    }
-
-    /// Get the neighbours of these vertices.
-    ///
-    /// # Returns
-    ///
-    /// An iterator over the neighbours of these vertices.
-    fn neighbours(self) -> Self {
+    fn neighbours(self) -> Self::VList {
         Box::new(self.flat_map(|v| v.neighbours()))
     }
 
-    /// Get the neighbours of these vertices in the given time window.
-    ///
-    /// # Arguments
-    ///
-    /// * `t_start` - The start of the time window (inclusive).
-    /// * `t_end` - The end of the time window (exclusive).
-    ///
-    /// # Returns
-    ///
-    /// An iterator over the neighbours of these vertices in the given time window.
-    fn neighbours_window(self, t_start: i64, t_end: i64) -> Self {
-        Box::new(self.flat_map(move |v| v.neighbours_window(t_start, t_end)))
-    }
-
-    /// Get the in neighbours of these vertices.
-    ///
-    /// # Returns
-    ///
-    /// An iterator over the in neighbours of these vertices.
-    fn in_neighbours(self) -> Self {
+    fn in_neighbours(self) -> Self::VList {
         Box::new(self.flat_map(|v| v.in_neighbours()))
     }
 
-    /// Get the in neighbours of these vertices in the given time window.
-    ///
-    /// # Arguments
-    ///
-    /// * `t_start` - The start of the time window (inclusive).
-    /// * `t_end` - The end of the time window (exclusive).
-    ///
-    /// # Returns
-    ///
-    /// An iterator over the in neighbours of these vertices in the given time window.
-    fn in_neighbours_window(self, t_start: i64, t_end: i64) -> Self {
-        Box::new(self.flat_map(move |v| v.in_neighbours_window(t_start, t_end)))
-    }
-
-    /// Get the out neighbours of these vertices.
-    ///
-    /// # Returns
-    ///
-    /// An iterator over the out neighbours of these vertices.
-    fn out_neighbours(self) -> Self {
+    fn out_neighbours(self) -> Self::VList {
         Box::new(self.flat_map(|v| v.out_neighbours()))
-    }
-
-    /// Get the out neighbours of these vertices in the given time window.
-    ///
-    /// # Arguments
-    ///
-    /// * `t_start` - The start of the time window (inclusive).
-    /// * `t_end` - The end of the time window (exclusive).
-    ///
-    /// # Returns
-    ///
-    /// An iterator over the out neighbours of these vertices in the given time window.
-    fn out_neighbours_window(self, t_start: i64, t_end: i64) -> Self {
-        Box::new(self.flat_map(move |v| v.out_neighbours_window(t_start, t_end)))
     }
 }
 
@@ -722,15 +355,21 @@ mod vertex_test {
 
         assert_eq!(g.num_edges(), 701);
         assert_eq!(g.vertex("Gandalf").unwrap().degree(), 49);
-        assert_eq!(g.vertex("Gandalf").unwrap().degree_window(1356, 24792), 34);
+        assert_eq!(
+            g.vertex("Gandalf").unwrap().window(1356, 24792).degree(),
+            34
+        );
         assert_eq!(g.vertex("Gandalf").unwrap().in_degree(), 24);
         assert_eq!(
-            g.vertex("Gandalf").unwrap().in_degree_window(1356, 24792),
+            g.vertex("Gandalf").unwrap().window(1356, 24792).in_degree(),
             16
         );
         assert_eq!(g.vertex("Gandalf").unwrap().out_degree(), 35);
         assert_eq!(
-            g.vertex("Gandalf").unwrap().out_degree_window(1356, 24792),
+            g.vertex("Gandalf")
+                .unwrap()
+                .window(1356, 24792)
+                .out_degree(),
             20
         );
     }
@@ -744,7 +383,8 @@ mod vertex_test {
         assert_eq!(
             g.vertex("Gandalf")
                 .unwrap()
-                .neighbours_window(1356, 24792)
+                .window(1356, 24792)
+                .neighbours()
                 .iter()
                 .count(),
             34
@@ -756,7 +396,8 @@ mod vertex_test {
         assert_eq!(
             g.vertex("Gandalf")
                 .unwrap()
-                .in_neighbours_window(1356, 24792)
+                .window(1356, 24792)
+                .in_neighbours()
                 .iter()
                 .count(),
             16
@@ -768,7 +409,8 @@ mod vertex_test {
         assert_eq!(
             g.vertex("Gandalf")
                 .unwrap()
-                .out_neighbours_window(1356, 24792)
+                .window(1356, 24792)
+                .out_neighbours()
                 .iter()
                 .count(),
             20
@@ -784,7 +426,8 @@ mod vertex_test {
         assert_eq!(
             g.vertex("Gandalf")
                 .unwrap()
-                .edges_window(1356, 24792)
+                .window(1356, 24792)
+                .edges()
                 .count(),
             36
         );
@@ -792,7 +435,8 @@ mod vertex_test {
         assert_eq!(
             g.vertex("Gandalf")
                 .unwrap()
-                .in_edges_window(1356, 24792)
+                .window(1356, 24792)
+                .in_edges()
                 .count(),
             16
         );
@@ -800,7 +444,8 @@ mod vertex_test {
         assert_eq!(
             g.vertex("Gandalf")
                 .unwrap()
-                .out_edges_window(1356, 24792)
+                .window(1356, 24792)
+                .out_edges()
                 .count(),
             20
         );

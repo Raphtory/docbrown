@@ -39,7 +39,7 @@
 
 use crate::perspective::Perspective;
 use crate::view_api::internal::GraphViewInternalOps;
-use crate::view_api::time::TimeOps;
+use crate::view_api::time::{TimeOps, WindowedView};
 use crate::view_api::GraphViewOps;
 use docbrown_core::{
     tgraph::{EdgeRef, VertexRef},
@@ -100,31 +100,13 @@ pub struct WindowedGraph<G: GraphViewInternalOps> {
 
 /// Implementation of the WindowedGraph struct, a graph that is a windowed view of another graph.
 /// *Note: All functions in this are bound by the time set in the windowed graph.
-impl<G: GraphViewInternalOps> WindowedGraph<G> {
-    /// Returns the actual start time of the window, given a candidate start time.
-    ///
-    /// # Arguments
-    ///
-    /// * `t_start` - The candidate start time.
-    ///
-    /// # Returns
-    ///
-    /// The actual start time of the window.
-    fn actual_start(&self, t_start: i64) -> i64 {
-        max(self.t_start, t_start)
+impl<G: GraphViewInternalOps> WindowedView for WindowedGraph<G> {
+    fn start(&self) -> i64 {
+        self.t_start
     }
 
-    /// Returns the actual end time of the window, given a candidate end time.
-    ///
-    /// # Arguments
-    ///
-    /// * `t_end` - The candidate end time.
-    ///
-    /// # Returns
-    ///
-    /// The actual end time of the window.
-    fn actual_end(&self, t_end: i64) -> i64 {
-        min(self.t_end, t_end)
+    fn end(&self) -> i64 {
+        self.t_end
     }
 }
 
@@ -350,6 +332,29 @@ impl<G: GraphViewInternalOps> GraphViewInternalOps for WindowedGraph<G> {
             .vertex_ref_window(v, self.actual_start(t_start), self.actual_end(t_end))
     }
 
+    fn vertex_earliest_time(&self, v: VertexRef) -> Option<i64> {
+        self.graph
+            .vertex_earliest_time_window(v, self.t_start, self.t_end)
+    }
+
+    fn vertex_earliest_time_window(&self, v: VertexRef, t_start: i64, t_end: i64) -> Option<i64> {
+        self.graph.vertex_earliest_time_window(
+            v,
+            self.actual_start(t_start),
+            self.actual_end(t_end),
+        )
+    }
+
+    fn vertex_latest_time(&self, v: VertexRef) -> Option<i64> {
+        self.graph
+            .vertex_latest_time_window(v, self.t_start, self.t_end)
+    }
+
+    fn vertex_latest_time_window(&self, v: VertexRef, t_start: i64, t_end: i64) -> Option<i64> {
+        self.graph
+            .vertex_latest_time_window(v, self.actual_start(t_start), self.actual_end(t_end))
+    }
+
     /// Get an iterator over the IDs of all vertices
     ///
     /// # Returns
@@ -497,6 +502,15 @@ impl<G: GraphViewInternalOps> GraphViewInternalOps for WindowedGraph<G> {
     fn vertex_edges(&self, v: VertexRef, d: Direction) -> Box<dyn Iterator<Item = EdgeRef> + Send> {
         self.graph
             .vertex_edges_window(v, self.t_start, self.t_end, d)
+    }
+
+    fn vertex_edges_t(
+        &self,
+        v: VertexRef,
+        d: Direction,
+    ) -> Box<dyn Iterator<Item = EdgeRef> + Send> {
+        self.graph
+            .vertex_edges_window_t(v, self.t_start, self.t_end, d)
     }
 
     /// Get an iterator of all edges as references for a given vertex and direction in a window

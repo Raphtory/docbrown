@@ -139,5 +139,6 @@ pub mod perspective;
 pub mod polars_loader;
 pub mod program;
 pub mod vertex;
+pub mod vertex_window;
 pub mod vertices;
 pub mod view_api;

@@ -81,6 +81,9 @@ impl Default for TemporalGraph {
 }
 
 impl TemporalGraph {
+    fn local_id_for_v(&self, v: VertexRef) -> usize {
+        v.pid.unwrap_or(self.logical_to_physical[&v.g_id])
+    }
     pub(crate) fn len(&self) -> usize {
         self.logical_to_physical.len()
     }
@@ -534,6 +537,26 @@ impl TemporalGraph {
         } else {
             Option::<EdgeRef>::None
         }
+    }
+
+    pub fn vertex_earliest_time(&self, v: VertexRef) -> Option<Time> {
+        let pid = self.local_id_for_v(v);
+        self.adj_lists[pid].earliest()
+    }
+
+    pub fn vertex_earliest_time_window(&self, v: VertexRef, w: Range<Time>) -> Option<Time> {
+        let pid = self.local_id_for_v(v);
+        self.adj_lists[pid].earliest_window(w)
+    }
+
+    pub fn vertex_latest_time(&self, v: VertexRef) -> Option<Time> {
+        let pid = self.local_id_for_v(v);
+        self.adj_lists[pid].latest()
+    }
+
+    pub fn vertex_latest_time_window(&self, v: VertexRef, w: Range<Time>) -> Option<Time> {
+        let pid = self.local_id_for_v(v);
+        self.adj_lists[pid].latest_window(w)
     }
 
     // FIXME: all the functions using global ID need to be changed to use the physical ID instead

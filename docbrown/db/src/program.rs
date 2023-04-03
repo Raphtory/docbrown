@@ -9,7 +9,7 @@ use std::{
 };
 
 use crate::vertex::VertexView;
-use crate::view_api::GraphViewOps;
+use crate::view_api::{GraphViewOps, VertexViewOps};
 use docbrown_core::{
     agg::Accumulator,
     state::{self, AccId, ShuffleComputeState},
@@ -1152,11 +1152,11 @@ mod program_test {
 
     use super::*;
     use crate::graph::Graph;
+    use crate::view_api::*;
     use docbrown_core::state;
     use itertools::chain;
     use pretty_assertions::assert_eq;
     use rustc_hash::FxHashMap;
-    use crate::view_api::*;
 
     #[test]
     fn triangle_count_1() {

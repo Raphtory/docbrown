@@ -5,6 +5,7 @@ use docbrown_core::tgraph::VertexRef;
 use docbrown_db::path::{PathFromGraph, PathFromVertex};
 use docbrown_db::vertex::VertexView;
 use docbrown_db::vertices::Vertices;
+use docbrown_db::view_api::*;
 use itertools::Itertools;
 use pyo3::{pyclass, pymethods, PyRef, PyRefMut};
 use std::collections::HashMap;
@@ -94,88 +95,37 @@ impl PyVertex {
         }
     }
 
-    pub fn degree(&self, t_start: Option<i64>, t_end: Option<i64>) -> usize {
-        match (t_start, t_end) {
-            (None, None) => self.vertex.degree(),
-            _ => self
-                .vertex
-                .degree_window(t_start.unwrap_or(i64::MIN), t_end.unwrap_or(i64::MAX)),
-        }
+    pub fn degree(&self) -> usize {
+        self.vertex.degree()
     }
-    pub fn in_degree(&self, t_start: Option<i64>, t_end: Option<i64>) -> usize {
-        match (t_start, t_end) {
-            (None, None) => self.vertex.in_degree(),
-            _ => self
-                .vertex
-                .in_degree_window(t_start.unwrap_or(i64::MIN), t_end.unwrap_or(i64::MAX)),
-        }
+    pub fn in_degree(&self) -> usize {
+        self.vertex.in_degree()
     }
-    pub fn out_degree(&self, t_start: Option<i64>, t_end: Option<i64>) -> usize {
-        match (t_start, t_end) {
-            (None, None) => self.vertex.out_degree(),
-            _ => self
-                .vertex
-                .out_degree_window(t_start.unwrap_or(i64::MIN), t_end.unwrap_or(i64::MAX)),
-        }
+    pub fn out_degree(&self) -> usize {
+        self.vertex.out_degree()
     }
-    pub fn edges(&self, t_start: Option<i64>, t_end: Option<i64>) -> PyEdgeIter {
-        if t_start.is_none() && t_end.is_none() {
-            self.vertex.edges().into()
-        } else {
-            self.vertex
-                .edges_window(t_start.unwrap_or(i64::MIN), t_end.unwrap_or(i64::MAX))
-                .into()
-        }
+    pub fn edges(&self) -> PyEdgeIter {
+        self.vertex.edges().into()
     }
 
-    pub fn in_edges(&self, t_start: Option<i64>, t_end: Option<i64>) -> PyEdgeIter {
-        if t_start.is_none() && t_end.is_none() {
-            self.vertex.in_edges().into()
-        } else {
-            self.vertex
-                .in_edges_window(t_start.unwrap_or(i64::MIN), t_end.unwrap_or(i64::MAX))
-                .into()
-        }
+    pub fn in_edges(&self) -> PyEdgeIter {
+        self.vertex.in_edges().into()
     }
 
-    pub fn out_edges(&self, t_start: Option<i64>, t_end: Option<i64>) -> PyEdgeIter {
-        if t_start.is_none() && t_end.is_none() {
-            self.vertex.out_edges().into()
-        } else {
-            self.vertex
-                .out_edges_window(t_start.unwrap_or(i64::MIN), t_end.unwrap_or(i64::MAX))
-                .into()
-        }
+    pub fn out_edges(&self) -> PyEdgeIter {
+        self.vertex.out_edges().into()
     }
 
-    pub fn neighbours(&self, t_start: Option<i64>, t_end: Option<i64>) -> PyPathFromVertex {
-        if t_start.is_none() && t_end.is_none() {
-            self.vertex.neighbours().into()
-        } else {
-            self.vertex
-                .neighbours_window(t_start.unwrap_or(i64::MIN), t_end.unwrap_or(i64::MAX))
-                .into()
-        }
+    pub fn neighbours(&self) -> PyPathFromVertex {
+        self.vertex.neighbours().into()
     }
 
-    pub fn in_neighbours(&self, t_start: Option<i64>, t_end: Option<i64>) -> PyPathFromVertex {
-        if t_start.is_none() && t_end.is_none() {
-            self.vertex.in_neighbours().into()
-        } else {
-            self.vertex
-                .in_neighbours_window(t_start.unwrap_or(i64::MIN), t_end.unwrap_or(i64::MAX))
-                .into()
-        }
+    pub fn in_neighbours(&self) -> PyPathFromVertex {
+        self.vertex.in_neighbours().into()
     }
 
-    pub fn out_neighbours(&self, t_start: Option<i64>, t_end: Option<i64>) -> PyPathFromVertex {
-        if t_start.is_none() && t_end.is_none() {
-            self.vertex.out_neighbours().into()
-        } else {
-            self.vertex
-                .out_neighbours_window(t_start.unwrap_or(i64::MIN), t_end.unwrap_or(i64::MAX))
-                .into()
-        }
+    pub fn out_neighbours(&self) -> PyPathFromVertex {
+        self.vertex.out_neighbours().into()
     }
 
     pub fn __repr__(&self) -> String {
@@ -221,64 +171,28 @@ impl PyVertices {
         self.vertices.id().into()
     }
 
-    fn out_neighbours(&self, t_start: Option<i64>, t_end: Option<i64>) -> PyPathFromGraph {
-        if t_start.is_none() && t_end.is_none() {
-            self.vertices.out_neighbours().into()
-        } else {
-            self.vertices
-                .out_neighbours_window(t_start.unwrap_or(i64::MIN), t_end.unwrap_or(i64::MAX))
-                .into()
-        }
+    fn out_neighbours(&self) -> PyPathFromGraph {
+        self.vertices.out_neighbours().into()
     }
 
-    fn in_neighbours(&self, t_start: Option<i64>, t_end: Option<i64>) -> PyPathFromGraph {
-        if t_start.is_none() && t_end.is_none() {
-            self.vertices.in_neighbours().into()
-        } else {
-            self.vertices
-                .in_neighbours_window(t_start.unwrap_or(i64::MIN), t_end.unwrap_or(i64::MAX))
-                .into()
-        }
+    fn in_neighbours(&self) -> PyPathFromGraph {
+        self.vertices.in_neighbours().into()
     }
 
-    fn neighbours(&self, t_start: Option<i64>, t_end: Option<i64>) -> PyPathFromGraph {
-        if t_start.is_none() && t_end.is_none() {
-            self.vertices.neighbours().into()
-        } else {
-            self.vertices
-                .neighbours_window(t_start.unwrap_or(i64::MIN), t_end.unwrap_or(i64::MAX))
-                .into()
-        }
+    fn neighbours(&self) -> PyPathFromGraph {
+        self.vertices.neighbours().into()
     }
 
-    fn in_degree(&self, t_start: Option<i64>, t_end: Option<i64>) -> UsizeIter {
-        if t_start.is_none() && t_end.is_none() {
-            self.vertices.in_degree().into()
-        } else {
-            self.vertices
-                .in_degree_window(t_start.unwrap_or(i64::MIN), t_end.unwrap_or(i64::MAX))
-                .into()
-        }
+    fn in_degree(&self) -> UsizeIter {
+        self.vertices.in_degree().into()
     }
 
-    fn out_degree(&self, t_start: Option<i64>, t_end: Option<i64>) -> UsizeIter {
-        if t_start.is_none() && t_end.is_none() {
-            self.vertices.out_degree().into()
-        } else {
-            self.vertices
-                .out_degree_window(t_start.unwrap_or(i64::MIN), t_end.unwrap_or(i64::MAX))
-                .into()
-        }
+    fn out_degree(&self) -> UsizeIter {
+        self.vertices.out_degree().into()
     }
 
-    fn degree(&self, t_start: Option<i64>, t_end: Option<i64>) -> UsizeIter {
-        if t_start.is_none() && t_end.is_none() {
-            self.vertices.degree().into()
-        } else {
-            self.vertices
-                .degree_window(t_start.unwrap_or(i64::MIN), t_end.unwrap_or(i64::MAX))
-                .into()
-        }
+    fn degree(&self) -> UsizeIter {
+        self.vertices.degree().into()
     }
 
     fn __repr__(&self) -> String {
@@ -311,64 +225,28 @@ impl PyPathFromGraph {
         self.path.id().into()
     }
 
-    fn out_neighbours(&self, t_start: Option<i64>, t_end: Option<i64>) -> Self {
-        if t_start.is_none() && t_end.is_none() {
-            self.path.out_neighbours().into()
-        } else {
-            self.path
-                .out_neighbours_window(t_start.unwrap_or(i64::MIN), t_end.unwrap_or(i64::MAX))
-                .into()
-        }
+    fn out_neighbours(&self) -> Self {
+        self.path.out_neighbours().into()
     }
 
-    fn in_neighbours(&self, t_start: Option<i64>, t_end: Option<i64>) -> Self {
-        if t_start.is_none() && t_end.is_none() {
-            self.path.in_neighbours().into()
-        } else {
-            self.path
-                .in_neighbours_window(t_start.unwrap_or(i64::MIN), t_end.unwrap_or(i64::MAX))
-                .into()
-        }
+    fn in_neighbours(&self) -> Self {
+        self.path.in_neighbours().into()
     }
 
-    fn neighbours(&self, t_start: Option<i64>, t_end: Option<i64>) -> Self {
-        if t_start.is_none() && t_end.is_none() {
-            self.path.neighbours().into()
-        } else {
-            self.path
-                .neighbours_window(t_start.unwrap_or(i64::MIN), t_end.unwrap_or(i64::MAX))
-                .into()
-        }
+    fn neighbours(&self) -> Self {
+        self.path.neighbours().into()
     }
 
-    fn in_degree(&self, t_start: Option<i64>, t_end: Option<i64>) -> NestedUsizeIter {
-        if t_start.is_none() && t_end.is_none() {
-            self.path.in_degree().into()
-        } else {
-            self.path
-                .in_degree_window(t_start.unwrap_or(i64::MIN), t_end.unwrap_or(i64::MAX))
-                .into()
-        }
+    fn in_degree(&self) -> NestedUsizeIter {
+        self.path.in_degree().into()
     }
 
-    fn out_degree(&self, t_start: Option<i64>, t_end: Option<i64>) -> NestedUsizeIter {
-        if t_start.is_none() && t_end.is_none() {
-            self.path.out_degree().into()
-        } else {
-            self.path
-                .out_degree_window(t_start.unwrap_or(i64::MIN), t_end.unwrap_or(i64::MAX))
-                .into()
-        }
+    fn out_degree(&self) -> NestedUsizeIter {
+        self.path.out_degree().into()
     }
 
-    fn degree(&self, t_start: Option<i64>, t_end: Option<i64>) -> NestedUsizeIter {
-        if t_start.is_none() && t_end.is_none() {
-            self.path.degree().into()
-        } else {
-            self.path
-                .degree_window(t_start.unwrap_or(i64::MIN), t_end.unwrap_or(i64::MAX))
-                .into()
-        }
+    fn degree(&self) -> NestedUsizeIter {
+        self.path.degree().into()
     }
 
     fn __repr__(&self) -> String {
@@ -413,64 +291,28 @@ impl PyPathFromVertex {
         self.path.id().into()
     }
 
-    fn out_neighbours(&self, t_start: Option<i64>, t_end: Option<i64>) -> Self {
-        if t_start.is_none() && t_end.is_none() {
-            self.path.out_neighbours().into()
-        } else {
-            self.path
-                .out_neighbours_window(t_start.unwrap_or(i64::MIN), t_end.unwrap_or(i64::MAX))
-                .into()
-        }
+    fn out_neighbours(&self) -> Self {
+        self.path.out_neighbours().into()
     }
 
-    fn in_neighbours(&self, t_start: Option<i64>, t_end: Option<i64>) -> Self {
-        if t_start.is_none() && t_end.is_none() {
-            self.path.in_neighbours().into()
-        } else {
-            self.path
-                .in_neighbours_window(t_start.unwrap_or(i64::MIN), t_end.unwrap_or(i64::MAX))
-                .into()
-        }
+    fn in_neighbours(&self) -> Self {
+        self.path.in_neighbours().into()
     }
 
-    fn neighbours(&self, t_start: Option<i64>, t_end: Option<i64>) -> Self {
-        if t_start.is_none() && t_end.is_none() {
-            self.path.neighbours().into()
-        } else {
-            self.path
-                .neighbours_window(t_start.unwrap_or(i64::MIN), t_end.unwrap_or(i64::MAX))
-                .into()
-        }
+    fn neighbours(&self) -> Self {
+        self.path.neighbours().into()
     }
 
-    fn in_degree(&self, t_start: Option<i64>, t_end: Option<i64>) -> UsizeIter {
-        if t_start.is_none() && t_end.is_none() {
-            self.path.in_degree().into()
-        } else {
-            self.path
-                .in_degree_window(t_start.unwrap_or(i64::MIN), t_end.unwrap_or(i64::MAX))
-                .into()
-        }
+    fn in_degree(&self) -> UsizeIter {
+        self.path.in_degree().into()
     }
 
-    fn out_degree(&self, t_start: Option<i64>, t_end: Option<i64>) -> UsizeIter {
-        if t_start.is_none() && t_end.is_none() {
-            self.path.out_degree().into()
-        } else {
-            self.path
-                .out_degree_window(t_start.unwrap_or(i64::MIN), t_end.unwrap_or(i64::MAX))
-                .into()
-        }
+    fn out_degree(&self) -> UsizeIter {
+        self.path.out_degree().into()
     }
 
-    fn degree(&self, t_start: Option<i64>, t_end: Option<i64>) -> UsizeIter {
-        if t_start.is_none() && t_end.is_none() {
-            self.path.degree().into()
-        } else {
-            self.path
-                .degree_window(t_start.unwrap_or(i64::MIN), t_end.unwrap_or(i64::MAX))
-                .into()
-        }
+    fn degree(&self) -> UsizeIter {
+        self.path.degree().into()
     }
 
     fn __repr__(&self) -> String {
