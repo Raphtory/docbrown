@@ -406,6 +406,18 @@ pub struct EvalVertexView {
 }
 
 impl EvalVertexView {
+    pub fn reset<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(
+        &self,
+        agg_r: &AggRef<A, IN, OUT, ACC>,
+    ) where
+        A: StateType,
+    {
+        let AggRef(agg) = agg_r;
+        self.state
+            .borrow_mut()
+            .reset(self.ss, self.vv.id() as usize, &agg)
+    }
+
     pub fn update<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(
         &self,
         agg_r: &AggRef<A, IN, OUT, ACC>,

@@ -96,6 +96,31 @@ where
     }
 }
 
+pub struct ValDef<A: StateType + Zero> {
+    _marker: PhantomData<A>,
+}
+
+impl<A> Accumulator<A, A, A> for ValDef<A>
+where
+    A: StateType + Zero,
+{
+    fn zero() -> A {
+        A::zero()
+    }
+
+    fn add0(a1: &mut A, a: A) {
+        *a1 = a;
+    }
+
+    fn combine(a1: &mut A, a2: &A) {
+        Self::add0(a1, a2.clone());
+    }
+
+    fn finish(a: &A) -> A {
+        a.clone()
+    }
+}
+
 pub struct AvgDef<A: StateType + Zero + AddAssign<A> + TryFrom<usize> + Div<A, Output = A>> {
     _marker: PhantomData<A>,
 }
