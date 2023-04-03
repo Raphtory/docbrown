@@ -4,37 +4,6 @@ use docbrown_core::{Direction, Prop};
 use std::collections::HashMap;
 
 pub trait GraphViewInternalOps {
-    fn vertices_len(&self) -> Result<usize, GraphError>;
-
-    fn vertices_len_window(&self, t_start: i64, t_end: i64) -> usize;
-
-    fn edges_len(&self) -> Result<usize, GraphError>;
-
-    fn edges_len_window(&self, t_start: i64, t_end: i64) -> usize;
-
-    fn has_edge_ref<V1: Into<VertexRef>, V2: Into<VertexRef>>(
-        &self,
-        src: V1,
-        dst: V2,
-    ) -> Result<bool, GraphError>;
-
-    fn has_edge_ref_window<V1: Into<VertexRef>, V2: Into<VertexRef>>(
-        &self,
-        src: V1,
-        dst: V2,
-        t_start: i64,
-        t_end: i64,
-    ) -> Result<bool, GraphError>;
-
-    fn has_vertex_ref<V: Into<VertexRef>>(&self, v: V) -> Result<bool, GraphError>;
-
-    fn has_vertex_ref_window<V: Into<VertexRef>>(
-        &self,
-        v: V,
-        t_start: i64,
-        t_end: i64,
-    ) -> Result<bool, GraphError>;
-
     fn degree(&self, v: VertexRef, d: Direction) -> Result<usize, GraphError>;
 
     fn degree_window(
@@ -44,15 +13,6 @@ pub trait GraphViewInternalOps {
         t_end: i64,
         d: Direction,
     ) -> Result<usize, GraphError>;
-
-    fn vertex_ref(&self, v: u64) -> Result<Option<VertexRef>, GraphError>;
-
-    fn vertex_ref_window(
-        &self,
-        v: u64,
-        t_start: i64,
-        t_end: i64,
-    ) -> Result<Option<VertexRef>, GraphError>;
 
     fn vertex_ids(&self) -> Box<dyn Iterator<Item = u64> + Send>;
 
@@ -72,20 +32,6 @@ pub trait GraphViewInternalOps {
         t_start: i64,
         t_end: i64,
     ) -> Box<dyn Iterator<Item = VertexRef> + Send>;
-
-    fn edge_ref<V1: Into<VertexRef>, V2: Into<VertexRef>>(
-        &self,
-        src: V1,
-        dst: V2,
-    ) -> Result<Option<EdgeRef>, GraphError>;
-
-    fn edge_ref_window<V1: Into<VertexRef>, V2: Into<VertexRef>>(
-        &self,
-        src: V1,
-        dst: V2,
-        t_start: i64,
-        t_end: i64,
-    ) -> Result<Option<EdgeRef>, GraphError>;
 
     fn edge_refs(&self) -> Box<dyn Iterator<Item = EdgeRef> + Send>;
 

@@ -60,7 +60,7 @@ impl ImmutableGraph {
     }
 
     pub fn degree(&self, v: VertexRef, d: Direction) -> usize {
-        self.get_shard_from_v(v).degree(v.g_id, d)
+        self.get_shard_from_v(v).degree(v.g_id, d, None)
     }
 
     pub fn vertices(&self) -> Box<dyn Iterator<Item = VertexRef> + Send + '_> {
@@ -70,11 +70,14 @@ impl ImmutableGraph {
     pub fn edges(&self) -> Box<dyn Iterator<Item = (usize, EdgeRef)> + Send + '_> {
         Box::new(
             self.vertices()
-                .flat_map(|v| self.get_shard_from_v(v).edges(v.g_id, Direction::OUT)),
+                .flat_map(|v| self.get_shard_from_v(v).edges(v.g_id, Direction::OUT, None)),
         )
     }
 
     pub fn num_edges(&self) -> usize {
-        self.shards.iter().map(|shard| shard.out_edges_len()).sum()
+        self.shards
+            .iter()
+            .map(|shard| shard.out_edges_len(None))
+            .sum()
     }
 }

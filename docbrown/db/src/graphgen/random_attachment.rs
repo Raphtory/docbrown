@@ -55,7 +55,7 @@ pub fn random_attachment(
         max_id += 1;
         latest_time += 1;
         edges.for_each(|neighbour| {
-            graph.add_edge(latest_time, max_id, *neighbour, &vec![]);
+            graph.add_edge(latest_time, max_id, *neighbour, &vec![], None);
         });
         ids.push(max_id);
     }

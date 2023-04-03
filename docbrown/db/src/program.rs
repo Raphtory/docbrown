@@ -121,6 +121,7 @@ impl LocalState {
     {
         let window_graph = Arc::new(WindowedGraph::new(
             self.graph.clone(),
+            None, // TODO: add support for layers here!
             self.window.start,
             self.window.end,
         ));
@@ -348,6 +349,7 @@ impl GlobalEvalState {
         let graph = Arc::new(self.g.clone());
         let window_graph = Arc::new(WindowedGraph::new(
             self.g.clone(),
+            None, // TODO: add support for layers here!
             self.window.start,
             self.window.end,
         ));
@@ -845,7 +847,7 @@ mod program {
         ];
 
         for (src, dst, ts) in edges {
-            graph.add_edge(ts, src, dst, &vec![]);
+            graph.add_edge(ts, src, dst, &vec![], None);
         }
 
         let actual_tri_count = triangle_counting_fast(&graph, 0..96);
@@ -875,7 +877,7 @@ mod program {
         ];
 
         for (src, dst, ts) in edges {
-            graph.add_edge(ts, src, dst, &vec![]);
+            graph.add_edge(ts, src, dst, &vec![], None);
         }
 
         let mut program_s1 = TriangleCountSlowS2 {};
@@ -921,7 +923,7 @@ mod program {
         ];
 
         for (src, dst, ts) in edges {
-            graph.add_edge(ts, src, dst, &vec![]);
+            graph.add_edge(ts, src, dst, &vec![], None);
         }
 
         let mut program_s1 = TriangleCountSlowS2 {};
@@ -967,7 +969,7 @@ mod program {
         ];
 
         for (src, dst, ts) in edges {
-            graph.add_edge(ts, src, dst, &vec![]);
+            graph.add_edge(ts, src, dst, &vec![], None);
         }
 
         let actual_tri_count = triangle_counting_fast(&graph, 0..27);
@@ -992,7 +994,7 @@ mod program {
         ];
 
         for (src, dst, ts) in edges {
-            graph.add_edge(ts, src, dst, &vec![]);
+            graph.add_edge(ts, src, dst, &vec![], None);
         }
 
         let mut gs = GlobalEvalState::new(graph.clone(), 0..10, true);
@@ -1078,7 +1080,7 @@ mod program {
         ];
 
         for (src, dst, ts) in edges {
-            graph.add_edge(ts, src, dst, &vec![]);
+            graph.add_edge(ts, src, dst, &vec![], None);
         }
 
         let window = 0..10;
@@ -1136,7 +1138,7 @@ mod program {
         ];
 
         for (src, dst, ts) in edges {
-            graph.add_edge(ts, src, dst, &vec![]);
+            graph.add_edge(ts, src, dst, &vec![], None);
         }
 
         let window = 0..25;
@@ -1174,7 +1176,7 @@ mod program {
         let edges = vec![(1, 1, 1)];
 
         for (src, dst, ts) in edges {
-            graph.add_edge(ts, src, dst, &vec![]);
+            graph.add_edge(ts, src, dst, &vec![], None);
         }
 
         let window = 0..25;
@@ -1208,7 +1210,7 @@ mod program {
             let graph = Graph::new(2);
 
             for (src, dst) in edges.iter() {
-                graph.add_edge(0, *src, *dst, &vec![]);
+                graph.add_edge(0, *src, *dst, &vec![], None);
             }
 
             // now we do connected components over window 0..1

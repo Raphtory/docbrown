@@ -2,8 +2,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::tadjset::{AdjEdge, TAdjSet};
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Default)]
 pub(crate) enum Adj {
+    #[default]
     Solo,
     List {
         out: TAdjSet<usize, i64>,         // local
@@ -11,6 +12,13 @@ pub(crate) enum Adj {
         remote_out: TAdjSet<usize, i64>,  // remote
         remote_into: TAdjSet<usize, i64>, // remote
     },
+}
+
+impl Default for &Adj {
+    fn default() -> Self {
+        static DEFAULT: Adj = Adj::Solo;
+        &DEFAULT
+    }
 }
 
 impl Adj {

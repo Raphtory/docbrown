@@ -65,7 +65,7 @@ mod reciprocity_test {
         ];
 
         for (t, src, dst) in &vs {
-            g.add_edge(*t, *src, *dst, &vec![]);
+            g.add_edge(*t, *src, *dst, &vec![], None);
         }
 
         let windowed_graph = g.window(0, 2);

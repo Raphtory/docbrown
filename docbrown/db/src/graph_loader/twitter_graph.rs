@@ -50,6 +50,7 @@ pub fn twitter_graph(shards: usize) -> Graph {
                     src_id,
                     dst_id,
                     &vec![("name".to_string(), Prop::Str("Tweet".to_string()))],
+                    None,
                 );
             })
             .expect("Failed to load graph from CSV data files");

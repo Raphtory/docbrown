@@ -18,10 +18,20 @@ pub trait GraphViewOps: Send + Sync {
     }
     fn num_edges(&self) -> Result<usize, GraphError>;
     fn has_vertex<T: InputVertex>(&self, v: T) -> Result<bool, GraphError>;
-    fn has_edge<T: InputVertex>(&self, src: T, dst: T) -> Result<bool, GraphError>;
+    fn has_edge<T: InputVertex>(
+        &self,
+        src: T,
+        dst: T,
+        layer: Option<&str>,
+    ) -> Result<bool, GraphError>;
     fn vertex<T: InputVertex>(&self, v: T) -> Result<Option<Self::Vertex>, GraphError>;
     fn vertices(&self) -> Self::Vertices;
-    fn edge<T: InputVertex>(&self, src: T, dst: T) -> Result<Option<Self::Edge>, GraphError>;
+    fn edge<T: InputVertex>(
+        &self,
+        src: T,
+        dst: T,
+        layer: Option<&str>,
+    ) -> Result<Option<Self::Edge>, GraphError>;
     fn edges(&self) -> Self::Edges;
     fn vertices_shard(&self, shard: usize) -> Self::Vertices;
 }
