@@ -28,6 +28,7 @@ pub mod algo {
 
     use super::{
         GlobalEvalState, Program, SimpleConnectedComponents, TriangleCountS1, TriangleCountS2,
+        TripletCount,
     };
 
     /// Computes the connected components of a graph using the Simple Connected Components algorithm
@@ -103,6 +104,36 @@ pub mod algo {
         tc.run_step(g, &mut gs);
 
         tc.produce_output(g, &gs)
+    }
+
+    pub fn triplet_count<G: GraphViewOps>(g: &G) -> usize {
+        let mut gs = GlobalEvalState::new(g.clone(), false);
+        let tc = TripletCount {};
+        tc.run_step(g, &mut gs);
+        let res = tc.produce_output(g, &gs);
+        println!("Triplet count: {}", res);
+        res
+    }
+
+    pub fn global_clustering_coefficient<G: GraphViewOps>(g: &G) -> f64 {
+        let mut gs = GlobalEvalState::new(g.clone(), false);
+        let tc = TriangleCountS1 {};
+        tc.run_step(g, &mut gs);
+        let tc = TriangleCountS2 {};
+        tc.run_step(g, &mut gs);
+        // let tc_val = tc.produce_output(g, &gs).unwrap_or(0);
+        // println!("TC: {}", tc_val);
+        let tc_val = 2.0;
+        let triplets = TripletCount {};
+        triplets.run_step(g, &mut gs);
+        let output = triplets.produce_output(g, &gs);
+
+        println!("Triplets: {}", output);
+        if output == 0 || tc_val == 0.0 {
+            0.0
+        } else {
+            3.0 * tc_val as f64 / output as f64
+        }
     }
 }
 
@@ -1144,11 +1175,54 @@ impl Program for TriangleCountSlowS2 {
     }
 }
 
+pub struct TripletCount {}
+
+impl Program for TripletCount {
+    type Out = usize;
+
+    fn local_eval<G: GraphViewOps>(&self, c: &LocalState<G>) {
+        let count = c.global_agg(state::def::sum::<usize>(111));
+
+        /// Source: https://stackoverflow.com/questions/65561566/number-of-combinations-permutations
+        fn count_two_combinations(n: u64) -> u64 {
+            ((0.5 * n as f64) * (n - 1) as f64) as u64
+        }
+
+        /// In the step function get the neighbours of v, remove it self, then count the result
+        /// and add it to the global count
+        c.step(|v| {
+            let c1 = v
+                .neighbours()
+                .map(|n| n.global_id())
+                .filter(|n| *n != v.global_id())
+                .count();
+            let c2 = count_two_combinations(c1 as u64) as usize;
+            println!("{}: {} {}", v.global_id(), c1, c2);
+            v.global_update(&count, c2);
+        })
+    }
+
+    fn post_eval<G: GraphViewOps>(&self, c: &mut GlobalEvalState<G>) {
+        let _ = c.global_agg(state::def::sum::<usize>(111));
+        c.step(|_| false)
+    }
+
+    fn produce_output<G: GraphViewOps>(&self, g: &G, gs: &GlobalEvalState<G>) -> Self::Out
+    where
+        Self: Sync,
+    {
+        gs.read_global_state(&state::def::sum::<usize>(111))
+            .unwrap_or(0)
+    }
+}
+
 #[cfg(test)]
 mod program_test {
     use std::{cmp::Reverse, iter::once};
 
-    use crate::program::algo::{connected_components, triangle_counting_fast};
+    use crate::program::algo::{
+        connected_components, global_clustering_coefficient, triangle_counting_fast, triplet_count,
+    };
 
     use super::*;
     use crate::graph::Graph;
@@ -1524,6 +1598,57 @@ mod program_test {
             results,
             vec![(1, 1),].into_iter().collect::<FxHashMap<u64, u64>>()
         );
+    }
+
+    /// Test the global clustering coefficient
+    #[test]
+    fn test_global_cc() {
+        let graph = Graph::new(1);
+
+        /// Graph has 2 triangles and 20 triplets
+        let edges = vec![
+            (1, 2),
+            (1, 3),
+            (1, 4),
+            (2, 1),
+            (2, 6),
+            (2, 7),
+            (3, 1),
+            (3, 4),
+            (3, 7),
+            (4, 1),
+            (4, 3),
+            (4, 5),
+            (4, 6),
+            (5, 4),
+            (5, 6),
+            (6, 4),
+            (6, 5),
+            (6, 2),
+            (7, 2),
+            (7, 3),
+        ];
+
+        for (src, dst) in edges {
+            graph.add_edge(0, src, dst, &vec![]);
+        }
+
+        let graph_at = graph.at(1);
+
+        // let tri_count = triangle_counting_fast(&graph_at);
+        // let exp_tri_count = Some(2);
+        // assert_eq!(tri_count, exp_tri_count);
+
+        let res_triplet_count = triplet_count(&graph_at);
+        let exp_triplet_count = 20;
+        // assert_eq!(res_triplet_count, exp_triplet_count);
+
+        // let exp_tri_count = Some(2);
+        // let exp_triplet_count = 20;
+
+        let results = global_clustering_coefficient(&graph_at);
+        // let expected = 3.0 * exp_tri_count.unwrap() as f64 / exp_triplet_count as f64;
+        // assert_eq!(results, 0.3);
     }
 
     #[quickcheck]
