@@ -3,7 +3,7 @@ use crate::edge::{PyEdge, PyEdgeIter};
 use crate::util::extract_vertex_ref;
 use crate::vertex::{PyVertex, PyVertices};
 use crate::wrappers::{PyPerspective, PyPerspectiveSet};
-use docbrown_db::graph_window::GraphWindowSet;
+use docbrown_db::graph_window::WindowSet;
 use docbrown_db::perspective::Perspective;
 use docbrown_db::view_api::*;
 use pyo3::prelude::*;
@@ -24,11 +24,11 @@ impl<G: GraphViewOps> From<G> for PyGraphView {
 
 #[pyclass(name = "PyGraphWindowSet")]
 pub struct PyGraphWindowSet {
-    window_set: GraphWindowSet<DynamicGraph>,
+    window_set: WindowSet<DynamicGraph>,
 }
 
-impl From<GraphWindowSet<DynamicGraph>> for PyGraphWindowSet {
-    fn from(value: GraphWindowSet<DynamicGraph>) -> Self {
+impl From<WindowSet<DynamicGraph>> for PyGraphWindowSet {
+    fn from(value: WindowSet<DynamicGraph>) -> Self {
         Self { window_set: value }
     }
 }

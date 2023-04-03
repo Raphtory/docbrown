@@ -11,6 +11,7 @@ mod test {
     use docbrown_db::{
         csv_loader::csv::CsvLoader,
         graph::Graph,
+        view_api::*,
         view_api::{internal::GraphViewInternalOps, GraphViewOps},
     };
     use itertools::Itertools;

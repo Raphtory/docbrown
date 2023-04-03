@@ -49,7 +49,7 @@ pub fn ba_preferential_attachment(
     vertices_to_add: usize,
     edges_per_step: usize,
 ) -> () {
-    let mut rng = rand::thread_rng();
+    let mut rng = thread_rng();
     let mut latest_time = match graph.latest_time() {
         None => 0,
         Some(time) => time,

@@ -39,6 +39,7 @@
 
 use crate::perspective::Perspective;
 use crate::view_api::internal::GraphViewInternalOps;
+use crate::view_api::time::TimeOps;
 use crate::view_api::GraphViewOps;
 use docbrown_core::{
     tgraph::{EdgeRef, VertexRef},
@@ -49,44 +50,40 @@ use std::collections::HashMap;
 
 /// A set of windowed views of a `Graph`, allows user to iterating over a Graph broken
 /// down into multiple windowed views.
-pub struct GraphWindowSet<G: GraphViewOps> {
+pub struct WindowSet<T: TimeOps> {
     /// The underlying `Graph` object.
-    pub graph: G,
+    pub view: T,
     /// An iterator of `Perspective`s to window the `Graph`.
     perspectives: Box<dyn Iterator<Item = Perspective> + Send>,
 }
 
-impl<G: GraphViewOps> GraphWindowSet<G> {
-    /// Constructs a new `GraphWindowSet` object.
+impl<T: TimeOps> WindowSet<T> {
+    /// Constructs a new `WindowSet` object.
     ///
     /// # Arguments
     ///
-    /// * `graph` - The underlying `Graph` object.
-    /// * `perspectives` - An iterator of `Perspective`s to window the `Graph`.
+    /// * `view` - The underlying object.
+    /// * `perspectives` - An iterator of `Perspective`s to window the `view`.
     ///
     /// # Returns
     ///
-    /// A new `GraphWindowSet` object.
+    /// A new `WindowSet` object.
     pub fn new(
-        graph: G,
+        view: T,
         perspectives: Box<dyn Iterator<Item = Perspective> + Send>,
-    ) -> GraphWindowSet<G> {
-        GraphWindowSet {
-            graph,
-            perspectives,
-        }
+    ) -> WindowSet<T> {
+        WindowSet { view, perspectives }
     }
 }
 
-impl<G: GraphViewOps> Iterator for GraphWindowSet<G> {
-    type Item = WindowedGraph<G>;
+impl<T: TimeOps> Iterator for WindowSet<T> {
+    type Item = T::WindowedView;
     fn next(&mut self) -> Option<Self::Item> {
         let perspective = self.perspectives.next()?;
-        Some(WindowedGraph {
-            graph: self.graph.clone(),
-            t_start: perspective.start.unwrap_or(i64::MIN),
-            t_end: perspective.end.unwrap_or(i64::MAX),
-        })
+        Some(self.view.window(
+            perspective.start.unwrap_or(i64::MIN),
+            perspective.end.unwrap_or(i64::MAX),
+        ))
     }
 }
 
@@ -922,7 +919,7 @@ impl<G: GraphViewInternalOps> GraphViewInternalOps for WindowedGraph<G> {
 ///
 /// ```rust
 /// use docbrown_db::graph::Graph;
-/// use docbrown_db::view_api::GraphViewOps;
+/// use docbrown_db::view_api::*;
 ///
 /// let graph = Graph::new(1);
 /// graph.add_edge(0, 1, 2, &vec![]);

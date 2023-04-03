@@ -3,7 +3,7 @@ use criterion::{
     criterion_group, criterion_main, AxisScale, Criterion, PlotConfiguration, Throughput,
 };
 use docbrown_db::graph_loader::sx_superuser_graph::sx_superuser_graph;
-use docbrown_db::view_api::GraphViewOps;
+use docbrown_db::view_api::*;
 
 mod common;
 

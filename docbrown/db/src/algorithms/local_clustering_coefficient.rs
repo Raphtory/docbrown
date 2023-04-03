@@ -25,7 +25,7 @@
 //! ```rust
 //! use docbrown_db::algorithms::local_clustering_coefficient::{local_clustering_coefficient};
 //! use docbrown_db::graph::Graph;
-//! use docbrown_db::view_api::GraphViewOps;
+//! use docbrown_db::view_api::*;
 //!
 //! let g = Graph::new(1);
 //! let windowed_graph = g.window(0, 7);

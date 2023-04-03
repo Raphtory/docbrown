@@ -19,7 +19,7 @@
 //! ```rust
 //! use docbrown_db::algorithms::local_triangle_count::{local_triangle_count};
 //! use docbrown_db::graph::Graph;
-//! use docbrown_db::view_api::GraphViewOps;
+//! use docbrown_db::view_api::*;
 //!
 //! let g = Graph::new(1);
 //! let vs = vec![(1, 1, 2), (2, 1, 3), (3, 2, 1), (4, 3, 2)];

@@ -12,7 +12,7 @@
 //! ```rust
 //! use docbrown_db::algorithms::directed_graph_density::directed_graph_density;
 //! use docbrown_db::graph::Graph;
-//! use docbrown_db::view_api::GraphViewOps;
+//! use docbrown_db::view_api::*;
 //!
 //! let g = Graph::new(1);
 //! let windowed_graph = g.window(0, 7);

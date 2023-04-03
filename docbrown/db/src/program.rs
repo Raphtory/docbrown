@@ -1156,6 +1156,7 @@ mod program_test {
     use itertools::chain;
     use pretty_assertions::assert_eq;
     use rustc_hash::FxHashMap;
+    use crate::view_api::*;
 
     #[test]
     fn triangle_count_1() {

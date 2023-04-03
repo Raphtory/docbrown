@@ -95,7 +95,7 @@ pub mod errors {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[repr(transparent)]
 pub struct TGraphShard<TemporalGraph> {
-    pub rc: Arc<lock::OptionLock<TemporalGraph>>,
+    pub rc: Arc<OptionLock<TemporalGraph>>,
 }
 
 impl Clone for TGraphShard<TemporalGraph> {
@@ -109,7 +109,7 @@ impl Clone for TGraphShard<TemporalGraph> {
 impl Default for TGraphShard<TemporalGraph> {
     fn default() -> Self {
         Self {
-            rc: Arc::new(lock::OptionLock::new(TemporalGraph::default())),
+            rc: Arc::new(OptionLock::new(TemporalGraph::default())),
         }
     }
 }

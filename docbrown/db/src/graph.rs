@@ -18,7 +18,7 @@
 //!
 
 use crate::graph_immutable::ImmutableGraph;
-use crate::graph_window::{GraphWindowSet, WindowedGraph};
+use crate::graph_window::{WindowSet, WindowedGraph};
 use crate::perspective::{Perspective, PerspectiveIterator, PerspectiveSet};
 use itertools::Itertools;
 use std::cmp::{max, min};
@@ -501,7 +501,7 @@ impl Graph {
     /// # Example
     ///
     /// ```
-    /// use docbrown_db::graph::Graph;;
+    /// use docbrown_db::graph::Graph;
     /// let g = Graph::new(4);
     /// ```
     pub fn new(nr_shards: usize) -> Self {
@@ -743,7 +743,7 @@ mod db_tests {
     use super::*;
     use crate::algorithms::local_triangle_count::local_triangle_count;
     use crate::graphgen::random_attachment::random_attachment;
-    use crate::view_api::GraphViewOps;
+    use crate::view_api::*;
     use csv::StringRecord;
     use docbrown_core::utils;
     use itertools::Itertools;

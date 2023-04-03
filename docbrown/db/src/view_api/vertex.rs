@@ -3,6 +3,100 @@ use crate::view_api::edge::EdgeListOps;
 use crate::view_api::GraphViewOps;
 use docbrown_core::Prop;
 use std::collections::HashMap;
+use crate::edge::{EdgeList, EdgeView};
+use crate::path::PathFromVertex;
+
+/// Operations defined for a vertex
+pub trait VertexViewOps {
+    type Graph: GraphViewOps;
+    /// Get the numeric id of the vertex
+    fn id(&self) -> u64;
+
+    /// Get the temporal property value of this vertex.
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - The name of the property to retrieve.
+    ///
+    /// # Returns
+    ///
+    /// A vector of `(i64, Prop)` tuples where the `i64` value is the timestamp of the
+    /// property value and `Prop` is the value itself.
+    fn prop(&self, name: String) -> Vec<(i64, Prop)>;
+
+    /// Get all temporal property values of this vertex.
+    ///
+    /// # Returns
+    ///
+    /// A HashMap with the names of the properties as keys and a vector of `(i64, Prop)` tuples
+    /// as values. The `i64` value is the timestamp of the property value and `Prop`
+    /// is the value itself.
+    fn props(&self) -> HashMap<String, Vec<(i64, Prop)>>;
+
+    /// Get the degree of this vertex (i.e., the number of edges that are incident to it).
+    ///
+    /// # Returns
+    ///
+    /// The degree of this vertex. 
+    fn degree(&self) -> usize;
+
+    /// Get the in-degree of this vertex (i.e., the number of edges that point into it).
+    ///
+    /// # Returns
+    ///
+    /// The in-degree of this vertex.
+    fn in_degree(&self) -> usize;
+
+    /// Get the out-degree of this vertex (i.e., the number of edges that point out of it).
+    ///
+    /// # Returns
+    ///
+    /// The out-degree of this vertex.
+    fn out_degree(&self) -> usize;
+
+    /// Get the edges that are incident to this vertex.
+    ///
+    /// # Returns
+    ///
+    /// An iterator over the edges that are incident to this vertex.
+    fn edges(&self) -> EdgeList<Self::Graph>;
+
+    /// Get the edges that point into this vertex.
+    ///
+    /// # Returns
+    ///
+    /// An iterator over the edges that point into this vertex.
+    fn in_edges(&self) -> EdgeList<Self::Graph>;
+
+    /// Get the edges that point out of this vertex.
+    ///
+    /// # Returns
+    ///
+    /// An iterator over the edges that point out of this vertex.
+    fn out_edges(&self) -> EdgeList<Self::Graph>;
+
+    /// Get the neighbours of this vertex.
+    ///
+    /// # Returns
+    ///
+    /// An iterator over the neighbours of this vertex.
+    fn neighbours(&self) -> PathFromVertex<Self::Graph>;
+
+    /// Get the neighbours of this vertex that point into this vertex.
+    ///
+    /// # Returns
+    ///
+    /// An iterator over the neighbours of this vertex that point into this vertex.
+    fn in_neighbours(&self) -> PathFromVertex<Self::Graph>;
+
+    /// Get the neighbours of this vertex that point out of this vertex.
+    ///
+    /// # Returns
+    ///
+    /// An iterator over the neighbours of this vertex that point out of this vertex.
+    fn out_neighbours(&self) -> PathFromVertex<Self::Graph>;
+}
+
 
 /// A trait for operations on a list of vertices.
 pub trait VertexListOps:
