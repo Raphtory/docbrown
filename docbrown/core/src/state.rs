@@ -1,9 +1,7 @@
-use std::{any::Any, fmt::Debug};
-
-use rustc_hash::FxHashMap;
-
 use crate::agg::Accumulator;
 use crate::utils::get_shard_id_from_global_vid;
+use rustc_hash::FxHashMap;
+use std::{any::Any, fmt::Debug};
 
 #[derive(Debug)]
 pub struct AccId<A, IN, OUT, ACC: Accumulator<A, IN, OUT>> {
@@ -31,25 +29,22 @@ unsafe impl<A, IN, OUT, ACC: Accumulator<A, IN, OUT>> Send for AccId<A, IN, OUT,
 unsafe impl<A, IN, OUT, ACC: Accumulator<A, IN, OUT>> Sync for AccId<A, IN, OUT, ACC> {}
 
 pub mod def {
+    use super::{AccId, StateType};
+    use crate::agg::{
+        set::{BitSet, Set},
+        topk::{TopK, TopKHeap},
+        AvgDef, MaxDef, MinDef, SumDef,
+    };
+    use num_traits::{Bounded, Zero};
+    use roaring::{RoaringBitmap, RoaringTreemap};
+    use rustc_hash::FxHashSet;
     use std::{
         cmp::Eq,
         hash::Hash,
         ops::{AddAssign, Div},
     };
 
-    use num_traits::{Bounded, Zero};
-    use roaring::{RoaringBitmap, RoaringTreemap};
-    use rustc_hash::FxHashSet;
-
-    use crate::agg::{
-        set::{BitSet, Set},
-        topk::{TopK, TopKHeap},
-        AvgDef, MaxDef, MinDef, SumDef,
-    };
-
-    use super::{AccId, StateType};
-
-    pub fn min<A: StateType + Bounded + PartialOrd + Ord>(id: u32) -> AccId<A, A, A, MinDef<A>> {
+    pub fn min<A: StateType + Bounded + PartialOrd>(id: u32) -> AccId<A, A, A, MinDef<A>> {
         AccId {
             id,
             _a: std::marker::PhantomData,
@@ -59,7 +54,7 @@ pub mod def {
         }
     }
 
-    pub fn max<A: StateType + Bounded + PartialOrd + Ord>(id: u32) -> AccId<A, A, A, MaxDef<A>> {
+    pub fn max<A: StateType + Bounded + PartialOrd>(id: u32) -> AccId<A, A, A, MaxDef<A>> {
         AccId {
             id,
             _a: std::marker::PhantomData,
@@ -214,8 +209,7 @@ where
 
 pub trait StateType: PartialEq + Clone + Debug + Send + Sync + 'static {}
 
-#[derive(Debug)]
-pub struct ComputeStateMap(Box<dyn DynArray + 'static>);
+impl<T: PartialEq + Clone + Debug + Send + Sync + 'static> StateType for T {}
 
 pub trait ComputeState: Debug + Clone {
     fn clone_current_into_other(&mut self, ss: usize);
@@ -263,22 +257,12 @@ pub trait ComputeState: Debug + Clone {
     where
         F: FnOnce(B, &u64, OUT) -> B + Copy,
         A: 'static,
+        B: Debug,
         OUT: StateType;
 }
 
-impl Clone for ComputeStateMap {
-    fn clone(&self) -> Self {
-        ComputeStateMap(self.0.clone_array())
-    }
-}
-
-// impl Clone for ComputeStateVec {
-//     fn clone(&self) -> Self {
-//         Self([self.0[0].clone_array(), self.0[1].clone_array()])
-//     }
-// }
-
-impl<T: PartialEq + Clone + Debug + Send + Sync + 'static> StateType for T {}
+#[derive(Debug)]
+pub struct ComputeStateMap(Box<dyn DynArray + 'static>);
 
 impl ComputeStateMap {
     fn current_mut(&mut self) -> &mut dyn DynArray {
@@ -287,6 +271,12 @@ impl ComputeStateMap {
 
     fn current(&self) -> &dyn DynArray {
         self.0.as_ref()
+    }
+}
+
+impl Clone for ComputeStateMap {
+    fn clone(&self) -> Self {
+        ComputeStateMap(self.0.clone_array())
     }
 }
 
@@ -356,6 +346,7 @@ impl ComputeState for ComputeStateMap {
     where
         F: FnOnce(B, &u64, OUT) -> B + Copy,
         A: 'static,
+        B: Debug,
         OUT: StateType,
     {
         let current = self
@@ -457,6 +448,7 @@ impl<CS: ComputeState + Send + Clone> ShardComputeState<CS> {
     where
         F: FnOnce(B, &u64, OUT) -> B + Copy,
         A: 'static,
+        B: Debug,
         OUT: StateType,
     {
         if let Some(state) = self.states.get(&agg_ref.id) {
@@ -586,6 +578,7 @@ impl<CS: ComputeState + Send + Sync> ShuffleComputeState<CS> {
     ) -> B
     where
         A: StateType,
+        B: Debug,
         OUT: StateType,
         F: Fn(B, &u64, OUT) -> B + std::marker::Copy,
     {

@@ -10,6 +10,7 @@ use docbrown_core::{
     agg::Accumulator,
     state::{self, AccId, ShuffleComputeState},
     state::{ComputeStateMap, StateType},
+    tgraph_shard::errors::GraphError,
 };
 use itertools::Itertools;
 use rayon::prelude::*;
@@ -126,12 +127,12 @@ impl LocalState {
 
 #[derive(Debug)]
 pub struct GlobalEvalState {
-    ss: usize,
+    pub ss: usize,
     g: Graph,
     window: Range<i64>,
-    keep_past_state: bool,
+    pub keep_past_state: bool,
     // running state
-    next_vertex_set: Option<Vec<Arc<FxHashSet<u64>>>>,
+    pub next_vertex_set: Option<Vec<Arc<FxHashSet<u64>>>>,
     states: Vec<Arc<parking_lot::RwLock<Option<ShuffleComputeState<CS>>>>>,
     post_agg_state: Arc<parking_lot::RwLock<Option<ShuffleComputeState<CS>>>>, // FIXME this is a pointer to one of the states in states, beware of deadlocks
 }
@@ -166,6 +167,7 @@ impl GlobalEvalState {
     where
         OUT: StateType,
         A: StateType,
+        B: Debug,
         F: Fn(B, &u64, OUT) -> B + std::marker::Copy,
     {
         let part_state = self.states[part_id].read();
@@ -187,7 +189,7 @@ impl GlobalEvalState {
         state.read_global(self.ss, agg)
     }
 
-    fn do_loop(&self) -> bool {
+    pub fn do_loop(&self) -> bool {
         if self.next_vertex_set.is_none() {
             return true;
         }
@@ -497,6 +499,10 @@ impl EvalVertexView {
 
     pub fn global_id(&self) -> u64 {
         self.vv.id()
+    }
+
+    pub fn out_degree(&self) -> Result<usize, GraphError> {
+        self.vv.out_degree()
     }
 
     pub fn neighbours_out(&self) -> impl Iterator<Item = EvalVertexView> + '_ {
