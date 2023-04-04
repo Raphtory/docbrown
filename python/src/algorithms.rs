@@ -1,5 +1,5 @@
 use crate::graph_view::PyGraphView;
-use docbrown_db::algorithms::reciprocity::{
+use docbrown_db::algorithms::old_reciprocity::{
     all_local_reciprocity as all_local_reciprocity_rs, global_reciprocity as global_reciprocity_rs,
     local_reciprocity as local_reciprocity_rs,
 };
