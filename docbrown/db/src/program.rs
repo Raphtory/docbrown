@@ -24,7 +24,6 @@ use rustc_hash::{FxHashMap, FxHashSet};
 /// Module containing graph algorithms that can be run on docbrown graphs
 pub mod algo {
 
-    use crate::algorithms::reciprocity::GlobalReciprocity;
     use rustc_hash::FxHashMap;
 
     use crate::view_api::GraphViewOps;
@@ -106,13 +105,6 @@ pub mod algo {
         tc.run_step(g, &mut gs);
 
         tc.produce_output(g, &gs)
-    }
-
-    pub fn global_reciprocity<G: GraphViewOps>(g: &G) -> f64 {
-        let mut gs = GlobalEvalState::new(g.clone(), false);
-        let gr = GlobalReciprocity {};
-        gr.run_step(g, &mut gs);
-        gr.produce_output(g, &gs)
     }
 }
 
@@ -501,7 +493,7 @@ impl<G: GraphViewOps> GlobalEvalState<G> {
     ///
     /// An `AggRef` representing the result of the accumulator operation.
     ///
-    fn agg<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(
+    pub(crate) fn agg<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(
         &mut self,
         agg: AccId<A, IN, OUT, ACC>,
     ) -> AggRef<A, IN, OUT, ACC>
