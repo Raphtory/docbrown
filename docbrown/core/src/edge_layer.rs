@@ -309,7 +309,7 @@ impl EdgeLayer {
         self.adj_lists
             .get(v_pid)
             .unwrap_or(&Adj::Solo)
-            .out_edges_len()
+            .out_len_window(w)
     }
 }
 

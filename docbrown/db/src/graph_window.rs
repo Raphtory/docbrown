@@ -1230,7 +1230,6 @@ mod views_test {
         }
 
         let wg = WindowedGraph::new(g, window.start, window.end);
-        assert_eq!(wg.num_edges(), true_edge_count);
         TestResult::from_bool(wg.num_edges() == true_edge_count)
     }
 

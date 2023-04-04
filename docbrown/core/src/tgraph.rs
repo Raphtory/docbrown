@@ -195,7 +195,7 @@ impl TemporalGraph {
                 .iter()
                 .enumerate()
                 .filter(|(index, timestamps)| timestamps.range(w.clone()).next().is_some())
-                .map(|(index, _)| layer.out_edges_len_window(index, w))
+                .map(|(index, timestamps)| layer.out_edges_len_window(index, w))
                 .reduce(|s1, s2| s1 + s2)
                 .unwrap_or(0),
             LayerIterator::Vector(layers) => self

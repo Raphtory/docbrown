@@ -29,6 +29,15 @@ impl Default for &Adj {
 }
 
 impl Adj {
+    pub(crate) fn out_len_window(&self, w: &Range<Time>) -> usize {
+        match self {
+            Adj::Solo => 0,
+            Adj::List {
+                out, remote_out, ..
+            } => out.len_window(w) + remote_out.len_window(w),
+        }
+    }
+
     pub(crate) fn new_out(v: usize, t: i64, e: AdjEdge) -> Self {
         if e.is_local() {
             Adj::List {
