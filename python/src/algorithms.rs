@@ -76,5 +76,5 @@ pub(crate) fn triplet_count(g: &PyGraphView) -> usize {
 
 #[pyfunction]
 pub(crate) fn global_clustering_coefficient(g: &PyGraphView) -> f64 {
-    docbrown_db::program::algo::global_clustering_coefficient(&g.graph)
+    docbrown_db::program::algo::clustering_coefficient(&g.graph)
 }

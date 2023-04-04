@@ -163,7 +163,7 @@ pub mod algo {
     ///
     /// ```rust
     /// use docbrown_db::graph::Graph;
-    /// use docbrown_db::program::algo::global_clustering_coefficient;
+    /// use docbrown_db::program::algo::clustering_coefficient;
     /// use crate::docbrown_db::view_api::*;
     /// let graph = Graph::new(2);
     ///  let edges = vec![
@@ -177,11 +177,11 @@ pub mod algo {
     ///  for (src, dst) in edges {
     ///      graph.add_edge(0, src, dst, &vec![]);
     ///  }
-    ///  let results = global_clustering_coefficient(&graph.at(1));
+    ///  let results = clustering_coefficient(&graph.at(1));
     ///  println!("global_clustering_coefficient: {}", results);
     /// ```
     ///
-    pub fn global_clustering_coefficient<G: GraphViewOps>(g: &G) -> f64 {
+    pub fn clustering_coefficient<G: GraphViewOps>(g: &G) -> f64 {
         let mut gs = GlobalEvalState::new(g.clone(), false);
         let tc = TriangleCountS1 {};
         tc.run_step(g, &mut gs);
@@ -1245,7 +1245,7 @@ mod program_test {
     use std::{cmp::Reverse, iter::once};
 
     use crate::program::algo::{
-        connected_components, global_clustering_coefficient, triangle_counting_fast, triplet_count,
+        clustering_coefficient, connected_components, triangle_counting_fast, triplet_count,
     };
 
     use super::*;
@@ -1699,7 +1699,7 @@ mod program_test {
         let exp_tri_count = 2.0;
         let exp_triplet_count = 20;
 
-        let results = global_clustering_coefficient(&graph_at);
+        let results = clustering_coefficient(&graph_at);
         let expected = 3.0 * exp_tri_count / exp_triplet_count as f64;
         assert_eq!(results, 0.3);
     }
