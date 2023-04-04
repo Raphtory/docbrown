@@ -39,7 +39,7 @@
 
 use crate::perspective::Perspective;
 use crate::view_api::internal::GraphViewInternalOps;
-use crate::view_api::time::{TimeOps, WindowedView};
+use crate::view_api::time::TimeOps;
 use crate::view_api::GraphViewOps;
 use docbrown_core::{
     tgraph::{EdgeRef, VertexRef},
@@ -77,7 +77,7 @@ impl<T: TimeOps> WindowSet<T> {
 }
 
 impl<T: TimeOps> Iterator for WindowSet<T> {
-    type Item = T::WindowedView;
+    type Item = T::WindowedViewType;
     fn next(&mut self) -> Option<Self::Item> {
         let perspective = self.perspectives.next()?;
         Some(self.view.window(
@@ -98,22 +98,18 @@ pub struct WindowedGraph<G: GraphViewInternalOps> {
     pub t_end: i64,
 }
 
-/// Implementation of the WindowedGraph struct, a graph that is a windowed view of another graph.
-/// *Note: All functions in this are bound by the time set in the windowed graph.
-impl<G: GraphViewInternalOps> WindowedView for WindowedGraph<G> {
-    fn start(&self) -> i64 {
-        self.t_start
-    }
-
-    fn end(&self) -> i64 {
-        self.t_end
-    }
-}
-
 /// Implementation of the GraphViewInternalOps trait for WindowedGraph.
 /// This trait provides operations to a `WindowedGraph` used internally by the `GraphWindowSet`.
 /// *Note: All functions in this are bound by the time set in the windowed graph.
-impl<G: GraphViewInternalOps> GraphViewInternalOps for WindowedGraph<G> {
+impl<G: GraphViewOps> GraphViewInternalOps for WindowedGraph<G> {
+    fn view_start(&self) -> Option<i64> {
+        Some(self.t_start)
+    }
+
+    fn view_end(&self) -> Option<i64> {
+        Some(self.t_end)
+    }
+
     fn earliest_time_global(&self) -> Option<i64> {
         self.graph.earliest_time_window(self.t_start, self.t_end)
     }

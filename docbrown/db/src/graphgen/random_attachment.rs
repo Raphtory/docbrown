@@ -42,7 +42,7 @@ use rand::seq::SliceRandom;
 /// ```
 pub fn random_attachment(graph: &Graph, vertices_to_add: usize, edges_per_step: usize) {
     let rng = &mut rand::thread_rng();
-    let mut latest_time = match graph.latest_time() {
+    let mut latest_time = match graph.end() {
         None => 0,
         Some(time) => time,
     };

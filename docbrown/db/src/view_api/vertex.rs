@@ -1,9 +1,7 @@
 use crate::edge::{EdgeList, EdgeView};
 use crate::path::PathFromVertex;
 use crate::vertex::VertexView;
-use crate::vertex_window::WindowedVertex;
 use crate::view_api::edge::EdgeListOps;
-use crate::view_api::time::WindowedView;
 use crate::view_api::{GraphViewOps, TimeOps};
 use docbrown_core::Prop;
 use std::collections::HashMap;
@@ -14,6 +12,12 @@ pub trait VertexViewOps: TimeOps {
 
     /// Get the numeric id of the vertex
     fn id(&self) -> u64;
+
+    /// Get the timestamp for the earliest activity of the vertex
+    fn earliest_time(&self) -> Option<i64>;
+
+    /// Get the timestamp for the latest activity of the vertex
+    fn latest_time(&self) -> Option<i64>;
 
     /// Get the temporal property value of this vertex.
     ///
@@ -125,10 +129,10 @@ pub trait VertexListOps:
         self,
         t_start: i64,
         t_end: i64,
-    ) -> Self::ValueIterType<<Self::Vertex as TimeOps>::WindowedView>;
+    ) -> Self::ValueIterType<<Self::Vertex as TimeOps>::WindowedViewType>;
 
     /// Create views for the vertices including all events until `end` (inclusive)
-    fn at(self, end: i64) -> Self::ValueIterType<<Self::Vertex as TimeOps>::WindowedView> {
+    fn at(self, end: i64) -> Self::ValueIterType<<Self::Vertex as TimeOps>::WindowedViewType> {
         self.window(i64::MIN, end.saturating_add(1))
     }
 

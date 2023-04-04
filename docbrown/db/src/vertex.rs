@@ -2,18 +2,19 @@
 
 use crate::edge::{EdgeList, EdgeView};
 use crate::path::{Operations, PathFromVertex};
-use crate::vertex_window::WindowedVertex;
 use crate::view_api::vertex::VertexViewOps;
 use crate::view_api::{GraphViewOps, TimeOps, VertexListOps};
 use docbrown_core::tgraph::VertexRef;
 use docbrown_core::tgraph_shard::errors::GraphError;
 use docbrown_core::{Direction, Prop};
 use std::collections::HashMap;
+use std::ops::Range;
 
 #[derive(Debug, Clone)]
 pub struct VertexView<G: GraphViewOps> {
     pub graph: G,
     pub(crate) vertex: VertexRef,
+    window: Option<Range<i64>>,
 }
 
 impl<G: GraphViewOps> From<VertexView<G>> for VertexRef {
@@ -31,7 +32,22 @@ impl<G: GraphViewOps> From<&VertexView<G>> for VertexRef {
 impl<G: GraphViewOps> VertexView<G> {
     /// Creates a new `VertexView` wrapping a vertex reference and a graph.
     pub(crate) fn new(graph: G, vertex: VertexRef) -> VertexView<G> {
-        VertexView { graph, vertex }
+        VertexView {
+            graph,
+            vertex,
+            window: None,
+        }
+    }
+    pub(crate) fn new_windowed(
+        graph: G,
+        vertex: VertexRef,
+        window: Option<Range<i64>>,
+    ) -> VertexView<G> {
+        VertexView {
+            graph,
+            vertex,
+            window,
+        }
     }
 }
 
@@ -41,6 +57,24 @@ impl<G: GraphViewOps> VertexViewOps for VertexView<G> {
 
     fn id(&self) -> u64 {
         self.vertex.g_id
+    }
+
+    fn earliest_time(&self) -> Option<i64> {
+        match &self.window {
+            None => self.graph.vertex_earliest_time(self.vertex),
+            Some(w) => self
+                .graph
+                .vertex_earliest_time_window(self.vertex, w.start, w.end),
+        }
+    }
+
+    fn latest_time(&self) -> Option<i64> {
+        match &self.window {
+            None => self.graph.vertex_latest_time(self.vertex),
+            Some(w) => self
+                .graph
+                .vertex_latest_time_window(self.vertex, w.start, w.end),
+        }
     }
 
     /// Get the name of this vertex if a user has set one otherwise it returns the ID.
@@ -143,86 +177,150 @@ impl<G: GraphViewOps> VertexViewOps for VertexView<G> {
         self.graph.static_vertex_prop(self.vertex, name)
     }
 
-    pub fn degree(&self) -> usize {
-        self.graph.degree(self.vertex, Direction::BOTH)
+    fn degree(&self) -> usize {
+        let dir = Direction::BOTH;
+        match &self.window {
+            None => self.graph.degree(self.vertex, dir),
+            Some(w) => self.graph.degree_window(self.vertex, w.start, w.end, dir),
+        }
     }
 
     fn in_degree(&self) -> usize {
-        self.graph.degree(self.vertex, Direction::IN)
+        let dir = Direction::IN;
+        match &self.window {
+            None => self.graph.degree(self.vertex, dir),
+            Some(w) => self.graph.degree_window(self.vertex, w.start, w.end, dir),
+        }
     }
 
     fn out_degree(&self) -> usize {
-        self.graph.degree(self.vertex, Direction::OUT)
+        let dir = Direction::OUT;
+        match &self.window {
+            None => self.graph.degree(self.vertex, dir),
+            Some(w) => self.graph.degree_window(self.vertex, w.start, w.end, dir),
+        }
     }
 
     fn edges(&self) -> EdgeList<G> {
         let g = self.graph.clone();
-        Box::new(
-            self.graph
-                .vertex_edges(self.vertex, Direction::BOTH)
-                .map(move |e| EdgeView::new(g.clone(), e)),
-        )
+        let dir = Direction::BOTH;
+        match &self.window {
+            None => Box::new(
+                self.graph
+                    .vertex_edges(self.vertex, dir)
+                    .map(move |e| EdgeView::new(g.clone(), e)),
+            ),
+            Some(w) => Box::new(
+                self.graph
+                    .vertex_edges_window(self.vertex, w.start, w.end, dir)
+                    .map(move |e| EdgeView::new(g.clone(), e)),
+            ),
+        }
     }
 
     fn in_edges(&self) -> EdgeList<G> {
         let g = self.graph.clone();
-        Box::new(
-            self.graph
-                .vertex_edges(self.vertex, Direction::IN)
-                .map(move |e| EdgeView::new(g.clone(), e)),
-        )
+        let dir = Direction::IN;
+        match &self.window {
+            None => Box::new(
+                self.graph
+                    .vertex_edges(self.vertex, dir)
+                    .map(move |e| EdgeView::new(g.clone(), e)),
+            ),
+            Some(w) => Box::new(
+                self.graph
+                    .vertex_edges_window(self.vertex, w.start, w.end, dir)
+                    .map(move |e| EdgeView::new(g.clone(), e)),
+            ),
+        }
     }
 
     fn out_edges(&self) -> EdgeList<G> {
         let g = self.graph.clone();
-        Box::new(
-            self.graph
-                .vertex_edges(self.vertex, Direction::OUT)
-                .map(move |e| EdgeView::new(g.clone(), e)),
-        )
+        let dir = Direction::OUT;
+        match &self.window {
+            None => Box::new(
+                self.graph
+                    .vertex_edges(self.vertex, dir)
+                    .map(move |e| EdgeView::new(g.clone(), e)),
+            ),
+            Some(w) => Box::new(
+                self.graph
+                    .vertex_edges_window(self.vertex, w.start, w.end, dir)
+                    .map(move |e| EdgeView::new(g.clone(), e)),
+            ),
+        }
     }
 
     fn neighbours(&self) -> PathFromVertex<G> {
         let g = self.graph.clone();
-        PathFromVertex::new(
-            g,
-            self,
-            Operations::Neighbours {
-                dir: Direction::BOTH,
-            },
-        )
+        let dir = Direction::BOTH;
+        match &self.window {
+            None => PathFromVertex::new(g, self, Operations::Neighbours { dir }),
+            Some(w) => PathFromVertex::new(
+                g,
+                self,
+                Operations::NeighboursWindow {
+                    dir,
+                    t_start: w.start,
+                    t_end: w.end,
+                },
+            ),
+        }
     }
 
     fn in_neighbours(&self) -> PathFromVertex<G> {
         let g = self.graph.clone();
-        PathFromVertex::new(g, self, Operations::Neighbours { dir: Direction::IN })
+        let dir = Direction::IN;
+        match &self.window {
+            None => PathFromVertex::new(g, self, Operations::Neighbours { dir }),
+            Some(w) => PathFromVertex::new(
+                g,
+                self,
+                Operations::NeighboursWindow {
+                    dir,
+                    t_start: w.start,
+                    t_end: w.end,
+                },
+            ),
+        }
     }
 
     fn out_neighbours(&self) -> PathFromVertex<G> {
         let g = self.graph.clone();
-        PathFromVertex::new(
-            g,
-            self,
-            Operations::Neighbours {
-                dir: Direction::OUT,
-            },
-        )
+        let dir = Direction::OUT;
+        match &self.window {
+            None => PathFromVertex::new(g, self, Operations::Neighbours { dir }),
+            Some(w) => PathFromVertex::new(
+                g,
+                self,
+                Operations::NeighboursWindow {
+                    dir,
+                    t_start: w.start,
+                    t_end: w.end,
+                },
+            ),
+        }
     }
 }
 
 impl<G: GraphViewOps> TimeOps for VertexView<G> {
-    type WindowedView = WindowedVertex<G>;
+    type WindowedViewType = VertexView<G>;
 
-    fn earliest_time(&self) -> Option<i64> {
-        self.graph.vertex_earliest_time(self.vertex)
+    fn start(&self) -> Option<i64> {
+        self.graph.start()
     }
 
-    fn latest_time(&self) -> Option<i64> {
-        self.graph.vertex_latest_time(self.vertex)
+    fn end(&self) -> Option<i64> {
+        self.graph.end()
     }
 
-    fn window(&self, t_start: i64, t_end: i64) -> Self::WindowedView {
-        WindowedVertex::from_vertex(self, t_start, t_end)
+    fn window(&self, t_start: i64, t_end: i64) -> Self::WindowedViewType {
+        Self {
+            graph: self.graph.clone(),
+            vertex: self.vertex,
+            window: Some(t_start..t_end),
+        }
     }
 }
 
@@ -239,14 +337,18 @@ impl<G: GraphViewOps, V: VertexViewOps<Graph = G> + 'static> VertexListOps
     type ValueIterType<U> = Box<dyn Iterator<Item = U> + Send>;
 
     fn earliest_time(self) -> Self::ValueIterType<Option<i64>> {
-        Box::new(self.map(|v| v.earliest_time()))
+        Box::new(self.map(|v| v.start()))
     }
 
     fn latest_time(self) -> Self::ValueIterType<Option<i64>> {
-        Box::new(self.map(|v| v.latest_time()))
+        Box::new(self.map(|v| v.end()))
     }
 
-    fn window(self, t_start: i64, t_end: i64) -> Self::ValueIterType<<V as TimeOps>::WindowedView> {
+    fn window(
+        self,
+        t_start: i64,
+        t_end: i64,
+    ) -> Self::ValueIterType<<V as TimeOps>::WindowedViewType> {
         Box::new(self.map(move |v| v.window(t_start, t_end)))
     }
 

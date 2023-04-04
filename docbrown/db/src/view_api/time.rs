@@ -5,19 +5,35 @@ use std::iter;
 
 /// Trait defining time query operations
 pub trait TimeOps {
-    type WindowedView;
+    type WindowedViewType;
 
-    /// Return the timestamp of the earliest activity in the view (if any).
-    fn earliest_time(&self) -> Option<i64>;
+    /// Return the timestamp of the default start for perspectives of the view (if any).
+    fn start(&self) -> Option<i64>;
 
-    /// Return the timestamp of the latest activity in the view (if any).
-    fn latest_time(&self) -> Option<i64>;
+    /// Return the timestamp of the default for perspectives of the view (if any).
+    fn end(&self) -> Option<i64>;
+
+    /// the larger of `t_start` and `self.start()` (useful for creating nested windows)
+    fn actual_start(&self, t_start: i64) -> i64 {
+        match self.start() {
+            None => t_start,
+            Some(start) => max(t_start, start),
+        }
+    }
+
+    /// the smaller of `t_end` and `self.end()` (useful for creating nested windows)
+    fn actual_end(&self, t_end: i64) -> i64 {
+        match self.end() {
+            None => t_end,
+            Some(end) => min(t_end, end),
+        }
+    }
 
     /// Create a view including all events between `t_start` (inclusive) and `t_end` (exclusive)
-    fn window(&self, t_start: i64, t_end: i64) -> Self::WindowedView;
+    fn window(&self, t_start: i64, t_end: i64) -> Self::WindowedViewType;
 
     /// Create a view including all events until `end` (inclusive)
-    fn at(&self, end: i64) -> Self::WindowedView {
+    fn at(&self, end: i64) -> Self::WindowedViewType {
         self.window(i64::MIN, end.saturating_add(1))
     }
 
@@ -54,7 +70,7 @@ pub trait TimeOps {
     where
         Self: Sized + Clone,
     {
-        let iter = match (self.earliest_time(), self.latest_time()) {
+        let iter = match (self.start(), self.end()) {
             (Some(start), Some(end)) => perspectives.build_iter(start..end),
             _ => PerspectiveIterator::empty(),
         };
@@ -69,29 +85,11 @@ pub trait TimeOps {
     where
         Self: Sized + Clone,
     {
-        let iter = if self.earliest_time().is_some() && self.latest_time().is_some() {
+        let iter = if self.start().is_some() && self.end().is_some() {
             perspectives
         } else {
             Box::new(iter::empty::<Perspective>())
         };
         WindowSet::new(self.clone(), iter)
-    }
-}
-
-/// Trait for a time window
-pub trait WindowedView {
-    /// The start of the window (inclusive)
-    fn start(&self) -> i64;
-    /// The end of the window (exclusive)
-    fn end(&self) -> i64;
-
-    /// the larger of `t_start` and `self.start()` (useful for creating nested windows)
-    fn actual_start(&self, t_start: i64) -> i64 {
-        max(t_start, self.start())
-    }
-
-    /// the smaller of `t_end` and `self.end()` (useful for creating nested windows)
-    fn actual_end(&self, t_end: i64) -> i64 {
-        min(t_end, self.end())
     }
 }

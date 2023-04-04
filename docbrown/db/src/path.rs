@@ -5,6 +5,7 @@ use docbrown_core::tgraph::VertexRef;
 use docbrown_core::{Direction, Prop};
 use std::collections::HashMap;
 use std::iter;
+use std::ops::Range;
 use std::sync::Arc;
 
 #[derive(Copy, Clone)]
@@ -41,6 +42,7 @@ impl Operations {
 pub struct PathFromGraph<G: GraphViewOps> {
     graph: G,
     operations: Arc<Vec<Operations>>,
+    window: Option<Range<i64>>,
 }
 
 impl<G: GraphViewOps> PathFromGraph<G> {
@@ -48,16 +50,19 @@ impl<G: GraphViewOps> PathFromGraph<G> {
         PathFromGraph {
             graph,
             operations: Arc::new(vec![operation]),
+            window: None,
         }
     }
 
     pub fn iter(&self) -> Box<dyn Iterator<Item = PathFromVertex<G>> + Send> {
         let g = self.graph.clone();
         let ops = self.operations.clone();
+        let w = self.window.clone();
         Box::new(self.graph.vertex_refs().map(move |v| PathFromVertex {
             graph: g.clone(),
             vertex: v,
             operations: ops.clone(),
+            window: w.clone(),
         }))
     }
 
@@ -181,32 +186,55 @@ impl<G: GraphViewOps> PathFromGraph<G> {
 
     pub fn neighbours(&self) -> Self {
         let mut new_ops = (*self.operations).clone();
-        new_ops.push(Operations::Neighbours {
-            dir: Direction::BOTH,
-        });
+        let dir = Direction::BOTH;
+        match &self.window {
+            None => new_ops.push(Operations::Neighbours { dir }),
+            Some(window) => new_ops.push(Operations::NeighboursWindow {
+                dir,
+                t_start: window.start,
+                t_end: window.end,
+            }),
+        }
         Self {
             graph: self.graph.clone(),
             operations: Arc::new(new_ops),
+            window: None,
         }
     }
 
     pub fn in_neighbours(&self) -> Self {
         let mut new_ops = (*self.operations).clone();
-        new_ops.push(Operations::Neighbours { dir: Direction::IN });
+        let dir = Direction::IN;
+        match &self.window {
+            None => new_ops.push(Operations::Neighbours { dir }),
+            Some(window) => new_ops.push(Operations::NeighboursWindow {
+                dir,
+                t_start: window.start,
+                t_end: window.end,
+            }),
+        }
         Self {
             graph: self.graph.clone(),
             operations: Arc::new(new_ops),
+            window: None,
         }
     }
 
     pub fn out_neighbours(&self) -> Self {
         let mut new_ops = (*self.operations).clone();
-        new_ops.push(Operations::Neighbours {
-            dir: Direction::OUT,
-        });
+        let dir = Direction::OUT;
+        match &self.window {
+            None => new_ops.push(Operations::Neighbours { dir }),
+            Some(window) => new_ops.push(Operations::NeighboursWindow {
+                dir,
+                t_start: window.start,
+                t_end: window.end,
+            }),
+        }
         Self {
             graph: self.graph.clone(),
             operations: Arc::new(new_ops),
+            window: None,
         }
     }
 }
@@ -215,6 +243,7 @@ pub struct PathFromVertex<G: GraphViewOps + Clone> {
     graph: G,
     vertex: VertexRef,
     operations: Arc<Vec<Operations>>,
+    window: Option<Range<i64>>,
 }
 
 impl<G: GraphViewOps> PathFromVertex<G> {
@@ -222,11 +251,16 @@ impl<G: GraphViewOps> PathFromVertex<G> {
         let init: Box<dyn Iterator<Item = VertexRef> + Send> = Box::new(iter::once(self.vertex));
         let g = self.graph.clone();
         let ops = self.operations.clone();
-        Box::new(
-            ops.iter()
-                .fold(init, |it, op| Box::new(op.op(g.clone(), it)))
-                .map(move |v| VertexView::new(g.clone(), v)),
-        )
+        let iter = ops
+            .iter()
+            .fold(init, |it, op| Box::new(op.op(g.clone(), it)))
+            .map(move |v| VertexView::new(g.clone(), v));
+        let window = self.window.clone();
+        if let Some(window) = window {
+            Box::new(iter.map(move |v| v.window(window.start, window.end)))
+        } else {
+            Box::new(iter)
+        }
     }
 
     pub(crate) fn new<V: Into<VertexRef>>(
@@ -238,6 +272,7 @@ impl<G: GraphViewOps> PathFromVertex<G> {
             graph,
             vertex: vertex.into(),
             operations: Arc::new(vec![operation]),
+            window: None,
         }
     }
 }
@@ -321,35 +356,58 @@ impl<G: GraphViewOps> PathFromVertex<G> {
 
     pub fn neighbours(&self) -> Self {
         let mut new_ops = (*self.operations).clone();
-        new_ops.push(Operations::Neighbours {
-            dir: Direction::BOTH,
-        });
+        let dir = Direction::BOTH;
+        match &self.window {
+            None => new_ops.push(Operations::Neighbours { dir }),
+            Some(window) => new_ops.push(Operations::NeighboursWindow {
+                dir,
+                t_start: window.start,
+                t_end: window.end,
+            }),
+        }
         Self {
             graph: self.graph.clone(),
             vertex: self.vertex,
             operations: Arc::new(new_ops),
+            window: None,
         }
     }
 
     pub fn in_neighbours(&self) -> Self {
         let mut new_ops = (*self.operations).clone();
-        new_ops.push(Operations::Neighbours { dir: Direction::IN });
+        let dir = Direction::IN;
+        match &self.window {
+            None => new_ops.push(Operations::Neighbours { dir }),
+            Some(window) => new_ops.push(Operations::NeighboursWindow {
+                dir,
+                t_start: window.start,
+                t_end: window.end,
+            }),
+        }
         Self {
             graph: self.graph.clone(),
             vertex: self.vertex,
             operations: Arc::new(new_ops),
+            window: None,
         }
     }
 
     pub fn out_neighbours(&self) -> Self {
         let mut new_ops = (*self.operations).clone();
-        new_ops.push(Operations::Neighbours {
-            dir: Direction::OUT,
-        });
+        let dir = Direction::OUT;
+        match &self.window {
+            None => new_ops.push(Operations::Neighbours { dir }),
+            Some(window) => new_ops.push(Operations::NeighboursWindow {
+                dir,
+                t_start: window.start,
+                t_end: window.end,
+            }),
+        }
         Self {
             graph: self.graph.clone(),
             vertex: self.vertex,
             operations: Arc::new(new_ops),
+            window: None,
         }
     }
 }

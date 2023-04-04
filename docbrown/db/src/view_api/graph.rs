@@ -83,14 +83,14 @@ impl<G: Send + Sync + Sized + GraphViewInternalOps + 'static + Clone> GraphViewO
 }
 
 impl<G: GraphViewOps> TimeOps for G {
-    type WindowedView = WindowedGraph<Self>;
+    type WindowedViewType = WindowedGraph<Self>;
 
-    fn earliest_time(&self) -> Option<i64> {
-        self.earliest_time_global()
+    fn start(&self) -> Option<i64> {
+        self.view_start()
     }
 
-    fn latest_time(&self) -> Option<i64> {
-        self.latest_time_global()
+    fn end(&self) -> Option<i64> {
+        self.view_end()
     }
 
     fn window(&self, t_start: i64, t_end: i64) -> WindowedGraph<Self> {

@@ -26,6 +26,14 @@ impl From<Graph> for DynamicGraph {
 }
 
 impl GraphViewInternalOps for DynamicGraph {
+    fn view_start(&self) -> Option<i64> {
+        self.0.view_start()
+    }
+
+    fn view_end(&self) -> Option<i64> {
+        self.0.view_end()
+    }
+
     fn earliest_time_global(&self) -> Option<i64> {
         self.0.earliest_time_global()
     }

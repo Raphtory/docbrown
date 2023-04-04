@@ -50,7 +50,7 @@ pub fn ba_preferential_attachment(
     edges_per_step: usize,
 ) -> () {
     let mut rng = thread_rng();
-    let mut latest_time = match graph.latest_time() {
+    let mut latest_time = match graph.end() {
         None => 0,
         Some(time) => time,
     };

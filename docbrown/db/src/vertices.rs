@@ -4,18 +4,27 @@ use crate::vertex::VertexView;
 use crate::view_api::*;
 use docbrown_core::{Direction, Prop};
 use std::collections::HashMap;
+use std::ops::Range;
 
 pub struct Vertices<G: GraphViewOps> {
     graph: G,
+    window: Option<Range<i64>>,
 }
 
 impl<G: GraphViewOps> Vertices<G> {
     pub(crate) fn new(graph: G) -> Vertices<G> {
-        Self { graph }
+        Self {
+            graph,
+            window: None,
+        }
     }
     pub fn iter(&self) -> Box<dyn Iterator<Item = VertexView<G>> + Send> {
         let g = self.graph.clone();
-        Box::new(g.vertex_refs().map(move |v| VertexView::new(g.clone(), v)))
+        let w = self.window.clone();
+        Box::new(
+            g.vertex_refs()
+                .map(move |v| VertexView::new_windowed(g.clone(), v, w.clone())),
+        )
     }
 
     pub fn id(&self) -> Box<dyn Iterator<Item = u64> + Send> {
@@ -102,27 +111,48 @@ impl<G: GraphViewOps> Vertices<G> {
     }
 
     pub fn neighbours(&self) -> PathFromGraph<G> {
-        PathFromGraph::new(
-            self.graph.clone(),
-            Operations::Neighbours {
-                dir: Direction::BOTH,
-            },
-        )
+        let dir = Direction::BOTH;
+        match &self.window {
+            None => PathFromGraph::new(self.graph.clone(), Operations::Neighbours { dir }),
+            Some(w) => PathFromGraph::new(
+                self.graph.clone(),
+                Operations::NeighboursWindow {
+                    dir,
+                    t_start: w.start,
+                    t_end: w.end,
+                },
+            ),
+        }
     }
 
     pub fn in_neighbours(&self) -> PathFromGraph<G> {
-        let g = self.graph.clone();
-        PathFromGraph::new(g, Operations::Neighbours { dir: Direction::IN })
+        let dir = Direction::IN;
+        match &self.window {
+            None => PathFromGraph::new(self.graph.clone(), Operations::Neighbours { dir }),
+            Some(w) => PathFromGraph::new(
+                self.graph.clone(),
+                Operations::NeighboursWindow {
+                    dir,
+                    t_start: w.start,
+                    t_end: w.end,
+                },
+            ),
+        }
     }
 
     pub fn out_neighbours(&self) -> PathFromGraph<G> {
-        let g = self.graph.clone();
-        PathFromGraph::new(
-            g,
-            Operations::Neighbours {
-                dir: Direction::OUT,
-            },
-        )
+        let dir = Direction::OUT;
+        match &self.window {
+            None => PathFromGraph::new(self.graph.clone(), Operations::Neighbours { dir }),
+            Some(w) => PathFromGraph::new(
+                self.graph.clone(),
+                Operations::NeighboursWindow {
+                    dir,
+                    t_start: w.start,
+                    t_end: w.end,
+                },
+            ),
+        }
     }
 }
 
@@ -132,5 +162,24 @@ impl<G: GraphViewOps> IntoIterator for Vertices<G> {
 
     fn into_iter(self) -> Self::IntoIter {
         self.iter()
+    }
+}
+
+impl<G: GraphViewOps> TimeOps for Vertices<G> {
+    type WindowedViewType = Self;
+
+    fn start(&self) -> Option<i64> {
+        self.graph.start()
+    }
+
+    fn end(&self) -> Option<i64> {
+        self.graph.end()
+    }
+
+    fn window(&self, t_start: i64, t_end: i64) -> Self::WindowedViewType {
+        Self {
+            graph: self.graph.clone(),
+            window: Some(t_start..t_end),
+        }
     }
 }

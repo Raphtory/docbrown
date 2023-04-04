@@ -8,10 +8,24 @@ use std::sync::Arc;
 /// The GraphViewInternalOps trait provides a set of methods to query a directed graph
 /// represented by the docbrown_core::tgraph::TGraph struct.
 pub trait GraphViewInternalOps {
+    /// Returns the default start time for perspectives over the view
+    fn view_start(&self) -> Option<i64>;
+
+    /// Returns the default end time for perspectives over the view
+    fn view_end(&self) -> Option<i64>;
+
+    /// Returns the timestamp for the earliest activity
     fn earliest_time_global(&self) -> Option<i64>;
+
+    /// Returns the timestamp for the earliest activity in the window
     fn earliest_time_window(&self, t_start: i64, t_end: i64) -> Option<i64>;
+
+    /// Returns the timestamp for the latest activity
     fn latest_time_global(&self) -> Option<i64>;
+
+    /// Returns the timestamp for the latest activity in the window
     fn latest_time_window(&self, t_start: i64, t_end: i64) -> Option<i64>;
+
     /// Returns the total number of vertices in the graph.
     fn vertices_len(&self) -> usize;
 

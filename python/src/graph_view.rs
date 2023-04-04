@@ -48,11 +48,11 @@ impl PyGraphView {
     //******  Metrics APIs ******//
 
     pub fn earliest_time(&self) -> Option<i64> {
-        self.graph.earliest_time()
+        self.graph.start()
     }
 
     pub fn latest_time(&self) -> Option<i64> {
-        self.graph.latest_time()
+        self.graph.end()
     }
 
     pub fn num_edges(&self) -> usize {
