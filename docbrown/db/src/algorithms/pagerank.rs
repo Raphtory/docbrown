@@ -167,18 +167,16 @@ impl Program for UnweightedPageRankS1 {
 
         c.step(|s| {
             let out_degree = s.out_degree().unwrap();
-            let new_score = s.read(&score).0;
-            let w = new_score / out_degree as f32;
             if out_degree > 0 {
-                for t in s.neighbours() {
-                    t.update(&recv_score, SumF32(w))
+                let new_score = s.read(&score).0 / out_degree as f32;
+                for t in s.neighbours_out() {
+                    t.update(&recv_score, SumF32(new_score))
                 }
             }
         });
     }
 
     fn post_eval(&self, c: &mut GlobalEvalState) {
-        let _ = c.agg(val::<MulF32>(0));
         let _ = c.agg(sum::<SumF32>(1));
         c.step(|_| true)
     }
@@ -193,7 +191,7 @@ impl Program for UnweightedPageRankS1 {
 struct UnweightedPageRankS2 {
     score: AccId<MulF32, MulF32, MulF32, ValDef<MulF32>>,
     recv_score: AccId<SumF32, SumF32, SumF32, SumDef<SumF32>>,
-    max_diff: AccId<MulF32, MulF32, MulF32, MaxDef<MulF32>>,
+    max_diff: AccId<f32, f32, f32, MaxDef<f32>>,
 }
 
 impl UnweightedPageRankS2 {
@@ -212,21 +210,20 @@ impl Program for UnweightedPageRankS2 {
     fn local_eval(&self, c: &LocalState) {
         let score: AggRef<MulF32, MulF32, MulF32, ValDef<MulF32>> = c.agg(self.score.clone());
         let recv_score: AggRef<SumF32, SumF32, SumF32, SumDef<SumF32>> = c.agg(self.recv_score.clone());
-        let max_diff: AggRef<MulF32, MulF32, MulF32, MaxDef<MulF32>> = c.global_agg(self.max_diff.clone());
+        let max_diff: AggRef<f32, f32, f32, MaxDef<f32>> = c.global_agg(self.max_diff.clone());
 
         c.step(|s| {
-            println!("{:?}", s.read(&recv_score));
             s.update(&score, MulF32(s.read(&recv_score).0));
             let prev = s.read_prev(&score);
             let curr = s.read(&score);
-            s.global_update(&max_diff, MulF32(abs((prev - curr).0)));
+            let md = abs((prev.clone() - curr.clone()).0);
+            println!("prev = {:?}, curr = {:?}, id = {}, max_diff = {:?}", prev, curr, s.global_id(), md);
+            s.global_update(&max_diff, md);
         });
     }
 
     fn post_eval(&self, c: &mut GlobalEvalState) {
-        let _ = c.agg(val::<MulF32>(0));
-        let _ = c.agg(sum::<SumF32>(1));
-        let _ = c.global_agg(max::<MulF32>(2));
+        let _ = c.global_agg(max::<f32>(2));
         c.step(|_| true)
     }
 
@@ -239,7 +236,7 @@ impl Program for UnweightedPageRankS2 {
 
 struct UnweightedPageRankS3 {
     recv_score: AccId<SumF32, SumF32, SumF32, SumDef<SumF32>>,
-    max_diff: AccId<MulF32, MulF32, MulF32, MaxDef<MulF32>>,
+    max_diff: AccId<f32, f32, f32, MaxDef<f32>>,
 }
 
 impl UnweightedPageRankS3 {
@@ -256,7 +253,7 @@ impl Program for UnweightedPageRankS3 {
 
     fn local_eval(&self, c: &LocalState) {
         let recv_score: AggRef<SumF32, SumF32, SumF32, SumDef<SumF32>> = c.agg(self.recv_score.clone());
-        let max_diff: AggRef<MulF32, MulF32, MulF32, MaxDef<MulF32>> = c.global_agg(self.max_diff.clone());
+        let max_diff: AggRef<f32, f32, f32, MaxDef<f32>> = c.global_agg(self.max_diff.clone());
 
         c.step(|s| {
             s.reset(&recv_score);
@@ -265,8 +262,6 @@ impl Program for UnweightedPageRankS3 {
     }
 
     fn post_eval(&self, c: &mut GlobalEvalState) {
-        let _ = c.agg(sum::<SumF32>(1));
-        let _ = c.global_agg(max::<MulF32>(2));
         c.step(|_| true)
     }
 
@@ -287,23 +282,29 @@ pub fn unweighted_page_rank(
     let pg_s2 = UnweightedPageRankS2::new();
     let pg_s3 = UnweightedPageRankS3::new();
 
-    let max_diff = MulF32(0.01f32);
+    let max_diff = 0.001f32;
     let mut i = 0;
 
     loop {
         pg_s1.run_step(g, &mut c);
-        pg_s2.run_step(g, &mut c);
-        if c.keep_past_state {
-            c.ss += 1;
-        }
-        i += 1;
+        println!("vec parts: {:?}", c.read_vec_partitions(&val::<MulF32>(0)));
+        println!("loop: {:?}", c.read_global_state(&max::<f32>(2)));
 
-        if c.read_global_state(&max::<MulF32>(2)).unwrap() >= max_diff && i < iter_count {
-            // if c.ss >= 3 && i < iter_count {
+        pg_s2.run_step(g, &mut c);
+        
+        let r = c.read_global_state(&max::<f32>(2)).unwrap();
+        println!("max_diff = {:?}", r);
+
+        if r <= max_diff || i > iter_count {
             break;
         }
 
         pg_s3.run_step(g, &mut c);
+        
+        if c.keep_past_state {
+            c.ss += 1;
+        }
+        i += 1;
     }
 
     let mut results: FxHashMap<u64, f32> = FxHashMap::default();
@@ -326,26 +327,34 @@ mod page_rank_tests {
 
     #[test]
     fn test_page_rank() {
-        let graph = Graph::new(2);
+        let graph = Graph::new(1);
+
+        // let edges = vec![
+        //     (2, 3),
+        //     (3, 2),
+        //     (4, 1),
+        //     (4, 2),
+        //     (5, 2),
+        //     (5, 4),
+        //     (5, 6),
+        //     (6, 2),
+        //     (6, 5),
+        //     (7, 2),
+        //     (7, 5),
+        //     (8, 2),
+        //     (8, 5),
+        //     (9, 2),
+        //     (9, 5),
+        //     (10, 5),
+        //     (11, 5),
+        // ];
 
         let edges = vec![
+            (1, 2),
+            (1, 4),
             (2, 3),
-            (3, 2),
-            (4, 1),
-            (4, 2),
-            (5, 2),
-            (5, 4),
-            (5, 6),
-            (6, 2),
-            (6, 5),
-            (7, 2),
-            (7, 5),
-            (8, 2),
-            (8, 5),
-            (9, 2),
-            (9, 5),
-            (10, 5),
-            (11, 5),
+            (3, 1),
+            (4, 1)
         ];
 
         for (src, dst) in edges {
@@ -354,7 +363,7 @@ mod page_rank_tests {
 
         let window = 0..10;
 
-        let results: FxHashMap<u64, f32> = unweighted_page_rank(&graph, window, usize::MAX)
+        let results: FxHashMap<u64, f32> = unweighted_page_rank(&graph, window, 10)
             .into_iter()
             .map(|(k, v)| (k, v))
             .collect();

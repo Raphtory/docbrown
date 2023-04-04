@@ -448,6 +448,7 @@ impl EvalVertexView {
     ) -> Result<OUT, OUT>
     where
         A: StateType,
+        OUT: Debug
     {
         self.state
             .borrow()
@@ -461,6 +462,7 @@ impl EvalVertexView {
     ) -> OUT
     where
         A: StateType,
+        OUT: Debug
     {
         self.state
             .borrow()
@@ -485,6 +487,7 @@ impl EvalVertexView {
     ) -> Result<OUT, OUT>
     where
         A: StateType,
+        OUT: Debug
     {
         self.state
             .borrow()
