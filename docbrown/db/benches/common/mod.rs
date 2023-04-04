@@ -1,6 +1,5 @@
 use criterion::{measurement::WallTime, BatchSize, Bencher, BenchmarkGroup, BenchmarkId};
 use docbrown_db::graph::Graph;
-use docbrown_db::view_api::internal::GraphViewInternalOps;
 use docbrown_db::view_api::*;
 use rand::seq::*;
 use rand::{distributions::Uniform, Rng};
@@ -19,7 +18,7 @@ fn make_time_gen() -> Box<dyn Iterator<Item = i64>> {
 }
 
 pub fn bootstrap_graph(num_shards: usize, num_vertices: usize) -> Graph {
-    let graph = Graph::new(4);
+    let graph = Graph::new(num_shards);
     let mut indexes = make_index_gen();
     let mut times = make_time_gen();
     let num_edges = num_vertices / 2;
@@ -27,7 +26,7 @@ pub fn bootstrap_graph(num_shards: usize, num_vertices: usize) -> Graph {
         let source = indexes.next().unwrap();
         let target = indexes.next().unwrap();
         let time = times.next().unwrap();
-        graph.add_edge(time, source, target, &vec![]).unwrap();
+        graph.add_edge(time, source, target, &vec![], None).unwrap();
     }
     graph
 }
@@ -93,7 +92,7 @@ pub fn run_ingestion_benchmarks<F>(
         |b: &mut Bencher| {
             b.iter_batched_ref(
                 || (make_graph(), time_sample()),
-                |(g, t)| g.add_edge(*t, 0, 0, &vec![]),
+                |(g, t)| g.add_edge(*t, 0, 0, &vec![], None),
                 BatchSize::SmallInput,
             )
         },
@@ -105,7 +104,7 @@ pub fn run_ingestion_benchmarks<F>(
         |b: &mut Bencher| {
             b.iter_batched_ref(
                 || (make_graph(), index_sample(), index_sample()),
-                |(g, s, d)| g.add_edge(0, *s, *d, &vec![]),
+                |(g, s, d)| g.add_edge(0, *s, *d, &vec![], None),
                 BatchSize::SmallInput,
             )
         },
@@ -142,7 +141,7 @@ pub fn run_large_ingestion_benchmarks<F>(
                 },
                 |(g, times)| {
                     for t in times.iter() {
-                        g.add_edge(*t, 0, 0, &vec![]).unwrap()
+                        g.add_edge(*t, 0, 0, &vec![], None).unwrap()
                     }
                 },
                 BatchSize::SmallInput,
@@ -171,6 +170,7 @@ pub fn run_large_ingestion_benchmarks<F>(
                             src_gen.next().unwrap(),
                             dst_gen.next().unwrap(),
                             &vec![],
+                            None,
                         )
                         .unwrap()
                     }
@@ -187,7 +187,7 @@ pub fn run_analysis_benchmarks<F, G>(
     parameter: Option<usize>,
 ) where
     F: Fn() -> G,
-    G: GraphViewInternalOps + GraphViewOps,
+    G: GraphViewOps,
 {
     let graph = make_graph();
     let edges: HashSet<(u64, u64)> = graph
@@ -204,7 +204,7 @@ pub fn run_analysis_benchmarks<F, G>(
     bench(group, "has_edge_existing", parameter, |b: &mut Bencher| {
         let mut rng = rand::thread_rng();
         let edge = edges.iter().choose(&mut rng).expect("non-empty graph");
-        b.iter(|| graph.has_edge(edge.0, edge.1))
+        b.iter(|| graph.has_edge(edge.0, edge.1, None))
     });
 
     bench(
@@ -222,12 +222,12 @@ pub fn run_analysis_benchmarks<F, G>(
                     break edge;
                 }
             };
-            b.iter(|| graph.has_edge(edge.0, edge.1))
+            b.iter(|| graph.has_edge(edge.0, edge.1, None))
         },
     );
 
     bench(group, "num_vertices", parameter, |b: &mut Bencher| {
-        b.iter(|| graph.num_vertices().unwrap())
+        b.iter(|| graph.num_vertices())
     });
 
     bench(group, "max_id", parameter, |b: &mut Bencher| {
@@ -235,13 +235,7 @@ pub fn run_analysis_benchmarks<F, G>(
     });
 
     bench(group, "max_degree", parameter, |b: &mut Bencher| {
-        b.iter(|| {
-            graph
-                .vertices()
-                .into_iter()
-                .map(|v| v.degree().unwrap())
-                .max()
-        })
+        b.iter(|| graph.vertices().into_iter().map(|v| v.degree()).max())
     });
 
     bench(
@@ -252,9 +246,8 @@ pub fn run_analysis_benchmarks<F, G>(
             let mut rng = rand::thread_rng();
             let v = graph
                 .vertex(*vertices.choose(&mut rng).expect("non-empty graph"))
-                .expect("existing vertex")
-                .expect("Some vertex");
-            b.iter(|| v.neighbours().degree().unwrap().max())
+                .expect("existing vertex");
+            b.iter(|| v.neighbours().degree().max())
         },
     );
 }

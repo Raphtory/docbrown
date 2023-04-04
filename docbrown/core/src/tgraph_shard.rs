@@ -1,3 +1,14 @@
+//! A data structure for sharding a temporal graph.
+//!
+//! When a docbrown graph is created, the code will automatically shard the graph depending
+//! on how many shards you set the graph to originally have when initializing it.
+//!
+//! For example, Graph::new(4) will create a graph with 4 shards.
+//!
+//! Each of these shards will be stored in a separate file, and will be loaded into memory when needed.
+//!
+//! Each shard will have its own set of vertex and edge data, and will be able to be queried independently.
+
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::ops::Range;
@@ -9,7 +20,7 @@ use genawaiter::yield_;
 
 use crate::tgraph::{EdgeRef, TemporalGraph, VertexRef};
 use crate::vertex::InputVertex;
-use crate::{Direction, Prop};
+use crate::{Direction, Prop, Time};
 
 use self::errors::GraphError;
 use self::lock::OptionLock;
@@ -139,12 +150,12 @@ impl TGraphShard<TemporalGraph> {
     }
 
     #[inline(always)]
-    fn read_shard<A, F>(&self, f: F) -> Result<A, GraphError>
+    fn read_shard<A, F>(&self, f: F) -> A
     where
-        F: Fn(&TemporalGraph) -> Result<A, GraphError>,
+        F: Fn(&TemporalGraph) -> A,
     {
         let binding = self.rc.read();
-        let shard = binding.as_ref().ok_or(GraphError::IllegalGraphAccess)?;
+        let shard = binding.as_ref().unwrap();
         f(&shard)
     }
 
@@ -154,20 +165,28 @@ impl TGraphShard<TemporalGraph> {
         ImmutableTGraphShard { rc: Arc::new(g) }
     }
 
-    pub fn earliest_time(&self) -> Result<i64, GraphError> {
-        self.read_shard(|tg| Ok(tg.earliest_time))
+    pub fn earliest_time(&self) -> i64 {
+        self.read_shard(|tg| tg.earliest_time)
     }
 
-    pub fn latest_time(&self) -> Result<i64, GraphError> {
-        self.read_shard(|tg| Ok(tg.latest_time))
+    pub fn latest_time(&self) -> i64 {
+        self.read_shard(|tg| tg.latest_time)
     }
 
-    pub fn len(&self) -> Result<usize, GraphError> {
-        self.read_shard(|tg| Ok(tg.len()))
+    pub fn len(&self) -> usize {
+        self.read_shard(|tg| tg.len())
     }
 
-    pub fn out_edges_len(&self, layer: Option<usize>) -> Result<usize, GraphError> {
-        self.read_shard(|tg| Ok(tg.out_edges_len(layer)))
+    pub fn out_edges_len(&self, layer: Option<usize>) -> usize {
+        self.read_shard(|tg| tg.out_edges_len(layer))
+    }
+
+    pub fn out_edges_len_window(&self, w: &Range<Time>, layer: Option<usize>) -> usize {
+        self.read_shard(|tg| tg.out_edges_len_window(w, layer))
+    }
+
+    pub fn len_window(&self, w: Range<i64>) -> usize {
+        self.read_shard(|tg| tg.len_window(&w))
     }
 
     pub fn has_edge(
@@ -176,8 +195,8 @@ impl TGraphShard<TemporalGraph> {
         dst: u64,
         layer_name: Option<&str>,
         layer_id: Option<usize>,
-    ) -> Result<bool, GraphError> {
-        self.read_shard(|tg| Ok(tg.has_edge(src, dst, layer_name, layer_id)))
+    ) -> bool {
+        self.read_shard(|tg| tg.has_edge(src, dst, layer_name, layer_id))
     }
 
     pub fn has_edge_window(
@@ -187,16 +206,16 @@ impl TGraphShard<TemporalGraph> {
         w: Range<i64>,
         layer_name: Option<&str>,
         layer_id: Option<usize>,
-    ) -> Result<bool, GraphError> {
-        self.read_shard(|tg| Ok(tg.has_edge_window(src, dst, layer_name, layer_id, &w)))
+    ) -> bool {
+        self.read_shard(|tg| tg.has_edge_window(src, dst, &w, layer_name, layer_id))
     }
 
-    pub fn has_vertex(&self, v: u64) -> Result<bool, GraphError> {
-        self.read_shard(|tg| Ok(tg.has_vertex(v)))
+    pub fn has_vertex(&self, v: u64) -> bool {
+        self.read_shard(|tg| tg.has_vertex(v))
     }
 
-    pub fn has_vertex_window(&self, v: u64, w: Range<i64>) -> Result<bool, GraphError> {
-        self.read_shard(|tg| Ok(tg.has_vertex_window(v, &w)))
+    pub fn has_vertex_window(&self, v: u64, w: Range<i64>) -> bool {
+        self.read_shard(|tg| tg.has_vertex_window(v, &w))
     }
 
     pub fn add_vertex<T: InputVertex>(
@@ -227,10 +246,10 @@ impl TGraphShard<TemporalGraph> {
         t: i64,
         src: u64,
         dst: u64,
-        layer: Option<&str>,
         props: &Vec<(String, Prop)>,
+        layer: Option<&str>,
     ) -> Result<(), GraphError> {
-        self.write_shard(|tg| Ok(tg.add_edge_with_props(t, src, dst, layer, props)))
+        self.write_shard(|tg| Ok(tg.add_edge_with_props(t, src, dst, props, layer)))
     }
 
     pub fn add_edge_remote_out(
@@ -238,10 +257,10 @@ impl TGraphShard<TemporalGraph> {
         t: i64,
         src: u64,
         dst: u64,
-        layer: Option<&str>,
         props: &Vec<(String, Prop)>,
+        layer: Option<&str>,
     ) -> Result<(), GraphError> {
-        self.write_shard(|tg| Ok(tg.add_edge_remote_out(t, src, dst, layer, props)))
+        self.write_shard(|tg| Ok(tg.add_edge_remote_out(t, src, dst, props, layer)))
     }
 
     pub fn add_edge_remote_into(
@@ -249,27 +268,27 @@ impl TGraphShard<TemporalGraph> {
         t: i64,
         src: u64,
         dst: u64,
-        layer: Option<&str>,
         props: &Vec<(String, Prop)>,
+        layer: Option<&str>,
     ) -> Result<(), GraphError> {
-        self.write_shard(|tg| Ok(tg.add_edge_remote_into(t, src, dst, layer, props)))
+        self.write_shard(|tg| Ok(tg.add_edge_remote_into(t, src, dst, props, layer)))
     }
 
     pub fn add_edge_properties(
         &self,
         src: u64,
         dst: u64,
-        layer: Option<&str>,
         data: &Vec<(String, Prop)>,
+        layer: Option<&str>,
     ) -> Result<(), GraphError> {
         self.write_shard(|tg| {
-            let res = tg.add_edge_properties(src, dst, layer, data);
+            let res = tg.add_edge_properties(src, dst, data, layer);
             res.map_err(|e| GraphError::FailedToMutateGraph { source: e })
         })
     }
 
-    pub fn degree(&self, v: u64, d: Direction, layer: Option<usize>) -> Result<usize, GraphError> {
-        self.read_shard(|tg: &TemporalGraph| Ok(tg.degree(v, d, layer)))
+    pub fn degree(&self, v: u64, d: Direction, layer: Option<usize>) -> usize {
+        self.read_shard(|tg: &TemporalGraph| tg.degree(v, d, layer))
     }
 
     pub fn degree_window(
@@ -278,16 +297,16 @@ impl TGraphShard<TemporalGraph> {
         w: Range<i64>,
         d: Direction,
         layer: Option<usize>,
-    ) -> Result<usize, GraphError> {
-        self.read_shard(|tg: &TemporalGraph| Ok(tg.degree_window(v, &w, d, layer)))
+    ) -> usize {
+        self.read_shard(|tg: &TemporalGraph| tg.degree_window(v, &w, d, layer))
     }
 
-    pub fn vertex(&self, v: u64) -> Result<Option<VertexRef>, GraphError> {
-        self.read_shard(|tg| Ok(tg.vertex(v)))
+    pub fn vertex(&self, v: u64) -> Option<VertexRef> {
+        self.read_shard(|tg| tg.vertex(v))
     }
 
-    pub fn vertex_window(&self, v: u64, w: Range<i64>) -> Result<Option<VertexRef>, GraphError> {
-        self.read_shard(|tg| Ok(tg.vertex_window(v, &w)))
+    pub fn vertex_window(&self, v: u64, w: Range<i64>) -> Option<VertexRef> {
+        self.read_shard(|tg| tg.vertex_window(v, &w))
     }
 
     pub fn vertex_ids(&self) -> Box<dyn Iterator<Item = u64> + Send> {
@@ -356,19 +375,19 @@ impl TGraphShard<TemporalGraph> {
         dst: u64,
         layer_name: Option<&str>,
         layer_id: Option<usize>,
-    ) -> Result<Option<EdgeRef>, GraphError> {
-        self.read_shard(|tg| Ok(tg.edge(src, dst, layer_name, layer_id)))
+    ) -> Option<EdgeRef> {
+        self.read_shard(|tg| tg.edge(src, dst, layer_name, layer_id))
     }
 
     pub fn edge_window(
         &self,
         src: u64,
         dst: u64,
+        w: Range<i64>,
         layer_name: Option<&str>,
         layer_id: Option<usize>,
-        w: Range<i64>,
-    ) -> Result<Option<EdgeRef>, GraphError> {
-        self.read_shard(|tg| Ok(tg.edge_window(src, dst, layer_name, layer_id, &w)))
+    ) -> Option<EdgeRef> {
+        self.read_shard(|tg| tg.edge_window(src, dst, &w, layer_name, layer_id))
     }
 
     pub fn vertex_edges(
@@ -519,20 +538,16 @@ impl TGraphShard<TemporalGraph> {
         Box::new(iter.into_iter())
     }
 
-    pub fn static_vertex_prop(&self, v: u64, name: String) -> Result<Option<Prop>, GraphError> {
-        self.read_shard(|tg| Ok(tg.static_vertex_prop(v, &name)))
+    pub fn static_vertex_prop(&self, v: u64, name: String) -> Option<Prop> {
+        self.read_shard(|tg| tg.static_vertex_prop(v, &name))
     }
 
-    pub fn static_vertex_prop_keys(&self, v: u64) -> Result<Vec<String>, GraphError> {
-        self.read_shard(|tg| Ok(tg.static_vertex_prop_keys(v)))
+    pub fn static_vertex_prop_keys(&self, v: u64) -> Vec<String> {
+        self.read_shard(|tg| tg.static_vertex_prop_keys(v))
     }
 
-    pub fn temporal_vertex_prop_vec(
-        &self,
-        v: u64,
-        name: String,
-    ) -> Result<Vec<(i64, Prop)>, GraphError> {
-        self.read_shard(|tg| Ok(tg.temporal_vertex_prop_vec(v, &name)))
+    pub fn temporal_vertex_prop_vec(&self, v: u64, name: String) -> Vec<(i64, Prop)> {
+        self.read_shard(|tg| tg.temporal_vertex_prop_vec(v, &name))
     }
 
     pub fn temporal_vertex_prop_vec_window(
@@ -540,44 +555,31 @@ impl TGraphShard<TemporalGraph> {
         v: u64,
         name: String,
         w: Range<i64>,
-    ) -> Result<Vec<(i64, Prop)>, GraphError> {
-        self.read_shard(|tg| Ok(tg.temporal_vertex_prop_vec_window(v, &name, &w)))
+    ) -> Vec<(i64, Prop)> {
+        self.read_shard(|tg| (tg.temporal_vertex_prop_vec_window(v, &name, &w)))
     }
 
-    pub fn temporal_vertex_props(
-        &self,
-        v: u64,
-    ) -> Result<HashMap<String, Vec<(i64, Prop)>>, GraphError> {
-        self.read_shard(|tg| Ok(tg.temporal_vertex_props(v)))
+    pub fn temporal_vertex_props(&self, v: u64) -> HashMap<String, Vec<(i64, Prop)>> {
+        self.read_shard(|tg| tg.temporal_vertex_props(v))
     }
 
     pub fn temporal_vertex_props_window(
         &self,
         v: u64,
         w: Range<i64>,
-    ) -> Result<HashMap<String, Vec<(i64, Prop)>>, GraphError> {
-        self.read_shard(|tg| Ok(tg.temporal_vertex_props_window(v, &w)))
+    ) -> HashMap<String, Vec<(i64, Prop)>> {
+        self.read_shard(|tg| tg.temporal_vertex_props_window(v, &w))
     }
-    pub fn static_edge_prop(
-        &self,
-        e: usize,
-        layer: usize,
-        name: String,
-    ) -> Result<Option<Prop>, GraphError> {
-        self.read_shard(|tg| Ok(tg.static_edge_prop(e, layer, &name)))
+    pub fn static_edge_prop(&self, e: usize, layer: usize, name: String) -> Option<Prop> {
+        self.read_shard(|tg| tg.static_edge_prop(e, layer, &name))
     }
 
-    pub fn static_edge_prop_keys(&self, e: usize, layer: usize) -> Result<Vec<String>, GraphError> {
-        self.read_shard(|tg| Ok(tg.static_edge_prop_keys(e, layer)))
+    pub fn static_edge_prop_keys(&self, e: usize, layer: usize) -> Vec<String> {
+        self.read_shard(|tg| tg.static_edge_prop_keys(e, layer))
     }
 
-    pub fn temporal_edge_prop_vec(
-        &self,
-        e: usize,
-        layer: usize,
-        name: String,
-    ) -> Result<Vec<(i64, Prop)>, GraphError> {
-        self.read_shard(|tg| Ok(tg.temporal_edge_prop_vec(e, layer, &name)))
+    pub fn temporal_edge_prop_vec(&self, e: usize, layer: usize, name: String) -> Vec<(i64, Prop)> {
+        self.read_shard(|tg| tg.temporal_edge_prop_vec(e, layer, &name))
     }
 
     pub fn temporal_edge_props_vec_window(
@@ -586,8 +588,8 @@ impl TGraphShard<TemporalGraph> {
         layer: usize,
         name: String,
         w: Range<i64>,
-    ) -> Result<Vec<(i64, Prop)>, GraphError> {
-        self.read_shard(|tg| Ok(tg.temporal_edge_prop_vec_window(e, layer, &name, w.clone())))
+    ) -> Vec<(i64, Prop)> {
+        self.read_shard(|tg| tg.temporal_edge_prop_vec_window(e, layer, &name, w.clone()))
     }
 }
 
@@ -642,7 +644,7 @@ impl ImmutableTGraphShard<TemporalGraph> {
 }
 #[cfg(test)]
 mod temporal_graph_partition_test {
-    use crate::{tgraph_shard::TGraphShard, Direction as Dir};
+    use crate::{tgraph_shard::TGraphShard, Direction};
     use itertools::Itertools;
     use quickcheck::{Arbitrary, TestResult};
     use rand::Rng;
@@ -680,7 +682,7 @@ mod temporal_graph_partition_test {
                 .expect("failed to add vertex");
         }
 
-        TestResult::from_bool(g.has_vertex(rand_vertex).unwrap())
+        TestResult::from_bool(g.has_vertex(rand_vertex))
     }
 
     #[test]
@@ -697,12 +699,12 @@ mod temporal_graph_partition_test {
         let g = TGraphShard::default();
 
         for (t, src, dst) in &vs {
-            g.add_edge(*t, *src, *dst, None, &vec![]).unwrap();
+            g.add_edge(*t, *src, *dst, &vec![], None).unwrap();
         }
 
-        assert!(g.has_vertex_window(1, -1..7).unwrap());
-        assert!(!g.has_vertex_window(2, 0..1).unwrap());
-        assert!(g.has_vertex_window(3, 0..8).unwrap());
+        assert!(g.has_vertex_window(1, -1..7));
+        assert!(!g.has_vertex_window(2, 0..1));
+        assert!(g.has_vertex_window(3, 0..8));
     }
 
     #[quickcheck]
@@ -715,7 +717,7 @@ mod temporal_graph_partition_test {
                 .expect("failed to add vertex");
         }
 
-        assert_eq!(g.len().unwrap(), expected_len)
+        assert_eq!(g.len(), expected_len)
     }
 
     #[test]
@@ -732,7 +734,7 @@ mod temporal_graph_partition_test {
         let g = TGraphShard::default();
 
         for (t, src, dst) in &vs {
-            g.add_edge(*t, *src, *dst, None, &vec![]).unwrap();
+            g.add_edge(*t, *src, *dst, &vec![], None).unwrap();
         }
 
         let actual = g.vertex_ids().collect::<Vec<_>>();
@@ -777,16 +779,16 @@ mod temporal_graph_partition_test {
         let g = TGraphShard::default();
 
         for (t, src, dst) in &vs {
-            g.add_edge(*t, *src, *dst, None, &vec![]).unwrap();
+            g.add_edge(*t, *src, *dst, &vec![], None).unwrap();
         }
 
         let expected = vec![(2, 3, 3), (2, 1, 2), (1, 1, 2)];
         let actual = (1..=3)
             .map(|i| {
                 (
-                    g.degree(i, Dir::IN, None).unwrap(),
-                    g.degree(i, Dir::OUT, None).unwrap(),
-                    g.degree(i, Dir::BOTH, None).unwrap(),
+                    g.degree(i, Direction::IN, None),
+                    g.degree(i, Direction::OUT, None),
+                    g.degree(i, Direction::BOTH, None),
                 )
             })
             .collect::<Vec<_>>();
@@ -805,29 +807,29 @@ mod temporal_graph_partition_test {
         g.add_vertex(5, 104, &vec![]).expect("failed to add vertex");
         g.add_vertex(5, 105, &vec![]).expect("failed to add vertex");
 
-        g.add_edge(6, 100, 101, None, &vec![]).unwrap();
-        g.add_edge(7, 100, 102, None, &vec![]).unwrap();
-        g.add_edge(8, 101, 103, None, &vec![]).unwrap();
-        g.add_edge(9, 102, 104, None, &vec![]).unwrap();
-        g.add_edge(9, 110, 104, None, &vec![]).unwrap();
+        g.add_edge(6, 100, 101, &vec![], None).unwrap();
+        g.add_edge(7, 100, 102, &vec![], None).unwrap();
+        g.add_edge(8, 101, 103, &vec![], None).unwrap();
+        g.add_edge(9, 102, 104, &vec![], None).unwrap();
+        g.add_edge(9, 110, 104, &vec![], None).unwrap();
 
-        assert_eq!(g.degree_window(101, 0i64..i64::MAX, Dir::IN, None), Ok(1));
-        assert_eq!(g.degree_window(100, 0..i64::MAX, Dir::IN, None), Ok(0));
-        assert_eq!(g.degree_window(101, 0..1, Dir::IN, None), Ok(0));
-        assert_eq!(g.degree_window(101, 10..20, Dir::IN, None), Ok(0));
-        assert_eq!(g.degree_window(105, 0..i64::MAX, Dir::IN, None), Ok(0));
-        assert_eq!(g.degree_window(104, 0..i64::MAX, Dir::IN, None), Ok(2));
-        assert_eq!(g.degree_window(101, 0..i64::MAX, Dir::OUT, None), Ok(1));
-        assert_eq!(g.degree_window(103, 0..i64::MAX, Dir::OUT, None), Ok(0));
-        assert_eq!(g.degree_window(105, 0..i64::MAX, Dir::OUT, None), Ok(0));
-        assert_eq!(g.degree_window(101, 0..1, Dir::OUT, None), Ok(0));
-        assert_eq!(g.degree_window(101, 10..20, Dir::OUT, None), Ok(0));
-        assert_eq!(g.degree_window(100, 0..i64::MAX, Dir::OUT, None), Ok(2));
-        assert_eq!(g.degree_window(101, 0..i64::MAX, Dir::BOTH, None), Ok(2));
-        assert_eq!(g.degree_window(100, 0..i64::MAX, Dir::BOTH, None), Ok(2));
-        assert_eq!(g.degree_window(100, 0..1, Dir::BOTH, None), Ok(0));
-        assert_eq!(g.degree_window(100, 10..20, Dir::BOTH, None), Ok(0));
-        assert_eq!(g.degree_window(105, 0..i64::MAX, Dir::BOTH, None), Ok(0));
+        assert_eq!(g.degree_window(101, 0i64..i64::MAX, Direction::IN, None), 1);
+        assert_eq!(g.degree_window(100, 0..i64::MAX, Direction::IN, None), 0);
+        assert_eq!(g.degree_window(101, 0..1, Direction::IN, None), 0);
+        assert_eq!(g.degree_window(101, 10..20, Direction::IN, None), 0);
+        assert_eq!(g.degree_window(105, 0..i64::MAX, Direction::IN, None), 0);
+        assert_eq!(g.degree_window(104, 0..i64::MAX, Direction::IN, None), 2);
+        assert_eq!(g.degree_window(101, 0..i64::MAX, Direction::OUT, None), 1);
+        assert_eq!(g.degree_window(103, 0..i64::MAX, Direction::OUT, None), 0);
+        assert_eq!(g.degree_window(105, 0..i64::MAX, Direction::OUT, None), 0);
+        assert_eq!(g.degree_window(101, 0..1, Direction::OUT, None), 0);
+        assert_eq!(g.degree_window(101, 10..20, Direction::OUT, None), 0);
+        assert_eq!(g.degree_window(100, 0..i64::MAX, Direction::OUT, None), 2);
+        assert_eq!(g.degree_window(101, 0..i64::MAX, Direction::BOTH, None), 2);
+        assert_eq!(g.degree_window(100, 0..i64::MAX, Direction::BOTH, None), 2);
+        assert_eq!(g.degree_window(100, 0..1, Direction::BOTH, None), 0);
+        assert_eq!(g.degree_window(100, 10..20, Direction::BOTH, None), 0);
+        assert_eq!(g.degree_window(105, 0..i64::MAX, Direction::BOTH, None), 0);
     }
 
     #[test]
@@ -844,16 +846,16 @@ mod temporal_graph_partition_test {
         let g = TGraphShard::default();
 
         for (t, src, dst) in &vs {
-            g.add_edge(*t, *src, *dst, None, &vec![]).unwrap();
+            g.add_edge(*t, *src, *dst, &vec![], None).unwrap();
         }
 
         let expected = vec![(2, 3, 5), (2, 1, 3), (1, 1, 2)];
         let actual = (1..=3)
             .map(|i| {
                 (
-                    g.vertex_edges(i, Dir::IN, None).collect_vec().len(),
-                    g.vertex_edges(i, Dir::OUT, None).collect_vec().len(),
-                    g.vertex_edges(i, Dir::BOTH, None).collect_vec().len(),
+                    g.vertex_edges(i, Direction::IN, None).collect_vec().len(),
+                    g.vertex_edges(i, Direction::OUT, None).collect_vec().len(),
+                    g.vertex_edges(i, Direction::BOTH, None).collect_vec().len(),
                 )
             })
             .collect::<Vec<_>>();
@@ -875,20 +877,20 @@ mod temporal_graph_partition_test {
         let g = TGraphShard::default();
 
         for (t, src, dst) in &vs {
-            g.add_edge(*t, *src, *dst, None, &vec![]).unwrap();
+            g.add_edge(*t, *src, *dst, &vec![], None).unwrap();
         }
 
         let expected = vec![(2, 3, 2), (1, 0, 0), (1, 0, 0)];
         let actual = (1..=3)
             .map(|i| {
                 (
-                    g.vertex_edges_window(i, -1..7, Dir::IN, None)
+                    g.vertex_edges_window(i, -1..7, Direction::IN, None)
                         .collect_vec()
                         .len(),
-                    g.vertex_edges_window(i, 1..7, Dir::OUT, None)
+                    g.vertex_edges_window(i, 1..7, Direction::OUT, None)
                         .collect_vec()
                         .len(),
-                    g.vertex_edges_window(i, 0..1, Dir::BOTH, None)
+                    g.vertex_edges_window(i, 0..1, Direction::BOTH, None)
                         .collect_vec()
                         .len(),
                 )
@@ -912,12 +914,12 @@ mod temporal_graph_partition_test {
         let g = TGraphShard::default();
 
         for (t, src, dst) in &vs {
-            g.add_edge(*t, *src, *dst, None, &vec![]).unwrap();
+            g.add_edge(*t, *src, *dst, &vec![], None).unwrap();
         }
 
         let in_actual = (1..=3)
             .map(|i| {
-                g.vertex_edges_window_t(i, -1..7, Dir::IN, None)
+                g.vertex_edges_window_t(i, -1..7, Direction::IN, None)
                     .map(|e| e.time.unwrap())
                     .collect::<Vec<_>>()
             })
@@ -926,7 +928,7 @@ mod temporal_graph_partition_test {
 
         let out_actual = (1..=3)
             .map(|i| {
-                g.vertex_edges_window_t(i, 1..7, Dir::OUT, None)
+                g.vertex_edges_window_t(i, 1..7, Direction::OUT, None)
                     .map(|e| e.time.unwrap())
                     .collect::<Vec<_>>()
             })
@@ -935,7 +937,7 @@ mod temporal_graph_partition_test {
 
         let both_actual = (1..=3)
             .map(|i| {
-                g.vertex_edges_window_t(i, 0..1, Dir::BOTH, None)
+                g.vertex_edges_window_t(i, 0..1, Direction::BOTH, None)
                     .map(|e| e.time.unwrap())
                     .collect::<Vec<_>>()
             })

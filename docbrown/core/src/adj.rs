@@ -1,16 +1,23 @@
+use std::{collections::BTreeSet, ops::Range};
+
 use serde::{Deserialize, Serialize};
 
-use crate::tadjset::{AdjEdge, TAdjSet};
+use crate::{
+    tadjset::{AdjEdge, TAdjSet},
+    Time,
+};
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Default)]
 pub(crate) enum Adj {
     #[default]
     Solo,
     List {
-        out: TAdjSet<usize, i64>,         // local
-        into: TAdjSet<usize, i64>,        // local
-        remote_out: TAdjSet<usize, i64>,  // remote
-        remote_into: TAdjSet<usize, i64>, // remote
+        // local:
+        out: TAdjSet<usize, i64>,
+        into: TAdjSet<usize, i64>,
+        // remote:
+        remote_out: TAdjSet<usize, i64>,
+        remote_into: TAdjSet<usize, i64>,
     },
 }
 

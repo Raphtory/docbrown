@@ -2,6 +2,7 @@ use core::iter::Map;
 use itertools::chain;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeSet;
 use std::ops::Range;
 
 use crate::adj::Adj;
@@ -302,6 +303,13 @@ impl EdgeLayer {
 impl EdgeLayer {
     pub(crate) fn out_edges_len(&self) -> usize {
         self.adj_lists.iter().map(|adj| adj.out_edges_len()).sum()
+    }
+
+    pub(crate) fn out_edges_len_window(&self, v_pid: usize, w: &Range<i64>) -> usize {
+        self.adj_lists
+            .get(v_pid)
+            .unwrap_or(&Adj::Solo)
+            .out_edges_len()
     }
 }
 

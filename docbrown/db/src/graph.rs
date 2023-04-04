@@ -1,7 +1,27 @@
+//! Defines the `Graph` struct, which represents a docbrown graph in memory.
+//!
+//! This is the base class used to create a temporal graph, add vertices and edges,
+//! create windows, and query the graph with a variety of algorithms.
+//! It is a wrapper around a set of shards, which are the actual graph data structures.
+//!
+//! # Examples
+//!
+//! ```rust
+//! use docbrown_db::graph::Graph;
+//! use docbrown_db::view_api::*;
+//! let graph = Graph::new(2);
+//! graph.add_vertex(0, "Alice", &vec![]);
+//! graph.add_vertex(1, "Bob", &vec![]);
+//! graph.add_edge(2, "Alice", "Bob", &vec![], None);
+//! graph.num_edges();
+//! ```
+//!
+
 use crate::graph_immutable::ImmutableGraph;
 use crate::graph_window::{GraphWindowSet, WindowedGraph};
 use crate::perspective::{Perspective, PerspectiveIterator, PerspectiveSet};
 use itertools::Itertools;
+use std::cmp::{max, min};
 use std::{
     collections::HashMap,
     iter,
@@ -19,22 +39,123 @@ use docbrown_core::{
     Direction, Prop,
 };
 
-use crate::edge::EdgeView;
-use crate::vertex::VertexView;
 use crate::view_api::internal::GraphViewInternalOps;
-use crate::view_api::*;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
+/// A temporal graph composed of multiple shards.
+///
+/// This is the public facing struct used to create a temporal graph, add vertices and edges,
+/// create windows, and query the graph with a variety of algorithms.
+/// It is a wrapper around a set of shards, which are the actual graph data structures.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Graph {
+    /// The number of shards in the graph.
     pub(crate) nr_shards: usize,
+    /// A vector of `TGraphShard<TemporalGraph>` representing the shards in the graph.
     pub(crate) shards: Vec<TGraphShard<TemporalGraph>>,
 }
 
 impl GraphViewInternalOps for Graph {
-    fn degree(&self, v: VertexRef, d: Direction) -> Result<usize, GraphError> {
-        self.get_shard_from_v(v).degree(v.g_id, d, None)
+    fn earliest_time_global(&self) -> Option<i64> {
+        let min_from_shards = self.shards.iter().map(|shard| shard.earliest_time()).min();
+        min_from_shards.filter(|&min| min != i64::MAX)
+    }
+
+    fn earliest_time_window(&self, t_start: i64, t_end: i64) -> Option<i64> {
+        //FIXME: this is not correct, should actually be the earliest activity in window
+        let earliest = self.earliest_time_global()?;
+        if earliest > t_end {
+            None
+        } else {
+            Some(max(earliest, t_start))
+        }
+    }
+
+    fn latest_time_global(&self) -> Option<i64> {
+        let max_from_shards = self.shards.iter().map(|shard| shard.latest_time()).max();
+        max_from_shards.filter(|&max| max != i64::MIN)
+    }
+
+    fn latest_time_window(&self, t_start: i64, t_end: i64) -> Option<i64> {
+        //FIXME: this is not correct, should actually be the latest activity in window
+        let latest = self.latest_time_global()?;
+        if latest < t_start {
+            None
+        } else {
+            Some(min(latest, t_end))
+        }
+    }
+
+    fn vertices_len(&self) -> usize {
+        let vs: Vec<usize> = self.shards.iter().map(|shard| shard.len()).collect();
+        vs.iter().sum()
+    }
+
+    fn vertices_len_window(&self, t_start: i64, t_end: i64) -> usize {
+        //FIXME: This nees to be optimised ideally
+        self.shards
+            .iter()
+            .map(|shard| shard.vertices_window(t_start..t_end).count())
+            .sum()
+    }
+
+    fn edges_len(&self, layer: Option<usize>) -> usize {
+        let vs: Vec<usize> = self
+            .shards
+            .iter()
+            .map(|shard| shard.out_edges_len(layer))
+            .collect();
+        vs.iter().sum()
+    }
+
+    fn edges_len_window(&self, t_start: i64, t_end: i64, layer: Option<usize>) -> usize {
+        self.shards
+            .iter()
+            .map(|shard| shard.out_edges_len_window(&(t_start..t_end), layer))
+            .sum()
+    }
+
+    fn has_edge_ref(
+        &self,
+        src: VertexRef,
+        dst: VertexRef,
+        layer_name: Option<&str>,
+        layer_id: Option<usize>,
+    ) -> bool {
+        self.get_shard_from_v(src)
+            .has_edge(src.g_id, dst.g_id, layer_name, layer_id)
+    }
+
+    fn has_edge_ref_window(
+        &self,
+        src: VertexRef,
+        dst: VertexRef,
+        t_start: i64,
+        t_end: i64,
+        layer_name: Option<&str>,
+        layer_id: Option<usize>,
+    ) -> bool {
+        self.get_shard_from_v(src).has_edge_window(
+            src.g_id,
+            dst.g_id,
+            t_start..t_end,
+            layer_name,
+            layer_id,
+        )
+    }
+
+    fn has_vertex_ref(&self, v: VertexRef) -> bool {
+        self.get_shard_from_v(v).has_vertex(v.g_id)
+    }
+
+    fn has_vertex_ref_window(&self, v: VertexRef, t_start: i64, t_end: i64) -> bool {
+        self.get_shard_from_v(v)
+            .has_vertex_window(v.g_id, t_start..t_end)
+    }
+
+    fn degree(&self, v: VertexRef, d: Direction, layer: Option<usize>) -> usize {
+        self.get_shard_from_v(v).degree(v.g_id, d, layer)
     }
 
     fn degree_window(
@@ -43,9 +164,18 @@ impl GraphViewInternalOps for Graph {
         t_start: i64,
         t_end: i64,
         d: Direction,
-    ) -> Result<usize, GraphError> {
+        layer: Option<usize>,
+    ) -> usize {
         self.get_shard_from_v(v)
-            .degree_window(v.g_id, t_start..t_end, d, None)
+            .degree_window(v.g_id, t_start..t_end, d, layer)
+    }
+
+    fn vertex_ref(&self, v: u64) -> Option<VertexRef> {
+        self.get_shard_from_id(v).vertex(v)
+    }
+
+    fn vertex_ref_window(&self, v: u64, t_start: i64, t_end: i64) -> Option<VertexRef> {
+        self.get_shard_from_id(v).vertex_window(v, t_start..t_end)
     }
 
     fn vertex_ids(&self) -> Box<dyn Iterator<Item = u64> + Send> {
@@ -80,6 +210,11 @@ impl GraphViewInternalOps for Graph {
         )
     }
 
+    fn vertex_refs_shard(&self, shard: usize) -> Box<dyn Iterator<Item = VertexRef> + Send> {
+        let shard = self.shards[shard].clone();
+        Box::new(shard.vertices())
+    }
+
     fn vertex_refs_window_shard(
         &self,
         shard: usize,
@@ -90,12 +225,41 @@ impl GraphViewInternalOps for Graph {
         Box::new(shard.vertices_window(t_start..t_end))
     }
 
-    fn edge_refs(&self) -> Box<dyn Iterator<Item = EdgeRef> + Send> {
+    fn edge_ref(
+        &self,
+        src: VertexRef,
+        dst: VertexRef,
+        layer_name: Option<&str>,
+        layer_id: Option<usize>,
+    ) -> Option<EdgeRef> {
+        self.get_shard_from_v(src)
+            .edge(src.g_id, dst.g_id, layer_name, layer_id)
+    }
+
+    fn edge_ref_window(
+        &self,
+        src: VertexRef,
+        dst: VertexRef,
+        t_start: i64,
+        t_end: i64,
+        layer_name: Option<&str>,
+        layer_id: Option<usize>,
+    ) -> Option<EdgeRef> {
+        self.get_shard_from_v(src).edge_window(
+            src.g_id,
+            dst.g_id,
+            t_start..t_end,
+            layer_name,
+            layer_id,
+        )
+    }
+
+    fn edge_refs(&self, layer: Option<usize>) -> Box<dyn Iterator<Item = EdgeRef> + Send> {
         //FIXME: needs low-level primitive
         let g = self.clone();
         Box::new(
             self.vertex_refs()
-                .flat_map(move |v| g.vertex_edges(v, Direction::OUT)),
+                .flat_map(move |v| g.vertex_edges(v, Direction::OUT, layer)),
         )
     }
 
@@ -103,17 +267,23 @@ impl GraphViewInternalOps for Graph {
         &self,
         t_start: i64,
         t_end: i64,
+        layer: Option<usize>,
     ) -> Box<dyn Iterator<Item = EdgeRef> + Send> {
         //FIXME: needs low-level primitive
         let g = self.clone();
         Box::new(
             self.vertex_refs()
-                .flat_map(move |v| g.vertex_edges_window(v, t_start, t_end, Direction::OUT)),
+                .flat_map(move |v| g.vertex_edges_window(v, t_start, t_end, Direction::OUT, layer)),
         )
     }
 
-    fn vertex_edges(&self, v: VertexRef, d: Direction) -> Box<dyn Iterator<Item = EdgeRef> + Send> {
-        Box::new(self.get_shard_from_v(v).vertex_edges(v.g_id, d, None))
+    fn vertex_edges(
+        &self,
+        v: VertexRef,
+        d: Direction,
+        layer: Option<usize>,
+    ) -> Box<dyn Iterator<Item = EdgeRef> + Send> {
+        Box::new(self.get_shard_from_v(v).vertex_edges(v.g_id, d, layer))
     }
 
     fn vertex_edges_window(
@@ -122,10 +292,11 @@ impl GraphViewInternalOps for Graph {
         t_start: i64,
         t_end: i64,
         d: Direction,
+        layer: Option<usize>,
     ) -> Box<dyn Iterator<Item = EdgeRef> + Send> {
         Box::new(
             self.get_shard_from_v(v)
-                .vertex_edges_window(v.g_id, t_start..t_end, d, None),
+                .vertex_edges_window(v.g_id, t_start..t_end, d, layer),
         )
     }
 
@@ -135,10 +306,11 @@ impl GraphViewInternalOps for Graph {
         t_start: i64,
         t_end: i64,
         d: Direction,
+        layer: Option<usize>,
     ) -> Box<dyn Iterator<Item = EdgeRef> + Send> {
         Box::new(
             self.get_shard_from_v(v)
-                .vertex_edges_window_t(v.g_id, t_start..t_end, d, None),
+                .vertex_edges_window_t(v.g_id, t_start..t_end, d, layer),
         )
     }
 
@@ -176,19 +348,15 @@ impl GraphViewInternalOps for Graph {
         )
     }
 
-    fn static_vertex_prop(&self, v: VertexRef, name: String) -> Result<Option<Prop>, GraphError> {
+    fn static_vertex_prop(&self, v: VertexRef, name: String) -> Option<Prop> {
         self.get_shard_from_v(v).static_vertex_prop(v.g_id, name)
     }
 
-    fn static_vertex_prop_keys(&self, v: VertexRef) -> Result<Vec<String>, GraphError> {
+    fn static_vertex_prop_keys(&self, v: VertexRef) -> Vec<String> {
         self.get_shard_from_v(v).static_vertex_prop_keys(v.g_id)
     }
 
-    fn temporal_vertex_prop_vec(
-        &self,
-        v: VertexRef,
-        name: String,
-    ) -> Result<Vec<(i64, Prop)>, GraphError> {
+    fn temporal_vertex_prop_vec(&self, v: VertexRef, name: String) -> Vec<(i64, Prop)> {
         self.get_shard_from_v(v)
             .temporal_vertex_prop_vec(v.g_id, name)
     }
@@ -199,15 +367,12 @@ impl GraphViewInternalOps for Graph {
         name: String,
         t_start: i64,
         t_end: i64,
-    ) -> Result<Vec<(i64, Prop)>, GraphError> {
+    ) -> Vec<(i64, Prop)> {
         self.get_shard_from_v(v)
             .temporal_vertex_prop_vec_window(v.g_id, name, t_start..t_end)
     }
 
-    fn temporal_vertex_props(
-        &self,
-        v: VertexRef,
-    ) -> Result<HashMap<String, Vec<(i64, Prop)>>, GraphError> {
+    fn temporal_vertex_props(&self, v: VertexRef) -> HashMap<String, Vec<(i64, Prop)>> {
         self.get_shard_from_v(v).temporal_vertex_props(v.g_id)
     }
 
@@ -216,26 +381,22 @@ impl GraphViewInternalOps for Graph {
         v: VertexRef,
         t_start: i64,
         t_end: i64,
-    ) -> Result<HashMap<String, Vec<(i64, Prop)>>, GraphError> {
+    ) -> HashMap<String, Vec<(i64, Prop)>> {
         self.get_shard_from_v(v)
             .temporal_vertex_props_window(v.g_id, t_start..t_end)
     }
 
-    fn static_edge_prop(&self, e: EdgeRef, name: String) -> Result<Option<Prop>, GraphError> {
+    fn static_edge_prop(&self, e: EdgeRef, name: String) -> Option<Prop> {
         self.get_shard_from_e(e)
             .static_edge_prop(e.edge_id, e.layer_id, name)
     }
 
-    fn static_edge_prop_keys(&self, e: EdgeRef) -> Result<Vec<String>, GraphError> {
+    fn static_edge_prop_keys(&self, e: EdgeRef) -> Vec<String> {
         self.get_shard_from_e(e)
             .static_edge_prop_keys(e.edge_id, e.layer_id)
     }
 
-    fn temporal_edge_props_vec(
-        &self,
-        e: EdgeRef,
-        name: String,
-    ) -> Result<Vec<(i64, Prop)>, GraphError> {
+    fn temporal_edge_props_vec(&self, e: EdgeRef, name: String) -> Vec<(i64, Prop)> {
         self.get_shard_from_e(e)
             .temporal_edge_prop_vec(e.edge_id, e.layer_id, name)
     }
@@ -246,7 +407,7 @@ impl GraphViewInternalOps for Graph {
         name: String,
         t_start: i64,
         t_end: i64,
-    ) -> Result<Vec<(i64, Prop)>, GraphError> {
+    ) -> Vec<(i64, Prop)> {
         self.get_shard_from_e(e).temporal_edge_props_vec_window(
             e.edge_id,
             e.layer_id,
@@ -269,120 +430,122 @@ impl GraphViewInternalOps for Graph {
         //FIXME: This needs to be implemented in core if we want it
         todo!()
     }
-}
 
-impl GraphViewOps for Graph {
-    type Vertex = VertexView<Self>;
-    type VertexIter = Self::Vertices;
-    type Vertices = Box<dyn Iterator<Item = Self::Vertex> + Send>;
-    type Edge = EdgeView<Self>;
-    type Edges = Box<dyn Iterator<Item = Self::Edge> + Send>;
-
-    fn num_vertices(&self) -> Result<usize, GraphError> {
-        self.vertices_len()
+    fn num_shards(&self) -> usize {
+        self.nr_shards
     }
 
-    fn earliest_time(&self) -> Result<Option<i64>, GraphError> {
-        let ets: Result<Vec<i64>, GraphError> = self
-            .shards
-            .iter()
-            .map(|shard| shard.earliest_time())
-            .collect();
-        let binding = ets?;
-        let min_from_shards = binding.iter().min();
-        Ok(min_from_shards.filter(|&min| *min != i64::MAX).copied())
+    fn vertices_shard(&self, shard_id: usize) -> Box<dyn Iterator<Item = VertexRef> + Send> {
+        Box::new(self.shards[shard_id].vertices())
     }
 
-    fn latest_time(&self) -> Result<Option<i64>, GraphError> {
-        let lts: Result<Vec<i64>, GraphError> = self
-            .shards
-            .iter()
-            .map(|shard| shard.latest_time())
-            .collect();
-        let binding = lts?;
-        let max_from_shards = binding.iter().max();
-        Ok(max_from_shards.filter(|&max| *max != i64::MIN).copied())
-    }
-
-    fn num_edges(&self) -> Result<usize, GraphError> {
-        self.edges_len()
-    }
-
-    fn has_vertex<T: InputVertex>(&self, v: T) -> Result<bool, GraphError> {
-        self.has_vertex_ref(v.id())
-    }
-
-    fn has_edge<T: InputVertex>(
+    fn vertices_shard_window(
         &self,
-        src: T,
-        dst: T,
-        layer: Option<&str>,
-    ) -> Result<bool, GraphError> {
-        self.has_edge_ref(src.id(), dst.id(), layer, None)
-    }
-
-    fn vertex<T: InputVertex>(&self, v: T) -> Result<Option<Self::Vertex>, GraphError> {
-        let v = self.vertex_ref(v.id())?;
-        Ok(v.map(|v| Self::Vertex::new(Arc::new(self.clone()), v)))
-    }
-
-    fn vertices(&self) -> Self::Vertices {
-        let g = Arc::new(self.clone());
-        Box::new(
-            self.vertex_refs()
-                .map(move |v| Self::Vertex::new(g.clone(), v)),
-        )
-    }
-
-    fn vertices_shard(&self, shard: usize) -> Self::Vertices {
-        let g = Arc::new(self.clone());
-        Box::new(
-            g.vertices_shard(shard)
-                .map(move |v| Self::Vertex::new(g.clone(), v.as_ref())),
-        )
-    }
-
-    fn edge<T: InputVertex>(
-        &self,
-        src: T,
-        dst: T,
-        layer: Option<&str>,
-    ) -> Result<Option<Self::Edge>, GraphError> {
-        let src_vertex = VertexRef::new(src.id(), None);
-        let dst_vertex = VertexRef::new(dst.id(), None);
-        let e = self.edge_ref(src_vertex, dst_vertex, layer, None)?;
-        Ok(e.map(|e| Self::Edge::new(Arc::new(self.clone()), e)))
-    }
-
-    fn edges(&self) -> Self::Edges {
-        Box::new(self.vertices().flat_map(|v| v.out_edges()))
+        shard_id: usize,
+        t_start: i64,
+        t_end: i64,
+    ) -> Box<dyn Iterator<Item = VertexRef> + Send> {
+        Box::new(self.shards[shard_id].vertices_window(t_start..t_end))
     }
 }
 
+/// The implementation of a temporal graph composed of multiple shards.
 impl Graph {
-    pub fn freeze(&self) -> ImmutableGraph {
+    /// Freezes the current mutable graph into an immutable graph.
+    ///
+    /// This removes the internal locks, allowing the graph to be queried in
+    /// a read-only fashion.
+    ///
+    /// # Returns
+    ///
+    /// An `ImmutableGraph` which is an immutable copy of the current graph.
+    ///
+    /// # Example
+    /// ```
+    /// use docbrown_db::view_api::*;
+    /// use docbrown_db::graph::Graph;
+    ///
+    /// let mut mutable_graph = Graph::new(1);
+    /// // ... add vertices and edges to the graph
+    ///
+    /// // Freeze the mutable graph into an immutable graph
+    /// let immutable_graph = mutable_graph.freeze();
+    /// ```
+    pub fn freeze(self) -> ImmutableGraph {
         ImmutableGraph {
             nr_shards: self.nr_shards,
             shards: self.shards.iter().map(|s| s.freeze()).collect_vec(),
         }
     }
 
+    /// Get the shard id from a global vertex id
+    ///
+    /// # Arguments
+    ///
+    /// * `g_id` - The global vertex id
+    ///
+    /// # Returns
+    ///
+    /// The shard id
     fn shard_id(&self, g_id: u64) -> usize {
         utils::get_shard_id_from_global_vid(g_id, self.nr_shards)
     }
 
+    /// Get the shard from a global vertex id
+    ///
+    /// # Arguments
+    ///
+    /// * `g_id` - The global vertex id
+    ///
+    /// # Returns
+    ///
+    /// The shard reference
     fn get_shard_from_id(&self, g_id: u64) -> &TGraphShard<TemporalGraph> {
         &self.shards[self.shard_id(g_id)]
     }
 
+    /// Get the shard from a global vertex id
+    ///
+    /// # Arguments
+    ///
+    /// * `g_id` - The global vertex id
+    ///
+    /// # Returns
+    ///
+    /// The shard reference
     fn get_shard_from_v(&self, v: VertexRef) -> &TGraphShard<TemporalGraph> {
         &self.shards[self.shard_id(v.g_id)]
     }
 
+    /// Get the shard from an edge reference
+    ///
+    /// # Arguments
+    ///
+    /// * `e` - The edge reference
+    ///
+    /// # Returns
+    ///
+    /// The shard reference
     fn get_shard_from_e(&self, e: EdgeRef) -> &TGraphShard<TemporalGraph> {
         &self.shards[self.shard_id(e.src_g_id)]
     }
 
+    /// Create a new graph with the specified number of shards
+    ///
+    /// # Arguments
+    ///
+    /// * `nr_shards` - The number of shards
+    ///
+    /// # Returns
+    ///
+    /// A docbrown graph
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use docbrown_db::graph::Graph;;
+    /// let g = Graph::new(4);
+    /// ```
     pub fn new(nr_shards: usize) -> Self {
         Graph {
             nr_shards,
@@ -390,36 +553,22 @@ impl Graph {
         }
     }
 
-    pub fn window(&self, t_start: i64, t_end: i64) -> WindowedGraph {
-        WindowedGraph::new(self.clone(), None, t_start, t_end)
-    }
-
-    pub fn at(&self, end: i64) -> WindowedGraph {
-        self.window(i64::MIN, end.saturating_add(1))
-    }
-
-    pub fn through_perspectives(
-        &self,
-        perspectives: PerspectiveSet,
-    ) -> Result<GraphWindowSet, GraphError> {
-        let iter = match (self.earliest_time()?, self.latest_time()?) {
-            (Some(start), Some(end)) => perspectives.build_iter(start..end),
-            _ => PerspectiveIterator::empty(),
-        };
-        Ok(GraphWindowSet::new(self.clone(), Box::new(iter)))
-    }
-
-    pub fn through_iter(
-        &self,
-        perspectives: Box<dyn Iterator<Item = Perspective> + Send>,
-    ) -> Result<GraphWindowSet, GraphError> {
-        let iter = match (self.earliest_time()?, self.latest_time()?) {
-            (Some(_), Some(_)) => perspectives,
-            _ => Box::new(iter::empty::<Perspective>()),
-        };
-        Ok(GraphWindowSet::new(self.clone(), iter))
-    }
-
+    /// Load a graph from a directory
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - The path to the directory
+    ///
+    /// # Returns
+    ///
+    /// A docbrown graph
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use docbrown_db::graph::Graph;
+    /// // let g = Graph::load_from_file("path/to/graph");
+    /// ```
     pub fn load_from_file<P: AsRef<Path>>(path: P) -> Result<Self, Box<bincode::ErrorKind>> {
         // use BufReader for better performance
 
@@ -452,6 +601,25 @@ impl Graph {
         Ok(Graph { nr_shards, shards }) //TODO I need to put in the actual values here
     }
 
+    /// Save a graph to a directory
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - The path to the directory
+    ///
+    /// # Returns
+    ///
+    /// A docbrown graph
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use docbrown_db::graph::Graph;
+    /// use std::fs::File;
+    /// let mut g = Graph::new(4);
+    /// g.add_vertex(1, 1, &vec![]);
+    /// // g.save_to_file("path_str");
+    /// ```
     pub fn save_to_file<P: AsRef<Path>>(&self, path: P) -> Result<(), Box<bincode::ErrorKind>> {
         // write each shard to a different file
 
@@ -480,6 +648,26 @@ impl Graph {
     }
 
     // TODO: Probably add vector reference here like add
+    /// Add a vertex to the graph
+    ///
+    /// # Arguments
+    ///
+    /// * `t` - The time
+    /// * `v` - The vertex (can be a string or integer)
+    /// * `props` - The properties of the vertex
+    ///
+    /// # Returns
+    ///
+    /// A result containing the vertex id
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use docbrown_db::graph::Graph;
+    /// let g = Graph::new(1);
+    /// let v = g.add_vertex(0, "Alice", &vec![]);
+    /// let v = g.add_vertex(0, 5, &vec![]);
+    /// ```
     pub fn add_vertex<T: InputVertex>(
         &self,
         t: i64,
@@ -490,6 +678,23 @@ impl Graph {
         self.shards[shard_id].add_vertex(t, v, &props)
     }
 
+    /// Adds properties to the given input vertex.
+    ///
+    /// # Arguments
+    ///
+    /// * `v` - A vertex
+    /// * `data` - A vector of tuples containing the property name and value pairs to add to the vertex.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use docbrown_db::graph::Graph;
+    /// use docbrown_core::Prop;
+    /// let graph = Graph::new(1);
+    /// graph.add_vertex(0, "Alice", &vec![]);
+    /// let properties = vec![("color".to_owned(), Prop::Str("blue".to_owned())), ("weight".to_owned(), Prop::I64(11))];
+    /// let result = graph.add_vertex_properties("Alice", &properties);
+    /// ```
     pub fn add_vertex_properties<T: InputVertex>(
         &self,
         v: T,
@@ -500,6 +705,25 @@ impl Graph {
     }
 
     // TODO: Vertex.name which gets ._id property else numba as string
+    /// Adds an edge between the source and destination vertices with the given timestamp and properties.
+    ///
+    /// # Arguments
+    ///
+    /// * `t` - The timestamp of the edge.
+    /// * `src` - An instance of `T` that implements the `InputVertex` trait representing the source vertex.
+    /// * `dst` - An instance of `T` that implements the `InputVertex` trait representing the destination vertex.
+    /// * `props` - A vector of tuples containing the property name and value pairs to add to the edge.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use docbrown_db::graph::Graph;
+    ///
+    /// let graph = Graph::new(1);
+    /// graph.add_vertex(1, "Alice", &vec![]);
+    /// graph.add_vertex(2, "Bob", &vec![]);
+    /// graph.add_edge(3, "Alice", "Bob", &vec![], None);
+    /// ```    
     pub fn add_edge<T: InputVertex>(
         &self,
         t: i64,
@@ -510,168 +734,63 @@ impl Graph {
     ) -> Result<(), GraphError> {
         // TODO: Problem: if the vertex already exists, then this
         // TODO: wont create a property name if the vertex is a string
-        let src_shard = utils::get_shard_id_from_global_vid(src.id(), self.nr_shards);
-        let dst_shard = utils::get_shard_id_from_global_vid(dst.id(), self.nr_shards);
+        let src_shard_id = utils::get_shard_id_from_global_vid(src.id(), self.nr_shards);
+        let dst_shard_id = utils::get_shard_id_from_global_vid(dst.id(), self.nr_shards);
 
-        if src_shard == dst_shard {
-            self.shards[src_shard].add_edge(t, src.id(), dst.id(), layer, props)
+        if src_shard_id == dst_shard_id {
+            self.shards[src_shard_id].add_edge(t, src.id(), dst.id(), props, layer)
         } else {
             Ok({
                 // FIXME these are sort of connected, we need to hold both locks for
                 // the src partition and dst partition to add a remote edge between both
-                self.shards[src_shard].add_edge_remote_out(t, src.id(), dst.id(), layer, props)?;
-                self.shards[dst_shard].add_edge_remote_into(t, src.id(), dst.id(), layer, props)?;
+                self.shards[src_shard_id].add_edge_remote_out(
+                    t,
+                    src.id(),
+                    dst.id(),
+                    props,
+                    layer,
+                )?;
+                self.shards[dst_shard_id].add_edge_remote_into(
+                    t,
+                    src.id(),
+                    dst.id(),
+                    props,
+                    layer,
+                )?;
             })
         }
     }
 
+    /// Adds properties to an existing edge between a source and destination vertices
+    ///
+    /// # Arguments
+    ///
+    /// * `src` - An instance of `T` that implements the `InputVertex` trait representing the source vertex.
+    /// * `dst` - An instance of `T` that implements the `InputVertex` trait representing the destination vertex.
+    /// * `props` - A vector of tuples containing the property name and value pairs to add to the edge.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use docbrown_db::graph::Graph;
+    /// use docbrown_core::Prop;
+    /// let graph = Graph::new(1);
+    /// graph.add_vertex(1, "Alice", &vec![]);
+    /// graph.add_vertex(2, "Bob", &vec![]);
+    /// graph.add_edge(3, "Alice", "Bob", &vec![], None);
+    /// let properties = vec![("price".to_owned(), Prop::I64(100))];
+    /// let result = graph.add_edge_properties("Alice", "Bob", &properties, None);
+    /// ```
     pub fn add_edge_properties<T: InputVertex>(
         &self,
         src: T,
         dst: T,
-        layer: Option<&str>,
         props: &Vec<(String, Prop)>,
+        layer: Option<&str>,
     ) -> Result<(), GraphError> {
         // TODO: we don't add properties to dst shard, but may need to depending on the plans
         self.get_shard_from_id(src.id())
-            .add_edge_properties(src.id(), dst.id(), layer, props)
-    }
-}
-
-// Internal API:
-impl Graph {
-    pub(crate) fn vertices_len(&self) -> Result<usize, GraphError> {
-        let vs: Result<Vec<usize>, GraphError> =
-            self.shards.iter().map(|shard| shard.len()).collect();
-        Ok(vs?.iter().sum())
-    }
-
-    pub(crate) fn vertices_len_window(&self, t_start: i64, t_end: i64) -> usize {
-        //FIXME: This nees to be optimised ideally
-        self.shards
-            .iter()
-            .map(|shard| shard.vertices_window(t_start..t_end).count())
-            .sum()
-    }
-
-    pub(crate) fn edges_len(&self) -> Result<usize, GraphError> {
-        let vs: Result<Vec<usize>, GraphError> = self
-            .shards
-            .iter()
-            .map(|shard| shard.out_edges_len(None))
-            .collect();
-        Ok(vs?.iter().sum())
-    }
-
-    pub(crate) fn edges_len_window(&self, t_start: i64, t_end: i64) -> usize {
-        //FIXME: This nees to be optimised ideally
-        self.shards
-            .iter()
-            .map(|shard| {
-                shard
-                    .vertices()
-                    .flat_map(|v| {
-                        shard.vertex_edges_window(v.g_id, t_start..t_end, Direction::OUT, None)
-                    })
-                    .count()
-            })
-            .sum()
-    }
-
-    pub(crate) fn has_edge_ref<V1: Into<VertexRef>, V2: Into<VertexRef>>(
-        &self,
-        src: V1,
-        dst: V2,
-        layer_name: Option<&str>,
-        layer_id: Option<usize>,
-    ) -> Result<bool, GraphError> {
-        let src: VertexRef = src.into();
-        let dst: VertexRef = dst.into();
-        Ok(self
-            .get_shard_from_v(src)
-            .has_edge(src.g_id, dst.g_id, layer_name, layer_id)?)
-    }
-
-    pub(crate) fn has_edge_ref_window<V1: Into<VertexRef>, V2: Into<VertexRef>>(
-        &self,
-        src: V1,
-        dst: V2,
-        layer_name: Option<&str>,
-        layer_id: Option<usize>,
-        t_start: i64,
-        t_end: i64,
-    ) -> Result<bool, GraphError> {
-        let src: VertexRef = src.into();
-        let dst: VertexRef = dst.into();
-        Ok(self.get_shard_from_v(src).has_edge_window(
-            src.g_id,
-            dst.g_id,
-            t_start..t_end,
-            layer_name,
-            layer_id,
-        )?)
-    }
-
-    pub(crate) fn has_vertex_ref<V: Into<VertexRef>>(&self, v: V) -> Result<bool, GraphError> {
-        let v: VertexRef = v.into();
-        self.get_shard_from_v(v).has_vertex(v.g_id)
-    }
-
-    pub(crate) fn has_vertex_ref_window<V: Into<VertexRef>>(
-        &self,
-        v: V,
-        t_start: i64,
-        t_end: i64,
-    ) -> Result<bool, GraphError> {
-        let v: VertexRef = v.into();
-        self.get_shard_from_v(v)
-            .has_vertex_window(v.g_id, t_start..t_end)
-    }
-
-    pub(crate) fn vertex_ref(&self, v: u64) -> Result<Option<VertexRef>, GraphError> {
-        self.get_shard_from_id(v).vertex(v)
-    }
-
-    pub(crate) fn vertex_ref_window(
-        &self,
-        v: u64,
-        t_start: i64,
-        t_end: i64,
-    ) -> Result<Option<VertexRef>, GraphError> {
-        self.get_shard_from_id(v).vertex_window(v, t_start..t_end)
-    }
-
-    pub(crate) fn edge_ref<V1: Into<VertexRef>, V2: Into<VertexRef>>(
-        &self,
-        src: V1,
-        dst: V2,
-        layer_name: Option<&str>,
-        layer_id: Option<usize>,
-    ) -> Result<Option<EdgeRef>, GraphError> {
-        let src: VertexRef = src.into();
-        let dst: VertexRef = dst.into();
-        self.get_shard_from_v(src)
-            .edge(src.g_id, dst.g_id, layer_name, layer_id)
-    }
-
-    pub(crate) fn edge_ref_window<V1: Into<VertexRef>, V2: Into<VertexRef>>(
-        &self,
-        src: V1,
-        dst: V2,
-        layer_name: Option<&str>,
-        layer_id: Option<usize>,
-        t_start: i64,
-        t_end: i64,
-    ) -> Result<Option<EdgeRef>, GraphError> {
-        let src: VertexRef = src.into();
-        let dst: VertexRef = dst.into();
-        self.get_shard_from_v(src).edge_window(
-            src.g_id,
-            dst.g_id,
-            layer_name,
-            layer_id,
-            t_start..t_end,
-        )
+            .add_edge_properties(src.id(), dst.id(), props, layer)
     }
 }
 
@@ -716,7 +835,7 @@ mod db_tests {
                 .ok();
         }
 
-        assert_eq!(g.num_vertices().unwrap(), expected_len)
+        assert_eq!(g.num_vertices(), expected_len)
     }
 
     #[quickcheck]
@@ -743,8 +862,8 @@ mod db_tests {
             g.add_edge(t, src, dst, &vec![], None).unwrap();
         }
 
-        assert_eq!(g.num_vertices().unwrap(), unique_vertices_count);
-        assert_eq!(g.num_edges().unwrap(), unique_edge_count);
+        assert_eq!(g.num_vertices(), unique_vertices_count);
+        assert_eq!(g.num_edges(), unique_edge_count);
     }
 
     #[test]
@@ -801,7 +920,7 @@ mod db_tests {
         // Load from files
         match Graph::load_from_file(Path::new(&shards_path)) {
             Ok(g) => {
-                assert!(g.has_vertex_ref(1).unwrap());
+                assert!(g.has_vertex_ref(1.into()));
                 assert_eq!(g.nr_shards, 2);
             }
             Err(e) => panic!("{e}"),
@@ -815,17 +934,17 @@ mod db_tests {
         let g = Graph::new(2);
         g.add_edge(1, 7, 8, &vec![], None).unwrap();
 
-        assert_eq!(g.has_edge_ref(8, 7, None, None).unwrap(), false);
-        assert_eq!(g.has_edge_ref(7, 8, None, None).unwrap(), true);
+        assert_eq!(g.has_edge(8, 7, None), false);
+        assert_eq!(g.has_edge(7, 8, None), true);
 
         g.add_edge(1, 7, 9, &vec![], None).unwrap();
 
-        assert_eq!(g.has_edge_ref(9, 7, None, None).unwrap(), false);
-        assert_eq!(g.has_edge_ref(7, 9, None, None).unwrap(), true);
+        assert_eq!(g.has_edge(9, 7, None), false);
+        assert_eq!(g.has_edge(7, 9, None), true);
 
         g.add_edge(2, "haaroon", "northLondon", &vec![], None)
             .unwrap();
-        assert_eq!(g.has_edge("haaroon", "northLondon", None).unwrap(), true);
+        assert_eq!(g.has_edge("haaroon", "northLondon", None), true);
     }
 
     #[test]
@@ -844,15 +963,13 @@ mod db_tests {
         }
 
         assert_eq!(
-            g.edge_ref_window(1, 3, None, None, i64::MIN, i64::MAX)
-                .unwrap()
+            g.edge_ref_window(1.into(), 3.into(), i64::MIN, i64::MAX, None, None)
                 .unwrap()
                 .src_g_id,
             1u64
         );
         assert_eq!(
-            g.edge_ref_window(1, 3, None, None, i64::MIN, i64::MAX)
-                .unwrap()
+            g.edge_ref_window(1.into(), 3.into(), i64::MIN, i64::MAX, None, None)
                 .unwrap()
                 .dst_g_id,
             3u64
@@ -881,9 +998,9 @@ mod db_tests {
             .map(|i| {
                 let i = VertexRef::new_remote(i);
                 (
-                    g.degree_window(i, -1, 7, Direction::IN).unwrap(),
-                    g.degree_window(i, 1, 7, Direction::OUT).unwrap(),
-                    g.degree_window(i, 0, 1, Direction::BOTH).unwrap(),
+                    g.degree_window(i, -1, 7, Direction::IN, None),
+                    g.degree_window(i, 1, 7, Direction::OUT, None),
+                    g.degree_window(i, 0, 1, Direction::BOTH, None),
                 )
             })
             .collect::<Vec<_>>();
@@ -901,9 +1018,9 @@ mod db_tests {
             .map(|i| {
                 let i = VertexRef::new_remote(i);
                 (
-                    g.degree_window(i, -1, 7, Direction::IN).unwrap(),
-                    g.degree_window(i, 1, 7, Direction::OUT).unwrap(),
-                    g.degree_window(i, 0, 1, Direction::BOTH).unwrap(),
+                    g.degree_window(i, -1, 7, Direction::IN, None),
+                    g.degree_window(i, 1, 7, Direction::OUT, None),
+                    g.degree_window(i, 0, 1, Direction::BOTH, None),
                 )
             })
             .collect::<Vec<_>>();
@@ -933,13 +1050,13 @@ mod db_tests {
             .map(|i| {
                 let i = VertexRef { g_id: i, pid: None };
                 (
-                    g.vertex_edges_window(i, -1, 7, Direction::IN)
+                    g.vertex_edges_window(i, -1, 7, Direction::IN, None)
                         .collect::<Vec<_>>()
                         .len(),
-                    g.vertex_edges_window(i, 1, 7, Direction::OUT)
+                    g.vertex_edges_window(i, 1, 7, Direction::OUT, None)
                         .collect::<Vec<_>>()
                         .len(),
-                    g.vertex_edges_window(i, 0, 1, Direction::BOTH)
+                    g.vertex_edges_window(i, 0, 1, Direction::BOTH, None)
                         .collect::<Vec<_>>()
                         .len(),
                 )
@@ -959,13 +1076,13 @@ mod db_tests {
             .map(|i| {
                 let i = VertexRef { g_id: i, pid: None };
                 (
-                    g.vertex_edges_window(i, -1, 7, Direction::IN)
+                    g.vertex_edges_window(i, -1, 7, Direction::IN, None)
                         .collect::<Vec<_>>()
                         .len(),
-                    g.vertex_edges_window(i, 1, 7, Direction::OUT)
+                    g.vertex_edges_window(i, 1, 7, Direction::OUT, None)
                         .collect::<Vec<_>>()
                         .len(),
-                    g.vertex_edges_window(i, 0, 1, Direction::BOTH)
+                    g.vertex_edges_window(i, 0, 1, Direction::BOTH, None)
                         .collect::<Vec<_>>()
                         .len(),
                 )
@@ -994,7 +1111,7 @@ mod db_tests {
 
         let in_actual = (1..=3)
             .map(|i| {
-                g.vertex_edges_window_t(i.into(), -1, 7, Direction::IN)
+                g.vertex_edges_window_t(i.into(), -1, 7, Direction::IN, None)
                     .map(|e| e.time.unwrap())
                     .collect::<Vec<_>>()
             })
@@ -1003,7 +1120,7 @@ mod db_tests {
 
         let out_actual = (1..=3)
             .map(|i| {
-                g.vertex_edges_window_t(i.into(), 1, 7, Direction::OUT)
+                g.vertex_edges_window_t(i.into(), 1, 7, Direction::OUT, None)
                     .map(|e| e.time.unwrap())
                     .collect::<Vec<_>>()
             })
@@ -1012,7 +1129,7 @@ mod db_tests {
 
         let both_actual = (1..=3)
             .map(|i| {
-                g.vertex_edges_window_t(i.into(), 0, 1, Direction::BOTH)
+                g.vertex_edges_window_t(i.into(), 0, 1, Direction::BOTH, None)
                     .map(|e| e.time.unwrap())
                     .collect::<Vec<_>>()
             })
@@ -1029,7 +1146,7 @@ mod db_tests {
         let in_expected = (1..=3)
             .map(|i| {
                 let mut e = g
-                    .vertex_edges_window_t(i.into(), -1, 7, Direction::IN)
+                    .vertex_edges_window_t(i.into(), -1, 7, Direction::IN, None)
                     .map(|e| e.time.unwrap())
                     .collect::<Vec<_>>();
                 e.sort();
@@ -1041,7 +1158,7 @@ mod db_tests {
         let out_expected = (1..=3)
             .map(|i| {
                 let mut e = g
-                    .vertex_edges_window_t(i.into(), 1, 7, Direction::OUT)
+                    .vertex_edges_window_t(i.into(), 1, 7, Direction::OUT, None)
                     .map(|e| e.time.unwrap())
                     .collect::<Vec<_>>();
                 e.sort();
@@ -1053,7 +1170,7 @@ mod db_tests {
         let both_expected = (1..=3)
             .map(|i| {
                 let mut e = g
-                    .vertex_edges_window_t(i.into(), 0, 1, Direction::BOTH)
+                    .vertex_edges_window_t(i.into(), 0, 1, Direction::BOTH, None)
                     .map(|e| e.time.unwrap())
                     .collect::<Vec<_>>();
                 e.sort();
@@ -1067,35 +1184,35 @@ mod db_tests {
     fn time_test() {
         let g = Graph::new(4);
 
-        assert_eq!(g.latest_time().unwrap(), None);
-        assert_eq!(g.earliest_time().unwrap(), None);
+        assert_eq!(g.latest_time(), None);
+        assert_eq!(g.earliest_time(), None);
 
         g.add_vertex(5, 1, &vec![])
             .map_err(|err| println!("{:?}", err))
             .ok();
 
-        assert_eq!(g.latest_time().unwrap(), Some(5));
-        assert_eq!(g.earliest_time().unwrap(), Some(5));
+        assert_eq!(g.latest_time(), Some(5));
+        assert_eq!(g.earliest_time(), Some(5));
 
         let g = Graph::new(4);
 
         g.add_edge(10, 1, 2, &vec![], None).unwrap();
-        assert_eq!(g.latest_time().unwrap(), Some(10));
-        assert_eq!(g.earliest_time().unwrap(), Some(10));
+        assert_eq!(g.latest_time(), Some(10));
+        assert_eq!(g.earliest_time(), Some(10));
 
         g.add_vertex(5, 1, &vec![])
             .map_err(|err| println!("{:?}", err))
             .ok();
-        assert_eq!(g.latest_time().unwrap(), Some(10));
-        assert_eq!(g.earliest_time().unwrap(), Some(5));
+        assert_eq!(g.latest_time(), Some(10));
+        assert_eq!(g.earliest_time(), Some(5));
 
         g.add_edge(20, 3, 4, &vec![], None).unwrap();
-        assert_eq!(g.latest_time().unwrap(), Some(20));
-        assert_eq!(g.earliest_time().unwrap(), Some(5));
+        assert_eq!(g.latest_time(), Some(20));
+        assert_eq!(g.earliest_time(), Some(5));
 
-        random_attachment(&g, 100, 10).unwrap();
-        assert_eq!(g.latest_time().unwrap(), Some(126));
-        assert_eq!(g.earliest_time().unwrap(), Some(5));
+        random_attachment(&g, 100, 10);
+        assert_eq!(g.latest_time(), Some(126));
+        assert_eq!(g.earliest_time(), Some(5));
     }
 
     #[test]
@@ -1116,16 +1233,16 @@ mod db_tests {
             .unwrap();
 
         let edges11 = g
-            .vertex_edges_window(11.into(), 0, 1, Direction::OUT)
+            .vertex_edges_window(11.into(), 0, 1, Direction::OUT, None)
             .collect_vec();
         let _edge1122 = *edges11.iter().find(|e| e.dst_g_id == 22).unwrap();
         let edge1111 = *edges11.iter().find(|e| e.dst_g_id == 11).unwrap();
         let edge2233 = g
-            .vertex_edges_window(22.into(), 0, 1, Direction::OUT)
+            .vertex_edges_window(22.into(), 0, 1, Direction::OUT, None)
             .next()
             .unwrap();
         let edge3311 = g
-            .vertex_edges_window(33.into(), 0, 1, Direction::OUT)
+            .vertex_edges_window(33.into(), 0, 1, Direction::OUT, None)
             .next()
             .unwrap();
 
@@ -1141,50 +1258,44 @@ mod db_tests {
             .unwrap();
         g.add_vertex_properties(22, &vec![("b".to_string(), Prop::U64(22))])
             .unwrap();
-        g.add_edge_properties(11, 11, None, &vec![("d".to_string(), Prop::U64(1111))])
+        g.add_edge_properties(11, 11, &vec![("d".to_string(), Prop::U64(1111))], None)
             .unwrap();
-        g.add_edge_properties(33, 11, None, &vec![("a".to_string(), Prop::U64(3311))])
+        g.add_edge_properties(33, 11, &vec![("a".to_string(), Prop::U64(3311))], None)
             .unwrap();
 
-        assert_eq!(
-            g.static_vertex_prop_keys(11.into()).unwrap(),
-            vec!["a", "b", "c"]
-        );
-        assert_eq!(g.static_vertex_prop_keys(22.into()).unwrap(), vec!["b"]);
-        assert!(g.static_vertex_prop_keys(33.into()).unwrap().is_empty());
-        assert_eq!(g.static_edge_prop_keys(edge1111).unwrap(), vec!["d"]);
-        assert_eq!(g.static_edge_prop_keys(edge3311).unwrap(), vec!["a"]);
-        assert!(g.static_edge_prop_keys(edge2233).unwrap().is_empty());
+        assert_eq!(g.static_vertex_prop_keys(11.into()), vec!["a", "b", "c"]);
+        assert_eq!(g.static_vertex_prop_keys(22.into()), vec!["b"]);
+        assert!(g.static_vertex_prop_keys(33.into()).is_empty());
+        assert_eq!(g.static_edge_prop_keys(edge1111), vec!["d"]);
+        assert_eq!(g.static_edge_prop_keys(edge3311), vec!["a"]);
+        assert!(g.static_edge_prop_keys(edge2233).is_empty());
 
         assert_eq!(
-            g.static_vertex_prop(11.into(), "a".to_string()).unwrap(),
+            g.static_vertex_prop(11.into(), "a".to_string()),
             Some(Prop::U64(11))
         );
         assert_eq!(
-            g.static_vertex_prop(11.into(), "b".to_string()).unwrap(),
+            g.static_vertex_prop(11.into(), "b".to_string()),
             Some(Prop::I64(11))
         );
         assert_eq!(
-            g.static_vertex_prop(11.into(), "c".to_string()).unwrap(),
+            g.static_vertex_prop(11.into(), "c".to_string()),
             Some(Prop::U32(11))
         );
         assert_eq!(
-            g.static_vertex_prop(22.into(), "b".to_string()).unwrap(),
+            g.static_vertex_prop(22.into(), "b".to_string()),
             Some(Prop::U64(22))
         );
+        assert_eq!(g.static_vertex_prop(22.into(), "a".to_string()), None);
         assert_eq!(
-            g.static_vertex_prop(22.into(), "a".to_string()).unwrap(),
-            None
-        );
-        assert_eq!(
-            g.static_edge_prop(edge1111, "d".to_string()).unwrap(),
+            g.static_edge_prop(edge1111, "d".to_string()),
             Some(Prop::U64(1111))
         );
         assert_eq!(
-            g.static_edge_prop(edge3311, "a".to_string()).unwrap(),
+            g.static_edge_prop(edge3311, "a".to_string()),
             Some(Prop::U64(3311))
         );
-        assert_eq!(g.static_edge_prop(edge2233, "a".to_string()).unwrap(), None);
+        assert_eq!(g.static_edge_prop(edge2233, "a".to_string()), None);
     }
 
     #[test]
@@ -1209,7 +1320,7 @@ mod db_tests {
             None,
         )
         .unwrap();
-        g.add_edge_properties(11, 22, None, &vec![("test".to_string(), Prop::Bool(true))])
+        g.add_edge_properties(11, 22, &vec![("test".to_string(), Prop::Bool(true))], None)
             .unwrap();
     }
 
@@ -1332,7 +1443,8 @@ mod db_tests {
         }
 
         let gandalf = utils::calculate_hash(&"Gandalf");
-        assert!(g.has_vertex_ref(gandalf).unwrap());
+        assert!(g.has_vertex(gandalf));
+        assert!(g.has_vertex("Gandalf"))
     }
 
     #[test]
@@ -1340,34 +1452,18 @@ mod db_tests {
         let g = Graph::new(1);
 
         let perspectives = Perspective::rolling(1, Some(1), Some(-100), Some(100));
-        let first_view = g.through_perspectives(perspectives).unwrap().next();
+        let first_view = g.through_perspectives(perspectives).next();
         assert!(first_view.is_none());
 
         let perspectives = vec![Perspective::new(Some(-10), Some(10))].into_iter();
-        let first_view = g.through_iter(Box::new(perspectives)).unwrap().next();
+        let first_view = g.through_iter(Box::new(perspectives)).next();
         assert!(first_view.is_none());
     }
 
     #[test]
     fn test_lotr_load_graph() {
         let g = crate::graph_loader::lotr_graph::lotr_graph(4);
-        assert_eq!(g.num_edges().unwrap(), 701);
-    }
-
-    //TODO: move this to integration tests or speed it up
-    #[ignore]
-    #[test]
-    fn test_twitter_load_graph() {
-        let g = crate::graph_loader::twitter_graph::twitter_graph(1);
-        let windowed_graph = g.window(i64::MIN, i64::MAX);
-        let mut i = 0;
-        println!("Starting analysis");
-        windowed_graph.vertex_ids().for_each(|v| {
-            local_triangle_count(&windowed_graph, v).unwrap();
-            i += 1;
-        });
-        assert_eq!(g.num_edges().unwrap(), 1089147);
-        assert_eq!(g.num_vertices().unwrap(), 49467);
+        assert_eq!(g.num_edges(), 701);
     }
 
     #[test]
@@ -1380,11 +1476,11 @@ mod db_tests {
         let g_at_max = g.at(i64::MAX);
         let g_at_min = g.at(i64::MIN);
 
-        assert_eq!(g_at_empty.num_vertices().unwrap(), 0);
-        assert_eq!(g_at_start.num_vertices().unwrap(), 70);
-        assert_eq!(g_at_another.num_vertices().unwrap(), 123);
-        assert_eq!(g_at_max.num_vertices().unwrap(), 139);
-        assert_eq!(g_at_min.num_vertices().unwrap(), 0);
+        assert_eq!(g_at_empty.num_vertices(), 0);
+        assert_eq!(g_at_start.num_vertices(), 70);
+        assert_eq!(g_at_another.num_vertices(), 123);
+        assert_eq!(g_at_max.num_vertices(), 139);
+        assert_eq!(g_at_min.num_vertices(), 0);
     }
 
     #[test]
@@ -1395,10 +1491,10 @@ mod db_tests {
         g.add_vertex(1, "hamza", &vec![]).unwrap();
         g.add_vertex(1, 831, &vec![]).unwrap();
 
-        assert!(g.has_vertex(831).unwrap());
-        assert!(g.has_vertex("haaroon").unwrap());
-        assert!(g.has_vertex("hamza").unwrap());
+        assert!(g.has_vertex(831));
+        assert!(g.has_vertex("haaroon"));
+        assert!(g.has_vertex("hamza"));
 
-        assert_eq!(g.num_vertices().unwrap(), 3);
+        assert_eq!(g.num_vertices(), 3);
     }
 }
