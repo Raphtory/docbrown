@@ -22,13 +22,13 @@ use rustc_hash::{FxHashMap, FxHashSet};
 /// Module containing graph algorithms that can be run on docbrown graphs
 pub mod algo {
 
+    use crate::algorithms::triplet_count::TripletCount;
     use rustc_hash::FxHashMap;
 
     use crate::view_api::GraphViewOps;
 
     use super::{
         GlobalEvalState, Program, SimpleConnectedComponents, TriangleCountS1, TriangleCountS2,
-        TripletCount,
     };
 
     /// Computes the connected components of a graph using the Simple Connected Components algorithm
@@ -283,7 +283,7 @@ impl<G: GraphViewOps> LocalState<G> {
     /// # Returns
     ///
     /// An `AggRef` object.
-    fn global_agg<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(
+    pub(crate) fn global_agg<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(
         &self,
         agg_ref: AccId<A, IN, OUT, ACC>,
     ) -> AggRef<A, IN, OUT, ACC>
@@ -300,7 +300,7 @@ impl<G: GraphViewOps> LocalState<G> {
     /// # Arguments
     ///
     /// * `f` - The function to execute on each vertex.
-    fn step<F>(&self, f: F)
+    pub(crate) fn step<F>(&self, f: F)
     where
         F: Fn(EvalVertexView<G>),
     {
@@ -551,7 +551,7 @@ impl<G: GraphViewOps> GlobalEvalState<G> {
     /// # Return Value
     ///
     /// An `AggRef` object representing the new state for the accumulator.
-    fn global_agg<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(
+    pub(crate) fn global_agg<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(
         &mut self,
         agg: AccId<A, IN, OUT, ACC>,
     ) -> AggRef<A, IN, OUT, ACC>
@@ -669,7 +669,7 @@ impl<G: GraphViewOps> GlobalEvalState<G> {
     /// * `f` - A closure taking an `EvalVertexView` and returning a boolean value.
     /// The closure is used to determine which vertices to include in the next step.
     ///
-    fn step<F>(&mut self, f: F)
+    pub(crate) fn step<F>(&mut self, f: F)
     where
         F: Fn(EvalVertexView<G>) -> bool + Sync,
     {
@@ -1237,48 +1237,6 @@ impl Program for TriangleCountSlowS2 {
         Self: Sync,
     {
         todo!()
-    }
-}
-
-/// Counts the number of open and closed triplets in a graph
-pub struct TripletCount {}
-
-/// Counts the number of open and closed triplets in a graph
-impl Program for TripletCount {
-    type Out = usize;
-
-    fn local_eval<G: GraphViewOps>(&self, c: &LocalState<G>) {
-        let count = c.global_agg(state::def::sum::<usize>(111));
-
-        /// Source: https://stackoverflow.com/questions/65561566/number-of-combinations-permutations
-        fn count_two_combinations(n: u64) -> u64 {
-            ((0.5 * n as f64) * (n - 1) as f64) as u64
-        }
-
-        /// In the step function get the neighbours of v, remove it self, then count the result
-        /// and add it to the global count
-        c.step(|v| {
-            let c1 = v
-                .neighbours()
-                .map(|n| n.global_id())
-                .filter(|n| *n != v.global_id())
-                .count();
-            let c2 = count_two_combinations(c1 as u64) as usize;
-            v.global_update(&count, c2);
-        })
-    }
-
-    fn post_eval<G: GraphViewOps>(&self, c: &mut GlobalEvalState<G>) {
-        let _ = c.global_agg(state::def::sum::<usize>(111));
-        c.step(|_| false)
-    }
-
-    fn produce_output<G: GraphViewOps>(&self, g: &G, gs: &GlobalEvalState<G>) -> Self::Out
-    where
-        Self: Sync,
-    {
-        gs.read_global_state(&state::def::sum::<usize>(111))
-            .unwrap_or(0)
     }
 }
 
