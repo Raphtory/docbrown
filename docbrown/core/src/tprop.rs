@@ -42,6 +42,9 @@ impl TProp {
                 if let Prop::Str(a) = prop {
                     cell.set(t, a.to_string());
                 }
+                else {
+
+                }
             }
             TProp::I32(cell) => {
                 if let Prop::I32(a) = prop {

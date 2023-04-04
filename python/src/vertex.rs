@@ -43,7 +43,7 @@ impl PyVertex {
     }
 
     pub fn name(&self) -> String {
-        self.name()
+        self.vertex.name()
     }
 
     pub fn property(&self, name: String, include_static: Option<bool>) -> Option<Prop> {

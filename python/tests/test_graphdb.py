@@ -200,11 +200,11 @@ def test_windowed_graph_neighbours():
 
 def test_name():
     # Currently deadlocking
-    # g = Graph()
-    # g.add_vertex(1, "Ben")
-    # g.add_vertex(1, 10)
-    # g.add_edge(1, "Ben", "Hamza")
-    # name = g.vertex(10).name()
+    g = Graph()
+    g.add_vertex(1, "Ben")
+    g.add_vertex(1, 10)
+    g.add_edge(1, "Ben", "Hamza")
+    name = g.vertex(10).name()
 
 
 def test_properties():
@@ -214,31 +214,17 @@ def test_properties():
     g.add_vertex(1, 1, props_t1)
     props_t2 = {"prop 1": 2, "prop 2": 0.6,"prop 4": False}
     g.add_vertex(2, 1, props_t2)
-    props_t3 = {"prop 2": 0.9, "prop 3": "hello","prop 4": True}
+    props_t3 = {"prop 2": 0.9, "prop 3": "hello", "prop 4": True}
     g.add_vertex(3, 1, props_t3)
 
-    h = g.vertex(1).property_history("prop 1")
-    assert h == [(1, 1), (2, 2)]
-
-    h = g.vertex(1).property_history("prop 3")
-    assert h == [(1, "hi"), (3, 'hello')]
-
+    assert g.vertex(1).property_history("prop 1") == [(1, 1), (2, 2)]
+    assert g.vertex(1).property_history("prop 2") == [(1, 0.3), (2, 0.6), (3, 0.9)]
+    assert g.vertex(1).property_history("prop 3") == [(1, "hi"), (3, 'hello')]
+    assert g.vertex(1).property_history("prop 4") == [(1, True), (2, False), (3, True)]
     assert g.vertex(1).property_history("undefined") == []
 
-    #HERE BE DRAGONS, this test is currently broken see  https://github.com/Raphtory/docbrown/pull/130
+    #assert g.vertex(1).property_history("prop 3") == [(1, 3), (3, 'hello')]
 
-    #h = g.vertex(1).property_history("prop 4")
-    #assert h == [(1, True), (1, False), (3, True)]
-
-    #h = g.vertex(1).property_history("prop 2")
-    #assert h == [(1, 0.3), (1, 0.6), (3, 0.9)]
-
-    # g = Graph()
-    # props_t1 = {"prop 3": 3}
-    # g.add_vertex(1, 1, props_t1)
-    # props_t3 = {"prop 3": "hello"}
-    # g.add_vertex(3, 1, props_t3)
-    # assert g.vertex(1).property_history("prop 3") == [(1, 3), (3, 'hello')]
 
 
 def test_algorithms():
