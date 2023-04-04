@@ -36,6 +36,11 @@ pub(crate) mod errors {
             dst_id: u64,
             source: IllegalMutate,
         },
+        #[error("cannot update property as is '{first_type}' and '{second_type}' given'")]
+        PropertyChangedType {
+            first_type:&'static str,
+            second_type:&'static str
+        },
     }
 }
 

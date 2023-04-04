@@ -5,6 +5,8 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt::Debug;
+use crate::tgraph::errors::MutateGraphError;
+use crate::tgraph_shard::errors::GraphError;
 
 #[derive(thiserror::Error, Debug)]
 #[error("cannot mutate static property '{name}'")]

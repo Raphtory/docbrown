@@ -85,6 +85,8 @@ pub mod errors {
     pub enum GraphError {
         #[error("Immutable graph reference already exists. You can access mutable graph apis only exclusively.")]
         IllegalGraphAccess,
+        #[error("Incorrect property given.")]
+        IncorrectPropertyType,
         #[error("Failed to mutate graph")]
         FailedToMutateGraph { source: MutateGraphError },
     }

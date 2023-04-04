@@ -130,8 +130,8 @@ impl<G: GraphViewOps> VertexView<G> {
     }
 
     pub fn has_property(&self, name: String, include_static: bool) -> bool {
-        self.graph.temporal_vertex_prop_names(self.vertex).contains(&name)
-            || (include_static && self.graph.temporal_vertex_prop_names(self.vertex).contains(&name))
+        (! self.property_history(name.clone()).is_empty())
+            || (include_static && self.graph.static_vertex_prop_names(self.vertex).contains(&name))
     }
 
     pub fn has_static_property(&self, name: String) -> bool {
