@@ -5,13 +5,10 @@ use std::collections::HashSet;
 
 pub struct GlobalReciprocity {}
 
-pub struct LocalReciprocity {}
-
 impl Program for GlobalReciprocity {
     type Out = f64;
 
     fn local_eval<G: GraphViewOps>(&self, c: &LocalState<G>) {
-        println!("local eval");
         let total_out_neighbours = c.agg(state::def::sum::<usize>(0));
         let total_out_inter_in = c.agg(state::def::sum::<usize>(1));
 
@@ -52,6 +49,28 @@ impl Program for GlobalReciprocity {
             .read_global_state(&state::def::sum::<usize>(0))
             .unwrap_or(0);
         a as f64 / b as f64
+    }
+}
+
+pub struct AllLocalReciprocity {}
+
+impl Program for AllLocalReciprocity {
+    type Out = f64;
+
+    fn local_eval<G: GraphViewOps>(&self, c: &LocalState<G>) {
+        let local_recip = c.agg(state::def::hash_set(0));
+        todo!()
+    }
+
+    fn post_eval<G: GraphViewOps>(&self, c: &mut GlobalEvalState<G>) {
+        todo!()
+    }
+
+    fn produce_output<G: GraphViewOps>(&self, g: &G, gs: &GlobalEvalState<G>) -> Self::Out
+    where
+        Self: Sync,
+    {
+        todo!()
     }
 }
 
