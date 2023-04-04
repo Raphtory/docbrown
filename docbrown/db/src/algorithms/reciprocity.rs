@@ -22,8 +22,8 @@
 //! # Examples
 //!
 //! ```rust
+//! use docbrown_db::algorithms::reciprocity::{all_local_reciprocity, global_reciprocity};
 //! use docbrown_db::graph::Graph;
-//! use docbrown_db::program::algo::{all_local_reciprocity, global_reciprocity};
 //! use docbrown_db::view_api::*;
 //! let g = Graph::new(1);
 //! let vs = vec![
