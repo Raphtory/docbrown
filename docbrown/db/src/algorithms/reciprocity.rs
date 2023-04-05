@@ -51,7 +51,6 @@
 //! ```
 use crate::vertex::VertexView;
 use crate::view_api::*;
-use docbrown_core::tgraph_shard::errors::GraphError;
 use std::collections::HashSet;
 
 fn get_reciprocal_edge_count<G: GraphViewOps>(v: &VertexView<G>) -> (u64, u64, u64) {

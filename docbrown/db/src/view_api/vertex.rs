@@ -1,6 +1,5 @@
-use crate::edge::{EdgeList, EdgeView};
+use crate::edge::EdgeList;
 use crate::path::PathFromVertex;
-use crate::vertex::VertexView;
 use crate::view_api::edge::EdgeListOps;
 use crate::view_api::{GraphViewOps, TimeOps};
 use docbrown_core::Prop;

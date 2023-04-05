@@ -1,6 +1,5 @@
 use crate::edge::EdgeView;
 use crate::view_api::{GraphViewOps, VertexListOps};
-use docbrown_core::tgraph_shard::errors::GraphError;
 use docbrown_core::Prop;
 use std::collections::HashMap;
 

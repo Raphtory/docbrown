@@ -43,7 +43,6 @@
 //! ```
 //!
 use crate::view_api::*;
-use docbrown_core::tgraph_shard::errors::GraphError;
 
 /// The maximum out degree of any vertex in the graph.
 pub fn max_out_degree<G: GraphViewOps>(graph: &G) -> usize {

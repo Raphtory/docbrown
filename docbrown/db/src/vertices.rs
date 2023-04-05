@@ -35,7 +35,7 @@ impl<G: GraphViewOps> Vertices<G> {
         self.iter().name()
     }
 
-    fn property(
+    pub fn property(
         &self,
         name: String,
         include_static: bool,
@@ -43,28 +43,34 @@ impl<G: GraphViewOps> Vertices<G> {
         self.iter().property(name, include_static)
     }
 
-    fn property_history(&self, name: String) -> Box<dyn Iterator<Item = Vec<(i64, Prop)>> + Send> {
+    pub fn property_history(
+        &self,
+        name: String,
+    ) -> Box<dyn Iterator<Item = Vec<(i64, Prop)>> + Send> {
         self.iter().property_history(name)
     }
 
-    fn properties(
+    pub fn properties(
         &self,
         include_static: bool,
     ) -> Box<dyn Iterator<Item = HashMap<String, Prop>> + Send> {
         self.iter().properties(include_static)
     }
 
-    fn property_histories(
+    pub fn property_histories(
         &self,
     ) -> Box<dyn Iterator<Item = HashMap<String, Vec<(i64, Prop)>>> + Send> {
         self.iter().property_histories()
     }
 
-    fn property_names(&self, include_static: bool) -> Box<dyn Iterator<Item = Vec<String>> + Send> {
+    pub fn property_names(
+        &self,
+        include_static: bool,
+    ) -> Box<dyn Iterator<Item = Vec<String>> + Send> {
         self.iter().property_names(include_static)
     }
 
-    fn has_property(
+    pub fn has_property(
         &self,
         name: String,
         include_static: bool,
@@ -72,11 +78,11 @@ impl<G: GraphViewOps> Vertices<G> {
         self.iter().has_property(name, include_static)
     }
 
-    fn has_static_property(&self, name: String) -> Box<dyn Iterator<Item = bool> + Send> {
+    pub fn has_static_property(&self, name: String) -> Box<dyn Iterator<Item = bool> + Send> {
         self.iter().has_static_property(name)
     }
 
-    fn static_property(&self, name: String) -> Box<dyn Iterator<Item = Option<Prop>> + Send> {
+    pub fn static_property(&self, name: String) -> Box<dyn Iterator<Item = Option<Prop>> + Send> {
         self.iter().static_property(name)
     }
 

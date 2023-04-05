@@ -1,7 +1,5 @@
 use common::run_analysis_benchmarks;
-use criterion::{
-    criterion_group, criterion_main, AxisScale, Criterion, PlotConfiguration, Throughput,
-};
+use criterion::{criterion_group, criterion_main, Criterion};
 use docbrown_db::graph_loader::sx_superuser_graph::sx_superuser_graph;
 use docbrown_db::view_api::*;
 

@@ -18,17 +18,7 @@
 //!
 
 use crate::graph_immutable::ImmutableGraph;
-use crate::graph_window::{WindowSet, WindowedGraph};
-use crate::perspective::{Perspective, PerspectiveIterator, PerspectiveSet};
-use itertools::Itertools;
-use std::cmp::{max, min};
-use std::{
-    collections::HashMap,
-    iter,
-    path::{Path, PathBuf},
-    sync::Arc,
-};
-
+use crate::view_api::internal::GraphViewInternalOps;
 use docbrown_core::tgraph::TemporalGraph;
 use docbrown_core::tgraph_shard::TGraphShard;
 use docbrown_core::{
@@ -38,10 +28,14 @@ use docbrown_core::{
     vertex::InputVertex,
     Direction, Prop,
 };
-
-use crate::view_api::internal::GraphViewInternalOps;
+use itertools::Itertools;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
+use std::cmp::{max, min};
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+};
 
 /// A temporal graph composed of multiple shards.
 ///
@@ -671,7 +665,7 @@ impl Graph {
         props: &Vec<(String, Prop)>,
     ) -> Result<(), GraphError> {
         let shard_id = utils::get_shard_id_from_global_vid(v.id(), self.nr_shards);
-        self.shards[shard_id].add_vertex(t, v, &props)
+        self.shards[shard_id].add_vertex(t, v, props)
     }
 
     /// Adds properties to the given input vertex.
@@ -735,12 +729,11 @@ impl Graph {
         if src_shard_id == dst_shard_id {
             self.shards[src_shard_id].add_edge(t, src.id(), dst.id(), props)
         } else {
-            Ok({
-                // FIXME these are sort of connected, we need to hold both locks for
-                // the src partition and dst partition to add a remote edge between both
-                self.shards[src_shard_id].add_edge_remote_out(t, src.id(), dst.id(), props)?;
-                self.shards[dst_shard_id].add_edge_remote_into(t, src.id(), dst.id(), props)?;
-            })
+            // FIXME these are sort of connected, we need to hold both locks for
+            // the src partition and dst partition to add a remote edge between both
+            self.shards[src_shard_id].add_edge_remote_out(t, src.id(), dst.id(), props)?;
+            self.shards[dst_shard_id].add_edge_remote_into(t, src.id(), dst.id(), props)?;
+            Ok(())
         }
     }
 
@@ -779,8 +772,8 @@ impl Graph {
 #[cfg(test)]
 mod db_tests {
     use super::*;
-    use crate::algorithms::local_triangle_count::local_triangle_count;
     use crate::graphgen::random_attachment::random_attachment;
+    use crate::perspective::Perspective;
     use crate::view_api::*;
     use csv::StringRecord;
     use docbrown_core::utils;
@@ -797,12 +790,12 @@ mod db_tests {
         for i in 0..10 {
             vs.push(Arc::new(i))
         }
-        let should_be_10: usize = vs.iter().map(|arc| Arc::strong_count(arc)).sum();
+        let should_be_10: usize = vs.iter().map(Arc::strong_count).sum();
         assert_eq!(should_be_10, 10);
 
         let vs2 = vs.clone();
 
-        let should_be_10: usize = vs2.iter().map(|arc| Arc::strong_count(arc)).sum();
+        let should_be_10: usize = vs2.iter().map(Arc::strong_count).sum();
         assert_eq!(should_be_10, 20)
     }
 
@@ -828,8 +821,7 @@ mod db_tests {
 
         let unique_vertices_count = edges
             .iter()
-            .map(|(_, src, dst)| vec![src, dst])
-            .flat_map(|v| v)
+            .flat_map(|(_, src, dst)| vec![src, dst])
             .sorted()
             .dedup()
             .count();
@@ -868,7 +860,7 @@ mod db_tests {
         let rand_dir = Uuid::new_v4();
         let tmp_docbrown_path: TempDir = TempDir::new("docbrown").unwrap();
         let shards_path =
-            format!("{:?}/{}", tmp_docbrown_path.path().display(), rand_dir).replace("\"", "");
+            format!("{:?}/{}", tmp_docbrown_path.path().display(), rand_dir).replace('\"', "");
 
         println!("shards_path: {}", shards_path);
 
@@ -916,16 +908,16 @@ mod db_tests {
         let g = Graph::new(2);
         g.add_edge(1, 7, 8, &vec![]).unwrap();
 
-        assert_eq!(g.has_edge(8, 7), false);
-        assert_eq!(g.has_edge(7, 8), true);
+        assert!(!g.has_edge(8, 7));
+        assert!(g.has_edge(7, 8));
 
         g.add_edge(1, 7, 9, &vec![]).unwrap();
 
-        assert_eq!(g.has_edge(9, 7), false);
-        assert_eq!(g.has_edge(7, 9), true);
+        assert!(!g.has_edge(9, 7));
+        assert!(g.has_edge(7, 9));
 
         g.add_edge(2, "haaroon", "northLondon", &vec![]).unwrap();
-        assert_eq!(g.has_edge("haaroon", "northLondon"), true);
+        assert!(g.has_edge("haaroon", "northLondon"));
     }
 
     #[test]
@@ -1377,35 +1369,33 @@ mod db_tests {
         }
 
         if let Ok(mut reader) = csv::Reader::from_path(data_dir) {
-            for rec_res in reader.records() {
-                if let Ok(rec) = rec_res {
-                    if let Some((src, dst, t)) = parse_record(&rec) {
-                        let src_id = utils::calculate_hash(&src);
-                        let dst_id = utils::calculate_hash(&dst);
+            for rec in reader.records().flatten() {
+                if let Some((src, dst, t)) = parse_record(&rec) {
+                    let src_id = utils::calculate_hash(&src);
+                    let dst_id = utils::calculate_hash(&dst);
 
-                        g.add_vertex(
-                            t,
-                            src_id,
-                            &vec![("name".to_string(), Prop::Str("Character".to_string()))],
-                        )
-                        .unwrap();
-                        g.add_vertex(
-                            t,
-                            dst_id,
-                            &vec![("name".to_string(), Prop::Str("Character".to_string()))],
-                        )
-                        .unwrap();
-                        g.add_edge(
-                            t,
-                            src_id,
-                            dst_id,
-                            &vec![(
-                                "name".to_string(),
-                                Prop::Str("Character Co-occurrence".to_string()),
-                            )],
-                        )
-                        .unwrap();
-                    }
+                    g.add_vertex(
+                        t,
+                        src_id,
+                        &vec![("name".to_string(), Prop::Str("Character".to_string()))],
+                    )
+                    .unwrap();
+                    g.add_vertex(
+                        t,
+                        dst_id,
+                        &vec![("name".to_string(), Prop::Str("Character".to_string()))],
+                    )
+                    .unwrap();
+                    g.add_edge(
+                        t,
+                        src_id,
+                        dst_id,
+                        &vec![(
+                            "name".to_string(),
+                            Prop::Str("Character Co-occurrence".to_string()),
+                        )],
+                    )
+                    .unwrap();
                 }
             }
         }

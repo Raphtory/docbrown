@@ -5,7 +5,6 @@ use crate::path::{Operations, PathFromVertex};
 use crate::view_api::vertex::VertexViewOps;
 use crate::view_api::{GraphViewOps, TimeOps, VertexListOps};
 use docbrown_core::tgraph::VertexRef;
-use docbrown_core::tgraph_shard::errors::GraphError;
 use docbrown_core::{Direction, Prop};
 use std::collections::HashMap;
 use std::ops::Range;

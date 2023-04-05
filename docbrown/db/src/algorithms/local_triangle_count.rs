@@ -39,7 +39,6 @@
 //! ```
 //!
 use crate::view_api::*;
-use docbrown_core::tgraph_shard::errors::GraphError;
 use itertools::Itertools;
 
 /// calculates the number of triangles (a cycle of length 3) for a node.

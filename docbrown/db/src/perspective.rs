@@ -67,7 +67,7 @@ impl Perspective {
     /// An expanding window is a window that grows by `step` size at each iteration.
     pub fn expanding(step: u64, start: Option<i64>, end: Option<i64>) -> PerspectiveSet {
         PerspectiveSet {
-            start: start,
+            start,
             end,
             step: step as i64,
             window: None,
@@ -85,8 +85,8 @@ impl Perspective {
         end: Option<i64>,
     ) -> PerspectiveSet {
         PerspectiveSet {
-            start: start,
-            end: end,
+            start,
+            end,
             step: step.unwrap_or(window) as i64,
             window: Some(window as i64),
         }
@@ -130,7 +130,7 @@ impl PerspectiveSet {
         });
         PerspectiveIterator {
             cursor: start,
-            end: end,
+            end,
             step: self.step,
             window: self.window,
         }
@@ -183,14 +183,14 @@ mod perspective_tests {
     fn gen_rolling(tuples: Vec<(i64, i64)>) -> Vec<Perspective> {
         tuples
             .iter()
-            .map(|(start, end)| Perspective::new(Some(start.clone()), Some(end.clone())))
+            .map(|(start, end)| Perspective::new(Some(*start), Some(*end)))
             .collect()
     }
 
     fn gen_expanding(tuples: Vec<i64>) -> Vec<Perspective> {
         tuples
             .iter()
-            .map(|point| Perspective::new(None, Some(point.clone())))
+            .map(|point| Perspective::new(None, Some(*point)))
             .collect()
     }
 

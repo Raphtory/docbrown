@@ -1,14 +1,11 @@
 use crate::edge::EdgeView;
-use crate::graph_window::{WindowSet, WindowedGraph};
-use crate::perspective::{Perspective, PerspectiveIterator, PerspectiveSet};
+use crate::graph_window::WindowedGraph;
 use crate::vertex::VertexView;
 use crate::vertices::Vertices;
 use crate::view_api::internal::GraphViewInternalOps;
 use crate::view_api::time::TimeOps;
 use crate::view_api::VertexViewOps;
 use docbrown_core::tgraph::VertexRef;
-use docbrown_core::tgraph_shard::errors::GraphError;
-use std::iter;
 
 /// This trait GraphViewOps defines operations for accessing
 /// information about a graph. The trait has associated types

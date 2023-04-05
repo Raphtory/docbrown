@@ -8,7 +8,6 @@
 use crate::vertex::VertexView;
 use crate::view_api::{EdgeListOps, GraphViewOps};
 use docbrown_core::tgraph::{EdgeRef, VertexRef};
-use docbrown_core::tgraph_shard::errors::GraphError;
 use docbrown_core::Prop;
 use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};
@@ -64,10 +63,7 @@ impl<G: GraphViewOps> EdgeView<G> {
         match props.last() {
             None => {
                 if include_static {
-                    match self.graph.static_edge_prop(self.edge, name) {
-                        None => None,
-                        Some(prop) => Some(prop),
-                    }
+                    self.graph.static_edge_prop(self.edge, name)
                 } else {
                     None
                 }
@@ -87,11 +83,8 @@ impl<G: GraphViewOps> EdgeView<G> {
 
         if include_static {
             for prop_name in self.graph.static_edge_prop_names(self.edge) {
-                match self.graph.static_edge_prop(self.edge, prop_name.clone()) {
-                    Some(prop) => {
-                        props.insert(prop_name, prop);
-                    }
-                    None => {}
+                if let Some(prop) = self.graph.static_edge_prop(self.edge, prop_name.clone()) {
+                    props.insert(prop_name, prop);
                 }
             }
         }
@@ -109,7 +102,7 @@ impl<G: GraphViewOps> EdgeView<G> {
         names
     }
     pub fn has_property(&self, name: String, include_static: bool) -> bool {
-        (! self.property_history(name.clone()).is_empty())
+        (!self.property_history(name.clone()).is_empty())
             || (include_static && self.graph.static_edge_prop_names(self.edge).contains(&name))
     }
 
@@ -164,7 +157,7 @@ impl<G: GraphViewOps> EdgeListOps for Box<dyn Iterator<Item = EdgeView<G>> + Sen
         include_static: bool,
     ) -> Box<dyn Iterator<Item = bool> + Send> {
         let r: Vec<_> = self
-            .map(|e| e.has_property(name.clone(), include_static.clone()))
+            .map(|e| e.has_property(name.clone(), include_static))
             .collect();
         Box::new(r.into_iter())
     }
@@ -175,7 +168,7 @@ impl<G: GraphViewOps> EdgeListOps for Box<dyn Iterator<Item = EdgeView<G>> + Sen
         include_static: bool,
     ) -> Box<dyn Iterator<Item = Option<Prop>> + Send> {
         let r: Vec<_> = self
-            .map(|e| e.property(name.clone(), include_static.clone()))
+            .map(|e| e.property(name.clone(), include_static))
             .collect();
         Box::new(r.into_iter())
     }
@@ -184,14 +177,12 @@ impl<G: GraphViewOps> EdgeListOps for Box<dyn Iterator<Item = EdgeView<G>> + Sen
         self,
         include_static: bool,
     ) -> Box<dyn Iterator<Item = HashMap<String, Prop>> + Send> {
-        let r: Vec<_> = self.map(|e| e.properties(include_static.clone())).collect();
+        let r: Vec<_> = self.map(|e| e.properties(include_static)).collect();
         Box::new(r.into_iter())
     }
 
     fn property_names(self, include_static: bool) -> Box<dyn Iterator<Item = Vec<String>> + Send> {
-        let r: Vec<_> = self
-            .map(|e| e.property_names(include_static.clone()))
-            .collect();
+        let r: Vec<_> = self.map(|e| e.property_names(include_static)).collect();
         Box::new(r.into_iter())
     }
 

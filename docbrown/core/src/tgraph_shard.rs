@@ -115,7 +115,7 @@ impl Default for TGraphShard<TemporalGraph> {
 }
 
 impl TGraphShard<TemporalGraph> {
-    fn new() -> TGraphShard<TemporalGraph> {
+    pub fn new() -> TGraphShard<TemporalGraph> {
         TGraphShard::default()
     }
 
@@ -147,7 +147,7 @@ impl TGraphShard<TemporalGraph> {
         F: FnOnce(&mut TemporalGraph) -> Result<A, GraphError>,
     {
         let mut binding = self.rc.write();
-        let mut shard = binding.as_mut().ok_or(GraphError::IllegalGraphAccess)?;
+        let shard = binding.as_mut().ok_or(GraphError::IllegalGraphAccess)?;
         f(shard)
     }
 

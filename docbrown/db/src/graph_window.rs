@@ -45,7 +45,6 @@ use docbrown_core::{
     tgraph::{EdgeRef, VertexRef},
     Direction, Prop,
 };
-use std::cmp::{max, min};
 use std::collections::HashMap;
 
 /// A set of windowed views of a `Graph`, allows user to iterating over a Graph broken
@@ -1104,16 +1103,14 @@ mod views_test {
                     start..end
                 ))
             }
+        } else if !wg.has_vertex(*v) {
+            TestResult::passed()
         } else {
-            if !wg.has_vertex(*v) {
-                TestResult::passed()
-            } else {
-                TestResult::error(format!(
-                    "Vertex {:?} was in window {:?}",
-                    (i, v),
-                    start..end
-                ))
-            }
+            TestResult::error(format!(
+                "Vertex {:?} was in window {:?}",
+                (i, v),
+                start..end
+            ))
         }
     }
 
@@ -1154,12 +1151,10 @@ mod views_test {
                     start..end
                 ))
             }
+        } else if !wg.has_edge(e.0, e.1) {
+            TestResult::passed()
         } else {
-            if !wg.has_edge(e.0, e.1) {
-                TestResult::passed()
-            } else {
-                TestResult::error(format!("Edge {:?} was in window {:?}", (i, e), start..end))
-            }
+            TestResult::error(format!("Edge {:?} was in window {:?}", (i, e), start..end))
         }
     }
 

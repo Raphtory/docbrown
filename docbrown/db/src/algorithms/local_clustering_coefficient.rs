@@ -51,7 +51,6 @@
 
 use crate::algorithms::local_triangle_count::local_triangle_count;
 use crate::view_api::*;
-use docbrown_core::tgraph_shard::errors::GraphError;
 
 /// measures the degree to which nodes in a graph tend to cluster together
 pub fn local_clustering_coefficient<G: GraphViewOps>(graph: &G, v: u64) -> Option<f32> {
@@ -60,7 +59,7 @@ pub fn local_clustering_coefficient<G: GraphViewOps>(graph: &G, v: u64) -> Optio
             let triangle_count = triangle_count as f32;
             let degree = vertex.degree() as f32;
             if degree > 1.0 {
-                Some((2.0 * triangle_count) / (degree * (degree - 1.0) as f32))
+                Some((2.0 * triangle_count) / (degree * (degree - 1.0)))
             } else {
                 Some(0.0)
             }

@@ -10,7 +10,7 @@ use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
 
 use crate::adj::Adj;
-use crate::props::{IllegalMutate, Props};
+use crate::props::Props;
 use crate::tprop::TProp;
 use crate::vertex::InputVertex;
 use crate::{bitset::BitSet, tadjset::AdjEdge, Direction};
@@ -38,8 +38,8 @@ pub(crate) mod errors {
         },
         #[error("cannot update property as is '{first_type}' and '{second_type}' given'")]
         PropertyChangedType {
-            first_type:&'static str,
-            second_type:&'static str
+            first_type: &'static str,
+            second_type: &'static str,
         },
     }
 }

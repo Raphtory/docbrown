@@ -33,7 +33,6 @@
 //! ```
 //!
 use crate::view_api::*;
-use docbrown_core::tgraph_shard::errors::GraphError;
 
 /// Measures how dense or sparse a graph is
 pub fn directed_graph_density<G: GraphViewOps>(graph: &G) -> f32 {
