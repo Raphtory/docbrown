@@ -1,4 +1,6 @@
 use crate::lazy_vec::{IllegalSet, LazyVec};
+use crate::tgraph::errors::MutateGraphError;
+use crate::tgraph_shard::errors::GraphError;
 use crate::tprop::TProp;
 use crate::Prop;
 use itertools::Itertools;
@@ -99,7 +101,7 @@ impl Props {
         props.get(prop_id)
     }
 
-    fn get_keys<A>(
+    fn get_names<A>(
         &self,
         vector: &Vec<LazyVec<A>>,
         id: usize,
@@ -123,12 +125,12 @@ impl Props {
         }
     }
 
-    pub fn static_keys(&self, id: usize) -> Vec<String> {
-        self.get_keys(&self.static_props, id, true)
+    pub fn static_names(&self, id: usize) -> Vec<String> {
+        self.get_names(&self.static_props, id, true)
     }
 
-    pub fn temporal_keys(&self, id: usize) -> Vec<String> {
-        self.get_keys(&self.temporal_props, id, false)
+    pub fn temporal_names(&self, id: usize) -> Vec<String> {
+        self.get_names(&self.temporal_props, id, false)
     }
 
     // SETTERS:
