@@ -300,18 +300,24 @@ impl<G: GraphViewOps> TimeOps for VertexView<G> {
     type WindowedViewType = VertexView<G>;
 
     fn start(&self) -> Option<i64> {
-        self.graph.start()
+        match &self.window {
+            None => self.graph.start(),
+            Some(w) => Some(w.start),
+        }
     }
 
     fn end(&self) -> Option<i64> {
-        self.graph.end()
+        match &self.window {
+            None => self.graph.end(),
+            Some(w) => Some(w.end),
+        }
     }
 
     fn window(&self, t_start: i64, t_end: i64) -> Self::WindowedViewType {
         Self {
             graph: self.graph.clone(),
             vertex: self.vertex,
-            window: Some(t_start..t_end),
+            window: Some(self.actual_start(t_start)..self.actual_end(t_end)),
         }
     }
 }

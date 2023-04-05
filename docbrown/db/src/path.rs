@@ -233,7 +233,33 @@ impl<G: GraphViewOps> PathFromGraph<G> {
     }
 }
 
-pub struct PathFromVertex<G: GraphViewOps + Clone> {
+impl<G: GraphViewOps> TimeOps for PathFromGraph<G> {
+    type WindowedViewType = Self;
+
+    fn start(&self) -> Option<i64> {
+        match &self.window {
+            None => self.graph.start(),
+            Some(w) => Some(w.start),
+        }
+    }
+
+    fn end(&self) -> Option<i64> {
+        match &self.window {
+            None => self.graph.end(),
+            Some(w) => Some(w.end),
+        }
+    }
+
+    fn window(&self, t_start: i64, t_end: i64) -> Self::WindowedViewType {
+        Self {
+            graph: self.graph.clone(),
+            operations: self.operations.clone(),
+            window: Some(self.actual_start(t_start)..self.actual_end(t_end)),
+        }
+    }
+}
+
+pub struct PathFromVertex<G: GraphViewOps> {
     graph: G,
     vertex: VertexRef,
     operations: Arc<Vec<Operations>>,
@@ -408,6 +434,33 @@ impl<G: GraphViewOps> PathFromVertex<G> {
             vertex: self.vertex,
             operations: Arc::new(new_ops),
             window: None,
+        }
+    }
+}
+
+impl<G: GraphViewOps> TimeOps for PathFromVertex<G> {
+    type WindowedViewType = Self;
+
+    fn start(&self) -> Option<i64> {
+        match &self.window {
+            None => self.graph.start(),
+            Some(w) => Some(w.start),
+        }
+    }
+
+    fn end(&self) -> Option<i64> {
+        match &self.window {
+            None => self.graph.end(),
+            Some(w) => Some(w.end),
+        }
+    }
+
+    fn window(&self, t_start: i64, t_end: i64) -> Self::WindowedViewType {
+        Self {
+            graph: self.graph.clone(),
+            vertex: self.vertex,
+            operations: self.operations.clone(),
+            window: Some(self.actual_start(t_start)..self.actual_end(t_end)),
         }
     }
 }

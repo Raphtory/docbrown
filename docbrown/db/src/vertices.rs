@@ -6,6 +6,7 @@ use docbrown_core::{Direction, Prop};
 use std::collections::HashMap;
 use std::ops::Range;
 
+#[derive(Clone)]
 pub struct Vertices<G: GraphViewOps> {
     graph: G,
     window: Option<Range<i64>>,
@@ -162,30 +163,36 @@ impl<G: GraphViewOps> Vertices<G> {
     }
 }
 
+impl<G: GraphViewOps> TimeOps for Vertices<G> {
+    type WindowedViewType = Self;
+
+    fn start(&self) -> Option<i64> {
+        match &self.window {
+            None => self.graph.start(),
+            Some(w) => Some(w.start),
+        }
+    }
+
+    fn end(&self) -> Option<i64> {
+        match &self.window {
+            None => self.graph.end(),
+            Some(w) => Some(w.end),
+        }
+    }
+
+    fn window(&self, t_start: i64, t_end: i64) -> Self::WindowedViewType {
+        Self {
+            graph: self.graph.clone(),
+            window: Some(self.actual_start(t_start)..self.actual_end(t_end)),
+        }
+    }
+}
+
 impl<G: GraphViewOps> IntoIterator for Vertices<G> {
     type Item = VertexView<G>;
     type IntoIter = Box<dyn Iterator<Item = VertexView<G>> + Send>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.iter()
-    }
-}
-
-impl<G: GraphViewOps> TimeOps for Vertices<G> {
-    type WindowedViewType = Self;
-
-    fn start(&self) -> Option<i64> {
-        self.graph.start()
-    }
-
-    fn end(&self) -> Option<i64> {
-        self.graph.end()
-    }
-
-    fn window(&self, t_start: i64, t_end: i64) -> Self::WindowedViewType {
-        Self {
-            graph: self.graph.clone(),
-            window: Some(t_start..t_end),
-        }
     }
 }
