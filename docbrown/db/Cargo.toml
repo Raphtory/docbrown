@@ -18,6 +18,7 @@ docbrown-core = {path = "../core", version = "0.0.6" }
 parking_lot = { version = "0.12" , features = ["serde"] }
 flume = "0.10"
 futures = {version = "0.3", features = ["thread-pool"] }
+genawaiter = "0.99"
 replace_with = "0.1"
 itertools="0.10"
 csv = "1.1.6"

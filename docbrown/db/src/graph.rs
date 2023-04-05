@@ -22,6 +22,7 @@ use crate::graph_window::{GraphWindowSet, WindowedGraph};
 use crate::perspective::{Perspective, PerspectiveIterator, PerspectiveSet};
 use itertools::Itertools;
 use std::cmp::{max, min};
+use std::ops::Deref;
 use std::{
     collections::HashMap,
     iter,
@@ -40,7 +41,10 @@ use docbrown_core::{
 };
 
 use crate::view_api::internal::GraphViewInternalOps;
+use genawaiter::sync::gen;
+use genawaiter::yield_;
 use rayon::prelude::*;
+use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
 
 /// A temporal graph composed of multiple shards.
@@ -54,9 +58,18 @@ pub struct Graph {
     pub(crate) nr_shards: usize,
     /// A vector of `TGraphShard<TemporalGraph>` representing the shards in the graph.
     pub(crate) shards: Vec<TGraphShard<TemporalGraph>>,
+    /// Translates layer names to layer ids
+    pub(crate) layer_ids: Arc<parking_lot::RwLock<FxHashMap<String, usize>>>,
 }
 
 impl GraphViewInternalOps for Graph {
+    fn get_layer(&self, key: Option<&str>) -> Option<usize> {
+        match key {
+            None => Some(0),
+            Some(key) => self.layer_ids.read().get(key).cloned(),
+        }
+    }
+
     fn earliest_time_global(&self) -> Option<i64> {
         let min_from_shards = self.shards.iter().map(|shard| shard.earliest_time()).min();
         min_from_shards.filter(|&min| min != i64::MAX)
@@ -116,15 +129,9 @@ impl GraphViewInternalOps for Graph {
             .sum()
     }
 
-    fn has_edge_ref(
-        &self,
-        src: VertexRef,
-        dst: VertexRef,
-        layer_name: Option<&str>,
-        layer_id: Option<usize>,
-    ) -> bool {
+    fn has_edge_ref(&self, src: VertexRef, dst: VertexRef, layer: usize) -> bool {
         self.get_shard_from_v(src)
-            .has_edge(src.g_id, dst.g_id, layer_name, layer_id)
+            .has_edge(src.g_id, dst.g_id, layer)
     }
 
     fn has_edge_ref_window(
@@ -133,16 +140,10 @@ impl GraphViewInternalOps for Graph {
         dst: VertexRef,
         t_start: i64,
         t_end: i64,
-        layer_name: Option<&str>,
-        layer_id: Option<usize>,
+        layer: usize,
     ) -> bool {
-        self.get_shard_from_v(src).has_edge_window(
-            src.g_id,
-            dst.g_id,
-            t_start..t_end,
-            layer_name,
-            layer_id,
-        )
+        self.get_shard_from_v(src)
+            .has_edge_window(src.g_id, dst.g_id, t_start..t_end, layer)
     }
 
     fn has_vertex_ref(&self, v: VertexRef) -> bool {
@@ -225,15 +226,8 @@ impl GraphViewInternalOps for Graph {
         Box::new(shard.vertices_window(t_start..t_end))
     }
 
-    fn edge_ref(
-        &self,
-        src: VertexRef,
-        dst: VertexRef,
-        layer_name: Option<&str>,
-        layer_id: Option<usize>,
-    ) -> Option<EdgeRef> {
-        self.get_shard_from_v(src)
-            .edge(src.g_id, dst.g_id, layer_name, layer_id)
+    fn edge_ref(&self, src: VertexRef, dst: VertexRef, layer: usize) -> Option<EdgeRef> {
+        self.get_shard_from_v(src).edge(src.g_id, dst.g_id, layer)
     }
 
     fn edge_ref_window(
@@ -242,25 +236,40 @@ impl GraphViewInternalOps for Graph {
         dst: VertexRef,
         t_start: i64,
         t_end: i64,
-        layer_name: Option<&str>,
-        layer_id: Option<usize>,
+        layer: usize,
     ) -> Option<EdgeRef> {
-        self.get_shard_from_v(src).edge_window(
-            src.g_id,
-            dst.g_id,
-            t_start..t_end,
-            layer_name,
-            layer_id,
-        )
+        self.get_shard_from_v(src)
+            .edge_window(src.g_id, dst.g_id, t_start..t_end, layer)
     }
 
     fn edge_refs(&self, layer: Option<usize>) -> Box<dyn Iterator<Item = EdgeRef> + Send> {
         //FIXME: needs low-level primitive
         let g = self.clone();
-        Box::new(
-            self.vertex_refs()
-                .flat_map(move |v| g.vertex_edges(v, Direction::OUT, layer)),
-        )
+        // let layer = layer.clone();
+        // Box::new(
+        //     self.vertex_refs()
+        //         .flat_map(move |v| g.vertex_edges(v, Direction::OUT, layer.clone())),
+        // )
+
+        match layer {
+            Some(layer) => Box::new(
+                self.vertex_refs()
+                    .flat_map(move |v| g.vertex_edges_single_layer(v, Direction::OUT, layer)),
+            ),
+            None => Box::new(
+                self.vertex_refs()
+                    .flat_map(move |v| g.vertex_edges_all_layers(v, Direction::OUT)),
+            ),
+        }
+
+        // let iter = gen!({
+        //     for v_ref in self.vertex_refs() {
+        //         for e_ref in g.vertex_edges(v_ref, Direction::OUT, layer) {
+        //             yield_!(e_ref)
+        //         }
+        //     }
+        // });
+        // Box::new(iter.into_iter())
     }
 
     fn edge_refs_window(
@@ -277,13 +286,34 @@ impl GraphViewInternalOps for Graph {
         )
     }
 
-    fn vertex_edges(
+    // fn vertex_edges(
+    //     &self,
+    //     v: VertexRef,
+    //     d: Direction,
+    //     layer: Option<usize>,
+    // ) -> Box<dyn Iterator<Item = EdgeRef> + Send> {
+    //     Box::new(self.get_shard_from_v(v).vertex_edges(v.g_id, d, layer))
+    // }
+
+    // FIXME: we should be able to have just `vertex_edges` which gets layer: Option<usize>
+    fn vertex_edges_all_layers(
         &self,
         v: VertexRef,
         d: Direction,
-        layer: Option<usize>,
     ) -> Box<dyn Iterator<Item = EdgeRef> + Send> {
-        Box::new(self.get_shard_from_v(v).vertex_edges(v.g_id, d, layer))
+        Box::new(self.get_shard_from_v(v).vertex_edges(v.g_id, d, None))
+    }
+
+    fn vertex_edges_single_layer(
+        &self,
+        v: VertexRef,
+        d: Direction,
+        layer: usize,
+    ) -> Box<dyn Iterator<Item = EdgeRef> + Send> {
+        Box::new(
+            self.get_shard_from_v(v)
+                .vertex_edges(v.g_id, d, Some(layer)),
+        )
     }
 
     fn vertex_edges_window(
@@ -475,6 +505,7 @@ impl Graph {
         ImmutableGraph {
             nr_shards: self.nr_shards,
             shards: self.shards.iter().map(|s| s.freeze()).collect_vec(),
+            layer_ids: Arc::new(self.layer_ids.read().clone()),
         }
     }
 
@@ -550,6 +581,7 @@ impl Graph {
         Graph {
             nr_shards,
             shards: (0..nr_shards).map(|_| TGraphShard::default()).collect(),
+            layer_ids: Default::default(),
         }
     }
 
@@ -579,7 +611,7 @@ impl Graph {
 
         let f = std::fs::File::open(p).unwrap();
         let mut reader = std::io::BufReader::new(f);
-        let nr_shards = bincode::deserialize_from(&mut reader)?;
+        let (nr_shards, layer_ids) = bincode::deserialize_from(&mut reader)?;
 
         let mut shard_paths = vec![];
         for i in 0..nr_shards {
@@ -598,7 +630,11 @@ impl Graph {
         shards.sort_by_cached_key(|(i, _)| *i);
 
         let shards = shards.into_iter().map(|(_, shard)| shard).collect();
-        Ok(Graph { nr_shards, shards }) //TODO I need to put in the actual values here
+        Ok(Graph {
+            nr_shards,
+            shards,
+            layer_ids,
+        }) //TODO I need to put in the actual values here
     }
 
     /// Save a graph to a directory
@@ -616,7 +652,7 @@ impl Graph {
     /// ```
     /// use docbrown_db::graph::Graph;
     /// use std::fs::File;
-    /// let mut g = Graph::new(4);
+    /// let g = Graph::new(4);
     /// g.add_vertex(1, 1, &vec![]);
     /// // g.save_to_file("path_str");
     /// ```
@@ -643,7 +679,7 @@ impl Graph {
 
         let f = std::fs::File::create(p)?;
         let writer = std::io::BufWriter::new(f);
-        bincode::serialize_into(writer, &self.nr_shards)?;
+        bincode::serialize_into(writer, &(self.nr_shards, self.layer_ids.clone()))?;
         Ok(())
     }
 
@@ -737,8 +773,10 @@ impl Graph {
         let src_shard_id = utils::get_shard_id_from_global_vid(src.id(), self.nr_shards);
         let dst_shard_id = utils::get_shard_id_from_global_vid(dst.id(), self.nr_shards);
 
+        let layer_id = self.get_or_allocate_layer(layer);
+
         if src_shard_id == dst_shard_id {
-            self.shards[src_shard_id].add_edge(t, src.id(), dst.id(), props, layer)
+            self.shards[src_shard_id].add_edge(t, src.id(), dst.id(), props, layer_id)
         } else {
             Ok({
                 // FIXME these are sort of connected, we need to hold both locks for
@@ -748,14 +786,14 @@ impl Graph {
                     src.id(),
                     dst.id(),
                     props,
-                    layer,
+                    layer_id,
                 )?;
                 self.shards[dst_shard_id].add_edge_remote_into(
                     t,
                     src.id(),
                     dst.id(),
                     props,
-                    layer,
+                    layer_id,
                 )?;
             })
         }
@@ -788,9 +826,22 @@ impl Graph {
         props: &Vec<(String, Prop)>,
         layer: Option<&str>,
     ) -> Result<(), GraphError> {
-        // TODO: we don't add properties to dst shard, but may need to depending on the plans
+        let layer_id = self.get_layer(layer).unwrap(); // FIXME: bubble up instead
+                                                       // TODO: we don't add properties to dst shard, but may need to depending on the plans
         self.get_shard_from_id(src.id())
-            .add_edge_properties(src.id(), dst.id(), props, layer)
+            .add_edge_properties(src.id(), dst.id(), props, layer_id)
+    }
+
+    fn get_or_allocate_layer(&self, key: Option<&str>) -> usize {
+        self.get_layer(key).unwrap_or_else(|| {
+            let mut layer_ids = self.layer_ids.write();
+            let layer_id = layer_ids.len();
+            layer_ids.insert(key.unwrap().to_string(), layer_id);
+            for shard in &self.shards {
+                shard.allocate_layer(layer_id).unwrap() // FIXME: bubble up error
+            }
+            layer_id
+        })
     }
 }
 
@@ -963,13 +1014,13 @@ mod db_tests {
         }
 
         assert_eq!(
-            g.edge_ref_window(1.into(), 3.into(), i64::MIN, i64::MAX, None, None)
+            g.edge_ref_window(1.into(), 3.into(), i64::MIN, i64::MAX, 0)
                 .unwrap()
                 .src_g_id,
             1u64
         );
         assert_eq!(
-            g.edge_ref_window(1.into(), 3.into(), i64::MIN, i64::MAX, None, None)
+            g.edge_ref_window(1.into(), 3.into(), i64::MIN, i64::MAX, 0)
                 .unwrap()
                 .dst_g_id,
             3u64

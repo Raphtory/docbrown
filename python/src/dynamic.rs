@@ -26,6 +26,10 @@ impl From<Graph> for DynamicGraph {
 }
 
 impl GraphViewInternalOps for DynamicGraph {
+    fn get_layer(&self, key: Option<&str>) -> Option<usize> {
+        self.0.get_layer(key)
+    }
+
     fn earliest_time_global(&self) -> Option<i64> {
         self.0.earliest_time_global()
     }
@@ -50,16 +54,16 @@ impl GraphViewInternalOps for DynamicGraph {
         self.0.vertices_len_window(t_start, t_end)
     }
 
-    fn edges_len(&self) -> usize {
-        self.0.edges_len()
+    fn edges_len(&self, layer: Option<usize>) -> usize {
+        self.0.edges_len(layer)
     }
 
-    fn edges_len_window(&self, t_start: i64, t_end: i64) -> usize {
-        self.0.edges_len_window(t_start, t_end)
+    fn edges_len_window(&self, t_start: i64, t_end: i64, layer: Option<usize>) -> usize {
+        self.0.edges_len_window(t_start, t_end, layer)
     }
 
-    fn has_edge_ref(&self, src: VertexRef, dst: VertexRef) -> bool {
-        self.0.has_edge_ref(src, dst)
+    fn has_edge_ref(&self, src: VertexRef, dst: VertexRef, layer: usize) -> bool {
+        self.0.has_edge_ref(src, dst, layer)
     }
 
     fn has_edge_ref_window(
@@ -68,8 +72,9 @@ impl GraphViewInternalOps for DynamicGraph {
         dst: VertexRef,
         t_start: i64,
         t_end: i64,
+        layer: usize,
     ) -> bool {
-        self.0.has_edge_ref_window(src, dst, t_start, t_end)
+        self.0.has_edge_ref_window(src, dst, t_start, t_end, layer)
     }
 
     fn has_vertex_ref(&self, v: VertexRef) -> bool {
@@ -80,12 +85,19 @@ impl GraphViewInternalOps for DynamicGraph {
         self.0.has_vertex_ref_window(v, t_start, t_end)
     }
 
-    fn degree(&self, v: VertexRef, d: Direction) -> usize {
-        self.0.degree(v, d)
+    fn degree(&self, v: VertexRef, d: Direction, layer: Option<usize>) -> usize {
+        self.0.degree(v, d, layer)
     }
 
-    fn degree_window(&self, v: VertexRef, t_start: i64, t_end: i64, d: Direction) -> usize {
-        self.0.degree_window(v, t_start, t_end, d)
+    fn degree_window(
+        &self,
+        v: VertexRef,
+        t_start: i64,
+        t_end: i64,
+        d: Direction,
+        layer: Option<usize>,
+    ) -> usize {
+        self.0.degree_window(v, t_start, t_end, d, layer)
     }
 
     fn vertex_ref(&self, v: u64) -> Option<VertexRef> {
@@ -129,8 +141,8 @@ impl GraphViewInternalOps for DynamicGraph {
         self.0.vertex_refs_window_shard(shard, t_start, t_end)
     }
 
-    fn edge_ref(&self, src: VertexRef, dst: VertexRef) -> Option<EdgeRef> {
-        self.0.edge_ref(src, dst)
+    fn edge_ref(&self, src: VertexRef, dst: VertexRef, layer: usize) -> Option<EdgeRef> {
+        self.0.edge_ref(src, dst, layer)
     }
 
     fn edge_ref_window(
@@ -139,24 +151,39 @@ impl GraphViewInternalOps for DynamicGraph {
         dst: VertexRef,
         t_start: i64,
         t_end: i64,
+        layer: usize,
     ) -> Option<EdgeRef> {
-        self.0.edge_ref_window(src, dst, t_start, t_end)
+        self.0.edge_ref_window(src, dst, t_start, t_end, layer)
     }
 
-    fn edge_refs(&self) -> Box<dyn Iterator<Item = EdgeRef> + Send> {
-        self.0.edge_refs()
+    fn edge_refs(&self, layer: Option<usize>) -> Box<dyn Iterator<Item = EdgeRef> + Send> {
+        self.0.edge_refs(layer)
     }
 
     fn edge_refs_window(
         &self,
         t_start: i64,
         t_end: i64,
+        layer: Option<usize>,
     ) -> Box<dyn Iterator<Item = EdgeRef> + Send> {
-        self.0.edge_refs_window(t_start, t_end)
+        self.0.edge_refs_window(t_start, t_end, layer)
     }
 
-    fn vertex_edges(&self, v: VertexRef, d: Direction) -> Box<dyn Iterator<Item = EdgeRef> + Send> {
-        self.0.vertex_edges(v, d)
+    fn vertex_edges_all_layers(
+        &self,
+        v: VertexRef,
+        d: Direction,
+    ) -> Box<dyn Iterator<Item = EdgeRef> + Send> {
+        self.0.vertex_edges_all_layers(v, d)
+    }
+
+    fn vertex_edges_single_layer(
+        &self,
+        v: VertexRef,
+        d: Direction,
+        layer: usize,
+    ) -> Box<dyn Iterator<Item = EdgeRef> + Send> {
+        self.0.vertex_edges_single_layer(v, d, layer)
     }
 
     fn vertex_edges_window(
@@ -165,8 +192,9 @@ impl GraphViewInternalOps for DynamicGraph {
         t_start: i64,
         t_end: i64,
         d: Direction,
+        layer: Option<usize>,
     ) -> Box<dyn Iterator<Item = EdgeRef> + Send> {
-        self.0.vertex_edges_window(v, t_start, t_end, d)
+        self.0.vertex_edges_window(v, t_start, t_end, d, layer)
     }
 
     fn vertex_edges_window_t(
@@ -175,8 +203,9 @@ impl GraphViewInternalOps for DynamicGraph {
         t_start: i64,
         t_end: i64,
         d: Direction,
+        layer: Option<usize>,
     ) -> Box<dyn Iterator<Item = EdgeRef> + Send> {
-        self.0.vertex_edges_window_t(v, t_start, t_end, d)
+        self.0.vertex_edges_window_t(v, t_start, t_end, d, layer)
     }
 
     fn neighbours(&self, v: VertexRef, d: Direction) -> Box<dyn Iterator<Item = VertexRef> + Send> {

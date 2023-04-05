@@ -8,6 +8,7 @@ use std::sync::Arc;
 /// The GraphViewInternalOps trait provides a set of methods to query a directed graph
 /// represented by the docbrown_core::tgraph::TGraph struct.
 pub trait GraphViewInternalOps {
+    fn get_layer(&self, key: Option<&str>) -> Option<usize>;
     fn earliest_time_global(&self) -> Option<i64>;
     fn earliest_time_window(&self, t_start: i64, t_end: i64) -> Option<i64>;
     fn latest_time_global(&self) -> Option<i64>;
@@ -40,13 +41,7 @@ pub trait GraphViewInternalOps {
     ///
     /// * `src` - The source vertex of the edge.
     /// * `dst` - The destination vertex of the edge.
-    fn has_edge_ref(
-        &self,
-        src: VertexRef,
-        dst: VertexRef,
-        layer_name: Option<&str>,
-        layer_id: Option<usize>,
-    ) -> bool;
+    fn has_edge_ref(&self, src: VertexRef, dst: VertexRef, layer: usize) -> bool;
 
     /// Returns true if the graph contains an edge between the source vertex (src) and the
     /// destination vertex (dst) created between the start (t_start) and end (t_end) timestamps
@@ -63,8 +58,7 @@ pub trait GraphViewInternalOps {
         dst: VertexRef,
         t_start: i64,
         t_end: i64,
-        layer_name: Option<&str>,
-        layer_id: Option<usize>,
+        layer: usize,
     ) -> bool;
 
     /// Returns true if the graph contains the specified vertex (v).
@@ -192,13 +186,7 @@ pub trait GraphViewInternalOps {
     /// # Returns
     ///
     /// * `Option<EdgeRef>` - The edge reference if it exists.
-    fn edge_ref(
-        &self,
-        src: VertexRef,
-        dst: VertexRef,
-        layer_name: Option<&str>,
-        layer_id: Option<usize>,
-    ) -> Option<EdgeRef>;
+    fn edge_ref(&self, src: VertexRef, dst: VertexRef, layer: usize) -> Option<EdgeRef>;
 
     /// Returns the edge reference that corresponds to the specified src and dst vertex
     /// created between the start (t_start) and end (t_end) timestamps (exclusive).
@@ -219,8 +207,7 @@ pub trait GraphViewInternalOps {
         dst: VertexRef,
         t_start: i64,
         t_end: i64,
-        layer_name: Option<&str>,
-        layer_id: Option<usize>,
+        layer: usize,
     ) -> Option<EdgeRef>;
 
     /// Returns all the edge references in the graph.
@@ -258,11 +245,24 @@ pub trait GraphViewInternalOps {
     ///
     /// Box<dyn Iterator<Item = EdgeRef> + Send> -  A boxed iterator that yields references to
     /// the edges connected to the vertex.
-    fn vertex_edges(
+    // fn vertex_edges(
+    //     &self,
+    //     v: VertexRef,
+    //     d: Direction,
+    //     layer: Option<usize>,
+    // ) -> Box<dyn Iterator<Item = EdgeRef> + Send + '_>;
+
+    fn vertex_edges_all_layers(
         &self,
         v: VertexRef,
         d: Direction,
-        layer: Option<usize>,
+    ) -> Box<dyn Iterator<Item = EdgeRef> + Send>;
+
+    fn vertex_edges_single_layer(
+        &self,
+        v: VertexRef,
+        d: Direction,
+        layer: usize,
     ) -> Box<dyn Iterator<Item = EdgeRef> + Send>;
 
     /// Returns an iterator over the edges connected to a given vertex within a

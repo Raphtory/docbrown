@@ -99,7 +99,10 @@ impl<G: Send + Sync + Sized + GraphViewInternalOps + 'static + Clone> GraphViewO
     }
 
     fn has_edge<T: Into<VertexRef>>(&self, src: T, dst: T, layer: Option<&str>) -> bool {
-        self.has_edge_ref(src.into(), dst.into(), layer, None)
+        match self.get_layer(layer) {
+            Some(layer_id) => self.has_edge_ref(src.into(), dst.into(), layer_id),
+            None => false, // Maybe we should fail instead ?
+        }
     }
 
     fn vertex<T: Into<VertexRef>>(&self, v: T) -> Option<VertexView<Self>> {
@@ -118,7 +121,8 @@ impl<G: Send + Sync + Sized + GraphViewInternalOps + 'static + Clone> GraphViewO
         dst: T,
         layer: Option<&str>,
     ) -> Option<EdgeView<Self>> {
-        self.edge_ref(src.into(), dst.into(), layer, None)
+        let layer_id = self.get_layer(layer)?; // Maybe we should fail instead
+        self.edge_ref(src.into(), dst.into(), layer_id)
             .map(|e| EdgeView::new(self.clone(), e))
     }
 

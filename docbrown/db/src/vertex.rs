@@ -150,7 +150,7 @@ impl<G: GraphViewOps> VertexView<G> {
         let g = self.graph.clone();
         Box::new(
             self.graph
-                .vertex_edges(self.vertex, Direction::BOTH, None)
+                .vertex_edges_all_layers(self.vertex, Direction::BOTH)
                 .map(move |e| EdgeView::new(g.clone(), e)),
         )
     }
@@ -183,7 +183,7 @@ impl<G: GraphViewOps> VertexView<G> {
         let g = self.graph.clone();
         Box::new(
             self.graph
-                .vertex_edges(self.vertex, Direction::IN, None)
+                .vertex_edges_all_layers(self.vertex, Direction::IN)
                 .map(move |e| EdgeView::new(g.clone(), e)),
         )
     }
@@ -216,7 +216,7 @@ impl<G: GraphViewOps> VertexView<G> {
         let g = self.graph.clone();
         Box::new(
             self.graph
-                .vertex_edges(self.vertex, Direction::OUT, None)
+                .vertex_edges_all_layers(self.vertex, Direction::OUT)
                 .map(move |e| EdgeView::new(g.clone(), e)),
         )
     }

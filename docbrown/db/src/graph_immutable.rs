@@ -22,8 +22,10 @@ use docbrown_core::{
     tgraph::{EdgeRef, VertexRef},
     utils,
 };
+use rustc_hash::FxHashMap;
 
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 
 /// A docbrown graph in a frozen state that is read-only.
 /// This graph can be queried in a read-only format avoiding any locks placed when using a
@@ -44,6 +46,7 @@ use serde::{Deserialize, Serialize};
 pub struct ImmutableGraph {
     pub(crate) nr_shards: usize,
     pub(crate) shards: Vec<ImmutableTGraphShard<TemporalGraph>>,
+    pub(crate) layer_ids: Arc<FxHashMap<String, usize>>,
 }
 
 /// Failure if there is an issue with unfreezing a frozen graph
@@ -77,6 +80,7 @@ impl ImmutableGraph {
         Ok(Graph {
             nr_shards: self.nr_shards,
             shards,
+            layer_ids: Arc::new(parking_lot::RwLock::new((*self.layer_ids).clone())),
         })
     }
 

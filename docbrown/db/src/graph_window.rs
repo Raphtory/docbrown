@@ -47,6 +47,7 @@ use docbrown_core::{
 };
 use std::cmp::{max, min};
 use std::collections::HashMap;
+use std::sync::Arc;
 
 /// A set of windowed views of a `Graph`, allows user to iterating over a Graph broken
 /// down into multiple windowed views.
@@ -136,6 +137,10 @@ impl<G: GraphViewInternalOps> WindowedGraph<G> {
 /// This trait provides operations to a `WindowedGraph` used internally by the `GraphWindowSet`.
 /// *Note: All functions in this are bound by the time set in the windowed graph.
 impl<G: GraphViewInternalOps> GraphViewInternalOps for WindowedGraph<G> {
+    fn get_layer(&self, key: Option<&str>) -> Option<usize> {
+        self.graph.get_layer(key)
+    }
+
     fn earliest_time_global(&self) -> Option<i64> {
         self.graph.earliest_time_window(self.t_start, self.t_end)
     }
@@ -208,15 +213,9 @@ impl<G: GraphViewInternalOps> GraphViewInternalOps for WindowedGraph<G> {
     /// # Errors
     ///
     /// Returns an error if either `src` or `dst` is not a valid vertex.
-    fn has_edge_ref(
-        &self,
-        src: VertexRef,
-        dst: VertexRef,
-        layer_name: Option<&str>,
-        layer_id: Option<usize>,
-    ) -> bool {
+    fn has_edge_ref(&self, src: VertexRef, dst: VertexRef, layer: usize) -> bool {
         self.graph
-            .has_edge_ref_window(src, dst, self.t_start, self.t_end, layer_name, layer_id)
+            .has_edge_ref_window(src, dst, self.t_start, self.t_end, layer)
     }
 
     /// Check if there is an edge from src to dst in the window defined by t_start and t_end.
@@ -241,16 +240,14 @@ impl<G: GraphViewInternalOps> GraphViewInternalOps for WindowedGraph<G> {
         dst: VertexRef,
         t_start: i64,
         t_end: i64,
-        layer_name: Option<&str>,
-        layer_id: Option<usize>,
+        layer: usize,
     ) -> bool {
         self.graph.has_edge_ref_window(
             src,
             dst,
             self.actual_start(t_start),
             self.actual_end(t_end),
-            layer_name,
-            layer_id,
+            layer,
         )
     }
 
@@ -455,15 +452,9 @@ impl<G: GraphViewInternalOps> GraphViewInternalOps for WindowedGraph<G> {
     /// # Errors
     ///
     /// Returns an error if `src` or `dst` are not valid vertices.
-    fn edge_ref(
-        &self,
-        src: VertexRef,
-        dst: VertexRef,
-        layer_name: Option<&str>,
-        layer_id: Option<usize>,
-    ) -> Option<EdgeRef> {
+    fn edge_ref(&self, src: VertexRef, dst: VertexRef, layer: usize) -> Option<EdgeRef> {
         self.graph
-            .edge_ref_window(src, dst, self.t_start, self.t_end, layer_name, layer_id)
+            .edge_ref_window(src, dst, self.t_start, self.t_end, layer)
     }
 
     /// Get an iterator over the references of an edges as a reference in a window
@@ -488,16 +479,14 @@ impl<G: GraphViewInternalOps> GraphViewInternalOps for WindowedGraph<G> {
         dst: VertexRef,
         t_start: i64,
         t_end: i64,
-        layer_name: Option<&str>,
-        layer_id: Option<usize>,
+        layer: usize,
     ) -> Option<EdgeRef> {
         self.graph.edge_ref_window(
             src,
             dst,
             self.actual_start(t_start),
             self.actual_end(t_end),
-            layer_name,
-            layer_id,
+            layer,
         )
     }
 
@@ -540,14 +529,31 @@ impl<G: GraphViewInternalOps> GraphViewInternalOps for WindowedGraph<G> {
     /// # Returns
     ///
     /// An iterator over all edges in that vertex direction as references
-    fn vertex_edges(
+    // fn vertex_edges(
+    //     &self,
+    //     v: VertexRef,
+    //     d: Direction,
+    //     layer: Option<usize>,
+    // ) -> Box<dyn Iterator<Item = EdgeRef> + Send> {
+    //     self.graph
+    //         .vertex_edges_window(v, self.t_start, self.t_end, d, layer)
+    // }
+
+    fn vertex_edges_all_layers(
         &self,
         v: VertexRef,
         d: Direction,
-        layer: Option<usize>,
     ) -> Box<dyn Iterator<Item = EdgeRef> + Send> {
-        self.graph
-            .vertex_edges_window(v, self.t_start, self.t_end, d, layer)
+        self.graph.vertex_edges_all_layers(v, d)
+    }
+
+    fn vertex_edges_single_layer(
+        &self,
+        v: VertexRef,
+        d: Direction,
+        layer: usize,
+    ) -> Box<dyn Iterator<Item = EdgeRef> + Send> {
+        self.graph.vertex_edges_single_layer(v, d, layer)
     }
 
     /// Get an iterator of all edges as references for a given vertex and direction in a window
