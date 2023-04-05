@@ -11,7 +11,7 @@ pub mod wrappers;
 
 use pyo3::prelude::*;
 
-use crate::algorithms::{all_local_reciprocity, global_reciprocity, local_reciprocity};
+use crate::algorithms::{all_local_reciprocity, global_reciprocity};
 use crate::graph::PyGraph;
 use crate::wrappers::PyPerspective;
 

@@ -48,7 +48,7 @@ use crate::program::{EvalVertexView, GlobalEvalState, LocalState, Program};
 use crate::view_api::GraphViewOps;
 use docbrown_core::state;
 use rustc_hash::FxHashMap;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 struct GlobalReciprocity {}
 
@@ -112,7 +112,7 @@ impl Program for GlobalReciprocity {
 struct AllLocalReciprocity {}
 
 impl Program for AllLocalReciprocity {
-    type Out = FxHashMap<u64, f64>;
+    type Out = HashMap<u64, f64>;
 
     fn local_eval<G: GraphViewOps>(&self, c: &LocalState<G>) {
         let min = c.agg(state::def::sum(0));
@@ -139,7 +139,7 @@ impl Program for AllLocalReciprocity {
     {
         let agg = state::def::sum::<f64>(0);
 
-        let mut results: FxHashMap<u64, f64> = FxHashMap::default();
+        let mut results: HashMap<u64, f64> = HashMap::default();
 
         (0..g.num_shards())
             .into_iter()
@@ -163,7 +163,7 @@ pub fn global_reciprocity<G: GraphViewOps>(g: &G) -> f64 {
 }
 
 /// returns the reciprocity of every vertex in the graph as a tuple of
-pub fn all_local_reciprocity<G: GraphViewOps>(g: &G) -> FxHashMap<u64, f64> {
+pub fn all_local_reciprocity<G: GraphViewOps>(g: &G) -> HashMap<u64, f64> {
     let mut gs = GlobalEvalState::new(g.clone(), false);
     let gr = AllLocalReciprocity {};
     gr.run_step(g, &mut gs);
@@ -171,13 +171,14 @@ pub fn all_local_reciprocity<G: GraphViewOps>(g: &G) -> FxHashMap<u64, f64> {
 }
 
 #[cfg(test)]
-mod program_test {
+mod reciprocity_test {
     use crate::algorithms::reciprocity::{all_local_reciprocity, global_reciprocity};
     use crate::graph::Graph;
     use docbrown_core::state;
     use itertools::chain;
     use pretty_assertions::assert_eq;
     use rustc_hash::FxHashMap;
+    use std::collections::HashMap;
     use std::{cmp::Reverse, iter::once};
 
     #[test]
@@ -205,8 +206,7 @@ mod program_test {
         let expected_vec: Vec<(u64, f64)> =
             vec![(1, 0.4), (2, 2.0 / 3.0), (3, 0.5), (4, 2.0 / 3.0), (5, 0.0)];
 
-        let map_names_by_id: FxHashMap<u64, f64> =
-            expected_vec.iter().map(|x| (x.0, x.1)).collect();
+        let map_names_by_id: HashMap<u64, f64> = expected_vec.iter().map(|x| (x.0, x.1)).collect();
 
         let actual = all_local_reciprocity(&graph);
         assert_eq!(actual, map_names_by_id);
