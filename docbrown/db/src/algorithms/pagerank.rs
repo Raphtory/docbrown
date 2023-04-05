@@ -245,13 +245,17 @@ impl Program for UnweightedPageRankS2 {
     type Out = ();
 
     fn local_eval(&self, c: &LocalState) {
+        let damping_factor = 0.85;
         let score: AggRef<MulF32, MulF32, MulF32, ValDef<MulF32>> = c.agg(self.score.clone());
         let recv_score: AggRef<SumF32, SumF32, SumF32, SumDef<SumF32>> =
             c.agg(self.recv_score.clone());
         let max_diff: AggRef<f32, f32, f32, MaxDef<f32>> = c.global_agg(self.max_diff.clone());
 
         c.step(|s| {
-            s.update(&score, MulF32(s.read(&recv_score).0));
+            s.update(
+                &score,
+                MulF32((1f32 - damping_factor) + (damping_factor * s.read(&recv_score).0)),
+            );
             let prev = s.read_prev(&score);
             let curr = s.read(&score);
             let md = abs((prev.clone() - curr.clone()).0);
