@@ -26,6 +26,7 @@
 //! println!("average_degree: {:?}", average_degree(&g));
 //! ```
 
+pub mod clustering_coefficient;
 pub mod degree;
 pub mod directed_graph_density;
 pub mod local_clustering_coefficient;

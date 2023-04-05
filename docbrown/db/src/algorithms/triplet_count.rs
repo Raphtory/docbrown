@@ -15,7 +15,7 @@
 //!
 //! ```rust
 //! use docbrown_db::graph::Graph;
-//! use docbrown_db::program::algo::triplet_count;
+//! use docbrown_db::algorithms::triplet_count::triplet_count;
 //! use crate::docbrown_db::view_api::*;
 //! let graph = Graph::new(2);
 //!  let edges = vec![
@@ -37,6 +37,48 @@
 use crate::program::{GlobalEvalState, LocalState, Program};
 use crate::view_api::GraphViewOps;
 use docbrown_core::state;
+
+/// Computes the number of both open and closed triplets within a graph
+///
+/// An open triplet, is one where a node has two neighbors, but no edge between them.
+/// A closed triplet is one where a node has two neighbors, and an edge between them.
+///
+/// # Arguments
+///
+/// * `g` - A reference to the graph
+///
+/// # Returns
+///
+/// The total number of open and closed triplets in the graph
+///
+/// # Example
+///
+/// ```rust
+/// use docbrown_db::graph::Graph;
+/// use docbrown_db::algorithms::triplet_count::triplet_count;
+/// use crate::docbrown_db::view_api::*;
+/// let graph = Graph::new(2);
+///  let edges = vec![
+///      (1, 2),
+///      (1, 3),
+///      (1, 4),
+///      (2, 1),
+///      (2, 6),
+///      (2, 7),
+///  ];
+///  for (src, dst) in edges {
+///      graph.add_edge(0, src, dst, &vec![]);
+///  }
+///  let results = triplet_count(&graph.at(1));
+///  println!("triplet count: {}", results);
+/// ```
+///
+pub fn triplet_count<G: GraphViewOps>(g: &G) -> usize {
+    let mut gs = GlobalEvalState::new(g.clone(), false);
+    let tc = TripletCount {};
+    tc.run_step(g, &mut gs);
+    tc.produce_output(g, &gs)
+}
 
 /// Counts the number of open and closed triplets in a graph
 pub struct TripletCount {}
@@ -82,10 +124,8 @@ impl Program for TripletCount {
 
 #[cfg(test)]
 mod program_test {
-    use std::{cmp::Reverse, iter::once};
-
+    use super::*;
     use crate::graph::Graph;
-    use crate::program::algo::triplet_count;
     use crate::view_api::*;
     use pretty_assertions::assert_eq;
 
@@ -95,6 +135,50 @@ mod program_test {
         let graph = Graph::new(1);
 
         /// Graph has 2 triangles and 20 triplets
+        let edges = vec![
+            (1, 2),
+            (1, 3),
+            (1, 4),
+            (2, 1),
+            (2, 6),
+            (2, 7),
+            (3, 1),
+            (3, 4),
+            (3, 7),
+            (4, 1),
+            (4, 3),
+            (4, 5),
+            (4, 6),
+            (5, 4),
+            (5, 6),
+            (6, 4),
+            (6, 5),
+            (6, 2),
+            (7, 2),
+            (7, 3),
+        ];
+
+        for (src, dst) in edges {
+            graph.add_edge(0, src, dst, &vec![]);
+        }
+        let exp_triplet_count = 20;
+        let results = triplet_count(&graph.at(1));
+        assert_eq!(results, exp_triplet_count);
+    }
+}
+
+#[cfg(test)]
+mod triplet_test {
+    use super::*;
+    use crate::graph::Graph;
+    use pretty_assertions::assert_eq;
+
+    /// Test the global clustering coefficient
+    #[test]
+    fn test_triplet_count() {
+        let graph = Graph::new(1);
+
+        // Graph has 2 triangles and 20 triplets
         let edges = vec![
             (1, 2),
             (1, 3),
