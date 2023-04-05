@@ -18,12 +18,12 @@ use std::ops::{Add, AddAssign, Div, Mul, Range, Sub};
 struct MulF32(f32);
 
 impl Zero for MulF32 {
-    fn set_zero(&mut self) {
-        *self = Zero::zero();
-    }
-
     fn zero() -> Self {
         MulF32(1.0f32)
+    }
+
+    fn set_zero(&mut self) {
+        *self = Zero::zero();
     }
 
     fn is_zero(&self) -> bool {
@@ -83,12 +83,12 @@ impl Bounded for MulF32 {
 struct SumF32(f32);
 
 impl Zero for SumF32 {
-    fn set_zero(&mut self) {
-        *self = Zero::zero();
-    }
-
     fn zero() -> Self {
         SumF32(0.0f32)
+    }
+
+    fn set_zero(&mut self) {
+        *self = Zero::zero();
     }
 
     fn is_zero(&self) -> bool {
@@ -257,11 +257,13 @@ impl Program for UnweightedPageRankS3 {
 
         c.step(|s| {
             s.reset(&recv_score);
-            s.reset(&max_diff);
+            s.global_reset(&max_diff);
         });
     }
 
     fn post_eval(&self, c: &mut GlobalEvalState) {
+        let _ = c.global_agg(max::<f32>(2));
+        let _ = c.agg(sum::<SumF32>(1));
         c.step(|_| true)
     }
 
@@ -282,7 +284,7 @@ pub fn unweighted_page_rank(
     let pg_s2 = UnweightedPageRankS2::new();
     let pg_s3 = UnweightedPageRankS3::new();
 
-    let max_diff = 0.001f32;
+    let max_diff = 0.01f32;
     let mut i = 0;
 
     loop {
@@ -300,7 +302,7 @@ pub fn unweighted_page_rank(
         }
 
         pg_s3.run_step(g, &mut c);
-        
+
         if c.keep_past_state {
             c.ss += 1;
         }
@@ -363,7 +365,7 @@ mod page_rank_tests {
 
         let window = 0..10;
 
-        let results: FxHashMap<u64, f32> = unweighted_page_rank(&graph, window, 10)
+        let results: FxHashMap<u64, f32> = unweighted_page_rank(&graph, window, 20)
             .into_iter()
             .map(|(k, v)| (k, v))
             .collect();

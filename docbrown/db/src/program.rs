@@ -418,6 +418,18 @@ impl EvalVertexView {
             .reset(self.ss, self.vv.id() as usize, &agg)
     }
 
+    pub fn global_reset<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(
+        &self,
+        agg_r: &AggRef<A, IN, OUT, ACC>,
+    ) where
+        A: StateType,
+    {
+        let AggRef(agg) = agg_r;
+        self.state
+            .borrow_mut()
+            .reset_global(&agg)
+    }
+
     pub fn update<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(
         &self,
         agg_r: &AggRef<A, IN, OUT, ACC>,

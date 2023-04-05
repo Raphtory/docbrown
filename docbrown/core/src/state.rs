@@ -706,6 +706,15 @@ impl<CS: ComputeState + Send + Sync> ShuffleComputeState<CS> {
         self.parts[part].reset(into, agg_ref)
     }
 
+    pub fn reset_global<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(
+        &mut self,
+        agg_ref: &AccId<A, IN, OUT, ACC>,
+    ) where
+        A: StateType,
+    {
+        self.global.reset(GLOBAL_STATE_KEY, agg_ref)
+    }
+
     pub fn accumulate_into<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(
         &mut self,
         ss: usize,
