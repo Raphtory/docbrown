@@ -15,6 +15,10 @@ use std::iter;
 /// that are used to define the type of the vertices, edges
 /// and the corresponding iterators.
 pub trait GraphViewOps: Send + Sync + Sized + GraphViewInternalOps + 'static + Clone {
+    /// Timestamp of earliest activity in the graph
+    fn earliest_time(&self) -> Option<i64>;
+    /// Timestamp of latest activity in the graph
+    fn latest_time(&self) -> Option<i64>;
     /// Return the number of vertices in the graph.
     fn num_vertices(&self) -> usize;
 
@@ -46,6 +50,14 @@ pub trait GraphViewOps: Send + Sync + Sized + GraphViewInternalOps + 'static + C
 }
 
 impl<G: Send + Sync + Sized + GraphViewInternalOps + 'static + Clone> GraphViewOps for G {
+    fn earliest_time(&self) -> Option<i64> {
+        self.earliest_time_global()
+    }
+
+    fn latest_time(&self) -> Option<i64> {
+        self.latest_time_global()
+    }
+
     fn num_vertices(&self) -> usize {
         self.vertices_len()
     }

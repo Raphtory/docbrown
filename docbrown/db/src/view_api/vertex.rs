@@ -13,11 +13,20 @@ pub trait VertexViewOps: TimeOps {
     /// Get the numeric id of the vertex
     fn id(&self) -> u64;
 
+    /// Get the name of this vertex if a user has set one otherwise it returns the ID.
+    ///
+    /// # Returns
+    ///
+    /// The name of the vertex if one exists, otherwise the ID as a string.
+    fn name(&self) -> String;
+
     /// Get the timestamp for the earliest activity of the vertex
     fn earliest_time(&self) -> Option<i64>;
 
     /// Get the timestamp for the latest activity of the vertex
     fn latest_time(&self) -> Option<i64>;
+
+    fn property(&self, name: String, include_static: bool) -> Option<Prop>;
 
     /// Get the temporal property value of this vertex.
     ///
@@ -29,7 +38,9 @@ pub trait VertexViewOps: TimeOps {
     ///
     /// A vector of `(i64, Prop)` tuples where the `i64` value is the timestamp of the
     /// property value and `Prop` is the value itself.
-    fn prop(&self, name: String) -> Vec<(i64, Prop)>;
+    fn property_history(&self, name: String) -> Vec<(i64, Prop)>;
+
+    fn properties(&self, include_static: bool) -> HashMap<String, Prop>;
 
     /// Get all temporal property values of this vertex.
     ///
@@ -38,7 +49,15 @@ pub trait VertexViewOps: TimeOps {
     /// A HashMap with the names of the properties as keys and a vector of `(i64, Prop)` tuples
     /// as values. The `i64` value is the timestamp of the property value and `Prop`
     /// is the value itself.
-    fn props(&self) -> HashMap<String, Vec<(i64, Prop)>>;
+    fn property_histories(&self) -> HashMap<String, Vec<(i64, Prop)>>;
+
+    fn property_names(&self, include_static: bool) -> Vec<String>;
+
+    fn has_property(&self, name: String, include_static: bool) -> bool;
+
+    fn has_static_property(&self, name: String) -> bool;
+
+    fn static_property(&self, name: String) -> Option<Prop>;
 
     /// Get the degree of this vertex (i.e., the number of edges that are incident to it).
     ///

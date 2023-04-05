@@ -59,6 +59,13 @@ impl<G: GraphViewOps> VertexViewOps for VertexView<G> {
         self.vertex.g_id
     }
 
+    fn name(&self) -> String {
+        match self.static_property("_id".to_string()) {
+            None => self.id().to_string(),
+            Some(prop) => prop.to_string(),
+        }
+    }
+
     fn earliest_time(&self) -> Option<i64> {
         match &self.window {
             None => self.graph.vertex_earliest_time(self.vertex),
@@ -77,19 +84,7 @@ impl<G: GraphViewOps> VertexViewOps for VertexView<G> {
         }
     }
 
-    /// Get the name of this vertex if a user has set one otherwise it returns the ID.
-    ///
-    /// # Returns
-    ///
-    /// The name of the vertex if one exists, otherwise the ID as a string.
-    pub fn name(&self) -> String {
-        match self.static_property("_id".to_string()) {
-            None => self.id().to_string(),
-            Some(prop) => prop.to_string(),
-        }
-    }
-
-    pub fn property(&self, name: String, include_static: bool) -> Option<Prop> {
+    fn property(&self, name: String, include_static: bool) -> Option<Prop> {
         let props = self.property_history(name.clone());
         match props.last() {
             None => {
@@ -106,21 +101,17 @@ impl<G: GraphViewOps> VertexViewOps for VertexView<G> {
         }
     }
 
-    /// Get the temporal property value of this vertex.
-    ///
-    /// # Arguments
-    ///
-    /// * `name` - The name of the property to retrieve.
-    ///
-    /// # Returns
-    ///
-    /// A vector of `(i64, Prop)` tuples where the `i64` value is the timestamp of the
-    /// property value and `Prop` is the value itself.
-    pub fn property_history(&self, name: String) -> Vec<(i64, Prop)> {
-        self.graph.temporal_vertex_prop_vec(self.vertex, name)
+    fn property_history(&self, name: String) -> Vec<(i64, Prop)> {
+        match &self.window {
+            None => self.graph.temporal_vertex_prop_vec(self.vertex, name),
+            Some(w) => {
+                self.graph
+                    .temporal_vertex_prop_vec_window(self.vertex, name, w.start, w.end)
+            }
+        }
     }
 
-    pub fn properties(&self, include_static: bool) -> HashMap<String, Prop> {
+    fn properties(&self, include_static: bool) -> HashMap<String, Prop> {
         let mut props: HashMap<String, Prop> = self
             .property_histories()
             .iter()
@@ -143,18 +134,16 @@ impl<G: GraphViewOps> VertexViewOps for VertexView<G> {
         props
     }
 
-    /// Get all temporal property values of this vertex.
-    ///
-    /// # Returns
-    ///
-    /// A HashMap with the names of the properties as keys and a vector of `(i64, Prop)` tuples
-    /// as values. The `i64` value is the timestamp of the property value and `Prop`
-    /// is the value itself.
-    pub fn property_histories(&self) -> HashMap<String, Vec<(i64, Prop)>> {
-        self.graph.temporal_vertex_props(self.vertex)
+    fn property_histories(&self) -> HashMap<String, Vec<(i64, Prop)>> {
+        match &self.window {
+            None => self.graph.temporal_vertex_props(self.vertex),
+            Some(w) => self
+                .graph
+                .temporal_vertex_props_window(self.vertex, w.start, w.end),
+        }
     }
 
-    pub fn property_names(&self, include_static: bool) -> Vec<String> {
+    fn property_names(&self, include_static: bool) -> Vec<String> {
         let mut names: Vec<String> = self.graph.temporal_vertex_prop_names(self.vertex);
         if include_static {
             names.extend(self.graph.static_vertex_prop_names(self.vertex))
@@ -162,18 +151,22 @@ impl<G: GraphViewOps> VertexViewOps for VertexView<G> {
         names
     }
 
-    pub fn has_property(&self, name: String, include_static: bool) -> bool {
-        (! self.property_history(name.clone()).is_empty())
-            || (include_static && self.graph.static_vertex_prop_names(self.vertex).contains(&name))
+    fn has_property(&self, name: String, include_static: bool) -> bool {
+        (!self.property_history(name.clone()).is_empty())
+            || (include_static
+                && self
+                    .graph
+                    .static_vertex_prop_names(self.vertex)
+                    .contains(&name))
     }
 
-    pub fn has_static_property(&self, name: String) -> bool {
+    fn has_static_property(&self, name: String) -> bool {
         self.graph
             .static_vertex_prop_names(self.vertex)
             .contains(&name)
     }
 
-    pub fn static_property(&self, name: String) -> Option<Prop> {
+    fn static_property(&self, name: String) -> Option<Prop> {
         self.graph.static_vertex_prop(self.vertex, name)
     }
 
@@ -355,7 +348,6 @@ impl<G: GraphViewOps, V: VertexViewOps<Graph = G> + 'static> VertexListOps
     fn id(self) -> Self::ValueIterType<u64> {
         Box::new(self.map(|v| v.id()))
     }
-
 
     fn name(self) -> Self::ValueIterType<String> {
         Box::new(self.map(|v| v.name()))
