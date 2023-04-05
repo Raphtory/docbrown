@@ -230,7 +230,9 @@ pub trait ComputeState: Debug + Clone {
         &self,
         ss: usize,
         i: usize,
-    ) -> Option<OUT> where OUT: Debug;
+    ) -> Option<OUT>
+    where
+        OUT: Debug;
 
     fn read_ref<A: StateType, IN, OUT, ACC: Accumulator<A, IN, OUT>>(
         &self,
@@ -315,10 +317,9 @@ impl ComputeState for ComputeStateMap {
             .as_mut_any()
             .downcast_mut::<MapArray<A>>()
             .unwrap();
+        current.map.remove_entry(&(i as u64));
         current
             .map
-            .remove_entry(&(i as u64));
-        current.map
             .insert(i as u64, [current.zero.clone(), current.zero.clone()]);
     }
 
@@ -395,20 +396,20 @@ impl ComputeState for ComputeStateMap {
         &self,
         ss: usize,
         i: usize,
-    ) -> Option<OUT> where OUT: Debug {
+    ) -> Option<OUT>
+    where
+        OUT: Debug,
+    {
         let current = self
             .current()
             .as_any()
             .downcast_ref::<MapArray<A>>()
             .unwrap();
-        
-        current
-            .map
-            .get(&(i as u64))
-            .map(|v| {
-                println!("0 = {:?}, 1 = {:?}", ACC::finish(&v[0]), ACC::finish(&v[1]));
-                ACC::finish(&v[ss % 2])
-            })
+
+        current.map.get(&(i as u64)).map(|v| {
+            println!("0 = {:?}, 1 = {:?}", ACC::finish(&v[0]), ACC::finish(&v[1]));
+            ACC::finish(&v[ss % 2])
+        })
     }
 
     fn merge<A, IN, OUT, ACC: Accumulator<A, IN, OUT>, CS2: ComputeState>(
@@ -535,7 +536,7 @@ impl<CS: ComputeState + Send + Clone> ShardComputeState<CS> {
     ) -> Option<OUT>
     where
         A: StateType,
-        OUT: Debug
+        OUT: Debug,
     {
         let state = self.states.get(&id)?;
         state.read::<A, IN, OUT, ACC>(ss, i)
@@ -748,7 +749,7 @@ impl<CS: ComputeState + Send + Sync> ShuffleComputeState<CS> {
     ) -> Option<OUT>
     where
         A: StateType,
-        OUT: Debug
+        OUT: Debug,
     {
         let part = get_shard_id_from_global_vid(into, self.parts.len());
         self.parts[part].read::<A, IN, OUT, ACC>(into, agg_ref.id, ss)
@@ -774,7 +775,7 @@ impl<CS: ComputeState + Send + Sync> ShuffleComputeState<CS> {
     ) -> Option<OUT>
     where
         A: StateType,
-        OUT: Debug
+        OUT: Debug,
     {
         self.global
             .read::<A, IN, OUT, ACC>(GLOBAL_STATE_KEY, agg_ref.id, ss)

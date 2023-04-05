@@ -406,10 +406,8 @@ pub struct EvalVertexView {
 }
 
 impl EvalVertexView {
-    pub fn reset<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(
-        &self,
-        agg_r: &AggRef<A, IN, OUT, ACC>,
-    ) where
+    pub fn reset<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(&self, agg_r: &AggRef<A, IN, OUT, ACC>)
+    where
         A: StateType,
     {
         let AggRef(agg) = agg_r;
@@ -425,9 +423,7 @@ impl EvalVertexView {
         A: StateType,
     {
         let AggRef(agg) = agg_r;
-        self.state
-            .borrow_mut()
-            .reset_global(&agg)
+        self.state.borrow_mut().reset_global(&agg)
     }
 
     pub fn update<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(
@@ -460,7 +456,7 @@ impl EvalVertexView {
     ) -> Result<OUT, OUT>
     where
         A: StateType,
-        OUT: Debug
+        OUT: Debug,
     {
         self.state
             .borrow()
@@ -474,7 +470,7 @@ impl EvalVertexView {
     ) -> OUT
     where
         A: StateType,
-        OUT: Debug
+        OUT: Debug,
     {
         self.state
             .borrow()
@@ -499,7 +495,7 @@ impl EvalVertexView {
     ) -> Result<OUT, OUT>
     where
         A: StateType,
-        OUT: Debug
+        OUT: Debug,
     {
         self.state
             .borrow()
