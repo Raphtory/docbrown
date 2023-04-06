@@ -236,34 +236,46 @@ impl TemporalGraph {
         }) // TODO: use the name here if exists
     }
 
-    pub fn add_edge(&mut self, t: i64, src: u64, dst: u64) {
+    pub fn add_edge<T: InputVertex>(&mut self, t: i64, src: T, dst: T){
         self.add_edge_with_props(t, src, dst, &vec![])
     }
 
-    pub(crate) fn add_edge_with_props(
+    pub(crate) fn add_edge_with_props<T: InputVertex>(
         &mut self,
         t: i64,
-        src: u64,
-        dst: u64,
+        src: T,
+        dst: T,
         props: &Vec<(String, Prop)>,
     ) {
+
+        let src_id = src.id();
+        let dst_id = dst.id();
         // mark the times of the vertices at t
-        self.add_vertex(t, src)
+        self.add_vertex(t, src_id)
             .map_err(|err| println!("{:?}", err))
             .ok();
-        self.add_vertex(t, dst)
+        self.add_vertex(t, dst_id)
             .map_err(|err| println!("{:?}", err))
             .ok();
 
-        let src_pid = self.logical_to_physical[&src];
-        let dst_pid = self.logical_to_physical[&dst];
+  
+        if let Some(prop) = src.name_prop() {
+            self.add_vertex_properties(src.id(), &vec![("_id".to_string(),prop.clone())]).expect("Try to add property to vertex {src.id()}");
+        }
 
-        let src_edge_meta_id = self.link_outbound_edge(t, src, src_pid, dst_pid, false);
-        let dst_edge_meta_id = self.link_inbound_edge(t, dst, src_pid, dst_pid, false);
+        if let Some(prop) = dst.name_prop() {
+            self.add_vertex_properties(dst.id(), &vec![("_id".to_string(),prop.clone())]).expect("Try to add property to vertex {dst.id()}");
+        }
+
+        let src_pid = self.logical_to_physical[&src_id];
+        let dst_pid = self.logical_to_physical[&dst_id];
+        
+        let src_edge_meta_id = self.link_outbound_edge(t,src_id, src_pid, dst_pid, false);
+        let dst_edge_meta_id = self.link_inbound_edge(t, dst_id, src_pid, dst_pid, false);
 
         if src_edge_meta_id != dst_edge_meta_id {
             panic!(
-                "Failure on {src} -> {dst} at time: {t} {src_edge_meta_id} != {dst_edge_meta_id}"
+                "Failure on {src_id} -> {dst_id} at time: {t} {src_edge_meta_id} != {dst_edge_meta_id}"
             );
         }
 
@@ -2536,8 +2548,8 @@ mod graph_test {
             if src_shard == dst_shard {
                 shards[src_shard].add_edge_with_props(
                     t.try_into().unwrap(),
-                    src.into(),
-                    dst.into(),
+                    src,
+                    dst,
                     &some_props,
                 );
             } else {

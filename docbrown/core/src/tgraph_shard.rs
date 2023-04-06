@@ -230,11 +230,11 @@ impl TGraphShard<TemporalGraph> {
         })
     }
 
-    pub fn add_edge(
+    pub fn add_edge<T: InputVertex>(
         &self,
         t: i64,
-        src: u64,
-        dst: u64,
+        src: T,
+        dst: T,
         props: &Vec<(String, Prop)>,
     ) -> Result<(), GraphError> {
         self.write_shard(|tg| Ok(tg.add_edge_with_props(t, src, dst, props)))
