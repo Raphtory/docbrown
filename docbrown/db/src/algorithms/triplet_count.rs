@@ -69,6 +69,7 @@ use docbrown_core::state;
 ///  for (src, dst) in edges {
 ///      graph.add_edge(0, src, dst, &vec![]);
 ///  }
+///
 ///  let results = triplet_count(&graph.at(1));
 ///  println!("triplet count: {}", results);
 /// ```
@@ -171,6 +172,7 @@ mod program_test {
 mod triplet_test {
     use super::*;
     use crate::graph::Graph;
+    use crate::view_api::*;
     use pretty_assertions::assert_eq;
 
     /// Test the global clustering coefficient

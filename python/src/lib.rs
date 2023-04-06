@@ -11,10 +11,8 @@ pub mod wrappers;
 
 use pyo3::prelude::*;
 
-
 use crate::algorithms::{
-    all_local_reciprocity, global_clustering_coefficient, global_reciprocity, local_reciprocity,
-    triplet_count,
+    all_local_reciprocity, global_clustering_coefficient, global_reciprocity, triplet_count,
 };
 
 use crate::graph::PyGraph;
