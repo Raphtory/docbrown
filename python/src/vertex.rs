@@ -1,6 +1,6 @@
 use crate::dynamic::DynamicGraph;
 use crate::edge::PyEdgeIter;
-use crate::util::{adapt_err_value, extract_vertex_ref, through_impl};
+use crate::util::{adapt_err_value, extract_vertex_ref, through_impl, window_impl};
 use crate::wrappers::{
     NestedU64Iter, NestedUsizeIter, OptionI64Iter, Prop, StringIter, U64Iter, UsizeIter,
 };
@@ -160,8 +160,8 @@ impl PyVertex {
         self.vertex.rolling(window, step, start, end).into()
     }
 
-    pub fn window(&self, t_start: i64, t_end: i64) -> PyVertex {
-        self.vertex.window(t_start, t_end).into()
+    pub fn window(&self, t_start: Option<i64>, t_end: Option<i64>) -> PyVertex {
+        window_impl(&self.vertex, t_start, t_end).into()
     }
 
     pub fn at(&self, end: i64) -> PyVertex {
@@ -275,8 +275,8 @@ impl PyVertices {
         self.vertices.rolling(window, step, start, end).into()
     }
 
-    pub fn window(&self, t_start: i64, t_end: i64) -> PyVertices {
-        self.vertices.window(t_start, t_end).into()
+    pub fn window(&self, t_start: Option<i64>, t_end: Option<i64>) -> PyVertices {
+        window_impl(&self.vertices, t_start, t_end).into()
     }
 
     pub fn at(&self, end: i64) -> PyVertices {

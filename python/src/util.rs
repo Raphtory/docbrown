@@ -21,6 +21,14 @@ pub(crate) fn extract_vertex_ref(vref: &PyAny) -> PyResult<VertexRef> {
     }
 }
 
+pub(crate) fn window_impl<T: TimeOps + Sized + Clone>(
+    slf: &T,
+    t_start: Option<i64>,
+    t_end: Option<i64>,
+) -> T::WindowedViewType {
+    slf.window(t_start.unwrap_or(i64::MIN), t_end.unwrap_or(i64::MAX))
+}
+
 pub(crate) fn through_impl<T: TimeOps + Sized + Clone>(
     slf: &T,
     perspectives: &PyAny,

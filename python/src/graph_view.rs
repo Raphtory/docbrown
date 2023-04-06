@@ -1,6 +1,6 @@
 use crate::dynamic::DynamicGraph;
 use crate::edge::{PyEdge, PyEdgeIter};
-use crate::util::{adapt_err_value, adapt_result, extract_vertex_ref, through_impl};
+use crate::util::{adapt_err_value, adapt_result, extract_vertex_ref, through_impl, window_impl};
 use crate::vertex::{PyVertex, PyVertices};
 use crate::wrappers::PyPerspectiveSet;
 use docbrown_db::graph_window::WindowSet;
@@ -116,8 +116,8 @@ impl PyGraphView {
         self.graph.rolling(window, step, start, end).into()
     }
 
-    pub fn window(&self, t_start: i64, t_end: i64) -> PyGraphView {
-        self.graph.window(t_start, t_end).into()
+    pub fn window(&self, t_start: Option<i64>, t_end: Option<i64>) -> PyGraphView {
+        window_impl(&self.graph, t_start, t_end).into()
     }
 
     pub fn at(&self, end: i64) -> PyGraphView {
