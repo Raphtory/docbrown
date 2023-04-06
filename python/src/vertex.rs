@@ -1,13 +1,18 @@
 use crate::dynamic::DynamicGraph;
 use crate::edge::PyEdgeIter;
-use crate::wrappers::{NestedU64Iter, NestedUsizeIter, Prop, U64Iter, UsizeIter};
+use crate::util::{adapt_err_value, extract_vertex_ref, through_impl};
+use crate::wrappers::{
+    NestedU64Iter, NestedUsizeIter, OptionI64Iter, Prop, StringIter, U64Iter, UsizeIter,
+};
 use docbrown_core::tgraph::VertexRef;
+use docbrown_db::graph_window::WindowSet;
 use docbrown_db::path::{PathFromGraph, PathFromVertex};
 use docbrown_db::vertex::VertexView;
 use docbrown_db::vertices::Vertices;
 use docbrown_db::view_api::*;
 use itertools::Itertools;
-use pyo3::{pyclass, pymethods, PyRef, PyRefMut};
+use pyo3::exceptions::PyIndexError;
+use pyo3::{pyclass, pymethods, PyAny, PyRef, PyRefMut, PyResult};
 use std::collections::HashMap;
 
 #[pyclass(name = "Vertex")]
@@ -34,44 +39,37 @@ impl PyVertex {
         self.vertex.id()
     }
 
-    pub fn __getitem__(&self, name: String) -> Option<Prop> {
-        self.property(name, Some(true))
-    }
-
-    pub fn has_property(&self, name: String, include_static: Option<bool>) -> bool {
-        let include_static = include_static.unwrap_or(true);
-        self.vertex.has_property(name, include_static)
-    }
-
     pub fn name(&self) -> String {
         self.vertex.name()
     }
 
+    pub fn earliest_time(&self) -> Option<i64> {
+        self.vertex.earliest_time()
+    }
+
+    pub fn latest_time(&self) -> Option<i64> {
+        self.vertex.latest_time()
+    }
+
     pub fn property(&self, name: String, include_static: Option<bool>) -> Option<Prop> {
         let include_static = include_static.unwrap_or(true);
-        match self.vertex.property(name, include_static) {
-            None => None,
-            Some(prop) => Some(prop.into()),
-        }
+        self.vertex
+            .property(name, include_static)
+            .map(|prop| prop.into())
+    }
+
+    pub fn property_history(&self, name: String) -> Vec<(i64, Prop)> {
+        self.vertex
+            .property_history(name)
+            .into_iter()
+            .map(|(k, v)| (k, v.into()))
+            .collect()
     }
 
     pub fn properties(&self, include_static: Option<bool>) -> HashMap<String, Prop> {
         let include_static = include_static.unwrap_or(true);
         self.vertex
             .properties(include_static)
-            .into_iter()
-            .map(|(k, v)| (k, v.into()))
-            .collect()
-    }
-
-    pub fn property_names(&self, include_static: Option<bool>) -> Vec<String> {
-        let include_static = include_static.unwrap_or(true);
-        self.vertex.property_names(include_static)
-    }
-
-    pub fn property_history(&self, name: String) -> Vec<(i64, Prop)> {
-        self.vertex
-            .property_history(name)
             .into_iter()
             .map(|(k, v)| (k, v.into()))
             .collect()
@@ -85,25 +83,36 @@ impl PyVertex {
             .collect()
     }
 
+    pub fn property_names(&self, include_static: Option<bool>) -> Vec<String> {
+        let include_static = include_static.unwrap_or(true);
+        self.vertex.property_names(include_static)
+    }
+
+    pub fn has_property(&self, name: String, include_static: Option<bool>) -> bool {
+        let include_static = include_static.unwrap_or(true);
+        self.vertex.has_property(name, include_static)
+    }
+
     pub fn has_static_property(&self, name: String) -> bool {
         self.vertex.has_static_property(name)
     }
+
     pub fn static_property(&self, name: String) -> Option<Prop> {
-        match self.vertex.static_property(name) {
-            None => None,
-            Some(prop) => Some(prop.into()),
-        }
+        self.vertex.static_property(name).map(|prop| prop.into())
     }
 
     pub fn degree(&self) -> usize {
         self.vertex.degree()
     }
+
     pub fn in_degree(&self) -> usize {
         self.vertex.in_degree()
     }
+
     pub fn out_degree(&self) -> usize {
         self.vertex.out_degree()
     }
+
     pub fn edges(&self) -> PyEdgeIter {
         self.vertex.edges().into()
     }
@@ -126,6 +135,46 @@ impl PyVertex {
 
     pub fn out_neighbours(&self) -> PyPathFromVertex {
         self.vertex.out_neighbours().into()
+    }
+
+    //******  Perspective APIS  ******//
+    pub fn start(&self) -> Option<i64> {
+        self.vertex.start()
+    }
+
+    pub fn end(&self) -> Option<i64> {
+        self.vertex.end()
+    }
+
+    fn expanding(&self, step: u64, start: Option<i64>, end: Option<i64>) -> PyVertexWindowSet {
+        self.vertex.expanding(step, start, end).into()
+    }
+
+    fn rolling(
+        &self,
+        window: u64,
+        step: Option<u64>,
+        start: Option<i64>,
+        end: Option<i64>,
+    ) -> PyVertexWindowSet {
+        self.vertex.rolling(window, step, start, end).into()
+    }
+
+    pub fn window(&self, t_start: i64, t_end: i64) -> PyVertex {
+        self.vertex.window(t_start, t_end).into()
+    }
+
+    pub fn at(&self, end: i64) -> PyVertex {
+        self.vertex.at(end).into()
+    }
+
+    pub fn through(&self, perspectives: &PyAny) -> PyResult<PyVertexWindowSet> {
+        through_impl(&self.vertex, perspectives).map(|p| p.into())
+    }
+
+    //******  Python  ******//
+    pub fn __getitem__(&self, name: String) -> Option<Prop> {
+        self.property(name, Some(true))
     }
 
     pub fn __repr__(&self) -> String {
@@ -163,12 +212,20 @@ impl From<Vertices<DynamicGraph>> for PyVertices {
 
 #[pymethods]
 impl PyVertices {
-    fn __iter__(&self) -> PyVertexIterator {
-        self.vertices.iter().into()
-    }
-
     fn id(&self) -> U64Iter {
         self.vertices.id().into()
+    }
+
+    fn name(&self) -> StringIter {
+        self.vertices.name().into()
+    }
+
+    fn earliest_time(&self) -> OptionI64Iter {
+        self.vertices.earliest_time().into()
+    }
+
+    fn latest_time(&self) -> OptionI64Iter {
+        self.vertices.latest_time().into()
     }
 
     fn out_neighbours(&self) -> PyPathFromGraph {
@@ -195,7 +252,63 @@ impl PyVertices {
         self.vertices.degree().into()
     }
 
-    fn __repr__(&self) -> String {
+    //******  Perspective APIS  ******//
+    pub fn start(&self) -> Option<i64> {
+        self.vertices.start()
+    }
+
+    pub fn end(&self) -> Option<i64> {
+        self.vertices.end()
+    }
+
+    fn expanding(&self, step: u64, start: Option<i64>, end: Option<i64>) -> PyVerticesWindowSet {
+        self.vertices.expanding(step, start, end).into()
+    }
+
+    fn rolling(
+        &self,
+        window: u64,
+        step: Option<u64>,
+        start: Option<i64>,
+        end: Option<i64>,
+    ) -> PyVerticesWindowSet {
+        self.vertices.rolling(window, step, start, end).into()
+    }
+
+    pub fn window(&self, t_start: i64, t_end: i64) -> PyVertices {
+        self.vertices.window(t_start, t_end).into()
+    }
+
+    pub fn at(&self, end: i64) -> PyVertices {
+        self.vertices.at(end).into()
+    }
+
+    pub fn through(&self, perspectives: &PyAny) -> PyResult<PyVerticesWindowSet> {
+        through_impl(&self.vertices, perspectives).map(|p| p.into())
+    }
+
+    //****** Python *******
+    pub fn __iter__(&self) -> PyVertexIterator {
+        self.vertices.iter().into()
+    }
+
+    pub fn __len__(&self) -> usize {
+        self.vertices.len()
+    }
+
+    pub fn __bool__(&self) -> bool {
+        self.vertices.is_empty()
+    }
+
+    pub fn __getitem__(&self, vertex: &PyAny) -> PyResult<PyVertex> {
+        let vref = extract_vertex_ref(vertex)?;
+        self.vertices.get(vref).map_or_else(
+            || Err(PyIndexError::new_err("Vertex does not exist")),
+            |v| Ok(v.into()),
+        )
+    }
+
+    pub fn __repr__(&self) -> String {
         let values = self
             .__iter__()
             .into_iter()
@@ -397,5 +510,89 @@ impl PathIterator {
     }
     fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<PyPathFromVertex> {
         slf.iter.next()
+    }
+}
+
+#[pyclass(name = "VertexWindowSet")]
+pub struct PyVertexWindowSet {
+    window_set: WindowSet<VertexView<DynamicGraph>>,
+}
+
+impl From<WindowSet<VertexView<DynamicGraph>>> for PyVertexWindowSet {
+    fn from(value: WindowSet<VertexView<DynamicGraph>>) -> Self {
+        Self { window_set: value }
+    }
+}
+
+#[pymethods]
+impl PyVertexWindowSet {
+    fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
+        slf
+    }
+    fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<PyVertex> {
+        slf.window_set.next().map(|g| g.into())
+    }
+}
+
+#[pyclass(name = "VerticesWindowSet")]
+pub struct PyVerticesWindowSet {
+    window_set: WindowSet<Vertices<DynamicGraph>>,
+}
+
+impl From<WindowSet<Vertices<DynamicGraph>>> for PyVerticesWindowSet {
+    fn from(value: WindowSet<Vertices<DynamicGraph>>) -> Self {
+        Self { window_set: value }
+    }
+}
+
+#[pymethods]
+impl PyVerticesWindowSet {
+    fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
+        slf
+    }
+    fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<PyVertices> {
+        slf.window_set.next().map(|g| g.into())
+    }
+}
+
+#[pyclass(name = "PathFromGraphWindowSet")]
+pub struct PyPathFromGraphWindowSet {
+    window_set: WindowSet<PathFromGraph<DynamicGraph>>,
+}
+
+impl From<WindowSet<PathFromGraph<DynamicGraph>>> for PyPathFromGraphWindowSet {
+    fn from(value: WindowSet<PathFromGraph<DynamicGraph>>) -> Self {
+        Self { window_set: value }
+    }
+}
+
+#[pymethods]
+impl PyPathFromGraphWindowSet {
+    fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
+        slf
+    }
+    fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<PyPathFromGraph> {
+        slf.window_set.next().map(|g| g.into())
+    }
+}
+
+#[pyclass(name = "PathFromVertexWindowSet")]
+pub struct PyPathFromVertexWindowSet {
+    window_set: WindowSet<PathFromVertex<DynamicGraph>>,
+}
+
+impl From<WindowSet<PathFromVertex<DynamicGraph>>> for PyPathFromVertexWindowSet {
+    fn from(value: WindowSet<PathFromVertex<DynamicGraph>>) -> Self {
+        Self { window_set: value }
+    }
+}
+
+#[pymethods]
+impl PyPathFromVertexWindowSet {
+    fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
+        slf
+    }
+    fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<PyPathFromVertex> {
+        slf.window_set.next().map(|g| g.into())
     }
 }

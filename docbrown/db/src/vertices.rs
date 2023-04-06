@@ -3,9 +3,10 @@ use crate::path::{Operations, PathFromGraph};
 use crate::vertex::VertexView;
 use crate::view_api::vertex::BoxedIter;
 use crate::view_api::*;
+use docbrown_core::tgraph::VertexRef;
 use docbrown_core::{Direction, Prop};
 use std::collections::HashMap;
-use std::ops::Range;
+use std::ops::{Index, Range};
 
 #[derive(Clone)]
 pub struct Vertices<G: GraphViewOps> {
@@ -28,7 +29,20 @@ impl<G: GraphViewOps> Vertices<G> {
                 .map(move |v| VertexView::new_windowed(g.clone(), v, w.clone())),
         )
     }
+
+    pub fn len(&self) -> usize {
+        self.graph.num_vertices()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.graph.is_empty()
+    }
+
+    pub fn get<V: Into<VertexRef>>(&self, vertex: V) -> Option<VertexView<G>> {
+        self.graph.vertex(vertex)
+    }
 }
+
 impl<G: GraphViewOps> VertexViewOps for Vertices<G> {
     type Graph = G;
     type ValueType<T> = BoxedIter<T>;
