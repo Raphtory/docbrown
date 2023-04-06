@@ -543,7 +543,8 @@ impl<G: GraphViewInternalOps> GraphViewInternalOps for WindowedGraph<G> {
         v: VertexRef,
         d: Direction,
     ) -> Box<dyn Iterator<Item = EdgeRef> + Send> {
-        self.graph.vertex_edges_all_layers(v, d)
+        self.graph
+            .vertex_edges_window(v, self.t_start, self.t_end, d, None)
     }
 
     fn vertex_edges_single_layer(
@@ -552,7 +553,8 @@ impl<G: GraphViewInternalOps> GraphViewInternalOps for WindowedGraph<G> {
         d: Direction,
         layer: usize,
     ) -> Box<dyn Iterator<Item = EdgeRef> + Send> {
-        self.graph.vertex_edges_single_layer(v, d, layer)
+        self.graph
+            .vertex_edges_window(v, self.t_start, self.t_end, d, Some(layer))
     }
 
     /// Get an iterator of all edges as references for a given vertex and direction in a window
