@@ -9,9 +9,10 @@ use crate::vertex::VertexView;
 use crate::view_api::vertex::BoxedIter;
 use crate::view_api::{EdgeListOps, GraphViewOps};
 use docbrown_core::tgraph::{EdgeRef, VertexRef};
-use docbrown_core::Prop;
+use docbrown_core::{Direction, Prop};
 use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};
+use std::iter::Filter;
 
 /// A view of an edge in the graph.
 pub struct EdgeView<G: GraphViewOps> {
@@ -137,6 +138,17 @@ impl<G: GraphViewOps> EdgeView<G> {
     pub fn id(&self) -> usize {
         self.edge.edge_id
     }
+
+    pub fn explode(&self) {
+        let vertex = VertexRef {
+            g_id: self.edge.src_g_id,
+            pid: None,
+        };
+
+        self.graph
+            .vertex_edges_t(vertex, Direction::OUT)
+            .filter(|e| e.dst_g_id == self.edge.dst_g_id)
+    }
 }
 
 /// Implement `EdgeListOps` trait for an iterator of `EdgeView` objects.
@@ -206,6 +218,10 @@ impl<G: GraphViewOps> EdgeListOps for BoxedIter<EdgeView<G>> {
     fn dst(self) -> Self::VList {
         Box::new(self.into_iter().map(|e| e.dst()))
     }
+
+    fn explode(self) -> Self::IterType {
+        Box::new(self.into_iter().map(|e| e.explode()))
+    }
 }
 
 impl<G: GraphViewOps> EdgeListOps for BoxedIter<BoxedIter<EdgeView<G>>> {
@@ -261,6 +277,10 @@ impl<G: GraphViewOps> EdgeListOps for BoxedIter<BoxedIter<EdgeView<G>>> {
 
     fn dst(self) -> Self::VList {
         Box::new(self.map(|it| it.dst()))
+    }
+
+    fn explode(self) -> Self::IterType {
+        Box::new(self.map(|it| it.explode()))
     }
 }
 
