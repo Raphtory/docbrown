@@ -1,3 +1,4 @@
+use crate::view_api::GraphViewOps;
 use crate::{
     graph::Graph,
     program::{GlobalEvalState, LocalState, Program},
@@ -6,6 +7,18 @@ use docbrown_core::state;
 use rustc_hash::FxHashMap;
 use std::ops::Range;
 
+/// Computes the connected components of a graph using the Simple Connected Components algorithm
+///
+/// # Arguments
+///
+/// * `g` - A reference to the graph
+/// * `window` - A range indicating the temporal window to consider
+/// * `iter_count` - The number of iterations to run
+///
+/// # Returns
+///
+/// A hash map containing the mapping from component ID to the number of vertices in the component
+///
 pub fn weakly_connected_components(
     g: &Graph,
     window: Range<i64>,
@@ -13,9 +26,9 @@ pub fn weakly_connected_components(
 ) -> FxHashMap<u64, u64> {
     let cc = WeaklyConnectedComponents {};
 
-    let gs = cc.run(g, window.clone(), true, iter_count);
+    let gs = cc.run(g, true, iter_count);
 
-    cc.produce_output(g, window, &gs)
+    cc.produce_output(g, &gs)
 }
 
 #[derive(Default)]
@@ -24,7 +37,7 @@ struct WeaklyConnectedComponents {}
 impl Program for WeaklyConnectedComponents {
     type Out = FxHashMap<u64, u64>;
 
-    fn local_eval(&self, c: &LocalState) {
+    fn local_eval<G: GraphViewOps>(&self, c: &LocalState<G>) {
         let min = c.agg(state::def::min(0));
 
         c.step(|vv| {
@@ -38,7 +51,7 @@ impl Program for WeaklyConnectedComponents {
         })
     }
 
-    fn post_eval(&self, c: &mut GlobalEvalState) {
+    fn post_eval<G: GraphViewOps>(&self, c: &mut GlobalEvalState<G>) {
         // this will make the global state merge all the values for all partitions
         let min = c.agg(state::def::min::<u64>(0));
 
@@ -49,7 +62,7 @@ impl Program for WeaklyConnectedComponents {
         })
     }
 
-    fn produce_output(&self, g: &Graph, _window: Range<i64>, gs: &GlobalEvalState) -> Self::Out
+    fn produce_output<G: GraphViewOps>(&self, g: &G, gs: &GlobalEvalState<G>) -> Self::Out
     where
         Self: Sync,
     {
@@ -57,7 +70,7 @@ impl Program for WeaklyConnectedComponents {
 
         let mut results: FxHashMap<u64, u64> = FxHashMap::default();
 
-        (0..g.nr_shards)
+        (0..g.num_shards())
             .into_iter()
             .fold(&mut results, |res, part_id| {
                 gs.fold_state(&agg, part_id, res, |res, v_id, cc| {
@@ -96,7 +109,7 @@ mod cc_test {
             graph.add_edge(ts, src, dst, &vec![]).unwrap();
         }
 
-        let mut gs = GlobalEvalState::new(graph.clone(), 0..10, true);
+        let mut gs = GlobalEvalState::new(graph.clone(), true);
         program.run_step(&graph, &mut gs);
 
         let agg = state::def::min::<u64>(0);

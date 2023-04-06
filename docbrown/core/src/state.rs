@@ -1,3 +1,5 @@
+//! A data structure for storing stateful data for temporal graphs and their shards.
+
 use crate::agg::Accumulator;
 use crate::utils::get_shard_id_from_global_vid;
 use rustc_hash::FxHashMap;
@@ -308,6 +310,61 @@ impl ComputeState for ComputeStateMap {
         }))
     }
 
+    fn read<A: 'static, IN, OUT, ACC: Accumulator<A, IN, OUT>>(
+        &self,
+        ss: usize,
+        i: usize,
+    ) -> Option<OUT>
+    where
+        OUT: Debug,
+    {
+        let current = self
+            .current()
+            .as_any()
+            .downcast_ref::<MapArray<A>>()
+            .unwrap();
+
+        current.map.get(&(i as u64)).map(|v| {
+            println!("0 = {:?}, 1 = {:?}", ACC::finish(&v[0]), ACC::finish(&v[1]));
+            ACC::finish(&v[ss % 2])
+        })
+    }
+
+    fn read_ref<A: StateType, IN, OUT, ACC: Accumulator<A, IN, OUT>>(
+        &self,
+        ss: usize,
+        i: usize,
+    ) -> Option<&A> {
+        let current = self
+            .current()
+            .as_any()
+            .downcast_ref::<MapArray<A>>()
+            .unwrap();
+        current.map.get(&(i as u64)).map(|v| &v[ss % 2])
+    }
+
+    fn iter<A: StateType>(&self, ss: usize) -> Box<dyn Iterator<Item = (usize, &A)> + '_> {
+        let current = self
+            .current()
+            .as_any()
+            .downcast_ref::<MapArray<A>>()
+            .unwrap();
+        Box::new(
+            current
+                .map
+                .iter()
+                .map(move |(k, v)| (*k as usize, &v[ss % 2])),
+        )
+    }
+
+    fn iter_keys(&self) -> Box<dyn Iterator<Item = u64> + '_> {
+        self.current().iter_keys()
+    }
+
+    fn iter_keys_changed(&self, ss: usize) -> Box<dyn Iterator<Item = u64> + '_> {
+        self.current().iter_keys_changed(ss)
+    }
+
     fn reset<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(&mut self, i: usize)
     where
         A: StateType,
@@ -356,6 +413,18 @@ impl ComputeState for ComputeStateMap {
         ACC::combine(&mut entry[ss % 2], a);
     }
 
+    fn merge<A, IN, OUT, ACC: Accumulator<A, IN, OUT>, CS2: ComputeState>(
+        &mut self,
+        other: &CS2,
+        ss: usize,
+    ) where
+        A: StateType,
+    {
+        other.iter::<A>(ss).for_each(|(i, a)| {
+            self.combine::<A, IN, OUT, ACC>(ss, a, i);
+        });
+    }
+
     fn finalize<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(&self, ss: usize) -> Vec<OUT>
     where
         OUT: StateType,
@@ -390,73 +459,6 @@ impl ComputeState for ComputeStateMap {
             .iter()
             .map(|(k, v)| (k, ACC::finish(&v[ss % 2])))
             .fold(b, |b, (k, out)| f(b, k, out))
-    }
-
-    fn read<A: 'static, IN, OUT, ACC: Accumulator<A, IN, OUT>>(
-        &self,
-        ss: usize,
-        i: usize,
-    ) -> Option<OUT>
-    where
-        OUT: Debug,
-    {
-        let current = self
-            .current()
-            .as_any()
-            .downcast_ref::<MapArray<A>>()
-            .unwrap();
-
-        current.map.get(&(i as u64)).map(|v| {
-            println!("0 = {:?}, 1 = {:?}", ACC::finish(&v[0]), ACC::finish(&v[1]));
-            ACC::finish(&v[ss % 2])
-        })
-    }
-
-    fn merge<A, IN, OUT, ACC: Accumulator<A, IN, OUT>, CS2: ComputeState>(
-        &mut self,
-        other: &CS2,
-        ss: usize,
-    ) where
-        A: StateType,
-    {
-        other.iter::<A>(ss).for_each(|(i, a)| {
-            self.combine::<A, IN, OUT, ACC>(ss, a, i);
-        });
-    }
-
-    fn iter<A: StateType>(&self, ss: usize) -> Box<dyn Iterator<Item = (usize, &A)> + '_> {
-        let current = self
-            .current()
-            .as_any()
-            .downcast_ref::<MapArray<A>>()
-            .unwrap();
-        Box::new(
-            current
-                .map
-                .iter()
-                .map(move |(k, v)| (*k as usize, &v[ss % 2])),
-        )
-    }
-
-    fn iter_keys(&self) -> Box<dyn Iterator<Item = u64> + '_> {
-        self.current().iter_keys()
-    }
-
-    fn iter_keys_changed(&self, ss: usize) -> Box<dyn Iterator<Item = u64> + '_> {
-        self.current().iter_keys_changed(ss)
-    }
-
-    fn read_ref<A: StateType, IN, OUT, ACC: Accumulator<A, IN, OUT>>(
-        &self,
-        ss: usize,
-        i: usize,
-    ) -> Option<&A> {
-        let current = self
-            .current()
-            .as_any()
-            .downcast_ref::<MapArray<A>>()
-            .unwrap();
-        current.map.get(&(i as u64)).map(|v| &v[ss % 2])
     }
 }
 
@@ -630,7 +632,7 @@ impl<CS: ComputeState + Send + Sync> ShuffleComputeState<CS> {
         A: StateType,
         B: Debug,
         OUT: StateType,
-        F: Fn(B, &u64, OUT) -> B + std::marker::Copy,
+        F: Fn(B, &u64, OUT) -> B + Copy,
     {
         let out_b = self
             .parts
@@ -697,7 +699,6 @@ impl<CS: ComputeState + Send + Sync> ShuffleComputeState<CS> {
 
     pub fn reset<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(
         &mut self,
-        ss: usize,
         into: usize,
         agg_ref: &AccId<A, IN, OUT, ACC>,
     ) where

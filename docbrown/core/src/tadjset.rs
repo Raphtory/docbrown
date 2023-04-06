@@ -1,3 +1,5 @@
+//! A data structure for efficiently storing and querying the temporal adjacency set of a node in a temporal graph.
+
 use std::{
     borrow::{Borrow, BorrowMut},
     collections::BTreeMap,
@@ -22,7 +24,7 @@ const SMALL_SET: usize = 1024;
  *
  *  */
 #[derive(Debug, Default, Serialize, Deserialize, PartialEq)]
-pub enum TAdjSet<V: Ord + TryInto<usize> + std::hash::Hash, Time: Copy + Ord> {
+pub enum TAdjSet<V: Ord + TryInto<usize> + Hash, Time: Copy + Ord> {
     #[default]
     Empty,
     One(Time, V, AdjEdge),

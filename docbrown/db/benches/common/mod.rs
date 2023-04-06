@@ -1,6 +1,5 @@
 use criterion::{measurement::WallTime, BatchSize, Bencher, BenchmarkGroup, BenchmarkId};
 use docbrown_db::graph::Graph;
-use docbrown_db::view_api::internal::GraphViewInternalOps;
 use docbrown_db::view_api::*;
 use rand::seq::*;
 use rand::{distributions::Uniform, Rng};
@@ -19,7 +18,7 @@ fn make_time_gen() -> Box<dyn Iterator<Item = i64>> {
 }
 
 pub fn bootstrap_graph(num_shards: usize, num_vertices: usize) -> Graph {
-    let graph = Graph::new(4);
+    let graph = Graph::new(num_shards);
     let mut indexes = make_index_gen();
     let mut times = make_time_gen();
     let num_edges = num_vertices / 2;
@@ -187,7 +186,7 @@ pub fn run_analysis_benchmarks<F, G>(
     parameter: Option<usize>,
 ) where
     F: Fn() -> G,
-    G: GraphViewInternalOps + GraphViewOps,
+    G: GraphViewOps,
 {
     let graph = make_graph();
     let edges: HashSet<(u64, u64)> = graph

@@ -1,4 +1,5 @@
-use std::fmt::{Display, Formatter};
+//! A data structure for representing temporal graphs.
+
 use std::{
     collections::{BTreeMap, HashMap},
     ops::Range,
@@ -12,8 +13,8 @@ use crate::adj::Adj;
 use crate::props::Props;
 use crate::tprop::TProp;
 use crate::vertex::InputVertex;
-use crate::Prop;
 use crate::{bitset::BitSet, tadjset::AdjEdge, Direction};
+use crate::{Prop, Time};
 
 use self::errors::MutateGraphError;
 
@@ -34,6 +35,11 @@ pub(crate) mod errors {
             src_id: u64,
             dst_id: u64,
             source: IllegalMutate,
+        },
+        #[error("cannot update property as is '{first_type}' and '{second_type}' given'")]
+        PropertyChangedType {
+            first_type: &'static str,
+            second_type: &'static str,
         },
     }
 }
@@ -79,6 +85,10 @@ impl TemporalGraph {
         self.logical_to_physical.len()
     }
 
+    pub(crate) fn len_window(&self, w: &Range<i64>) -> usize {
+        self.adj_lists.iter().filter(|adj| adj.exists(w)).count()
+    }
+
     pub(crate) fn out_edges_len(&self) -> usize {
         self.adj_lists
             .iter()
@@ -87,10 +97,18 @@ impl TemporalGraph {
             .unwrap_or(0)
     }
 
+    pub fn out_edges_len_window(&self, w: &Range<Time>) -> usize {
+        self.adj_lists
+            .iter()
+            .map(|adj| adj.out_len_window(w))
+            .reduce(|s1, s2| s1 + s2)
+            .unwrap_or(0)
+    }
+
     pub(crate) fn has_edge(&self, src: u64, dst: u64) -> bool {
         if let Some(v_pid) = self.logical_to_physical.get(&src) {
             match &self.adj_lists[*v_pid] {
-                Adj::Solo(_) => false,
+                Adj::Solo(_, _) => false,
                 Adj::List {
                     out, remote_out, ..
                 } => {
@@ -112,7 +130,7 @@ impl TemporalGraph {
         if self.has_vertex_window(src, w) {
             let src_pid = self.logical_to_physical[&src];
             match &self.adj_lists[src_pid] {
-                Adj::Solo(_) => false,
+                Adj::Solo(_, _) => false,
                 Adj::List {
                     out, remote_out, ..
                 } => {
@@ -163,7 +181,8 @@ impl TemporalGraph {
         let index = match self.logical_to_physical.get(&v.id()) {
             None => {
                 let physical_id: usize = self.adj_lists.len();
-                self.adj_lists.push(Adj::Solo(v.id()));
+                self.adj_lists.push(Adj::Solo(v.id(), [t].into()));
+                self.adj_lists[physical_id].register_event(t);
 
                 self.logical_to_physical.insert(v.id(), physical_id);
 
@@ -176,6 +195,8 @@ impl TemporalGraph {
                 physical_id
             }
             Some(pid) => {
+                self.adj_lists[*pid].register_event(t);
+
                 self.index
                     .entry(t)
                     .and_modify(|set| {
@@ -354,7 +375,7 @@ impl TemporalGraph {
     pub fn vertex(&self, v: u64) -> Option<VertexRef> {
         let pid = self.logical_to_physical.get(&v)?;
         Some(match self.adj_lists[*pid] {
-            Adj::Solo(lid) => VertexRef {
+            Adj::Solo(lid, _) => VertexRef {
                 g_id: lid,
                 pid: Some(*pid),
             },
@@ -372,7 +393,7 @@ impl TemporalGraph {
 
         match vs.contains(&pid) {
             true => Some(match self.adj_lists[*pid] {
-                Adj::Solo(lid) => VertexRef {
+                Adj::Solo(lid, _) => VertexRef {
                     g_id: lid,
                     pid: Some(*pid),
                 },
@@ -400,7 +421,7 @@ impl TemporalGraph {
                 .kmerge()
                 .dedup()
                 .map(move |pid| match self.adj_lists[pid] {
-                    Adj::Solo(lid) => lid,
+                    Adj::Solo(lid, _) => lid,
                     Adj::List { logical, .. } => logical,
                 }),
         )
@@ -425,7 +446,7 @@ impl TemporalGraph {
             .dedup();
 
         let vs = unique_vids.map(move |pid| match self.adj_lists[pid] {
-            Adj::Solo(lid) => VertexRef {
+            Adj::Solo(lid, _) => VertexRef {
                 g_id: lid,
                 pid: Some(pid),
             },
@@ -442,7 +463,7 @@ impl TemporalGraph {
         let src_pid = self.logical_to_physical.get(&src)?;
 
         match &self.adj_lists[*src_pid] {
-            Adj::Solo(_) => None,
+            Adj::Solo(_, _) => None,
             Adj::List {
                 out, remote_out, ..
             } => {
@@ -479,7 +500,7 @@ impl TemporalGraph {
         if self.has_vertex_window(src, w) {
             let src_pid = self.logical_to_physical.get(&src)?;
             match &self.adj_lists[*src_pid] {
-                Adj::Solo(_) => Option::<EdgeRef>::None,
+                Adj::Solo(_, _) => Option::<EdgeRef>::None,
                 Adj::List {
                     out, remote_out, ..
                 } => {
@@ -810,9 +831,9 @@ impl TemporalGraph {
         self.props.static_vertex_prop(index, name)
     }
 
-    pub fn static_vertex_prop_keys(&self, v: u64) -> Vec<String> {
+    pub fn static_vertex_prop_names(&self, v: u64) -> Vec<String> {
         let index = self.logical_to_physical[&v]; // this should panic as this v is not provided by the user
-        self.props.static_vertex_keys(index)
+        self.props.static_vertex_names(index)
     }
 
     pub(crate) fn temporal_vertex_prop(
@@ -838,6 +859,10 @@ impl TemporalGraph {
             .temporal_vertex_prop(index, name)
             .unwrap_or(&TProp::Empty)
             .iter_window(w.clone())
+    }
+    pub fn temporal_vertex_prop_names(&self, v: u64) -> Vec<String> {
+        let index = self.logical_to_physical[&v]; // this should panic as this v is not provided by the user
+        self.props.temporal_vertex_names(index)
     }
 
     pub(crate) fn temporal_vertex_prop_vec(&self, v: u64, name: &str) -> Vec<(i64, Prop)> {
@@ -868,7 +893,7 @@ impl TemporalGraph {
 
     pub(crate) fn temporal_vertex_props(&self, v: u64) -> HashMap<String, Vec<(i64, Prop)>> {
         let index = self.logical_to_physical[&v];
-        let keys = self.props.temporal_vertex_keys(index);
+        let keys = self.props.temporal_vertex_names(index);
         keys.into_iter()
             .map(|key| (key.to_string(), self.temporal_vertex_prop_vec(v, &key)))
             .filter(|(_, v)| !v.is_empty()) // just filtered out None
@@ -881,7 +906,7 @@ impl TemporalGraph {
         w: &Range<i64>,
     ) -> HashMap<String, Vec<(i64, Prop)>> {
         let index = self.logical_to_physical[&v];
-        let keys = self.props.temporal_vertex_keys(index);
+        let keys = self.props.temporal_vertex_names(index);
         keys.into_iter()
             .map(|key| {
                 (
@@ -897,8 +922,12 @@ impl TemporalGraph {
         self.props.static_edge_prop(e, name)
     }
 
-    pub fn static_edge_prop_keys(&self, e: usize) -> Vec<String> {
-        self.props.static_edge_keys(e)
+    pub fn static_edge_prop_names(&self, e: usize) -> Vec<String> {
+        self.props.static_edge_names(e)
+    }
+
+    pub fn temporal_edge_prop_names(&self, e: usize) -> Vec<String> {
+        self.props.temporal_edge_names(e)
     }
 
     pub fn temporal_edge_prop(
@@ -946,6 +975,38 @@ impl TemporalGraph {
             .map(|(t, p)| (*t, p))
             .collect_vec()
     }
+
+    pub(crate) fn temporal_edge_props(&self, e: usize) -> HashMap<String, Vec<(i64, Prop)>> {
+        let keys = self.props.temporal_edge_names(e);
+        keys.into_iter()
+            .map(|key| {
+                (
+                    key.to_string(),
+                    self.temporal_edge_prop(e, &key)
+                        .map(|(t, v)| (*t, v))
+                        .collect(),
+                )
+            })
+            .collect()
+    }
+
+    pub(crate) fn temporal_edge_props_window(
+        &self,
+        e: usize,
+        w: Range<i64>,
+    ) -> HashMap<String, Vec<(i64, Prop)>> {
+        let keys = self.props.temporal_edge_names(e);
+        keys.into_iter()
+            .map(|key| {
+                (
+                    key.to_string(),
+                    self.temporal_edge_prop_window(e, &key, w.clone())
+                        .map(|(t, v)| (*t, v))
+                        .collect(),
+                )
+            })
+            .collect()
+    }
 }
 
 impl TemporalGraph {
@@ -958,17 +1019,16 @@ impl TemporalGraph {
         remote_edge: bool,
     ) -> usize {
         match &mut self.adj_lists[dst_pid] {
-            entry @ Adj::Solo(_) => {
-                let edge_id = self.props.get_next_available_edge_id();
-
-                let edge = AdjEdge::new(edge_id, !remote_edge);
-
-                *entry = Adj::new_into(dst_gid, src, t, edge);
-
-                edge_id
+            entry @ Adj::Solo(_, _) => {
+                // this is guaranteed to suceed
+                *entry = entry.as_list().unwrap();
+                self.link_inbound_edge(t, dst_gid, src, dst_pid, remote_edge)
             }
             Adj::List {
-                into, remote_into, ..
+                into,
+                remote_into,
+                timestamps,
+                ..
             } => {
                 let list = if remote_edge { remote_into } else { into };
                 let edge_id: usize = list
@@ -977,6 +1037,8 @@ impl TemporalGraph {
                     .unwrap_or(self.props.get_next_available_edge_id());
 
                 list.push(t, src, AdjEdge::new(edge_id, !remote_edge)); // idempotent
+
+                timestamps.insert(t);
                 edge_id
             }
         }
@@ -991,17 +1053,16 @@ impl TemporalGraph {
         remote_edge: bool,
     ) -> usize {
         match &mut self.adj_lists[src_pid] {
-            entry @ Adj::Solo(_) => {
-                let edge_id = self.props.get_next_available_edge_id();
-
-                let edge = AdjEdge::new(edge_id, !remote_edge);
-
-                *entry = Adj::new_out(src_gid, dst, t, edge);
-
-                edge_id
+            entry @ Adj::Solo(_, _) => {
+                // this is guaranteed to suceed
+                *entry = entry.as_list().unwrap();
+                self.link_outbound_edge(t, src_gid, src_pid, dst, remote_edge)
             }
             Adj::List {
-                out, remote_out, ..
+                out,
+                remote_out,
+                timestamps,
+                ..
             } => {
                 let list = if remote_edge { remote_out } else { out };
                 let edge_id: usize = list
@@ -1010,6 +1071,8 @@ impl TemporalGraph {
                     .unwrap_or(self.props.get_next_available_edge_id());
 
                 list.push(t, dst, AdjEdge::new(edge_id, !remote_edge));
+
+                timestamps.insert(t);
                 edge_id
             }
         }
@@ -1215,6 +1278,18 @@ impl VertexRef {
 impl From<u64> for VertexRef {
     fn from(value: u64) -> Self {
         Self::new_remote(value)
+    }
+}
+
+impl From<String> for VertexRef {
+    fn from(value: String) -> Self {
+        value.id().into()
+    }
+}
+
+impl From<&str> for VertexRef {
+    fn from(value: &str) -> Self {
+        value.id().into()
     }
 }
 
@@ -2322,6 +2397,49 @@ mod graph_test {
 
         assert_eq!(neighbours, expected);
         assert_eq!(neighbours_window, expected);
+    }
+
+    #[test]
+    fn len_window() {
+        let mut g = TemporalGraph::default();
+
+        let triplets = vec![
+            (1, 1, 2),
+            (2, 1, 3),
+            (-2, 2, 5),
+            (-1, 2, 1),
+            (0, 1, 1),
+            (7, 3, 2),
+            (1, 1, 1),
+        ];
+
+        for (t, src, dst) in triplets {
+            g.add_edge(t, src, dst);
+        }
+
+        let w = 0..5;
+        let len = g.len_window(&w);
+        assert_eq!(len, 3);
+
+        let w = 0..1;
+        let len = g.len_window(&w);
+        assert_eq!(len, 1);
+
+        let w = 0..0;
+        let len = g.len_window(&w);
+        assert_eq!(len, 0);
+
+        let w = -2..0;
+        let len = g.len_window(&w);
+        assert_eq!(len, 3);
+
+        let w = 0..i64::MAX;
+        let len = g.len_window(&w);
+        assert_eq!(len, 3);
+
+        let w = i64::MIN..i64::MAX;
+        let len = g.len_window(&w);
+        assert_eq!(len, 4);
     }
 
     #[test]

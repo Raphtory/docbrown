@@ -138,7 +138,7 @@ impl Props {
         props.get(prop_id)
     }
 
-    fn get_keys<A>(
+    fn get_names<A>(
         &self,
         vector: &Vec<LazyVec<A>>,
         id: usize,
@@ -172,20 +172,20 @@ impl Props {
         }
     }
 
-    pub fn static_vertex_keys(&self, vertex_id: usize) -> Vec<String> {
-        self.get_keys(&self.static_vertex_props, vertex_id, true)
+    pub fn static_vertex_names(&self, vertex_id: usize) -> Vec<String> {
+        self.get_names(&self.static_vertex_props, vertex_id, true)
     }
 
-    pub fn static_edge_keys(&self, edge_id: usize) -> Vec<String> {
-        self.get_keys(&self.static_edge_props, edge_id, true)
+    pub fn static_edge_names(&self, edge_id: usize) -> Vec<String> {
+        self.get_names(&self.static_edge_props, edge_id, true)
     }
 
-    pub fn temporal_vertex_keys(&self, vertex_id: usize) -> Vec<String> {
-        self.get_keys(&self.temporal_vertex_props, vertex_id, false)
+    pub fn temporal_vertex_names(&self, vertex_id: usize) -> Vec<String> {
+        self.get_names(&self.temporal_vertex_props, vertex_id, false)
     }
 
-    pub fn temporal_edge_keys(&self, edge_id: usize) -> Vec<String> {
-        self.get_keys(&self.temporal_edge_props, edge_id, false)
+    pub fn temporal_edge_names(&self, edge_id: usize) -> Vec<String> {
+        self.get_names(&self.temporal_edge_props, edge_id, false)
     }
 
     // SETTERS:
@@ -273,6 +273,9 @@ impl Props {
             for (prop_id, prop) in translated_props {
                 edge_slot.update_or_set(prop_id, |p| p.set(t, &prop), TProp::from(t, &prop));
             }
+        } else {
+            // we allocate an edge slot even if there are no props
+            Self::grow_and_get_slot(&mut self.temporal_edge_props, edge_id);
         }
     }
 

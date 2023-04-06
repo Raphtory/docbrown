@@ -162,18 +162,18 @@ impl UnweightedPageRankS0 {
 impl Program for UnweightedPageRankS0 {
     type Out = ();
 
-    fn local_eval(&self, c: &LocalState) {
+    fn local_eval<G: GraphViewOps>(&self, c: &LocalState<G>) {
         let score: AggRef<MulF32, MulF32, MulF32, ValDef<MulF32>> = c.agg(self.score.clone());
 
         c.step(|s| s.update(&score, MulF32(1f32 / self.total_vertices as f32)));
     }
 
-    fn post_eval(&self, c: &mut GlobalEvalState) {
+    fn post_eval<G: GraphViewOps>(&self, c: &mut GlobalEvalState<G>) {
         let _ = c.agg(val::<MulF32>(0));
         c.step(|_| true)
     }
 
-    fn produce_output(&self, g: &Graph, window: Range<i64>, gs: &GlobalEvalState) -> Self::Out
+    fn produce_output<G: GraphViewOps>(&self, g: &G, gs: &GlobalEvalState<G>) -> Self::Out
     where
         Self: Sync,
     {
@@ -197,13 +197,13 @@ impl UnweightedPageRankS1 {
 impl Program for UnweightedPageRankS1 {
     type Out = ();
 
-    fn local_eval(&self, c: &LocalState) {
+    fn local_eval<G: GraphViewOps>(&self, c: &LocalState<G>) {
         let score: AggRef<MulF32, MulF32, MulF32, ValDef<MulF32>> = c.agg(self.score.clone());
         let recv_score: AggRef<SumF32, SumF32, SumF32, SumDef<SumF32>> =
             c.agg(self.recv_score.clone());
 
         c.step(|s| {
-            let out_degree = s.out_degree().unwrap();
+            let out_degree = s.out_degree();
             if out_degree > 0 {
                 let new_score = s.read(&score).0 / out_degree as f32;
                 for t in s.neighbours_out() {
@@ -213,12 +213,12 @@ impl Program for UnweightedPageRankS1 {
         });
     }
 
-    fn post_eval(&self, c: &mut GlobalEvalState) {
+    fn post_eval<G: GraphViewOps>(&self, c: &mut GlobalEvalState<G>) {
         let _ = c.agg(sum::<SumF32>(1));
         c.step(|_| true)
     }
 
-    fn produce_output(&self, g: &Graph, window: Range<i64>, gs: &GlobalEvalState) -> Self::Out
+    fn produce_output<G: GraphViewOps>(&self, g: &G, gs: &GlobalEvalState<G>) -> Self::Out
     where
         Self: Sync,
     {
@@ -244,7 +244,7 @@ impl UnweightedPageRankS2 {
 impl Program for UnweightedPageRankS2 {
     type Out = ();
 
-    fn local_eval(&self, c: &LocalState) {
+    fn local_eval<G: GraphViewOps>(&self, c: &LocalState<G>) {
         let damping_factor = 0.85;
         let score: AggRef<MulF32, MulF32, MulF32, ValDef<MulF32>> = c.agg(self.score.clone());
         let recv_score: AggRef<SumF32, SumF32, SumF32, SumDef<SumF32>> =
@@ -270,12 +270,12 @@ impl Program for UnweightedPageRankS2 {
         });
     }
 
-    fn post_eval(&self, c: &mut GlobalEvalState) {
+    fn post_eval<G: GraphViewOps>(&self, c: &mut GlobalEvalState<G>) {
         let _ = c.global_agg(max::<f32>(2));
         c.step(|_| true)
     }
 
-    fn produce_output(&self, g: &Graph, window: Range<i64>, gs: &GlobalEvalState) -> Self::Out
+    fn produce_output<G: GraphViewOps>(&self, g: &G, gs: &GlobalEvalState<G>) -> Self::Out
     where
         Self: Sync,
     {
@@ -299,7 +299,7 @@ impl UnweightedPageRankS3 {
 impl Program for UnweightedPageRankS3 {
     type Out = ();
 
-    fn local_eval(&self, c: &LocalState) {
+    fn local_eval<G: GraphViewOps>(&self, c: &LocalState<G>) {
         let recv_score: AggRef<SumF32, SumF32, SumF32, SumDef<SumF32>> =
             c.agg(self.recv_score.clone());
         let max_diff: AggRef<f32, f32, f32, MaxDef<f32>> = c.global_agg(self.max_diff.clone());
@@ -310,13 +310,13 @@ impl Program for UnweightedPageRankS3 {
         });
     }
 
-    fn post_eval(&self, c: &mut GlobalEvalState) {
+    fn post_eval<G: GraphViewOps>(&self, c: &mut GlobalEvalState<G>) {
         let _ = c.global_agg(max::<f32>(2));
         let _ = c.agg(sum::<SumF32>(1));
         c.step(|_| true)
     }
 
-    fn produce_output(&self, g: &Graph, window: Range<i64>, gs: &GlobalEvalState) -> Self::Out
+    fn produce_output<G: GraphViewOps>(&self, g: &G, gs: &GlobalEvalState<G>) -> Self::Out
     where
         Self: Sync,
     {
@@ -328,8 +328,8 @@ pub fn unweighted_page_rank(
     window: Range<i64>,
     iter_count: usize,
 ) -> FxHashMap<u64, f32> {
-    let mut c = GlobalEvalState::new(g.clone(), window.clone(), true);
-    let pg_s0 = UnweightedPageRankS0::new(g.num_vertices().unwrap());
+    let mut c = GlobalEvalState::new(g.clone(), true);
+    let pg_s0 = UnweightedPageRankS0::new(g.num_vertices());
     let pg_s1 = UnweightedPageRankS1::new();
     let pg_s2 = UnweightedPageRankS2::new();
     let pg_s3 = UnweightedPageRankS3::new();
@@ -418,13 +418,10 @@ mod page_rank_tests {
         assert_eq!(
             results,
             vec![
-                (8, 7.1225),
-                (5, 6.76125),
-                (2, 9.18375),
-                (7, 7.1225),
-                (4, 5.06125),
-                (1, 7.4837503),
-                (3, 7.4837503)
+                (2, 0.78044075),
+                (4, 0.78044075),
+                (1, 1.4930439),
+                (3, 0.8092761)
             ]
             // {8: 1.0, 5: 0.575, 2: 0.5, 7: 1.0, 4: 0.5, 1: 1.0, 3: 1.0}
             // vec![(8, 20.7725), (5, 29.76125), (2, 25.38375), (7, 20.7725), (4, 16.161251), (1, 21.133749), (3, 21.133749)]

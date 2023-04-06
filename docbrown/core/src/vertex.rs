@@ -1,3 +1,9 @@
+//! A data structure for representing input vertices in a temporal graph.
+//!
+//! Input vertices are used when first creating or accessing verticies by the user.
+//! This trait allows you to use a variety of types as input vertices, including
+//! `u64`, `&str`, and `String`.
+
 use crate::{utils, Prop};
 
 pub trait InputVertex {
@@ -25,7 +31,7 @@ impl<'a> InputVertex for &'a str {
     }
 }
 
-impl<'a> InputVertex for String {
+impl InputVertex for String {
     fn id(&self) -> u64 {
         utils::calculate_hash(self)
     }
