@@ -2,7 +2,7 @@
 
 use crate::edge::{EdgeList, EdgeView};
 use crate::path::{Operations, PathFromVertex};
-use crate::view_api::vertex::VertexViewOps;
+use crate::view_api::vertex::{BoxedIter, VertexViewOps};
 use crate::view_api::{GraphViewOps, TimeOps, VertexListOps};
 use docbrown_core::tgraph::VertexRef;
 use docbrown_core::{Direction, Prop};
@@ -53,6 +53,9 @@ impl<G: GraphViewOps> VertexView<G> {
 /// View of a Vertex in a Graph
 impl<G: GraphViewOps> VertexViewOps for VertexView<G> {
     type Graph = G;
+    type ValueType<T> = T;
+    type PathType = PathFromVertex<G>;
+    type EList = BoxedIter<EdgeView<G>>;
 
     fn id(&self) -> u64 {
         self.vertex.g_id
@@ -324,97 +327,90 @@ impl<G: GraphViewOps> TimeOps for VertexView<G> {
 
 /// Implementation of the VertexListOps trait for an iterator of VertexView objects.
 ///
-impl<G: GraphViewOps, V: VertexViewOps<Graph = G> + 'static> VertexListOps
-    for Box<dyn Iterator<Item = V> + Send>
-{
+impl<G: GraphViewOps> VertexListOps for Box<dyn Iterator<Item = VertexView<G>> + Send> {
     type Graph = G;
-    type Vertex = V;
-    type IterType = Box<dyn Iterator<Item = V> + Send>;
+    type IterType = Box<dyn Iterator<Item = VertexView<G>> + Send>;
     type EList = Box<dyn Iterator<Item = EdgeView<Self::Graph>> + Send>;
     type VList = Box<dyn Iterator<Item = VertexView<Self::Graph>> + Send>;
-    type ValueIterType<U> = Box<dyn Iterator<Item = U> + Send>;
+    type ValueType<T: Send> = T;
 
-    fn earliest_time(self) -> Self::ValueIterType<Option<i64>> {
+    fn earliest_time(self) -> BoxedIter<Option<i64>> {
         Box::new(self.map(|v| v.start()))
     }
 
-    fn latest_time(self) -> Self::ValueIterType<Option<i64>> {
+    fn latest_time(self) -> BoxedIter<Option<i64>> {
         Box::new(self.map(|v| v.end()))
     }
 
-    fn window(
-        self,
-        t_start: i64,
-        t_end: i64,
-    ) -> Self::ValueIterType<<V as TimeOps>::WindowedViewType> {
+    fn window(self, t_start: i64, t_end: i64) -> BoxedIter<VertexView<G>> {
         Box::new(self.map(move |v| v.window(t_start, t_end)))
     }
 
-    fn id(self) -> Self::ValueIterType<u64> {
+    fn id(self) -> BoxedIter<u64> {
         Box::new(self.map(|v| v.id()))
     }
 
-    fn name(self) -> Self::ValueIterType<String> {
+    fn name(self) -> BoxedIter<String> {
         Box::new(self.map(|v| v.name()))
     }
 
-    fn property(self, name: String, include_static: bool) -> Self::ValueIterType<Option<Prop>> {
+    fn property(self, name: String, include_static: bool) -> BoxedIter<Option<Prop>> {
         let r: Vec<_> = self
             .map(|v| v.property(name.clone(), include_static.clone()))
             .collect();
         Box::new(r.into_iter())
     }
 
-    fn property_history(self, name: String) -> Self::ValueIterType<Vec<(i64, Prop)>> {
+    fn property_history(self, name: String) -> BoxedIter<Vec<(i64, Prop)>> {
         let r: Vec<_> = self.map(|v| v.property_history(name.clone())).collect();
         Box::new(r.into_iter())
     }
 
-    fn properties(self, include_static: bool) -> Self::ValueIterType<HashMap<String, Prop>> {
+    fn properties(self, include_static: bool) -> BoxedIter<HashMap<String, Prop>> {
         let r: Vec<_> = self.map(|v| v.properties(include_static.clone())).collect();
         Box::new(r.into_iter())
     }
 
-    fn property_histories(self) -> Self::ValueIterType<HashMap<String, Vec<(i64, Prop)>>> {
+    fn property_histories(self) -> BoxedIter<HashMap<String, Vec<(i64, Prop)>>> {
         let r: Vec<_> = self.map(|v| v.property_histories()).collect();
         Box::new(r.into_iter())
     }
 
-    fn property_names(self, include_static: bool) -> Self::ValueIterType<Vec<String>> {
+    fn property_names(self, include_static: bool) -> BoxedIter<Vec<String>> {
         let r: Vec<_> = self
             .map(|v| v.property_names(include_static.clone()))
             .collect();
         Box::new(r.into_iter())
     }
 
-    fn has_property(self, name: String, include_static: bool) -> Self::ValueIterType<bool> {
+    fn has_property(self, name: String, include_static: bool) -> BoxedIter<bool> {
         let r: Vec<_> = self
             .map(|v| v.has_property(name.clone(), include_static.clone()))
             .collect();
         Box::new(r.into_iter())
     }
 
-    fn has_static_property(self, name: String) -> Self::ValueIterType<bool> {
+    fn has_static_property(self, name: String) -> BoxedIter<bool> {
         let r: Vec<_> = self.map(|v| v.has_static_property(name.clone())).collect();
         Box::new(r.into_iter())
     }
 
-    fn static_property(self, name: String) -> Self::ValueIterType<Option<Prop>> {
+    fn static_property(self, name: String) -> BoxedIter<Option<Prop>> {
         let r: Vec<_> = self.map(|v| v.static_property(name.clone())).collect();
         Box::new(r.into_iter())
     }
 
-    fn degree(self) -> Self::ValueIterType<usize> {
+    fn degree(self) -> BoxedIter<usize> {
         let r: Vec<_> = self.map(|v| v.degree()).collect();
         Box::new(r.into_iter())
     }
 
-    fn in_degree(self) -> Self::ValueIterType<usize> {
+    fn in_degree(self) -> BoxedIter<usize> {
         let r: Vec<_> = self.map(|v| v.in_degree()).collect();
         Box::new(r.into_iter())
     }
 
-    fn out_degree(self) -> Self::ValueIterType<usize> {
+    fn out_degree(self) -> BoxedIter<usize> {
         let r: Vec<_> = self.map(|v| v.out_degree()).collect();
         Box::new(r.into_iter())
     }
@@ -441,6 +437,110 @@ impl<G: GraphViewOps, V: VertexViewOps<Graph = G> + 'static> VertexListOps
 
     fn out_neighbours(self) -> Self::VList {
         Box::new(self.flat_map(|v| v.out_neighbours()))
+    }
+}
+
+impl<G: GraphViewOps> VertexListOps for BoxedIter<BoxedIter<VertexView<G>>> {
+    type Graph = G;
+    type IterType = Self;
+    type EList = BoxedIter<BoxedIter<EdgeView<G>>>;
+    type VList = Self;
+    type ValueType<T: Send> = BoxedIter<T>;
+
+    fn earliest_time(self) -> BoxedIter<Self::ValueType<Option<i64>>> {
+        Box::new(self.map(|it| it.earliest_time()))
+    }
+
+    fn latest_time(self) -> BoxedIter<Self::ValueType<Option<i64>>> {
+        Box::new(self.map(|it| it.latest_time()))
+    }
+
+    fn window(
+        self,
+        t_start: i64,
+        t_end: i64,
+    ) -> BoxedIter<Self::ValueType<VertexView<Self::Graph>>> {
+        Box::new(self.map(move |it| it.window(t_start, t_end)))
+    }
+
+    fn id(self) -> BoxedIter<Self::ValueType<u64>> {
+        Box::new(self.map(|it| it.id()))
+    }
+
+    fn name(self) -> BoxedIter<Self::ValueType<String>> {
+        Box::new(self.map(|it| it.name()))
+    }
+
+    fn property(
+        self,
+        name: String,
+        include_static: bool,
+    ) -> BoxedIter<Self::ValueType<Option<Prop>>> {
+        Box::new(self.map(move |it| it.property(name.clone(), include_static)))
+    }
+
+    fn property_history(self, name: String) -> BoxedIter<Self::ValueType<Vec<(i64, Prop)>>> {
+        Box::new(self.map(move |it| it.property_history(name.clone())))
+    }
+
+    fn properties(self, include_static: bool) -> BoxedIter<Self::ValueType<HashMap<String, Prop>>> {
+        Box::new(self.map(move |it| it.properties(include_static)))
+    }
+
+    fn property_histories(self) -> BoxedIter<Self::ValueType<HashMap<String, Vec<(i64, Prop)>>>> {
+        Box::new(self.map(|it| it.property_histories()))
+    }
+
+    fn property_names(self, include_static: bool) -> BoxedIter<Self::ValueType<Vec<String>>> {
+        Box::new(self.map(move |it| it.property_names(include_static)))
+    }
+
+    fn has_property(self, name: String, include_static: bool) -> BoxedIter<Self::ValueType<bool>> {
+        Box::new(self.map(move |it| it.has_property(name.clone(), include_static)))
+    }
+
+    fn has_static_property(self, name: String) -> BoxedIter<Self::ValueType<bool>> {
+        Box::new(self.map(move |it| it.has_static_property(name.clone())))
+    }
+
+    fn static_property(self, name: String) -> BoxedIter<Self::ValueType<Option<Prop>>> {
+        Box::new(self.map(move |it| it.static_property(name.clone())))
+    }
+
+    fn degree(self) -> BoxedIter<Self::ValueType<usize>> {
+        Box::new(self.map(|it| it.degree()))
+    }
+
+    fn in_degree(self) -> BoxedIter<Self::ValueType<usize>> {
+        Box::new(self.map(|it| it.in_degree()))
+    }
+
+    fn out_degree(self) -> BoxedIter<Self::ValueType<usize>> {
+        Box::new(self.map(|it| it.out_degree()))
+    }
+
+    fn edges(self) -> Self::EList {
+        Box::new(self.map(|it| it.edges()))
+    }
+
+    fn in_edges(self) -> Self::EList {
+        Box::new(self.map(|it| it.in_edges()))
+    }
+
+    fn out_edges(self) -> Self::EList {
+        Box::new(self.map(|it| it.out_edges()))
+    }
+
+    fn neighbours(self) -> Self::VList {
+        Box::new(self.map(|it| it.neighbours()))
+    }
+
+    fn in_neighbours(self) -> Self::VList {
+        Box::new(self.map(|it| it.in_neighbours()))
+    }
+
+    fn out_neighbours(self) -> Self::VList {
+        Box::new(self.map(|it| it.out_neighbours()))
     }
 }
 

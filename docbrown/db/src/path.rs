@@ -1,5 +1,6 @@
 use crate::edge::EdgeView;
 use crate::vertex::VertexView;
+use crate::view_api::vertex::BoxedIter;
 use crate::view_api::*;
 use docbrown_core::tgraph::VertexRef;
 use docbrown_core::{Direction, Prop};
@@ -65,16 +66,31 @@ impl<G: GraphViewOps> PathFromGraph<G> {
             window: w.clone(),
         }))
     }
+}
 
-    pub fn id(&self) -> Box<dyn Iterator<Item = Box<dyn Iterator<Item = u64> + Send>> + Send> {
+impl<G: GraphViewOps> VertexViewOps for PathFromGraph<G> {
+    type Graph = G;
+    type ValueType<T> = Box<dyn Iterator<Item = Box<dyn Iterator<Item = T> + Send>> + Send>;
+    type PathType = Self;
+    type EList = Box<dyn Iterator<Item = Box<dyn Iterator<Item = EdgeView<G>> + Send>> + Send>;
+
+    fn id(&self) -> Box<dyn Iterator<Item = Box<dyn Iterator<Item = u64> + Send>> + Send> {
         Box::new(self.iter().map(|it| it.id()))
     }
 
-    pub fn name(&self) -> Box<dyn Iterator<Item = Box<dyn Iterator<Item = String> + Send>> + Send> {
+    fn name(&self) -> Box<dyn Iterator<Item = Box<dyn Iterator<Item = String> + Send>> + Send> {
         Box::new(self.iter().map(|it| it.name()))
     }
 
-    pub fn property(
+    fn earliest_time(&self) -> Self::ValueType<Option<i64>> {
+        Box::new(self.iter().map(|it| it.earliest_time()))
+    }
+
+    fn latest_time(&self) -> Self::ValueType<Option<i64>> {
+        Box::new(self.iter().map(|it| it.latest_time()))
+    }
+
+    fn property(
         &self,
         name: String,
         include_static: bool,
@@ -85,14 +101,14 @@ impl<G: GraphViewOps> PathFromGraph<G> {
         )
     }
 
-    pub fn property_history(
+    fn property_history(
         &self,
         name: String,
     ) -> Box<dyn Iterator<Item = Box<dyn Iterator<Item = Vec<(i64, Prop)>> + Send>> + Send> {
         Box::new(self.iter().map(move |it| it.property_history(name.clone())))
     }
 
-    pub fn properties(
+    fn properties(
         &self,
         include_static: bool,
     ) -> Box<dyn Iterator<Item = Box<dyn Iterator<Item = HashMap<String, Prop>> + Send>> + Send>
@@ -100,7 +116,7 @@ impl<G: GraphViewOps> PathFromGraph<G> {
         Box::new(self.iter().map(move |it| it.properties(include_static)))
     }
 
-    pub fn property_histories(
+    fn property_histories(
         &self,
     ) -> Box<
         dyn Iterator<Item = Box<dyn Iterator<Item = HashMap<String, Vec<(i64, Prop)>>> + Send>>
@@ -109,14 +125,14 @@ impl<G: GraphViewOps> PathFromGraph<G> {
         Box::new(self.iter().map(|it| it.property_histories()))
     }
 
-    pub fn property_names(
+    fn property_names(
         &self,
         include_static: bool,
     ) -> Box<dyn Iterator<Item = Box<dyn Iterator<Item = Vec<String>> + Send>> + Send> {
         Box::new(self.iter().map(move |it| it.property_names(include_static)))
     }
 
-    pub fn has_property(
+    fn has_property(
         &self,
         name: String,
         include_static: bool,
@@ -127,7 +143,7 @@ impl<G: GraphViewOps> PathFromGraph<G> {
         )
     }
 
-    pub fn has_static_property(
+    fn has_static_property(
         &self,
         name: String,
     ) -> Box<dyn Iterator<Item = Box<dyn Iterator<Item = bool> + Send>> + Send> {
@@ -137,48 +153,44 @@ impl<G: GraphViewOps> PathFromGraph<G> {
         )
     }
 
-    pub fn static_property(
+    fn static_property(
         &self,
         name: String,
     ) -> Box<dyn Iterator<Item = Box<dyn Iterator<Item = Option<Prop>> + Send>> + Send> {
         Box::new(self.iter().map(move |it| it.static_property(name.clone())))
     }
 
-    pub fn degree(
-        &self,
-    ) -> Box<dyn Iterator<Item = Box<dyn Iterator<Item = usize> + Send>> + Send> {
+    fn degree(&self) -> Box<dyn Iterator<Item = Box<dyn Iterator<Item = usize> + Send>> + Send> {
         Box::new(self.iter().map(|it| it.degree()))
     }
 
-    pub fn in_degree(
-        &self,
-    ) -> Box<dyn Iterator<Item = Box<dyn Iterator<Item = usize> + Send>> + Send> {
+    fn in_degree(&self) -> Box<dyn Iterator<Item = Box<dyn Iterator<Item = usize> + Send>> + Send> {
         Box::new(self.iter().map(|it| it.in_degree()))
     }
 
-    pub fn out_degree(
+    fn out_degree(
         &self,
     ) -> Box<dyn Iterator<Item = Box<dyn Iterator<Item = usize> + Send>> + Send> {
         Box::new(self.iter().map(|it| it.out_degree()))
     }
 
-    pub fn edges(&self) -> Box<dyn Iterator<Item = Box<dyn Iterator<Item = EdgeView<G>> + Send>>> {
+    fn edges(
+        &self,
+    ) -> Box<dyn Iterator<Item = Box<dyn Iterator<Item = EdgeView<G>> + Send>> + Send> {
         Box::new(self.iter().map(|it| it.edges()))
     }
 
-    pub fn in_edges(
+    fn in_edges(
         &self,
-    ) -> Box<dyn Iterator<Item = Box<dyn Iterator<Item = EdgeView<G>> + Send>>> {
+    ) -> Box<dyn Iterator<Item = Box<dyn Iterator<Item = EdgeView<G>> + Send>> + Send> {
         Box::new(self.iter().map(|it| it.in_edges()))
     }
 
-    pub fn out_edges(
-        &self,
-    ) -> Box<dyn Iterator<Item = Box<dyn Iterator<Item = EdgeView<G>> + Send>>> {
+    fn out_edges(&self) -> BoxedIter<BoxedIter<EdgeView<G>>> {
         Box::new(self.iter().map(|it| it.out_edges()))
     }
 
-    pub fn neighbours(&self) -> Self {
+    fn neighbours(&self) -> Self {
         let mut new_ops = (*self.operations).clone();
         let dir = Direction::BOTH;
         match &self.window {
@@ -196,7 +208,7 @@ impl<G: GraphViewOps> PathFromGraph<G> {
         }
     }
 
-    pub fn in_neighbours(&self) -> Self {
+    fn in_neighbours(&self) -> Self {
         let mut new_ops = (*self.operations).clone();
         let dir = Direction::IN;
         match &self.window {
@@ -214,7 +226,7 @@ impl<G: GraphViewOps> PathFromGraph<G> {
         }
     }
 
-    pub fn out_neighbours(&self) -> Self {
+    fn out_neighbours(&self) -> Self {
         let mut new_ops = (*self.operations).clone();
         let dir = Direction::OUT;
         match &self.window {
@@ -296,91 +308,85 @@ impl<G: GraphViewOps> PathFromVertex<G> {
         }
     }
 }
-impl<G: GraphViewOps> PathFromVertex<G> {
-    pub fn id(&self) -> Box<dyn Iterator<Item = u64> + Send> {
+impl<G: GraphViewOps> VertexViewOps for PathFromVertex<G> {
+    type Graph = G;
+    type ValueType<T> = BoxedIter<T>;
+    type PathType = Self;
+    type EList = BoxedIter<EdgeView<G>>;
+
+    fn id(&self) -> Self::ValueType<u64> {
         self.iter().id()
     }
 
-    pub fn name(&self) -> Box<dyn Iterator<Item = String> + Send> {
+    fn name(&self) -> Self::ValueType<String> {
         self.iter().name()
     }
 
-    pub fn property(
-        &self,
-        name: String,
-        include_static: bool,
-    ) -> Box<dyn Iterator<Item = Option<Prop>> + Send> {
+    fn earliest_time(&self) -> Self::ValueType<Option<i64>> {
+        self.iter().earliest_time()
+    }
+
+    fn latest_time(&self) -> Self::ValueType<Option<i64>> {
+        self.iter().latest_time()
+    }
+
+    fn property(&self, name: String, include_static: bool) -> Self::ValueType<Option<Prop>> {
         self.iter().property(name, include_static)
     }
 
-    pub fn property_history(
-        &self,
-        name: String,
-    ) -> Box<dyn Iterator<Item = Vec<(i64, Prop)>> + Send> {
+    fn property_history(&self, name: String) -> Self::ValueType<Vec<(i64, Prop)>> {
         self.iter().property_history(name)
     }
 
-    pub fn properties(
-        &self,
-        include_static: bool,
-    ) -> Box<dyn Iterator<Item = HashMap<String, Prop>> + Send> {
+    fn properties(&self, include_static: bool) -> Self::ValueType<HashMap<String, Prop>> {
         self.iter().properties(include_static)
     }
 
-    pub fn property_histories(
-        &self,
-    ) -> Box<dyn Iterator<Item = HashMap<String, Vec<(i64, Prop)>>> + Send> {
+    fn property_histories(&self) -> Self::ValueType<HashMap<String, Vec<(i64, Prop)>>> {
         self.iter().property_histories()
     }
 
-    pub fn property_names(
-        &self,
-        include_static: bool,
-    ) -> Box<dyn Iterator<Item = Vec<String>> + Send> {
+    fn property_names(&self, include_static: bool) -> Self::ValueType<Vec<String>> {
         self.iter().property_names(include_static)
     }
 
-    pub fn has_property(
-        &self,
-        name: String,
-        include_static: bool,
-    ) -> Box<dyn Iterator<Item = bool> + Send> {
+    fn has_property(&self, name: String, include_static: bool) -> Self::ValueType<bool> {
         self.iter().has_property(name, include_static)
     }
 
-    pub fn has_static_property(&self, name: String) -> Box<dyn Iterator<Item = bool> + Send> {
+    fn has_static_property(&self, name: String) -> Self::ValueType<bool> {
         self.iter().has_static_property(name)
     }
 
-    pub fn static_property(&self, name: String) -> Box<dyn Iterator<Item = Option<Prop>> + Send> {
+    fn static_property(&self, name: String) -> Self::ValueType<Option<Prop>> {
         self.iter().static_property(name)
     }
 
-    pub fn degree(&self) -> Box<dyn Iterator<Item = usize> + Send> {
+    fn degree(&self) -> Self::ValueType<usize> {
         self.iter().degree()
     }
 
-    pub fn in_degree(&self) -> Box<dyn Iterator<Item = usize> + Send> {
+    fn in_degree(&self) -> Self::ValueType<usize> {
         self.iter().in_degree()
     }
 
-    pub fn out_degree(&self) -> Box<dyn Iterator<Item = usize> + Send> {
+    fn out_degree(&self) -> Self::ValueType<usize> {
         self.iter().out_degree()
     }
 
-    pub fn edges(&self) -> Box<dyn Iterator<Item = EdgeView<G>> + Send> {
+    fn edges(&self) -> Self::EList {
         self.iter().edges()
     }
 
-    pub fn in_edges(&self) -> Box<dyn Iterator<Item = EdgeView<G>> + Send> {
+    fn in_edges(&self) -> Self::EList {
         self.iter().in_edges()
     }
 
-    pub fn out_edges(&self) -> Box<dyn Iterator<Item = EdgeView<G>> + Send> {
+    fn out_edges(&self) -> Self::EList {
         self.iter().out_edges()
     }
 
-    pub fn neighbours(&self) -> Self {
+    fn neighbours(&self) -> Self {
         let mut new_ops = (*self.operations).clone();
         let dir = Direction::BOTH;
         match &self.window {
@@ -399,7 +405,7 @@ impl<G: GraphViewOps> PathFromVertex<G> {
         }
     }
 
-    pub fn in_neighbours(&self) -> Self {
+    fn in_neighbours(&self) -> Self {
         let mut new_ops = (*self.operations).clone();
         let dir = Direction::IN;
         match &self.window {
@@ -418,7 +424,7 @@ impl<G: GraphViewOps> PathFromVertex<G> {
         }
     }
 
-    pub fn out_neighbours(&self) -> Self {
+    fn out_neighbours(&self) -> Self {
         let mut new_ops = (*self.operations).clone();
         let dir = Direction::OUT;
         match &self.window {
