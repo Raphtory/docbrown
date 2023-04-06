@@ -1,6 +1,8 @@
 //!  Defines the `Program` trait, which represents code that is used to evaluate
 //!  algorithms and custom code that can be run on the graph.
 
+use std::collections::HashSet;
+use std::ops::Add;
 use std::{
     cell::{Ref, RefCell},
     fmt::Debug,
@@ -22,6 +24,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 /// Module containing graph algorithms that can be run on docbrown graphs
 pub mod algo {
 
+    use crate::algorithms::triplet_count::TripletCount;
     use rustc_hash::FxHashMap;
 
     use crate::view_api::GraphViewOps;
@@ -168,7 +171,7 @@ impl<G: GraphViewOps> LocalState<G> {
     /// # Returns
     ///
     /// An `AggRef` object.
-    fn agg<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(
+    pub(crate) fn agg<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(
         &self,
         agg_ref: AccId<A, IN, OUT, ACC>,
     ) -> AggRef<A, IN, OUT, ACC>
@@ -187,7 +190,7 @@ impl<G: GraphViewOps> LocalState<G> {
     /// # Returns
     ///
     /// An `AggRef` object.
-    fn global_agg<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(
+    pub(crate) fn global_agg<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(
         &self,
         agg_ref: AccId<A, IN, OUT, ACC>,
     ) -> AggRef<A, IN, OUT, ACC>
@@ -204,7 +207,7 @@ impl<G: GraphViewOps> LocalState<G> {
     /// # Arguments
     ///
     /// * `f` - The function to execute on each vertex.
-    fn step<F>(&self, f: F)
+    pub(crate) fn step<F>(&self, f: F)
     where
         F: Fn(EvalVertexView<G>),
     {
@@ -455,7 +458,7 @@ impl<G: GraphViewOps> GlobalEvalState<G> {
     /// # Return Value
     ///
     /// An `AggRef` object representing the new state for the accumulator.
-    fn global_agg<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(
+    pub(crate) fn global_agg<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(
         &mut self,
         agg: AccId<A, IN, OUT, ACC>,
     ) -> AggRef<A, IN, OUT, ACC>
@@ -491,7 +494,7 @@ impl<G: GraphViewOps> GlobalEvalState<G> {
     ///
     /// An `AggRef` representing the result of the accumulator operation.
     ///
-    fn agg<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(
+    pub(crate) fn agg<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(
         &mut self,
         agg: AccId<A, IN, OUT, ACC>,
     ) -> AggRef<A, IN, OUT, ACC>
@@ -573,7 +576,7 @@ impl<G: GraphViewOps> GlobalEvalState<G> {
     /// * `f` - A closure taking an `EvalVertexView` and returning a boolean value.
     /// The closure is used to determine which vertices to include in the next step.
     ///
-    fn step<F>(&mut self, f: F)
+    pub(crate) fn step<F>(&mut self, f: F)
     where
         F: Fn(EvalVertexView<G>) -> bool + Sync,
     {
@@ -1132,7 +1135,7 @@ impl Program for TriangleCountSlowS2 {
     }
 
     fn post_eval<G: GraphViewOps>(&self, c: &mut GlobalEvalState<G>) {
-        let _ = c.global_agg(state::def::sum::<usize>(0));
+        let a = c.global_agg(state::def::sum::<usize>(0));
         c.step(|_| false)
     }
 

@@ -733,9 +733,10 @@ impl TemporalGraph {
 
     pub(crate) fn temporal_vertex_props(&self, v: u64) -> HashMap<String, Vec<(i64, Prop)>> {
         let index = self.logical_to_physical[&v];
-        let keys = self.vertex_props.temporal_names(index);
-        keys.into_iter()
-            .map(|key| (key.to_string(), self.temporal_vertex_prop_vec(v, &key)))
+        let names = self.vertex_props.temporal_names(index);
+        names
+            .into_iter()
+            .map(|name| (name.to_string(), self.temporal_vertex_prop_vec(v, &name)))
             .filter(|(_, v)| !v.is_empty()) // just filtered out None
             .collect()
     }
@@ -746,12 +747,13 @@ impl TemporalGraph {
         w: &Range<i64>,
     ) -> HashMap<String, Vec<(i64, Prop)>> {
         let index = self.logical_to_physical[&v];
-        let keys = self.vertex_props.temporal_names(index);
-        keys.into_iter()
-            .map(|key| {
+        let names = self.vertex_props.temporal_names(index);
+        names
+            .into_iter()
+            .map(|name| {
                 (
-                    key.to_string(),
-                    self.temporal_vertex_prop_vec_window(v, &key, w),
+                    name.to_string(),
+                    self.temporal_vertex_prop_vec_window(v, &name, w),
                 )
             })
             .filter(|(_, v)| !v.is_empty())
@@ -828,12 +830,13 @@ impl TemporalGraph {
         e: usize,
         layer: usize,
     ) -> HashMap<String, Vec<(i64, Prop)>> {
-        let keys = self.layers[layer].props.temporal_names(e);
-        keys.into_iter()
-            .map(|key| {
+        let names = self.layers[layer].props.temporal_names(e);
+        names
+            .into_iter()
+            .map(|name| {
                 (
-                    key.to_string(),
-                    self.temporal_edge_prop(e, layer, &key)
+                    name.to_string(),
+                    self.temporal_edge_prop(e, layer, &name)
                         .map(|(t, v)| (*t, v))
                         .collect(),
                 )
@@ -847,12 +850,13 @@ impl TemporalGraph {
         layer: usize,
         w: Range<i64>,
     ) -> HashMap<String, Vec<(i64, Prop)>> {
-        let keys = self.layers[layer].props.temporal_names(e);
-        keys.into_iter()
-            .map(|key| {
+        let names = self.layers[layer].props.temporal_names(e);
+        names
+            .into_iter()
+            .map(|name| {
                 (
-                    key.to_string(),
-                    self.temporal_edge_prop_window(e, layer, &key, w.clone())
+                    name.to_string(),
+                    self.temporal_edge_prop_window(e, layer, &name, w.clone())
                         .map(|(t, v)| (*t, v))
                         .collect(),
                 )
