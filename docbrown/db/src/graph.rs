@@ -1455,4 +1455,24 @@ mod db_tests {
 
         assert_eq!(g.num_vertices(), 3);
     }
+
+    #[test]
+    fn test_exploded_edge() {
+        let g = Graph::new(1);
+        g.add_edge(0, 1, 2, &vec![("weight".to_string(), Prop::I64(1))])
+            .unwrap();
+        g.add_edge(1, 1, 2, &vec![("weight".to_string(), Prop::I64(2))])
+            .unwrap();
+        g.add_edge(2, 1, 2, &vec![("weight".to_string(), Prop::I64(3))])
+            .unwrap();
+
+        let exploded = g.edge(1, 2).unwrap().explode();
+
+        for e in exploded {
+            println!("{:?}", e);
+            println!("{:?}", e.properties(false));
+        }
+
+        let y = g.vertex_edges_t(g.vertex(1).unwrap().vertex, Direction::OUT);
+    }
 }

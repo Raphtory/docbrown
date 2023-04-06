@@ -12,7 +12,8 @@ use docbrown_core::tgraph::{EdgeRef, VertexRef};
 use docbrown_core::{Direction, Prop};
 use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};
-use std::iter::Filter;
+use std::iter::{Filter, Map};
+use std::vec::IntoIter;
 
 /// A view of an edge in the graph.
 pub struct EdgeView<G: GraphViewOps> {
@@ -139,27 +140,19 @@ impl<G: GraphViewOps> EdgeView<G> {
         self.edge.edge_id
     }
 
-    pub fn explode(&self) {
+    pub fn explode(&self) -> Box<IntoIter<EdgeView<G>>> {
         let vertex = VertexRef {
             g_id: self.edge.src_g_id,
             pid: None,
         };
 
-        // using the graph the out edges of the vertex with the vertex_edges_t method
-        // then filter these based on the edge id
-        // return the result in a box as edgeref
-        // then create a new edgeview from the edgeref
-        // then return the edgeview
-        Box::new(
-            graph
-                .vertex_edges_t(vertex, Direction::OUT)
-                .filter(|e| e.edge_id == self.edge.edge_id)
-                .map(|e| EdgeView::new(self.graph.clone(), e)),
-        )
-
-        // self.graph
-        //     .vertex_edges_t(vertex, Direction::OUT)
-        //     .filter(|e| e.dst_g_id == self.edge.dst_g_id)
+        let r: Vec<EdgeView<G>> = self
+            .graph
+            .vertex_edges_t(vertex, Direction::OUT)
+            .filter(|e| e.edge_id == self.edge.edge_id)
+            .map(|e| EdgeView::new(self.graph.clone(), e))
+            .collect();
+        Box::new(r.into_iter())
     }
 }
 
@@ -232,7 +225,7 @@ impl<G: GraphViewOps> EdgeListOps for BoxedIter<EdgeView<G>> {
     }
 
     fn explode(self) -> Self::IterType {
-        Box::new(self.into_iter().map(|e| e.explode()))
+        Box::new(self.flat_map(|e| e.explode()))
     }
 }
 
