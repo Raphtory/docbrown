@@ -377,8 +377,13 @@ impl GraphViewInternalOps for Graph {
         )
     }
 
-    fn neighbours(&self, v: VertexRef, d: Direction) -> Box<dyn Iterator<Item = VertexRef> + Send> {
-        Box::new(self.get_shard_from_v(v).neighbours(v.g_id, d))
+    fn neighbours(
+        &self,
+        v: VertexRef,
+        d: Direction,
+        layer: Option<usize>,
+    ) -> Box<dyn Iterator<Item = VertexRef> + Send> {
+        Box::new(self.get_shard_from_v(v).neighbours(v.g_id, d, layer))
     }
 
     fn neighbours_window(
@@ -387,15 +392,21 @@ impl GraphViewInternalOps for Graph {
         t_start: i64,
         t_end: i64,
         d: Direction,
+        layer: Option<usize>,
     ) -> Box<dyn Iterator<Item = VertexRef> + Send> {
         Box::new(
             self.get_shard_from_v(v)
-                .neighbours_window(v.g_id, t_start..t_end, d),
+                .neighbours_window(v.g_id, t_start..t_end, d, layer),
         )
     }
 
-    fn neighbours_ids(&self, v: VertexRef, d: Direction) -> Box<dyn Iterator<Item = u64> + Send> {
-        Box::new(self.get_shard_from_v(v).neighbours_ids(v.g_id, d))
+    fn neighbours_ids(
+        &self,
+        v: VertexRef,
+        d: Direction,
+        layer: Option<usize>,
+    ) -> Box<dyn Iterator<Item = u64> + Send> {
+        Box::new(self.get_shard_from_v(v).neighbours_ids(v.g_id, d, layer))
     }
 
     fn neighbours_ids_window(
@@ -404,10 +415,11 @@ impl GraphViewInternalOps for Graph {
         t_start: i64,
         t_end: i64,
         d: Direction,
+        layer: Option<usize>,
     ) -> Box<dyn Iterator<Item = u64> + Send> {
         Box::new(
             self.get_shard_from_v(v)
-                .neighbours_ids_window(v.g_id, t_start..t_end, d),
+                .neighbours_ids_window(v.g_id, t_start..t_end, d, layer),
         )
     }
 
@@ -1473,11 +1485,11 @@ mod db_tests {
             .map(|i| {
                 let i = i.into();
                 (
-                    g.neighbours_window(i, -1, 7, Direction::IN)
+                    g.neighbours_window(i, -1, 7, Direction::IN, None)
                         .collect::<Vec<_>>(),
-                    g.neighbours_window(i, 1, 7, Direction::OUT)
+                    g.neighbours_window(i, 1, 7, Direction::OUT, None)
                         .collect::<Vec<_>>(),
-                    g.neighbours_window(i, 0, 1, Direction::BOTH)
+                    g.neighbours_window(i, 0, 1, Direction::BOTH, None)
                         .collect::<Vec<_>>(),
                 )
             })

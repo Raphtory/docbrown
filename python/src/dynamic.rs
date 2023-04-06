@@ -241,8 +241,13 @@ impl GraphViewInternalOps for DynamicGraph {
         self.0.vertex_edges_window_t(v, t_start, t_end, d, layer)
     }
 
-    fn neighbours(&self, v: VertexRef, d: Direction) -> Box<dyn Iterator<Item = VertexRef> + Send> {
-        self.0.neighbours(v, d)
+    fn neighbours(
+        &self,
+        v: VertexRef,
+        d: Direction,
+        layer: Option<usize>,
+    ) -> Box<dyn Iterator<Item = VertexRef> + Send> {
+        self.0.neighbours(v, d, layer)
     }
 
     fn neighbours_window(
@@ -251,12 +256,18 @@ impl GraphViewInternalOps for DynamicGraph {
         t_start: i64,
         t_end: i64,
         d: Direction,
+        layer: Option<usize>,
     ) -> Box<dyn Iterator<Item = VertexRef> + Send> {
-        self.0.neighbours_window(v, t_start, t_end, d)
+        self.0.neighbours_window(v, t_start, t_end, d, layer)
     }
 
-    fn neighbours_ids(&self, v: VertexRef, d: Direction) -> Box<dyn Iterator<Item = u64> + Send> {
-        self.0.neighbours_ids(v, d)
+    fn neighbours_ids(
+        &self,
+        v: VertexRef,
+        d: Direction,
+        layer: Option<usize>,
+    ) -> Box<dyn Iterator<Item = u64> + Send> {
+        self.0.neighbours_ids(v, d, layer)
     }
 
     fn neighbours_ids_window(
@@ -265,8 +276,9 @@ impl GraphViewInternalOps for DynamicGraph {
         t_start: i64,
         t_end: i64,
         d: Direction,
+        layer: Option<usize>,
     ) -> Box<dyn Iterator<Item = u64> + Send> {
-        self.0.neighbours_ids_window(v, t_start, t_end, d)
+        self.0.neighbours_ids_window(v, t_start, t_end, d, layer)
     }
 
     fn static_vertex_prop(&self, v: VertexRef, name: String) -> Option<Prop> {

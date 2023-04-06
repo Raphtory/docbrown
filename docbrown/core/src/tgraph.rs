@@ -99,6 +99,8 @@ impl TemporalGraph {
         }
     }
 
+    // TODO: we can completely replace this function with `layer_iter` if we are sure that doesn't
+    // affect performance
     fn layer_iter_optm(&self, id: Option<usize>) -> LayerIterator {
         if self.layers.len() == 1 {
             LayerIterator::Single(&self.layers[0])
@@ -497,7 +499,7 @@ impl TemporalGraph {
     }
 
     // FIXME: all the functions using global ID need to be changed to use the physical ID instead
-    // This returns edges sorted by neighbour so they are easy to dedup inside neighbours()
+    // This returns edges sorted by neighbour so they are easy to dedup inside neighbours and degree
     pub(crate) fn vertex_edges(
         &self,
         v: u64,
@@ -598,11 +600,12 @@ impl TemporalGraph {
         &self,
         v: u64,
         d: Direction,
+        layer: Option<usize>,
     ) -> Box<dyn Iterator<Item = VertexRef> + Send + '_>
     where
         Self: Sized,
     {
-        let edges = self.vertex_edges(v, d, None);
+        let edges = self.vertex_edges(v, d, layer);
 
         if matches!(d, Direction::OUT | Direction::IN) {
             let iter = edges.map(move |(_, edge)| Self::edge_ref_as_vertex_ref(edge, v));
@@ -623,18 +626,19 @@ impl TemporalGraph {
         v: u64,
         w: &Range<i64>,
         d: Direction,
+        layer: Option<usize>,
     ) -> Box<dyn Iterator<Item = VertexRef> + Send + '_>
     where
         Self: Sized,
     {
         if matches!(d, Direction::OUT | Direction::IN) {
             let iter = self
-                .vertex_edges_window(v, w, d, None)
+                .vertex_edges_window(v, w, d, layer)
                 .map(move |(_, edge)| Self::edge_ref_as_vertex_ref(edge, v));
             Box::new(iter)
         } else {
             Box::new(
-                self.vertex_edges_window(v, w, d, None)
+                self.vertex_edges_window(v, w, d, layer)
                     .dedup_by(|(left, e1), (right, e2)| {
                         left == right && e1.is_remote == e2.is_remote
                     })
@@ -647,11 +651,12 @@ impl TemporalGraph {
         &self,
         v: u64,
         d: Direction,
+        layer: Option<usize>,
     ) -> Box<dyn Iterator<Item = u64> + Send + '_>
     where
         Self: Sized,
     {
-        Box::new(self.neighbours(v, d).map(|vv| vv.g_id))
+        Box::new(self.neighbours(v, d, layer).map(|vv| vv.g_id))
     }
 
     pub(crate) fn neighbours_ids_window(
@@ -659,11 +664,12 @@ impl TemporalGraph {
         v: u64,
         w: &Range<i64>,
         d: Direction,
+        layer: Option<usize>,
     ) -> Box<dyn Iterator<Item = u64> + Send + '_>
     where
         Self: Sized,
     {
-        Box::new(self.neighbours_window(v, w, d).map(|vv| vv.g_id))
+        Box::new(self.neighbours_window(v, w, d, layer).map(|vv| vv.g_id))
     }
 
     pub fn static_vertex_prop(&self, v: u64, name: &str) -> Option<Prop> {
@@ -2017,13 +2023,13 @@ mod graph_test {
             .map(|v| {
                 (
                     v.g_id,
-                    g.neighbours(v.g_id, Direction::IN)
+                    g.neighbours(v.g_id, Direction::IN, None)
                         .map(|v| v.g_id)
                         .collect_vec(),
-                    g.neighbours(v.g_id, Direction::OUT)
+                    g.neighbours(v.g_id, Direction::OUT, None)
                         .map(|v| v.g_id)
                         .collect_vec(),
-                    g.neighbours(v.g_id, Direction::BOTH)
+                    g.neighbours(v.g_id, Direction::BOTH, None)
                         .map(|v| v.g_id)
                         .collect_vec(),
                 )
@@ -2036,13 +2042,13 @@ mod graph_test {
             .map(|v| {
                 (
                     v.g_id,
-                    g.neighbours_window(v.g_id, &w, Direction::IN)
+                    g.neighbours_window(v.g_id, &w, Direction::IN, None)
                         .map(|v| v.g_id)
                         .collect_vec(),
-                    g.neighbours_window(v.g_id, &w, Direction::OUT)
+                    g.neighbours_window(v.g_id, &w, Direction::OUT, None)
                         .map(|v| v.g_id)
                         .collect_vec(),
-                    g.neighbours_window(v.g_id, &w, Direction::BOTH)
+                    g.neighbours_window(v.g_id, &w, Direction::BOTH, None)
                         .map(|v| v.g_id)
                         .collect_vec(),
                 )

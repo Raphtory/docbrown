@@ -458,12 +458,17 @@ impl TGraphShard<TemporalGraph> {
         Box::new(iter.into_iter())
     }
 
-    pub fn neighbours(&self, v: u64, d: Direction) -> Box<dyn Iterator<Item = VertexRef> + Send> {
+    pub fn neighbours(
+        &self,
+        v: u64,
+        d: Direction,
+        layer: Option<usize>,
+    ) -> Box<dyn Iterator<Item = VertexRef> + Send> {
         let tgshard = self.clone();
         let iter = gen!({
             let binding = tgshard.rc.read();
             if let Some(g) = binding.as_ref() {
-                let chunks = (*g).neighbours(v, d);
+                let chunks = (*g).neighbours(v, d, layer);
                 let iter = chunks.into_iter();
                 for v_id in iter {
                     yield_!(v_id)
@@ -479,12 +484,13 @@ impl TGraphShard<TemporalGraph> {
         v: u64,
         w: Range<i64>,
         d: Direction,
+        layer: Option<usize>,
     ) -> Box<dyn Iterator<Item = VertexRef> + Send> {
         let tgshard = self.clone();
         let iter = gen!({
             let binding = tgshard.rc.read();
             if let Some(g) = binding.as_ref() {
-                let chunks = (*g).neighbours_window(v, &w, d);
+                let chunks = (*g).neighbours_window(v, &w, d, layer);
                 let iter = chunks.into_iter();
                 for v_id in iter {
                     yield_!(v_id)
@@ -495,7 +501,12 @@ impl TGraphShard<TemporalGraph> {
         Box::new(iter.into_iter())
     }
 
-    pub fn neighbours_ids(&self, v: u64, d: Direction) -> Box<dyn Iterator<Item = u64> + Send>
+    pub fn neighbours_ids(
+        &self,
+        v: u64,
+        d: Direction,
+        layer: Option<usize>,
+    ) -> Box<dyn Iterator<Item = u64> + Send>
     where
         Self: Sized,
     {
@@ -503,7 +514,7 @@ impl TGraphShard<TemporalGraph> {
         let iter = gen!({
             let binding = tgshard.rc.read();
             if let Some(g) = binding.as_ref() {
-                let chunks = (*g).neighbours_ids(v, d);
+                let chunks = (*g).neighbours_ids(v, d, layer);
                 let iter = chunks.into_iter();
                 for v_id in iter {
                     yield_!(v_id)
@@ -519,6 +530,7 @@ impl TGraphShard<TemporalGraph> {
         v: u64,
         w: Range<i64>,
         d: Direction,
+        layer: Option<usize>,
     ) -> Box<dyn Iterator<Item = u64> + Send>
     where
         Self: Sized,
@@ -527,7 +539,7 @@ impl TGraphShard<TemporalGraph> {
         let iter = gen!({
             let binding = tgshard.rc.read();
             if let Some(g) = binding.as_ref() {
-                let chunks = (*g).neighbours_ids_window(v, &w, d);
+                let chunks = (*g).neighbours_ids_window(v, &w, d, layer);
                 let iter = chunks.into_iter();
                 for v_id in iter {
                     yield_!(v_id)

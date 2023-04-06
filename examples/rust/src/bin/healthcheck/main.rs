@@ -62,12 +62,12 @@ mod test {
             let v_id = v1;
             for d in [Direction::OUT, Direction::IN, Direction::BOTH] {
                 let mut expect_1 = g1
-                    .neighbours(v_id.into(), d)
+                    .neighbours(v_id.into(), d, None)
                     .map(|id| id.g_id)
                     .collect::<Vec<_>>();
 
                 let mut expect_n = gn
-                    .neighbours(v_id.into(), d)
+                    .neighbours(v_id.into(), d, None)
                     .map(|id| id.g_id)
                     .collect::<Vec<_>>();
 
@@ -110,12 +110,12 @@ mod test {
             let v_id = v1;
             for d in [Direction::OUT, Direction::IN, Direction::BOTH] {
                 let mut expected_1 = g1
-                    .neighbours_window(v_id.into(), t_start, t_end, d)
+                    .neighbours_window(v_id.into(), t_start, t_end, d, None)
                     .map(|id| id.g_id)
                     .collect::<Vec<_>>();
 
                 let mut expected_n = gn
-                    .neighbours_window(v_id.into(), t_start, t_end, d)
+                    .neighbours_window(v_id.into(), t_start, t_end, d, None)
                     .map(|id| id.g_id)
                     .collect::<Vec<_>>();
 

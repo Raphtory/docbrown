@@ -366,7 +366,12 @@ pub trait GraphViewInternalOps {
     /// # Returns
     ///
     /// A boxed iterator that yields references to the neighboring vertices.
-    fn neighbours(&self, v: VertexRef, d: Direction) -> Box<dyn Iterator<Item = VertexRef> + Send>;
+    fn neighbours(
+        &self,
+        v: VertexRef,
+        d: Direction,
+        layer: Option<usize>,
+    ) -> Box<dyn Iterator<Item = VertexRef> + Send>;
 
     /// Returns an iterator over the neighbors of a given vertex within a specified time window in a given direction.
     ///
@@ -386,6 +391,7 @@ pub trait GraphViewInternalOps {
         t_start: i64,
         t_end: i64,
         d: Direction,
+        layer: Option<usize>,
     ) -> Box<dyn Iterator<Item = VertexRef> + Send>;
 
     ///  Returns the vertex ids of the neighbors of a given vertex in a given direction.
@@ -397,7 +403,12 @@ pub trait GraphViewInternalOps {
     /// # Returns
     ///
     /// A boxed iterator that yields the ids of the neighboring vertices.
-    fn neighbours_ids(&self, v: VertexRef, d: Direction) -> Box<dyn Iterator<Item = u64> + Send>;
+    fn neighbours_ids(
+        &self,
+        v: VertexRef,
+        d: Direction,
+        layer: Option<usize>,
+    ) -> Box<dyn Iterator<Item = u64> + Send>;
 
     /// Returns the vertex ids of the neighbors of a given vertex within a specified
     /// time window in a given direction.
@@ -419,6 +430,7 @@ pub trait GraphViewInternalOps {
         t_start: i64,
         t_end: i64,
         d: Direction,
+        layer: Option<usize>,
     ) -> Box<dyn Iterator<Item = u64> + Send>;
 
     /// Gets a static property of a given vertex given the name and vertex reference.
