@@ -1,6 +1,8 @@
 //!  Defines the `Program` trait, which represents code that is used to evaluate
 //!  algorithms and custom code that can be run on the graph.
 
+use std::collections::HashSet;
+use std::ops::Add;
 use std::{
     cell::{Ref, RefCell},
     fmt::Debug,
@@ -169,7 +171,7 @@ impl<G: GraphViewOps> LocalState<G> {
     /// # Returns
     ///
     /// An `AggRef` object.
-    fn agg<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(
+    pub(crate) fn agg<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(
         &self,
         agg_ref: AccId<A, IN, OUT, ACC>,
     ) -> AggRef<A, IN, OUT, ACC>
@@ -492,7 +494,7 @@ impl<G: GraphViewOps> GlobalEvalState<G> {
     ///
     /// An `AggRef` representing the result of the accumulator operation.
     ///
-    fn agg<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(
+    pub(crate) fn agg<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(
         &mut self,
         agg: AccId<A, IN, OUT, ACC>,
     ) -> AggRef<A, IN, OUT, ACC>
@@ -1133,7 +1135,7 @@ impl Program for TriangleCountSlowS2 {
     }
 
     fn post_eval<G: GraphViewOps>(&self, c: &mut GlobalEvalState<G>) {
-        let _ = c.global_agg(state::def::sum::<usize>(0));
+        let a = c.global_agg(state::def::sum::<usize>(0));
         c.step(|_| false)
     }
 
