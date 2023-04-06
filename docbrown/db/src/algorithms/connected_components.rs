@@ -19,11 +19,7 @@ use std::ops::Range;
 ///
 /// A hash map containing the mapping from component ID to the number of vertices in the component
 ///
-pub fn weakly_connected_components(
-    g: &Graph,
-    window: Range<i64>,
-    iter_count: usize,
-) -> FxHashMap<u64, u64> {
+pub fn weakly_connected_components(g: &Graph, iter_count: usize) -> FxHashMap<u64, u64> {
     let cc = WeaklyConnectedComponents {};
 
     let gs = cc.run(g, true, iter_count);
@@ -197,7 +193,7 @@ mod cc_test {
 
         let window = 0..10;
 
-        let results: FxHashMap<u64, u64> = weakly_connected_components(&graph, window, usize::MAX)
+        let results: FxHashMap<u64, u64> = weakly_connected_components(&graph, usize::MAX)
             .into_iter()
             .map(|(k, v)| (k, v as u64))
             .collect();
@@ -255,7 +251,7 @@ mod cc_test {
 
         let window = 0..25;
 
-        let results: FxHashMap<u64, u64> = weakly_connected_components(&graph, window, usize::MAX)
+        let results: FxHashMap<u64, u64> = weakly_connected_components(&graph, usize::MAX)
             .into_iter()
             .map(|(k, v)| (k, v as u64))
             .collect();
@@ -293,7 +289,7 @@ mod cc_test {
 
         let window = 0..25;
 
-        let results: FxHashMap<u64, u64> = weakly_connected_components(&graph, window, usize::MAX);
+        let results: FxHashMap<u64, u64> = weakly_connected_components(&graph, usize::MAX);
 
         assert_eq!(
             results,
@@ -329,8 +325,7 @@ mod cc_test {
 
             let window = 0..1;
 
-            let components: FxHashMap<u64, u64> =
-                weakly_connected_components(&graph, window, usize::MAX);
+            let components: FxHashMap<u64, u64> = weakly_connected_components(&graph, usize::MAX);
 
             let actual = components
                 .iter()
