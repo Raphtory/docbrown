@@ -45,12 +45,8 @@
 //! println!("global_reciprocity: {:?}", global_reciprocity(&g));
 //! ```
 use crate::program::{EvalVertexView, GlobalEvalState, LocalState, Program};
-use crate::vertex::VertexView;
 use crate::view_api::GraphViewOps;
-use crate::view_api::*;
 use docbrown_core::state;
-use rustc_hash::FxHashMap;
-use std::collections::HashSet;
 use std::collections::{HashMap, HashSet};
 
 struct GlobalReciprocity {}
