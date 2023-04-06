@@ -176,7 +176,7 @@ impl Props {
             .iter()
             .map(|(name, prop)| {
                 (
-                    self.get_or_allocate_id(&name, should_be_static).unwrap(),
+                    self.get_or_allocate_id(name, should_be_static).unwrap(),
                     prop.clone(),
                 )
             })

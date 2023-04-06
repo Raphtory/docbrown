@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::adj::Adj;
 use crate::edge_layer::EdgeLayer;
-use crate::props::{IllegalMutate, Props};
+use crate::props::Props;
 use crate::tprop::TProp;
 use crate::vertex::InputVertex;
 use crate::{bitset::BitSet, tadjset::AdjEdge, Direction};
@@ -117,6 +117,10 @@ enum LayerIterator<'a> {
 }
 
 impl TemporalGraph {
+    fn local_id_for_v(&self, v: VertexRef) -> usize {
+        v.pid.unwrap_or(self.logical_to_physical[&v.g_id])
+    }
+
     pub(crate) fn allocate_layer(&mut self, id: usize) {
         self.layers.push(EdgeLayer::new(id));
         assert_eq!(self.layers.len(), id + 1)
@@ -470,6 +474,26 @@ impl TemporalGraph {
         } else {
             None
         }
+    }
+
+    pub fn vertex_earliest_time(&self, v: VertexRef) -> Option<Time> {
+        let pid = self.local_id_for_v(v);
+        self.timestamps[pid].first().copied()
+    }
+
+    pub fn vertex_earliest_time_window(&self, v: VertexRef, w: Range<Time>) -> Option<Time> {
+        let pid = self.local_id_for_v(v);
+        self.timestamps[pid].range(w).min().copied()
+    }
+
+    pub fn vertex_latest_time(&self, v: VertexRef) -> Option<Time> {
+        let pid = self.local_id_for_v(v);
+        self.timestamps[pid].last().copied()
+    }
+
+    pub fn vertex_latest_time_window(&self, v: VertexRef, w: Range<Time>) -> Option<Time> {
+        let pid = self.local_id_for_v(v);
+        self.timestamps[pid].range(w).max().copied()
     }
 
     // FIXME: all the functions using global ID need to be changed to use the physical ID instead
