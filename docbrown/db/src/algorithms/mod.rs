@@ -26,7 +26,8 @@
 //! println!("average_degree: {:?}", average_degree(&g));
 //! ```
 
-mod connected_components;
+pub mod clustering_coefficient;
+pub mod connected_components;
 pub mod degree;
 pub mod directed_graph_density;
 pub mod local_clustering_coefficient;
@@ -34,3 +35,4 @@ pub mod local_triangle_count;
 pub mod pagerank;
 pub mod reciprocity;
 pub mod triangle_count;
+pub mod triplet_count;

@@ -1,6 +1,8 @@
 //!  Defines the `Program` trait, which represents code that is used to evaluate
 //!  algorithms and custom code that can be run on the graph.
 
+use std::collections::HashSet;
+use std::ops::Add;
 use std::{
     cell::{Ref, RefCell},
     fmt::Debug,
@@ -8,6 +10,8 @@ use std::{
     sync::Arc,
 };
 
+use crate::vertex::VertexView;
+use crate::view_api::{GraphViewOps, VertexViewOps};
 use docbrown_core::{
     agg::Accumulator,
     state::{AccId, ShuffleComputeState},
@@ -17,10 +21,8 @@ use itertools::Itertools;
 use rayon::prelude::*;
 use rustc_hash::FxHashSet;
 
-/// Alias for ComputeStateMap
-use crate::vertex::VertexView;
-use crate::view_api::internal::GraphViewInternalOps;
-use crate::view_api::GraphViewOps;
+use crate::algorithms::triplet_count::TripletCount;
+use rustc_hash::FxHashMap;
 
 type CS = ComputeStateMap;
 

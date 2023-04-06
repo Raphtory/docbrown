@@ -18,7 +18,7 @@
 //! ```rust
 //! use docbrown_db::algorithms::degree::{max_out_degree, max_in_degree, min_out_degree, min_in_degree, average_degree};
 //! use docbrown_db::graph::Graph;
-//! use docbrown_db::view_api::GraphViewOps;
+//! use docbrown_db::view_api::*;
 //!
 //! let g = Graph::new(1);
 //! let windowed_graph = g.window(0, 7);
