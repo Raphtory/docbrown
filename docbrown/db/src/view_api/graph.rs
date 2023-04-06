@@ -1,4 +1,5 @@
 use crate::edge::EdgeView;
+use crate::graph_layer::LayeredGraph;
 use crate::graph_window::WindowedGraph;
 use crate::vertex::VertexView;
 use crate::vertices::Vertices;
@@ -49,6 +50,12 @@ pub trait GraphViewOps: Send + Sync + Sized + GraphViewInternalOps + 'static + C
 
     /// Return an iterator over all edges in the graph.
     fn edges(&self) -> Box<dyn Iterator<Item = EdgeView<Self>> + Send>;
+
+    /// Return a graph containing only the default edge layer
+    fn default_layer(&self) -> LayeredGraph<Self>;
+
+    /// Return a graph containing the layer `name`
+    fn layer(&self, name: &str) -> LayeredGraph<Self>;
 }
 
 impl<G: Send + Sync + Sized + GraphViewInternalOps + 'static + Clone> GraphViewOps for G {
@@ -102,6 +109,15 @@ impl<G: Send + Sync + Sized + GraphViewInternalOps + 'static + Clone> GraphViewO
 
     fn edges(&self) -> Box<dyn Iterator<Item = EdgeView<Self>> + Send> {
         Box::new(self.vertices().iter().flat_map(|v| v.out_edges()))
+    }
+
+    fn default_layer(&self) -> LayeredGraph<Self> {
+        LayeredGraph::new(self.clone(), 0)
+    }
+
+    fn layer(&self, name: &str) -> LayeredGraph<Self> {
+        let id = self.get_layer(Some(name)).unwrap(); // TODO: bubble up error
+        LayeredGraph::new(self.clone(), id)
     }
 }
 

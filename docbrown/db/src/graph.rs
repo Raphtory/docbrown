@@ -58,7 +58,7 @@ impl GraphViewInternalOps for Graph {
     fn get_layer(&self, key: Option<&str>) -> Option<usize> {
         match key {
             None => Some(0),
-            Some(key) => self.layer_ids.read().get(key).cloned(),
+            Some(key) => self.layer_ids.read().get(key).copied(),
         }
     }
 
@@ -868,7 +868,8 @@ impl Graph {
         layer: Option<&str>,
     ) -> Result<(), GraphError> {
         let layer_id = self.get_layer(layer).unwrap(); // FIXME: bubble up instead
-                                                       // TODO: we don't add properties to dst shard, but may need to depending on the plans
+
+        // TODO: we don't add properties to dst shard, but may need to depending on the plans
         self.get_shard_from_id(src.id())
             .add_edge_properties(src.id(), dst.id(), props, layer_id)
     }
@@ -876,7 +877,7 @@ impl Graph {
     fn get_or_allocate_layer(&self, key: Option<&str>) -> usize {
         self.get_layer(key).unwrap_or_else(|| {
             let mut layer_ids = self.layer_ids.write();
-            let layer_id = layer_ids.len();
+            let layer_id = layer_ids.len() + 1; // default layer not included in the hashmap
             layer_ids.insert(key.unwrap().to_string(), layer_id);
             for shard in &self.shards {
                 shard.allocate_layer(layer_id).unwrap() // FIXME: bubble up error
@@ -889,6 +890,7 @@ impl Graph {
 #[cfg(test)]
 mod db_tests {
     use super::*;
+    use crate::edge::EdgeView;
     use crate::graphgen::random_attachment::random_attachment;
     use crate::perspective::Perspective;
     use crate::view_api::*;
@@ -1585,5 +1587,95 @@ mod db_tests {
         assert!(g.has_vertex("hamza"));
 
         assert_eq!(g.num_vertices(), 3);
+    }
+
+    #[test]
+    #[should_panic]
+    fn complain_on_mising_layer() {
+        let g = Graph::new(4);
+        g.layer("missing layer");
+    }
+
+    #[test]
+    fn layers() {
+        let g = Graph::new(4);
+        g.add_edge(0, 11, 22, &vec![], None).unwrap();
+        g.add_edge(0, 11, 33, &vec![], None).unwrap();
+        g.add_edge(0, 33, 11, &vec![], None).unwrap();
+        g.add_edge(0, 11, 22, &vec![], Some("layer1")).unwrap();
+        g.add_edge(0, 11, 33, &vec![], Some("layer2")).unwrap();
+        g.add_edge(0, 11, 44, &vec![], Some("layer2")).unwrap();
+
+        assert_eq!(g.has_edge(11, 22, None), true);
+        assert_eq!(g.has_edge(11, 44, None), false);
+        assert_eq!(g.has_edge(11, 22, Some("layer2")), false);
+        assert_eq!(g.has_edge(11, 44, Some("layer2")), true);
+
+        assert!(g.edge(11, 22, None).is_some());
+        assert!(g.edge(11, 44, None).is_none());
+        assert!(g.edge(11, 22, Some("layer2")).is_none());
+        assert!(g.edge(11, 44, Some("layer2")).is_some());
+
+        let dft_layer = g.default_layer();
+        let layer1 = g.layer("layer1");
+        let layer2 = g.layer("layer2");
+
+        assert_eq!(g.num_edges(), 6);
+        assert_eq!(dft_layer.num_edges(), 3);
+        assert_eq!(layer1.num_edges(), 1);
+        assert_eq!(layer2.num_edges(), 2);
+
+        let vertex = g.vertex(11).unwrap();
+        let vertex_dft = dft_layer.vertex(11).unwrap();
+        let vertex1 = layer1.vertex(11).unwrap();
+        let vertex2 = layer2.vertex(11).unwrap();
+
+        assert_eq!(vertex.degree(), 3);
+        assert_eq!(vertex_dft.degree(), 2);
+        assert_eq!(vertex1.degree(), 1);
+        assert_eq!(vertex2.degree(), 2);
+
+        assert_eq!(vertex.out_degree(), 3);
+        assert_eq!(vertex_dft.out_degree(), 2);
+        assert_eq!(vertex1.out_degree(), 1);
+        assert_eq!(vertex2.out_degree(), 2);
+
+        assert_eq!(vertex.in_degree(), 1);
+        assert_eq!(vertex_dft.in_degree(), 1);
+        assert_eq!(vertex1.in_degree(), 0);
+        assert_eq!(vertex2.in_degree(), 0);
+
+        fn to_tuples<G: GraphViewOps, I: Iterator<Item = EdgeView<G>>>(
+            edges: I,
+        ) -> Vec<(u64, u64)> {
+            edges
+                .map(|e| (e.src().id(), e.dst().id()))
+                .sorted()
+                .collect_vec()
+        }
+
+        assert_eq!(
+            to_tuples(vertex.edges()),
+            vec![(11, 22), (11, 22), (11, 33), (11, 33), (11, 44), (33, 11)]
+        );
+        assert_eq!(
+            to_tuples(vertex_dft.edges()),
+            vec![(11, 22), (11, 33), (33, 11)]
+        );
+        assert_eq!(to_tuples(vertex1.edges()), vec![(11, 22)]);
+        assert_eq!(to_tuples(vertex2.edges()), vec![(11, 33), (11, 44)]);
+
+        assert_eq!(to_tuples(vertex.in_edges()), vec![(33, 11)]);
+        assert_eq!(to_tuples(vertex_dft.in_edges()), vec![(33, 11)]);
+        assert_eq!(to_tuples(vertex1.in_edges()), vec![]);
+        assert_eq!(to_tuples(vertex2.in_edges()), vec![]);
+
+        assert_eq!(
+            to_tuples(vertex.out_edges()),
+            vec![(11, 22), (11, 22), (11, 33), (11, 33), (11, 44)]
+        );
+        assert_eq!(to_tuples(vertex_dft.out_edges()), vec![(11, 22), (11, 33)]);
+        assert_eq!(to_tuples(vertex1.out_edges()), vec![(11, 22)]);
+        assert_eq!(to_tuples(vertex2.out_edges()), vec![(11, 33), (11, 44)]);
     }
 }

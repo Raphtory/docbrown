@@ -132,7 +132,7 @@ pub mod csv_loader;
 pub mod edge;
 pub mod graph;
 pub mod graph_immutable;
-// pub mod graph_layer;
+pub mod graph_layer;
 pub mod graph_loader;
 pub mod graph_window;
 pub mod graphgen;
