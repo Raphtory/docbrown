@@ -145,9 +145,21 @@ impl<G: GraphViewOps> EdgeView<G> {
             pid: None,
         };
 
-        self.graph
-            .vertex_edges_t(vertex, Direction::OUT)
-            .filter(|e| e.dst_g_id == self.edge.dst_g_id)
+        // using the graph the out edges of the vertex with the vertex_edges_t method
+        // then filter these based on the edge id
+        // return the result in a box as edgeref
+        // then create a new edgeview from the edgeref
+        // then return the edgeview
+        Box::new(
+            graph
+                .vertex_edges_t(vertex, Direction::OUT)
+                .filter(|e| e.edge_id == self.edge.edge_id)
+                .map(|e| EdgeView::new(self.graph.clone(), e)),
+        )
+
+        // self.graph
+        //     .vertex_edges_t(vertex, Direction::OUT)
+        //     .filter(|e| e.dst_g_id == self.edge.dst_g_id)
     }
 }
 
