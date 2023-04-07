@@ -578,7 +578,9 @@ impl PyPathFromVertex {
     }
 
     fn property(&self, name: String, include_static: Option<bool>) -> OptionPropIter {
-        self.path.property(name, include_static.unwrap_or(true)).into()
+        self.path
+            .property(name, include_static.unwrap_or(true))
+            .into()
     }
 
     fn property_history(&self, name: String) -> PropHistoryIter {
@@ -588,23 +590,27 @@ impl PyPathFromVertex {
     fn properties(&self, include_static: Option<bool>) -> PropsIter {
         self.path.properties(include_static.unwrap_or(true)).into()
     }
-    
+
     fn property_histories(&self) -> PropHistoriesIter {
         self.path.property_histories().into()
     }
-    
+
     fn property_names(&self, include_static: Option<bool>) -> StringVecIter {
-        self.path.property_names(include_static.unwrap_or(true)).into()
+        self.path
+            .property_names(include_static.unwrap_or(true))
+            .into()
     }
 
     fn has_property(&self, name: String, include_static: Option<bool>) -> BoolIter {
-        self.path.has_property(name, include_static.unwrap_or(true)).into()
+        self.path
+            .has_property(name, include_static.unwrap_or(true))
+            .into()
     }
-    
+
     fn has_static_property(&self, name: String) -> BoolIter {
         self.path.has_static_property(name).into()
     }
-    
+
     fn static_property(&self, name: String) -> OptionPropIter {
         self.path.static_property(name).into()
     }
@@ -620,19 +626,19 @@ impl PyPathFromVertex {
     fn degree(&self) -> UsizeIter {
         self.path.degree().into()
     }
-    
+
     fn edges(&self) -> PyEdgeIter {
         self.path.edges().into()
     }
-    
+
     fn in_edges(&self) -> PyEdgeIter {
         self.path.in_edges().into()
     }
-    
+
     fn out_edges(&self) -> PyEdgeIter {
         self.path.out_edges().into()
     }
-    
+
     fn out_neighbours(&self) -> Self {
         self.path.out_neighbours().into()
     }
@@ -644,7 +650,6 @@ impl PyPathFromVertex {
     fn neighbours(&self) -> Self {
         self.path.neighbours().into()
     }
-
 
     //******  Perspective APIS  ******//
     pub fn start(&self) -> Option<i64> {
@@ -694,9 +699,9 @@ impl PyPathFromVertex {
             .map(|v| v.__repr__())
             .collect_vec();
         if values.len() < 11 {
-            "WindowedVertexIterable(".to_string() + &values.join(", ") + ")"
+            "PathFromVertex(".to_string() + &values.join(", ") + ")"
         } else {
-            "WindowedVertexIterable(".to_string() + &values[0..10].join(", ") + " ... )"
+            "PathFromVertex(".to_string() + &values[0..10].join(", ") + " ... )"
         }
     }
 }
