@@ -111,6 +111,10 @@ impl TemporalGraph {
             }
         }
     }
+
+    fn single_layer_access(&self, layer: Option<usize>) -> bool {
+        matches!(self.layer_iter_optm(layer), LayerIterator::Single(_))
+    }
 }
 
 enum LayerIterator<'a> {
@@ -607,7 +611,7 @@ impl TemporalGraph {
     {
         let edges = self.vertex_edges(v, d, layer);
 
-        if matches!(d, Direction::OUT | Direction::IN) {
+        if self.single_layer_access(layer) && matches!(d, Direction::OUT | Direction::IN) {
             let iter = edges.map(move |(_, edge)| Self::edge_ref_as_vertex_ref(edge, v));
             Box::new(iter)
         } else {

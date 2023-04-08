@@ -904,6 +904,7 @@ mod db_tests {
     use super::*;
     use crate::edge::EdgeView;
     use crate::graphgen::random_attachment::random_attachment;
+    use crate::path::PathFromVertex;
     use crate::perspective::Perspective;
     use crate::view_api::*;
     use csv::StringRecord;
@@ -1689,5 +1690,24 @@ mod db_tests {
         assert_eq!(to_tuples(vertex_dft.out_edges()), vec![(11, 22), (11, 33)]);
         assert_eq!(to_tuples(vertex1.out_edges()), vec![(11, 22)]);
         assert_eq!(to_tuples(vertex2.out_edges()), vec![(11, 33), (11, 44)]);
+
+        fn to_ids<G: GraphViewOps>(neighbours: PathFromVertex<G>) -> Vec<u64> {
+            neighbours.iter().map(|n| n.id()).sorted().collect_vec()
+        }
+
+        assert_eq!(to_ids(vertex.neighbours()), vec![22, 33, 44]);
+        assert_eq!(to_ids(vertex_dft.neighbours()), vec![22, 33]);
+        assert_eq!(to_ids(vertex1.neighbours()), vec![22]);
+        assert_eq!(to_ids(vertex2.neighbours()), vec![33, 44]);
+
+        assert_eq!(to_ids(vertex.out_neighbours()), vec![22, 33, 44]);
+        assert_eq!(to_ids(vertex_dft.out_neighbours()), vec![22, 33]);
+        assert_eq!(to_ids(vertex1.out_neighbours()), vec![22]);
+        assert_eq!(to_ids(vertex2.out_neighbours()), vec![33, 44]);
+
+        assert_eq!(to_ids(vertex.in_neighbours()), vec![33]);
+        assert_eq!(to_ids(vertex_dft.in_neighbours()), vec![33]);
+        assert_eq!(to_ids(vertex1.in_neighbours()), vec![]);
+        assert_eq!(to_ids(vertex2.in_neighbours()), vec![]);
     }
 }
