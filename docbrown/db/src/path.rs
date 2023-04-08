@@ -43,6 +43,7 @@ impl Operations {
     }
 }
 
+#[derive(Clone)]
 pub struct PathFromGraph<G: GraphViewOps> {
     graph: G,
     operations: Arc<Vec<Operations>>,
@@ -274,6 +275,7 @@ impl<G: GraphViewOps> TimeOps for PathFromGraph<G> {
     }
 }
 
+#[derive(Clone)]
 pub struct PathFromVertex<G: GraphViewOps> {
     graph: G,
     vertex: VertexRef,
