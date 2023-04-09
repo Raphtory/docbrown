@@ -33,7 +33,7 @@ pub(crate) mod errors {
             vertex_id: u64,
             source: IllegalMutate,
         },
-        #[error("Create edge '{0}' -> '{1}' first before adding static properties to itgit a")]
+        #[error("Create edge '{0}' -> '{1}' first before adding static properties to it")]
         MissingEdge(u64, u64), // src, dst
         #[error("cannot change property for edge '{src_id}' -> '{dst_id}'")]
         IllegalEdgePropertyChange {
