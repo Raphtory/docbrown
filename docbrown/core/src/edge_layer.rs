@@ -170,7 +170,7 @@ impl EdgeLayer {
 impl EdgeLayer {
     // TODO reuse function to return edge
     pub(crate) fn has_local_edge(&self, src_pid: usize, dst_pid: usize) -> bool {
-        match self.adj_lists.get(src_pid).unwrap_or_default() {
+        match self.adj_lists.get(src_pid).unwrap_or(&Adj::Solo) {
             Adj::Solo => false,
             Adj::List { out, .. } => out.find(dst_pid).is_some(),
         }
@@ -182,21 +182,21 @@ impl EdgeLayer {
         dst_pid: usize,
         w: &Range<i64>,
     ) -> bool {
-        match self.adj_lists.get(src_pid).unwrap_or_default() {
+        match self.adj_lists.get(src_pid).unwrap_or(&Adj::Solo) {
             Adj::Solo => false,
             Adj::List { out, .. } => out.find_window(dst_pid, w).is_some(),
         }
     }
 
     pub(crate) fn has_remote_edge(&self, src_pid: usize, dst: u64) -> bool {
-        match self.adj_lists.get(src_pid).unwrap_or_default() {
+        match self.adj_lists.get(src_pid).unwrap_or(&Adj::Solo) {
             Adj::Solo => false,
             Adj::List { remote_out, .. } => remote_out.find(dst as usize).is_some(),
         }
     }
 
     pub(crate) fn has_remote_edge_window(&self, src_pid: usize, dst: u64, w: &Range<i64>) -> bool {
-        match self.adj_lists.get(src_pid).unwrap_or_default() {
+        match self.adj_lists.get(src_pid).unwrap_or(&Adj::Solo) {
             Adj::Solo => false,
             Adj::List { remote_out, .. } => remote_out.find_window(dst as usize, w).is_some(),
         }
@@ -210,7 +210,7 @@ impl EdgeLayer {
         src_pid: usize,
         dst_pid: usize,
     ) -> Option<EdgeRef> {
-        match self.adj_lists.get(src_pid).unwrap_or_default() {
+        match self.adj_lists.get(src_pid).unwrap_or(&Adj::Solo) {
             Adj::Solo => None,
             Adj::List { out, .. } => {
                 let e = out.find(dst_pid)?;
@@ -236,7 +236,7 @@ impl EdgeLayer {
         dst_pid: usize,
         w: &Range<i64>,
     ) -> Option<EdgeRef> {
-        match self.adj_lists.get(src_pid).unwrap_or_default() {
+        match self.adj_lists.get(src_pid).unwrap_or(&Adj::Solo) {
             Adj::Solo => None,
             Adj::List { out, .. } => {
                 let e = out.find_window(dst_pid, w)?;
@@ -255,7 +255,7 @@ impl EdgeLayer {
     }
 
     pub(crate) fn remote_edge(&self, src: u64, dst: u64, src_pid: usize) -> Option<EdgeRef> {
-        match self.adj_lists.get(src_pid).unwrap_or_default() {
+        match self.adj_lists.get(src_pid).unwrap_or(&Adj::Solo) {
             Adj::Solo => None,
             Adj::List { remote_out, .. } => {
                 let e = remote_out.find(dst as usize)?;
@@ -280,7 +280,7 @@ impl EdgeLayer {
         src_pid: usize,
         w: &Range<i64>,
     ) -> Option<EdgeRef> {
-        match self.adj_lists.get(src_pid).unwrap_or_default() {
+        match self.adj_lists.get(src_pid).unwrap_or(&Adj::Solo) {
             Adj::Solo => None,
             Adj::List { remote_out, .. } => {
                 let e = remote_out.find_window(dst as usize, w)?;
@@ -323,7 +323,7 @@ impl EdgeLayer {
         global_ids: &'a Vec<u64>,
     ) -> Box<dyn Iterator<Item = (usize, EdgeRef)> + Send + '_> {
         let builder = EdgeRefBuilder::new(self.layer_id, vertex_id, vertex_pid, global_ids);
-        match self.adj_lists.get(vertex_pid).unwrap_or_default() {
+        match self.adj_lists.get(vertex_pid).unwrap_or(&Adj::Solo) {
             Adj::List {
                 out,
                 into,
@@ -379,7 +379,7 @@ impl EdgeLayer {
         global_ids: &'a Vec<u64>,
     ) -> Box<dyn Iterator<Item = (usize, EdgeRef)> + Send + '_> {
         let builder = EdgeRefBuilder::new(self.layer_id, vertex_id, vertex_pid, global_ids);
-        match self.adj_lists.get(vertex_pid).unwrap_or_default() {
+        match self.adj_lists.get(vertex_pid).unwrap_or(&Adj::Solo) {
             Adj::List {
                 out,
                 into,
@@ -435,7 +435,7 @@ impl EdgeLayer {
         global_ids: &'a Vec<u64>,
     ) -> Box<dyn Iterator<Item = EdgeRef> + Send + '_> {
         let builder = EdgeRefBuilder::new(self.layer_id, v_id, v_pid, global_ids);
-        match self.adj_lists.get(v_pid).unwrap_or_default() {
+        match self.adj_lists.get(v_pid).unwrap_or(&Adj::Solo) {
             Adj::List {
                 out,
                 into,

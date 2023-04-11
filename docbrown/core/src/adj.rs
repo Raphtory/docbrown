@@ -21,13 +21,6 @@ pub(crate) enum Adj {
     },
 }
 
-impl Default for &Adj {
-    fn default() -> Self {
-        static DEFAULT: Adj = Adj::Solo;
-        &DEFAULT
-    }
-}
-
 impl Adj {
     pub(crate) fn out_len_window(&self, w: &Range<Time>) -> usize {
         match self {
