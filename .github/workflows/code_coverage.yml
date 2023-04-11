@@ -26,13 +26,13 @@ jobs:
               ~/.cargo/git/db/
               target/debug
               target/release
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-coverage
           restore-keys: ${{ runner.os }}-cargo-
       - uses: actions-rs/toolchain@v1
         name: Setup Rust
         with:
           profile: minimal
-          toolchain: stable
+          toolchain: nightly
           override: true
           components: rustfmt, clippy
       - name: Setup Python
