@@ -172,6 +172,7 @@ impl Program for UnweightedPageRankS0 {
         c.step(|_| true)
     }
 
+    #[allow(unused_variables)]
     fn produce_output<G: GraphViewOps>(&self, g: &G, gs: &GlobalEvalState<G>) -> Self::Out
     where
         Self: Sync,
@@ -217,6 +218,7 @@ impl Program for UnweightedPageRankS1 {
         c.step(|_| true)
     }
 
+    #[allow(unused_variables)]
     fn produce_output<G: GraphViewOps>(&self, g: &G, gs: &GlobalEvalState<G>) -> Self::Out
     where
         Self: Sync,
@@ -274,6 +276,7 @@ impl Program for UnweightedPageRankS2 {
         c.step(|_| true)
     }
 
+    #[allow(unused_variables)]
     fn produce_output<G: GraphViewOps>(&self, g: &G, gs: &GlobalEvalState<G>) -> Self::Out
     where
         Self: Sync,
@@ -315,6 +318,7 @@ impl Program for UnweightedPageRankS3 {
         c.step(|_| true)
     }
 
+    #[allow(unused_variables)]
     fn produce_output<G: GraphViewOps>(&self, g: &G, gs: &GlobalEvalState<G>) -> Self::Out
     where
         Self: Sync,
@@ -322,6 +326,7 @@ impl Program for UnweightedPageRankS3 {
     }
 }
 
+#[allow(unused_variables)]
 pub fn unweighted_page_rank(
     g: &Graph,
     window: Range<i64>,

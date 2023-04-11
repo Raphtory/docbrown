@@ -122,6 +122,7 @@
 //! We are always looking for contributors to help us improve the library.
 //! If you are interested in contributing, please see
 //! our [Github repository](https://github.com/Raphtory/docbrown)
+#[allow(unused_imports)]
 #[macro_use(quickcheck)]
 extern crate quickcheck_macros;
 

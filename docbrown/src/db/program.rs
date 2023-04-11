@@ -892,6 +892,7 @@ pub trait Program {
     /// # Panics
     ///
     /// Panics if the state lock is contended.
+    #[allow(unused_variables)]
     fn produce_output<G: GraphViewOps>(&self, g: &G, gs: &GlobalEvalState<G>) -> Self::Out
     where
         Self: Sync;

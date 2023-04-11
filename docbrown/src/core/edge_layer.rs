@@ -61,6 +61,7 @@ impl EdgeLayer {
         self.next_edge_id += 1; // FIXME: we have this in three different places, prone to errors!
     }
 
+    #[allow(unused_variables)]
     pub(crate) fn add_edge_remote_out(
         &mut self,
         t: i64,
@@ -75,6 +76,7 @@ impl EdgeLayer {
         self.next_edge_id += 1;
     }
 
+    #[allow(unused_variables)]
     pub(crate) fn add_edge_remote_into(
         &mut self,
         t: i64,

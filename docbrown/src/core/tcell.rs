@@ -53,6 +53,7 @@ impl<A: Clone + Default + Debug + PartialEq> TCell<A> {
         }
     }
 
+    #[allow(dead_code)]
     pub fn iter(&self) -> Box<dyn Iterator<Item = &A> + '_> {
         match self {
             TCell::Empty => Box::new(std::iter::empty()),
@@ -71,6 +72,7 @@ impl<A: Clone + Default + Debug + PartialEq> TCell<A> {
         }
     }
 
+    #[allow(dead_code)]
     pub fn iter_window(&self, r: Range<i64>) -> Box<dyn Iterator<Item = &A> + '_> {
         match self {
             TCell::Empty => Box::new(std::iter::empty()),

@@ -83,6 +83,7 @@ impl Program for TriangleCountS1 {
 
     type Out = ();
 
+    #[allow(unused_variables)]
     fn produce_output<G: GraphViewOps>(&self, g: &G, gs: &GlobalEvalState<G>) -> Self::Out
     where
         Self: Sync,
@@ -188,6 +189,7 @@ impl Program for TriangleCountS2 {
         c.step(|_| false)
     }
 
+    #[allow(unused_variables)]
     fn produce_output<G: GraphViewOps>(&self, g: &G, gs: &GlobalEvalState<G>) -> Self::Out
     where
         Self: Sync,
@@ -235,6 +237,7 @@ impl Program for TriangleCountSlowS2 {
 
     type Out = usize;
 
+    #[allow(unused_variables)]
     fn produce_output<G: GraphViewOps>(&self, g: &G, gs: &GlobalEvalState<G>) -> Self::Out
     where
         Self: Sync,

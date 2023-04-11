@@ -97,6 +97,7 @@ impl Program for GlobalReciprocity {
         c.step(|_| true);
     }
 
+    #[allow(unused_variables)]
     fn produce_output<G: GraphViewOps>(&self, g: &G, gs: &GlobalEvalState<G>) -> Self::Out
     where
         Self: Sync,

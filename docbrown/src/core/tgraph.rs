@@ -694,6 +694,7 @@ impl TemporalGraph {
         self.vertex_props.static_names(index)
     }
 
+    #[allow(dead_code)]
     pub(crate) fn temporal_vertex_prop(
         &self,
         v: u64,
@@ -706,6 +707,7 @@ impl TemporalGraph {
             .iter()
     }
 
+    #[allow(dead_code)]
     pub(crate) fn temporal_vertex_prop_window(
         &self,
         v: u64,

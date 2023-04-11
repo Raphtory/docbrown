@@ -114,6 +114,7 @@ impl Program for TripletCount {
         c.step(|_| false)
     }
 
+    #[allow(unused_variables)]
     fn produce_output<G: GraphViewOps>(&self, g: &G, gs: &GlobalEvalState<G>) -> Self::Out
     where
         Self: Sync,

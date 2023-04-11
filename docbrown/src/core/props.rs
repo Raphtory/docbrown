@@ -30,6 +30,7 @@ enum PropId {
 }
 
 impl PropId {
+    #[allow(dead_code)]
     pub(crate) fn new(id: usize, static_: bool) -> PropId {
         if static_ {
             PropId::Static(id)
@@ -71,6 +72,7 @@ impl Props {
         }
     }
 
+    #[allow(unused_variables)]
     fn reverse_id(&self, id: &PropId) -> &str {
         self.prop_ids.iter().find(|&(k, v)| v == id).unwrap().0
     }
