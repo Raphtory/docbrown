@@ -1,6 +1,6 @@
-//! # Docbrown Core
+//! # Docbrown
 //!
-//! `docbrown-core` is the core module for the Docbrown library.
+//! `docbrown` is the core module for the Docbrown library.
 //!
 //! The Docbrown library is a temporal graph analytics tool, which allows users to create
 //! and analyze graph data with time.
@@ -15,7 +15,7 @@
 //!
 //! ## Supported Platforms
 //!
-//! `docbrown-core` supports  support for the following platforms:
+//! `docbrown` supports  support for the following platforms:
 //!
 //! **Note** they must have Rust 1.53 or later.
 //!
