@@ -1,9 +1,9 @@
+use crate::db::edge::EdgeView;
+use crate::db::view_api::vertex::BoxedIter;
+use crate::db::view_api::*;
 use crate::dynamic::DynamicGraph;
 use crate::vertex::PyVertex;
 use crate::wrappers::Prop;
-use docbrown_db::edge::EdgeView;
-use docbrown_db::view_api::vertex::BoxedIter;
-use docbrown_db::view_api::*;
 use itertools::Itertools;
 use pyo3::{pyclass, pymethods, PyRef, PyRefMut};
 use std::collections::HashMap;

@@ -1,10 +1,10 @@
+use crate::core as dbc;
+use crate::core::vertex::InputVertex;
+use crate::db::graph::Graph;
 use crate::dynamic::DynamicGraph;
 use crate::graph_view::PyGraphView;
 use crate::util::adapt_result;
 use crate::wrappers::Prop;
-use docbrown_core as dbc;
-use docbrown_core::vertex::InputVertex;
-use docbrown_db::graph::Graph;
 use itertools::Itertools;
 use pyo3::exceptions::{PyException, PyTypeError};
 use pyo3::prelude::*;

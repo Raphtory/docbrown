@@ -1,15 +1,15 @@
 use crate::graph_view::PyGraphView;
 use std::collections::HashMap;
 
-use docbrown_db::algorithms::degree::{
+use crate::db::algorithms::degree::{
     average_degree as average_degree_rs, max_in_degree as max_in_degree_rs,
     max_out_degree as max_out_degree_rs, min_in_degree as min_in_degree_rs,
     min_out_degree as min_out_degree_rs,
 };
-use docbrown_db::algorithms::directed_graph_density::directed_graph_density as directed_graph_density_rs;
-use docbrown_db::algorithms::local_clustering_coefficient::local_clustering_coefficient as local_clustering_coefficient_rs;
-use docbrown_db::algorithms::local_triangle_count::local_triangle_count as local_triangle_count_rs;
-use docbrown_db::algorithms::reciprocity::{
+use crate::db::algorithms::directed_graph_density::directed_graph_density as directed_graph_density_rs;
+use crate::db::algorithms::local_clustering_coefficient::local_clustering_coefficient as local_clustering_coefficient_rs;
+use crate::db::algorithms::local_triangle_count::local_triangle_count as local_triangle_count_rs;
+use crate::db::algorithms::reciprocity::{
     all_local_reciprocity as all_local_reciprocity_rs, global_reciprocity as global_reciprocity_rs,
 };
 use pyo3::prelude::*;

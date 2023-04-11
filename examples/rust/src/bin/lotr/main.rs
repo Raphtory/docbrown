@@ -1,11 +1,11 @@
-use docbrown_core::Prop;
-use docbrown_core::{state, utils};
-use docbrown_db::algorithms::triangle_count::{
+use crate::core::Prop;
+use crate::core::{state, utils};
+use crate::db::algorithms::triangle_count::{
     TriangleCountS1, TriangleCountS2, TriangleCountSlowS2,
 };
-use docbrown_db::program::{GlobalEvalState, Program};
-use docbrown_db::view_api::*;
-use docbrown_db::{csv_loader::csv::CsvLoader, graph::Graph};
+use crate::db::program::{GlobalEvalState, Program};
+use crate::db::view_api::*;
+use crate::db::{csv_loader::csv::CsvLoader, graph::Graph};
 use serde::Deserialize;
 use std::path::PathBuf;
 use std::{env, path::Path, time::Instant};

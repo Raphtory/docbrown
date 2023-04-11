@@ -1,3 +1,9 @@
+use crate::core::tgraph::VertexRef;
+use crate::db::graph_window::WindowSet;
+use crate::db::path::{PathFromGraph, PathFromVertex};
+use crate::db::vertex::VertexView;
+use crate::db::vertices::Vertices;
+use crate::db::view_api::*;
 use crate::dynamic::DynamicGraph;
 use crate::edge::{PyEdgeIter, PyNestedEdgeIter};
 use crate::util::{adapt_err_value, extract_vertex_ref, through_impl, window_impl};
@@ -7,12 +13,6 @@ use crate::wrappers::{
     NestedStringVecIter, NestedU64Iter, NestedUsizeIter, OptionI64Iter, OptionPropIter, Prop,
     PropHistoriesIter, PropHistoryIter, PropsIter, StringIter, StringVecIter, U64Iter, UsizeIter,
 };
-use docbrown_core::tgraph::VertexRef;
-use docbrown_db::graph_window::WindowSet;
-use docbrown_db::path::{PathFromGraph, PathFromVertex};
-use docbrown_db::vertex::VertexView;
-use docbrown_db::vertices::Vertices;
-use docbrown_db::view_api::*;
 use itertools::Itertools;
 use pyo3::exceptions::PyIndexError;
 use pyo3::{pyclass, pymethods, PyAny, PyRef, PyRefMut, PyResult};

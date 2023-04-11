@@ -7,9 +7,9 @@ mod test {
         path::{Path, PathBuf},
     };
 
-    use docbrown_core::Direction;
-    use docbrown_db::algorithms::connected_components::weakly_connected_components;
-    use docbrown_db::{
+    use crate::core::Direction;
+    use crate::db::algorithms::connected_components::weakly_connected_components;
+    use crate::db::{
         csv_loader::csv::CsvLoader,
         graph::Graph,
         view_api::*,
