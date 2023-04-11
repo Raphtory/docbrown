@@ -1,9 +1,9 @@
 use crate::common::bench;
-use crate::db::algorithms::local_clustering_coefficient::local_clustering_coefficient;
-use crate::db::algorithms::local_triangle_count::local_triangle_count;
-use crate::db::graph::Graph;
-use crate::db::view_api::*;
 use criterion::{criterion_group, criterion_main, Criterion};
+use docbrown::algorithms::local_clustering_coefficient::local_clustering_coefficient;
+use docbrown::algorithms::local_triangle_count::local_triangle_count;
+use docbrown::db::graph::Graph;
+use docbrown::db::view_api::*;
 use rayon::prelude::*;
 mod common;
 

@@ -5,19 +5,19 @@ use std::path::{Path, PathBuf};
 use std::thread::JoinHandle;
 use std::{env, thread};
 
-use crate::core::tgraph::TemporalGraph;
-use crate::core::utils;
-use crate::core::{Direction, Prop};
-use crate::db::csv_loader::csv::CsvLoader;
 use chrono::{DateTime, Utc};
+use docbrown::core::tgraph::TemporalGraph;
+use docbrown::core::utils;
+use docbrown::core::{Direction, Prop};
+use docbrown::db::csv_loader::CsvLoader;
 use regex::Regex;
 use serde::Deserialize;
 use std::fs::File;
 use std::io::{prelude::*, BufReader, LineWriter};
 use std::time::Instant;
 
-use crate::db::graph::Graph;
-use crate::db::view_api::*;
+use docbrown::db::graph::Graph;
+use docbrown::db::view_api::*;
 
 #[derive(Deserialize, std::fmt::Debug)]
 pub struct Sent {

@@ -8,23 +8,22 @@ use std::path::{Path, PathBuf};
 use std::thread::JoinHandle;
 use std::{env, thread};
 
-use crate::core::tgraph::TemporalGraph;
-use crate::core::{state, utils};
-use crate::core::{Direction, Prop};
-use crate::db::algorithms::connected_components::weakly_connected_components;
-use crate::db::algorithms::triangle_count::triangle_counting_fast;
-use crate::db::csv_loader::csv::CsvLoader;
-use crate::db::program::{GlobalEvalState, Program};
 use chrono::{DateTime, Utc};
+use docbrown::algorithms::connected_components::weakly_connected_components;
+use docbrown::algorithms::triangle_count::triangle_counting_fast;
+use docbrown::core::tgraph::TemporalGraph;
+use docbrown::core::{state, utils};
+use docbrown::core::{Direction, Prop};
+use docbrown::db::csv_loader::CsvLoader;
+use docbrown::db::graph::Graph;
+use docbrown::db::program::{GlobalEvalState, Program};
+use docbrown::db::view_api::*;
 use itertools::Itertools;
 use regex::Regex;
 use serde::Deserialize;
 use std::fs::File;
 use std::io::{prelude::*, BufReader, LineWriter};
 use std::time::Instant;
-
-use crate::db::graph::Graph;
-use crate::db::view_api::*;
 
 #[derive(Deserialize, Debug)]
 pub struct Edge {

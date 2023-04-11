@@ -1,6 +1,6 @@
-use crate::db::graph::Graph;
-use crate::db::view_api::*;
 use criterion::{measurement::WallTime, BatchSize, Bencher, BenchmarkGroup, BenchmarkId};
+use docbrown::db::graph::Graph;
+use docbrown::db::view_api::*;
 use rand::seq::*;
 use rand::{distributions::Uniform, Rng};
 use std::collections::HashSet;

@@ -1,7 +1,7 @@
-use crate::db::graph_loader::sx_superuser_graph::sx_superuser_graph;
-use crate::db::view_api::*;
 use common::run_analysis_benchmarks;
 use criterion::{criterion_group, criterion_main, Criterion};
+use docbrown::db::view_api::*;
+use docbrown::graph_loader::sx_superuser_graph::sx_superuser_graph;
 
 mod common;
 

@@ -7,10 +7,10 @@ mod test {
         path::{Path, PathBuf},
     };
 
-    use crate::core::Direction;
-    use crate::db::algorithms::connected_components::weakly_connected_components;
-    use crate::db::{
-        csv_loader::csv::CsvLoader,
+    use docbrown::algorithms::connected_components::weakly_connected_components;
+    use docbrown::core::Direction;
+    use docbrown::db::csv_loader::CsvLoader;
+    use docbrown::db::{
         graph::Graph,
         view_api::*,
         view_api::{internal::GraphViewInternalOps, GraphViewOps},
