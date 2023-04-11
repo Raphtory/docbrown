@@ -48,6 +48,8 @@ jobs:
         with:
           command: test
           args: --all --no-default-features
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v3
   doc-test:
     if: ${{ !inputs.skip_tests }}
     name: "Doc tests"
