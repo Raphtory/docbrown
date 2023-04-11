@@ -1,6 +1,6 @@
-//! # DocBrown DB
+//! # DocBrown
 //!
-//! `docbrown_db` is a Rust library for analysing time-based graph data.
+//! `docbrown` is a Rust library for analysing time-based graph data.
 //! It is designed to be horizontally scalable,and can be used for a variety of applications
 //! such as social network, cyber security, fraud analysis and more.
 //!
@@ -24,7 +24,11 @@
 //! - **Open Source** - DocBrown is open source, and is available on Github under a AGPL-3.0 license.
 //!
 //! ### Shards
-//! DB is the overarching manager for the graph. A GraphDB instance can have N number of shards.
+//!
+//! The sub module `Core` contains the underlying implementation of the graph.
+//! Users interact with the graph via the `DB` submodule.
+//!
+//! The sub module `DB` is the overarching manager for the graph. A GraphDB instance can have N number of shards.
 //! These shards (also called TemporalGraphParts) store fragments of a graph.
 //! Each shard contains a part of a graph, similar to how data is partitioned.
 //!
