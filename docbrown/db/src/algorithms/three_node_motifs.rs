@@ -106,7 +106,7 @@ impl StarCounter {
         self.mid_sum[map2D(cur_edge.dir, outgoing)] += self.post_nodes[outgoing*self.N + cur_edge.nb];
     }
 
-    fn execute(&mut self, edges:&[StarEvent], delta:usize) {
+    fn execute(&mut self, edges:&Vec<StarEvent>, delta:usize) {
         let L = edges.len();
         if L < 3 {
             return;
@@ -144,6 +144,7 @@ struct TriangleEdge{
     uorv:usize,
     nb:usize,
     dir:usize,
+    time:i64,
 }
 struct TriangleCounter {
     N:usize,
@@ -154,8 +155,30 @@ struct TriangleCounter {
     post_sum:[usize;8],
     final_counts:[usize;8],
 }
-
 impl TriangleCounter {
+
+    fn execute(&mut self, edges:&Vec<TriangleEdge>, delta:i64) {
+        let L = edges.len();
+        if L < 3 {
+            return;
+        }
+        let mut start = 0;
+        let mut end = 0;
+        for j in 0..L {
+            while start < L && edges[start].time + delta < edges[j].time {
+                self.pop_pre(&edges[start]);
+                start+=1;
+            }
+            while (end < L) && edges[end].time <= edges[j].time + delta {
+                self.push_post(&edges[end]);
+                end+=1;
+            }
+            self.pop_post(&edges[j]);
+            self.process_current(&edges[j]);
+            self.push_pre(&edges[j])
+        }
+    }
+
     fn push_pre(&mut self,cur_edge:&TriangleEdge) {
         let (isUorV, nb, dir) = (cur_edge.uorv, cur_edge.nb, cur_edge.dir);
         if !cur_edge.uv_edge {
@@ -212,10 +235,14 @@ impl TriangleCounter {
         }
     }
 }
+fn init_tri_count(neighbours:Vec<usize>) -> TriangleCounter {
+    let N = neighbours.len();
+    TriangleCounter { N: N, pre_nodes: vec![0;4*N], post_nodes: vec![0;4*N], pre_sum: [0;8], mid_sum: [0;8], post_sum: [0;8], final_counts: [0;8] }
+}
 
 #[cfg(test)]
 mod three_node_motifs_test {
-use super::{map2D, TwoNodeEvent,incoming,outgoing, TwoNodeCounter};
+use super::{map2D, TwoNodeEvent,incoming,outgoing, TwoNodeCounter, TriangleEdge, TriangleCounter, init_tri_count};
 
     #[test]
     fn map_test() {
@@ -230,5 +257,11 @@ use super::{map2D, TwoNodeEvent,incoming,outgoing, TwoNodeCounter};
         println!("motifs are {:?}",twonc.count3d);
     }
 
-
+    #[test]
+    fn triad_test() {
+        let events = vec![(true, 0,1,1,1), (false,1,0,1,2),(false,0,0,0,3)].iter().map(|x| TriangleEdge{uv_edge:x.0,uorv:x.1,nb:x.2,dir:x.3,time:x.4}).collect::<Vec<_>>();
+        let mut triangle_count = init_tri_count(vec![0,1,2]);
+        triangle_count.execute(&events, 5);
+        println!("triangle motifs are {:?}",triangle_count.final_counts);
+    }
 }
