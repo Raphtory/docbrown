@@ -58,7 +58,8 @@ jobs:
           CARGO_INCREMENTAL: '0'
           RUSTFLAGS: '-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Cpanic=abort -Zpanic_abort_tests'
           RUSTDOCFLAGS: '-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Cpanic=abort -Zpanic_abort_tests'
-      - name: Run rust tests (rust-grcov) and collect coverage
+      - id: coveragerust
+        name: Run rust tests (rust-grcov) and collect coverage
         uses: actions-rs/grcov@v0.1.5
       - name: Run python tests and collect coverage
         run: pytest --cov=./ --cov-report=xml
@@ -67,5 +68,5 @@ jobs:
         with:
           verbose: true
           fail_ci_if_error: false
-          files: ./coverage.xml, ${{ steps.coverage.outputs.report }}
+          files: ./coverage.xml, ${{ steps.coveragerust.outputs.report }}
       
