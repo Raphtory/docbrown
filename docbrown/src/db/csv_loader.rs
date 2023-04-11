@@ -2,13 +2,13 @@
 //!
 //! # Example
 //! ```no_run
-//!  use std::path::{Path, PathBuf};
+//! use std::path::{Path, PathBuf};
 //! use regex::Regex;
-//! use crate::core::Prop;
-//! use crate::core::utils::calculate_hash;
-//! use crate::db::csv_loader::csv::CsvLoader;
-//! use crate::db::graph::Graph;
-//! use crate::db::graph_loader::lotr_graph::Lotr;
+//! use docbrown::core::Prop;
+//! use docbrown::core::utils::calculate_hash;
+//! use docbrown::db::csv_loader::CsvLoader;
+//! use docbrown::db::graph::Graph;
+//! use docbrown::graph_loader::lotr_graph::Lotr;
 //!
 //!  let g = Graph::new(2);
 //!  let csv_path: PathBuf = [env!("CARGO_MANIFEST_DIR"), "../../resource/"]
@@ -53,7 +53,7 @@
 //!                  Prop::Str("Character Co-occurrence".to_string()),
 //!              )],
 //!              None,
-//!          );
+//!          ).expect("Failed to add edge");
 //!      })
 //!      .expect("Csv did not parse.");
 //! ```
@@ -135,8 +135,8 @@ impl CsvLoader {
     /// # Example
     ///
     /// ```no_run
-    /// use csv_loader::csv::CsvLoader;
     ///
+    /// use docbrown::db::csv_loader::CsvLoader;
     /// let loader = CsvLoader::new("/path/to/csv_file.csv");
     /// ```
     pub fn new<P: Into<PathBuf>>(p: P) -> Self {
@@ -157,7 +157,7 @@ impl CsvLoader {
     /// # Example
     ///
     /// ```no_run
-    /// use crate::db::csv_loader::csv::CsvLoader;
+    /// use docbrown::db::csv_loader::CsvLoader;
     /// let loader = CsvLoader::new("/path/to/csv_file.csv").set_header(true);
     /// ```
     pub fn set_header(mut self, h: bool) -> Self {
@@ -174,7 +174,7 @@ impl CsvLoader {
     /// # Example
     ///
     /// ```no_run
-    /// use crate::db::csv_loader::csv::CsvLoader;
+    /// use docbrown::db::csv_loader::CsvLoader;
     /// let loader = CsvLoader::new("/path/to/csv_file.csv").set_delimiter("|");
     /// ```
     pub fn set_delimiter(mut self, d: &str) -> Self {
@@ -191,8 +191,8 @@ impl CsvLoader {
     /// # Example
     ///
     /// ```no_run
-    /// use crate::db::csv_loader::csv::CsvLoader;
     /// use regex::Regex;
+    /// use docbrown::db::csv_loader::CsvLoader;
     ///
     /// let loader = CsvLoader::new("/path/to/csv_files")
     ///    .with_filter(Regex::new(r"file_name_pattern").unwrap());
@@ -402,10 +402,9 @@ impl CsvLoader {
 
 #[cfg(test)]
 mod csv_loader_test {
-    use super::*;
     use crate::core::utils::calculate_hash;
     use crate::core::Prop;
-    use crate::db::csv_loader::csv::CsvLoader;
+    use crate::db::csv_loader::CsvLoader;
     use crate::db::graph::Graph;
     use regex::Regex;
     use serde::Deserialize;
@@ -482,7 +481,7 @@ mod csv_loader_test {
     fn test_headers_flag_and_delimiter() {
         let g = Graph::new(2);
         // todo: move file path to data module
-        let csv_path: PathBuf = [env!("CARGO_MANIFEST_DIR"), "../../resource/"]
+        let csv_path: PathBuf = [env!("CARGO_MANIFEST_DIR"), "../resource/"]
             .iter()
             .collect();
 

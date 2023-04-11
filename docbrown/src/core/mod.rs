@@ -28,8 +28,6 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 
 #[cfg(test)]
-#[macro_use(quickcheck)]
-extern crate quickcheck_macros;
 extern crate core;
 
 mod adj;

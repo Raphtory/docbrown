@@ -155,8 +155,8 @@ impl TemporalGraph {
                 .timestamps
                 .iter()
                 .enumerate()
-                .filter(|(index, timestamps)| timestamps.range(w.clone()).next().is_some())
-                .map(|(index, timestamps)| layer.out_edges_len_window(index, w))
+                .filter(|(_index, timestamps)| timestamps.range(w.clone()).next().is_some())
+                .map(|(index, _timestamps)| layer.out_edges_len_window(index, w))
                 .reduce(|s1, s2| s1 + s2)
                 .unwrap_or(0),
             LayerIterator::Vector(layers) => self
@@ -942,7 +942,7 @@ mod graph_test {
     use csv::StringRecord;
     use itertools::chain;
 
-    use crate::utils;
+    use crate::core::utils;
 
     use super::*;
 

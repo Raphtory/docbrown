@@ -275,13 +275,9 @@ mod agg_test {
 
     #[test]
     fn avg_def() {
-        use crate::agg::topk::TopK;
-        use crate::agg::topk::TopKHeap;
-        use crate::agg::Accumulator;
-        use crate::agg::AvgDef;
-        use crate::agg::MaxDef;
-        use crate::agg::MinDef;
-        use crate::agg::SumDef;
+        use crate::core::agg::{
+            topk::TopK, topk::TopKHeap, Accumulator, AvgDef, MaxDef, MinDef, SumDef,
+        };
 
         let mut avg = AvgDef::<i32>::zero();
         let mut sum = SumDef::<i32>::zero();

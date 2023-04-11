@@ -7,8 +7,8 @@
 //! # Examples
 //!
 //! ```rust
-//! use crate::db::graph::Graph;
-//! use crate::db::view_api::*;
+//! use docbrown::db::graph::Graph;
+//! use docbrown::db::view_api::*;
 //! let graph = Graph::new(2);
 //! graph.add_vertex(0, "Alice", &vec![]);
 //! graph.add_vertex(1, "Bob", &vec![]);
@@ -531,8 +531,8 @@ impl Graph {
     ///
     /// # Example
     /// ```
-    /// use crate::db::view_api::*;
-    /// use crate::db::graph::Graph;
+    /// use docbrown::db::view_api::*;
+    /// use docbrown::db::graph::Graph;
     ///
     /// let mut mutable_graph = Graph::new(1);
     /// // ... add vertices and edges to the graph
@@ -613,7 +613,7 @@ impl Graph {
     /// # Example
     ///
     /// ```
-    /// use crate::db::graph::Graph;
+    /// use docbrown::db::graph::Graph;
     /// let g = Graph::new(4);
     /// ```
     pub fn new(nr_shards: usize) -> Self {
@@ -637,7 +637,7 @@ impl Graph {
     /// # Example
     ///
     /// ```
-    /// use crate::db::graph::Graph;
+    /// use docbrown::db::graph::Graph;
     /// // let g = Graph::load_from_file("path/to/graph");
     /// ```
     pub fn load_from_file<P: AsRef<Path>>(path: P) -> Result<Self, Box<bincode::ErrorKind>> {
@@ -689,7 +689,7 @@ impl Graph {
     /// # Example
     ///
     /// ```
-    /// use crate::db::graph::Graph;
+    /// use docbrown::db::graph::Graph;
     /// use std::fs::File;
     /// let g = Graph::new(4);
     /// g.add_vertex(1, 1, &vec![]);
@@ -738,7 +738,7 @@ impl Graph {
     /// # Example
     ///
     /// ```
-    /// use crate::db::graph::Graph;
+    /// use docbrown::db::graph::Graph;
     /// let g = Graph::new(1);
     /// let v = g.add_vertex(0, "Alice", &vec![]);
     /// let v = g.add_vertex(0, 5, &vec![]);
@@ -763,8 +763,8 @@ impl Graph {
     /// # Example
     ///
     /// ```
-    /// use crate::db::graph::Graph;
-    /// use crate::core::Prop;
+    /// use docbrown::db::graph::Graph;
+    /// use docbrown::core::Prop;
     /// let graph = Graph::new(1);
     /// graph.add_vertex(0, "Alice", &vec![]);
     /// let properties = vec![("color".to_owned(), Prop::Str("blue".to_owned())), ("weight".to_owned(), Prop::I64(11))];
@@ -792,7 +792,7 @@ impl Graph {
     /// # Example
     ///
     /// ```
-    /// use crate::db::graph::Graph;
+    /// use docbrown::db::graph::Graph;
     ///
     /// let graph = Graph::new(1);
     /// graph.add_vertex(1, "Alice", &vec![]);
@@ -840,8 +840,8 @@ impl Graph {
     /// # Example
     ///
     /// ```
-    /// use crate::db::graph::Graph;
-    /// use crate::core::Prop;
+    /// use docbrown::db::graph::Graph;
+    /// use docbrown::core::Prop;
     /// let graph = Graph::new(1);
     /// graph.add_vertex(1, "Alice", &vec![]);
     /// graph.add_vertex(2, "Bob", &vec![]);
@@ -880,11 +880,11 @@ impl Graph {
 mod db_tests {
     use super::*;
     use crate::core::utils;
-    use crate::edge::EdgeView;
+    use crate::db::edge::EdgeView;
+    use crate::db::path::PathFromVertex;
+    use crate::db::perspective::Perspective;
+    use crate::db::view_api::*;
     use crate::graphgen::random_attachment::random_attachment;
-    use crate::path::PathFromVertex;
-    use crate::perspective::Perspective;
-    use crate::view_api::*;
     use csv::StringRecord;
     use itertools::Itertools;
     use quickcheck::quickcheck;

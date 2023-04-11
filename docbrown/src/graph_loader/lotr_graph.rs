@@ -13,9 +13,9 @@
 //!
 //! Example:
 //! ```rust
-//! use crate::db::graph_loader::lotr_graph::lotr_graph;
-//! use crate::db::graph::Graph;
-//! use crate::db::view_api::*;
+//! use docbrown::graph_loader::lotr_graph::lotr_graph;
+//! use docbrown::db::graph::Graph;
+//! use docbrown::db::view_api::*;
 //!
 //! let graph = lotr_graph(1);
 //!
@@ -74,7 +74,8 @@ pub fn lotr_graph(shards: usize) -> Graph {
                 g.add_vertex(time, dst_id.clone(), &vec![])
                     .map_err(|err| println!("{:?}", err))
                     .ok();
-                g.add_edge(time, src_id.clone(), dst_id.clone(), &vec![], None);
+                g.add_edge(time, src_id.clone(), dst_id.clone(), &vec![], None)
+                    .expect("Error: Unable to add edge");
             })
             .expect("Failed to load graph from CSV data files");
         g

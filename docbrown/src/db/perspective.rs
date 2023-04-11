@@ -10,10 +10,10 @@
 //!
 //! # Examples
 //! ```rust
-//! use crate::db::algorithms::degree::average_degree;
-//! use crate::db::graph::Graph;
-//! use crate::db::perspective::Perspective;
-//! use crate::db::view_api::*;
+//! use docbrown::algorithms::degree::average_degree;
+//! use docbrown::db::graph::Graph;
+//! use docbrown::db::perspective::Perspective;
+//! use docbrown::db::view_api::*;
 //!
 //! let graph = Graph::new(1);
 //! graph.add_edge(0, 1, 2, &vec![], None);
@@ -177,7 +177,7 @@ impl Iterator for PerspectiveIterator {
 
 #[cfg(test)]
 mod perspective_tests {
-    use crate::perspective::Perspective;
+    use crate::db::perspective::Perspective;
     use itertools::Itertools;
 
     fn gen_rolling(tuples: Vec<(i64, i64)>) -> Vec<Perspective> {

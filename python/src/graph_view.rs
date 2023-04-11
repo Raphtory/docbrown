@@ -1,10 +1,9 @@
-use crate::db::graph_window::WindowSet;
-use crate::db::view_api::*;
 use crate::dynamic::DynamicGraph;
 use crate::edge::{PyEdge, PyEdgeIter};
-use crate::util::{adapt_err_value, adapt_result, extract_vertex_ref, through_impl, window_impl};
+use crate::util::{extract_vertex_ref, through_impl, window_impl};
 use crate::vertex::{PyVertex, PyVertices};
-use crate::wrappers::PyPerspectiveSet;
+use docbrown::db::graph_window::WindowSet;
+use docbrown::db::view_api::*;
 use pyo3::prelude::*;
 
 #[pyclass(name = "GraphView", frozen, subclass)]

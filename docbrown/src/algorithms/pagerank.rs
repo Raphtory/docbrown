@@ -376,7 +376,6 @@ pub fn unweighted_page_rank(
 #[cfg(test)]
 mod page_rank_tests {
     use super::*;
-    use itertools::Itertools;
 
     #[test]
     fn test_page_rank() {

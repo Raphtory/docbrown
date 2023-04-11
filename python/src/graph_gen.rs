@@ -1,6 +1,6 @@
-use crate::db::graphgen::preferential_attachment::ba_preferential_attachment as pa;
-use crate::db::graphgen::random_attachment::random_attachment as ra;
 use crate::PyGraph;
+use docbrown::graphgen::preferential_attachment::ba_preferential_attachment as pa;
+use docbrown::graphgen::random_attachment::random_attachment as ra;
 use pyo3::prelude::*;
 
 #[pyfunction]

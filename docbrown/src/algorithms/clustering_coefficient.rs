@@ -17,9 +17,9 @@ use crate::db::view_api::GraphViewOps;
 /// # Example
 ///
 /// ```rust
-/// use crate::db::graph::Graph;
-/// use crate::db::algorithms::clustering_coefficient::clustering_coefficient;
-/// use crate::docbrown_db::view_api::*;
+/// use docbrown::db::graph::Graph;
+/// use docbrown::algorithms::clustering_coefficient::clustering_coefficient;
+/// use docbrown::db::view_api::*;
 /// let graph = Graph::new(2);
 ///  let edges = vec![
 ///      (1, 2),
@@ -60,7 +60,7 @@ pub fn clustering_coefficient<G: GraphViewOps>(g: &G) -> f64 {
 mod cc_test {
     use super::*;
     use crate::db::graph::Graph;
-    use crate::view_api::*;
+    use crate::db::view_api::*;
     use pretty_assertions::assert_eq;
 
     /// Test the global clustering coefficient

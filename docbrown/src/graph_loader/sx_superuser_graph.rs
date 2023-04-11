@@ -36,9 +36,9 @@
 //!
 //! Example:
 //! ```no_run
-//! use crate::db::graph_loader::sx_superuser_graph::sx_superuser_graph;
-//! use crate::db::graph::Graph;
-//! use crate::db::view_api::*;
+//! use docbrown::graph_loader::sx_superuser_graph::sx_superuser_graph;
+//! use docbrown::db::graph::Graph;
+//! use docbrown::db::view_api::*;
 //!
 //! let graph = sx_superuser_graph(1).unwrap();
 //!
@@ -48,6 +48,7 @@
 
 use crate::{db::graph::Graph, graph_loader::fetch_file};
 
+use crate::db::csv_loader::CsvLoader;
 use serde::Deserialize;
 use std::path::PathBuf;
 
@@ -85,7 +86,8 @@ pub fn sx_superuser_graph(shards: usize) -> Result<Graph, Box<dyn std::error::Er
     CsvLoader::new(sx_superuser_file()?)
         .set_delimiter(" ")
         .load_into_graph(&graph, |edge: TEdge, g: &Graph| {
-            g.add_edge(edge.time, edge.src_id, edge.dst_id, &vec![], None);
+            g.add_edge(edge.time, edge.src_id, edge.dst_id, &vec![], None)
+                .expect("Error: Unable to add edge");
         })?;
 
     Ok(graph)

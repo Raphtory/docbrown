@@ -22,9 +22,9 @@
 //! # Examples
 //!
 //! ```rust
-//! use crate::db::algorithms::reciprocity::{all_local_reciprocity, global_reciprocity};
-//! use crate::db::graph::Graph;
-//! use crate::db::view_api::*;
+//! use docbrown::algorithms::reciprocity::{all_local_reciprocity, global_reciprocity};
+//! use docbrown::db::graph::Graph;
+//! use docbrown::db::view_api::*;
 //! let g = Graph::new(1);
 //! let vs = vec![
 //!     (1, 1, 2),
@@ -172,13 +172,9 @@ pub fn all_local_reciprocity<G: GraphViewOps>(g: &G) -> HashMap<u64, f64> {
 #[cfg(test)]
 mod reciprocity_test {
     use crate::algorithms::reciprocity::{all_local_reciprocity, global_reciprocity};
-    use crate::core::state;
     use crate::db::graph::Graph;
-    use itertools::chain;
     use pretty_assertions::assert_eq;
-    use rustc_hash::FxHashMap;
     use std::collections::HashMap;
-    use std::{cmp::Reverse, iter::once};
 
     #[test]
     fn test_global_recip() {

@@ -23,9 +23,9 @@
 //! # Examples
 //!
 //! ```rust
-//! use crate::db::algorithms::local_clustering_coefficient::{local_clustering_coefficient};
-//! use crate::db::graph::Graph;
-//! use crate::db::view_api::*;
+//! use docbrown::algorithms::local_clustering_coefficient::{local_clustering_coefficient};
+//! use docbrown::db::graph::Graph;
+//! use docbrown::db::view_api::*;
 //!
 //! let g = Graph::new(1);
 //! let windowed_graph = g.window(0, 7);
@@ -75,7 +75,7 @@ pub fn local_clustering_coefficient<G: GraphViewOps>(graph: &G, v: u64) -> Optio
 mod clustering_coefficient_tests {
     use super::local_clustering_coefficient;
     use crate::db::graph::Graph;
-    use crate::view_api::*;
+    use crate::db::view_api::*;
 
     #[test]
     fn clusters_of_triangles() {

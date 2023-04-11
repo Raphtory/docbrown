@@ -674,7 +674,7 @@ impl ImmutableTGraphShard<TemporalGraph> {
 
 #[cfg(test)]
 mod temporal_graph_partition_test {
-    use crate::{tgraph_shard::TGraphShard, Direction};
+    use crate::core::{tgraph_shard::TGraphShard, Direction};
     use itertools::Itertools;
     use quickcheck::{Arbitrary, TestResult};
     use rand::Rng;

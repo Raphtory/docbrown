@@ -16,9 +16,9 @@
 //! # Examples
 //!
 //! ```rust
-//! use crate::db::algorithms::degree::{max_out_degree, max_in_degree, min_out_degree, min_in_degree, average_degree};
-//! use crate::db::graph::Graph;
-//! use crate::db::view_api::*;
+//! use docbrown::algorithms::degree::{max_out_degree, max_in_degree, min_out_degree, min_in_degree, average_degree};
+//! use docbrown::db::graph::Graph;
+//! use docbrown::db::view_api::*;
 //!
 //! let g = Graph::new(1);
 //! let windowed_graph = g.window(0, 7);
@@ -104,7 +104,7 @@ pub fn average_degree<G: GraphViewOps>(graph: &G) -> f64 {
 mod degree_test {
     use crate::{
         algorithms::degree::{average_degree, max_in_degree, min_in_degree, min_out_degree},
-        graph::Graph,
+        db::graph::Graph,
     };
 
     use super::max_out_degree;

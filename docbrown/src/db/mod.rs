@@ -1,4 +1,3 @@
-#[cfg(test)]
 pub mod csv_loader;
 pub mod edge;
 pub mod graph;

@@ -7,8 +7,8 @@
 //! # Examples
 //!
 //! ```
-//! use crate::db::graph::Graph;
-//! use crate::db::graphgen::random_attachment::random_attachment;
+//! use docbrown::db::graph::Graph;
+//! use docbrown::graphgen::random_attachment::random_attachment;
 //! let graph = Graph::new(2);
 //! random_attachment(&graph, 1000, 10);
 //! ```
@@ -34,8 +34,8 @@ use rand::seq::SliceRandom;
 /// # Examples
 ///
 /// ```
-/// use crate::db::graph::Graph;
-/// use crate::db::graphgen::random_attachment::random_attachment;
+/// use docbrown::db::graph::Graph;
+/// use docbrown::graphgen::random_attachment::random_attachment;
 /// let graph = Graph::new(2);
 /// random_attachment(&graph, 1000, 10);
 /// ```
@@ -63,7 +63,9 @@ pub fn random_attachment(graph: &Graph, vertices_to_add: usize, edges_per_step: 
         max_id += 1;
         latest_time += 1;
         edges.for_each(|neighbour| {
-            graph.add_edge(latest_time, max_id, *neighbour, &vec![], None);
+            graph
+                .add_edge(latest_time, max_id, *neighbour, &vec![], None)
+                .expect("Not able to add edge");
         });
         ids.push(max_id);
     }
@@ -72,7 +74,7 @@ pub fn random_attachment(graph: &Graph, vertices_to_add: usize, edges_per_step: 
 #[cfg(test)]
 mod random_graph_test {
     use super::*;
-    use crate::db::graphgen::preferential_attachment::ba_preferential_attachment;
+    use crate::graphgen::preferential_attachment::ba_preferential_attachment;
     #[test]
     fn blank_graph() {
         let graph = Graph::new(2);

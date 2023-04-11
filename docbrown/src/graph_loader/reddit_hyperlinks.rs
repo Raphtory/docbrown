@@ -29,9 +29,9 @@
 //!
 //! Example:
 //! ```no_run
-//! use crate::db::graph_loader::reddit_hyperlinks::reddit_graph;
-//! use crate::db::graph::Graph;
-//! use crate::db::view_api::*;
+//! use docbrown::graph_loader::reddit_hyperlinks::reddit_graph;
+//! use docbrown::db::graph::Graph;
+//! use docbrown::db::view_api::*;
 //!
 //! let graph = reddit_graph(1, 120);
 //!
@@ -127,7 +127,8 @@ pub fn reddit_graph(shards: usize, timeout: u64) -> Graph {
                             g.add_vertex(time, *dst_id, &vec![])
                                 .map_err(|err| println!("{:?}", err))
                                 .ok();
-                            g.add_edge(time, *src_id, *dst_id, edge_properties, None);
+                            g.add_edge(time, *src_id, *dst_id, edge_properties, None)
+                                .expect("Error: Unable to add edge");
                         }
                         Err(e) => {
                             println!("{}", e)
@@ -144,7 +145,7 @@ pub fn reddit_graph(shards: usize, timeout: u64) -> Graph {
 // #[cfg(test)]
 // mod reddit_test {
 //     use crate::graph_loader::reddit_hyperlinks::reddit_graph;
-//     use crate::view_api::GraphViewOps;
+//     use crate::db::view_api::GraphViewOps;
 //
 //     #[test]
 //     fn check_data() {

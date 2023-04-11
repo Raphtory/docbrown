@@ -43,10 +43,10 @@
 //!
 //! Create your own graph below
 //! ```
-//! use crate::db::graph::Graph;
-//! use crate::core::Direction;
-//! use crate::core::Prop;
-//! use crate::db::view_api::*;
+//! use docbrown::db::graph::Graph;
+//! use docbrown::core::Direction;
+//! use docbrown::core::Prop;
+//! use docbrown::db::view_api::*;
 //!
 //! // Create your GraphDB object and state the number of shards you would like, here we have 2
 //! let graph = Graph::new(2);
@@ -82,10 +82,10 @@
 //!
 //! Load a pre-built graph
 //! ```rust
-//! use crate::db::algorithms::degree::average_degree;
-//! use crate::db::graph::Graph;
-//! use crate::db::view_api::*;
-//! use crate::db::graph_loader::lotr_graph::lotr_graph;
+//! use docbrown::algorithms::degree::average_degree;
+//! use docbrown::db::graph::Graph;
+//! use docbrown::db::view_api::*;
+//! use docbrown::graph_loader::lotr_graph::lotr_graph;
 //!
 //! let graph = lotr_graph(3);
 //!
@@ -122,6 +122,7 @@
 //! We are always looking for contributors to help us improve the library.
 //! If you are interested in contributing, please see
 //! our [Github repository](https://github.com/Raphtory/docbrown)
+#[macro_use(quickcheck)]
 extern crate quickcheck_macros;
 
 pub mod algorithms;

@@ -17,9 +17,9 @@
 //! # Examples
 //!
 //! ```rust
-//! use crate::db::algorithms::local_triangle_count::{local_triangle_count};
-//! use crate::db::graph::Graph;
-//! use crate::db::view_api::*;
+//! use docbrown::algorithms::local_triangle_count::{local_triangle_count};
+//! use docbrown::db::graph::Graph;
+//! use docbrown::db::view_api::*;
 //!
 //! let g = Graph::new(1);
 //! let vs = vec![(1, 1, 2), (2, 1, 3), (3, 2, 1), (4, 3, 2)];
@@ -72,7 +72,7 @@ mod triangle_count_tests {
 
     use super::local_triangle_count;
     use crate::db::graph::Graph;
-    use crate::view_api::*;
+    use crate::db::view_api::*;
 
     #[test]
     fn counts_triangles() {

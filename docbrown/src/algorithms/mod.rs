@@ -7,8 +7,8 @@
 //! # Examples
 //!
 //! ```rust
-//! use crate::db::algorithms::degree::{average_degree};
-//! use crate::db::graph::Graph;
+//! use docbrown::algorithms::degree::{average_degree};
+//! use docbrown::db::graph::Graph;
 //!  
 //!  let g = Graph::new(1);
 //!  let vs = vec![

@@ -10,9 +10,9 @@
 //! # Examples
 //!
 //! ```rust
-//! use crate::db::algorithms::directed_graph_density::directed_graph_density;
-//! use crate::db::graph::Graph;
-//! use crate::db::view_api::*;
+//! use docbrown::algorithms::directed_graph_density::directed_graph_density;
+//! use docbrown::db::graph::Graph;
+//! use docbrown::db::view_api::*;
 //!
 //! let g = Graph::new(1);
 //! let windowed_graph = g.window(0, 7);

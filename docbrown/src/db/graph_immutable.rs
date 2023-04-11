@@ -5,8 +5,8 @@
 //! # Examples
 //!
 //! ```rust
-//! use crate::db::graph::Graph;
-//! use crate::db::view_api::*;
+//! use docbrown::db::graph::Graph;
+//! use docbrown::db::view_api::*;
 //!
 //! let graph = Graph::new(2);
 //! // Add vertices and edges
@@ -34,8 +34,8 @@ use std::sync::Arc;
 /// # Examples
 ///
 /// ```rust
-/// use crate::db::graph::Graph;
-/// use crate::db::view_api::*;
+/// use docbrown::db::graph::Graph;
+/// use docbrown::db::view_api::*;
 ///
 /// let graph = Graph::new(2);
 /// // Add vertices and edges
@@ -60,8 +60,8 @@ impl ImmutableGraph {
     /// # Examples
     ///
     /// ```rust
-    /// use crate::db::graph::Graph;
-    /// use crate::db::view_api::*;
+    /// use docbrown::db::graph::Graph;
+    /// use docbrown::db::view_api::*;
     ///
     /// let graph = Graph::new(2);
     /// // Add vertices and edges
@@ -89,8 +89,8 @@ impl ImmutableGraph {
     /// # Examples
     ///
     /// ```rust
-    /// use crate::db::graph::Graph;
-    /// use crate::db::view_api::*;
+    /// use docbrown::db::graph::Graph;
+    /// use docbrown::db::view_api::*;
     ///
     /// let graph = Graph::new(2);
     /// graph.add_vertex(0, 1, &vec![]).unwrap();
@@ -108,8 +108,8 @@ impl ImmutableGraph {
     /// # Examples
     ///
     /// ```rust
-    /// use crate::db::graph::Graph;
-    /// use crate::db::view_api::*;
+    /// use docbrown::db::graph::Graph;
+    /// use docbrown::db::view_api::*;
     ///
     /// let graph = Graph::new(2);
     /// graph.add_vertex(0, 1, &vec![]).unwrap();
@@ -139,8 +139,8 @@ impl ImmutableGraph {
     /// # Examples
     ///
     /// ```rust
-    /// use crate::db::graph::Graph;
-    /// use crate::db::view_api::*;
+    /// use docbrown::db::graph::Graph;
+    /// use docbrown::db::view_api::*;
     ///
     /// let graph = Graph::new(2);
     /// graph.add_vertex(0, 1, &vec![]).unwrap();
@@ -159,8 +159,8 @@ impl ImmutableGraph {
     /// # Examples
     ///
     /// ```rust
-    /// use crate::db::graph::Graph;
-    /// use crate::db::view_api::*;
+    /// use docbrown::db::graph::Graph;
+    /// use docbrown::db::view_api::*;
     ///
     /// let graph = Graph::new(2);
     /// graph.add_vertex(0, 1, &vec![]).unwrap();
@@ -184,8 +184,8 @@ impl ImmutableGraph {
     /// # Examples
     ///
     /// ```rust
-    /// use crate::db::graph::Graph;
-    /// use crate::db::view_api::*;
+    /// use docbrown::db::graph::Graph;
+    /// use docbrown::db::view_api::*;
     ///
     /// let graph = Graph::new(2);
     /// graph.add_vertex(0, 1, &vec![]).unwrap();
@@ -203,8 +203,8 @@ impl ImmutableGraph {
     /// # Examples
     ///
     /// ```rust
-    /// use crate::db::graph::Graph;
-    /// use crate::db::view_api::*;
+    /// use docbrown::db::graph::Graph;
+    /// use docbrown::db::view_api::*;
     ///
     /// let graph = Graph::new(2);
     /// graph.add_edge(0, 1, 1, &vec![], None).unwrap();
@@ -225,8 +225,8 @@ impl ImmutableGraph {
     /// # Examples
     ///
     /// ```rust
-    /// use crate::db::graph::Graph;
-    /// use crate::db::view_api::*;
+    /// use docbrown::db::graph::Graph;
+    /// use docbrown::db::view_api::*;
     ///
     /// let graph = Graph::new(2);
     /// graph.add_edge(0, 1, 2, &vec![], None).unwrap();

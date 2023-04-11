@@ -25,8 +25,8 @@
 //!
 //! ```rust
 //!
-//! use crate::db::graph::Graph;
-//! use crate::db::view_api::*;
+//! use docbrown::db::graph::Graph;
+//! use docbrown::db::view_api::*;
 //!
 //! let graph = Graph::new(2);
 //! graph.add_edge(0, 1, 2, &vec![], None);
@@ -1007,8 +1007,8 @@ impl<G: GraphViewOps> GraphViewInternalOps for WindowedGraph<G> {
 /// # Examples
 ///
 /// ```rust
-/// use crate::db::graph::Graph;
-/// use crate::db::view_api::*;
+/// use docbrown::db::graph::Graph;
+/// use docbrown::db::view_api::*;
 ///
 /// let graph = Graph::new(1);
 /// graph.add_edge(0, 1, 2, &vec![], None);
@@ -1042,7 +1042,7 @@ mod views_test {
     use super::*;
     use crate::core::Prop;
     use crate::db::graph::Graph;
-    use crate::view_api::*;
+    use crate::db::view_api::*;
     use itertools::Itertools;
     use quickcheck::TestResult;
     use rand::prelude::*;

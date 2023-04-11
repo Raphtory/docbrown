@@ -5,8 +5,8 @@
 //! # Examples
 //!
 //! ```
-//! use crate::db::graph::Graph;
-//! use crate::graphgen::preferential_attachment::ba_preferential_attachment;
+//! use docbrown::db::graph::Graph;
+//! use docbrown::graphgen::preferential_attachment::ba_preferential_attachment;
 //!
 //! let graph = Graph::new(2);
 //! ba_preferential_attachment(&graph, 1000, 10);
@@ -37,8 +37,8 @@ use std::collections::HashSet;
 /// # Examples
 ///
 /// ```
-/// use crate::db::graph::Graph;
-/// use crate::db::graphgen::preferential_attachment::ba_preferential_attachment;
+/// use docbrown::db::graph::Graph;
+/// use docbrown::graphgen::preferential_attachment::ba_preferential_attachment;
 ///
 /// let graph = Graph::new(2);
 /// ba_preferential_attachment(&graph, 1000, 10);
@@ -69,7 +69,9 @@ pub fn ba_preferential_attachment(graph: &Graph, vertices_to_add: usize, edges_p
 
     if graph.num_edges() < edges_per_step {
         for pos in 1..ids.len() {
-            graph.add_edge(latest_time, ids[pos], ids[pos - 1], &vec![], None);
+            graph
+                .add_edge(latest_time, ids[pos], ids[pos - 1], &vec![], None)
+                .expect("Not able to add edge");
             edge_count += 2;
             degrees[pos] += 1;
             degrees[pos - 1] += 1;
@@ -99,7 +101,9 @@ pub fn ba_preferential_attachment(graph: &Graph, vertices_to_add: usize, edges_p
         for pos in positions_to_skip {
             let dst = ids[pos];
             degrees[pos] += 1;
-            graph.add_edge(latest_time, max_id, dst, &vec![], None);
+            graph
+                .add_edge(latest_time, max_id, dst, &vec![], None)
+                .expect("Not able to add edge");
         }
         ids.push(max_id);
         degrees.push(edges_per_step);
@@ -111,7 +115,7 @@ pub fn ba_preferential_attachment(graph: &Graph, vertices_to_add: usize, edges_p
 #[cfg(test)]
 mod preferential_attachment_tests {
     use super::*;
-    use crate::db::graphgen::random_attachment::random_attachment;
+    use crate::graphgen::random_attachment::random_attachment;
     #[test]
     fn blank_graph() {
         let graph = Graph::new(2);

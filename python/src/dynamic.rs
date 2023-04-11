@@ -1,8 +1,8 @@
-use crate::core::tgraph::{EdgeRef, VertexRef};
-use crate::core::{Direction, Prop};
-use crate::db::graph::Graph;
-use crate::db::view_api::internal::GraphViewInternalOps;
-use crate::db::view_api::GraphViewOps;
+use docbrown::core::tgraph::{EdgeRef, VertexRef};
+use docbrown::core::{Direction, Prop};
+use docbrown::db::graph::Graph;
+use docbrown::db::view_api::internal::GraphViewInternalOps;
+use docbrown::db::view_api::GraphViewOps;
 use std::collections::HashMap;
 use std::sync::Arc;
 

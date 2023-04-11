@@ -5,7 +5,7 @@
 //! # Example
 //!
 //! ```rust
-//! use crate::db::graph_loader::fetch_file;
+//! use docbrown::graph_loader::fetch_file;
 //!
 //! let path = fetch_file(
 //!     "lotr.csv",
