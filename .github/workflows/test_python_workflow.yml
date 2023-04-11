@@ -21,10 +21,6 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         name: Checkout
-      - name: Get Date
-        id: get-date
-        run: |
-          echo "date=$(/bin/date -u "+%U")" >> $GITHUB_OUTPUT
         shell: bash
       - name: Set up cargo cache
         uses: actions/cache@v3
@@ -37,8 +33,8 @@ jobs:
             ~/.cargo/git/db/
             target/debug
             target/release
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-${{ steps.get-date.outputs.date }}
-          restore-keys: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-${{ steps.get-date.outputs.date }}
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - uses: actions-rs/toolchain@v1
         name: Setup Rust
         with:
