@@ -235,13 +235,7 @@ pub fn run_analysis_benchmarks<F, G>(
     });
 
     bench(group, "max_degree", parameter, |b: &mut Bencher| {
-        b.iter(|| {
-            graph
-                .vertices()
-                .into_iter()
-                .map(|v| v.degree())
-                .max()
-        })
+        b.iter(|| graph.vertices().into_iter().map(|v| v.degree()).max())
     });
 
     bench(

@@ -25,12 +25,14 @@ pub(crate) mod errors {
 
     #[derive(thiserror::Error, Debug, PartialEq)]
     pub enum MutateGraphError {
+        #[error("Create vertex '{vertex_id}' first before adding static properties to it")]
+        VertexNotFoundError { vertex_id: u64 },
         #[error("cannot change property for vertex '{vertex_id}'")]
         IllegalVertexPropertyChange {
             vertex_id: u64,
             source: IllegalMutate,
         },
-        #[error("cannot set property for missing edge '{0}' -> '{1}'")]
+        #[error("Create edge '{0}' -> '{1}' first before adding static properties to it")]
         MissingEdge(u64, u64), // src, dst
         #[error("cannot change property for edge '{src_id}' -> '{dst_id}'")]
         IllegalEdgePropertyChange {
@@ -279,9 +281,10 @@ impl TemporalGraph {
         v: u64,
         data: &Vec<(String, Prop)>,
     ) -> MutateGraphResult {
-        let index = *self.logical_to_physical.get(&v).expect(&format!(
-            "impossible to add metadata to non existing vertex {v}"
-        ));
+        let index = *(self
+            .logical_to_physical
+            .get(&v)
+            .ok_or(MutateGraphError::VertexNotFoundError { vertex_id: v })?);
         let result = self.vertex_props.set_static_props(index, data);
         result.map_err(|e| MutateGraphError::IllegalVertexPropertyChange {
             vertex_id: v,
@@ -290,18 +293,20 @@ impl TemporalGraph {
     }
 
     // TODO: remove this ???
-    pub fn add_edge(&mut self, t: i64, src: u64, dst: u64, layer: usize) {
+    pub fn add_edge<T: InputVertex>(&mut self, t: i64, src: T, dst: T, layer: usize) {
         self.add_edge_with_props(t, src, dst, &vec![], layer)
     }
 
-    pub(crate) fn add_edge_with_props(
+    pub(crate) fn add_edge_with_props<T: InputVertex>(
         &mut self,
         t: i64,
-        src: u64,
-        dst: u64,
+        src: T,
+        dst: T,
         props: &Vec<(String, Prop)>,
         layer: usize,
     ) {
+        let src_id = src.id();
+        let dst_id = dst.id();
         // mark the times of the vertices at t
         self.add_vertex(t, src)
             .map_err(|err| println!("{:?}", err))
@@ -310,40 +315,45 @@ impl TemporalGraph {
             .map_err(|err| println!("{:?}", err))
             .ok();
 
-        let src_pid = self.logical_to_physical[&src];
-        let dst_pid = self.logical_to_physical[&dst];
+        let src_pid = self.logical_to_physical[&src_id];
+        let dst_pid = self.logical_to_physical[&dst_id];
 
-        self.layers[layer].add_edge_with_props(t, src, dst, src_pid, dst_pid, props)
+        self.layers[layer].add_edge_with_props(t, src_id, dst_id, src_pid, dst_pid, props)
     }
 
-    pub(crate) fn add_edge_remote_out(
+    pub(crate) fn add_edge_remote_out<T: InputVertex>(
         &mut self,
         t: i64,
-        src: u64, // we are on the source shard
-        dst: u64,
+        src: T, // we are on the source shard
+        dst: T,
         props: &Vec<(String, Prop)>,
         layer: usize,
     ) {
+        let src_id = src.id();
+        let dst_id = dst.id();
+
         self.add_vertex(t, src)
             .map_err(|err| println!("{:?}", err))
             .ok();
-        let src_pid = self.logical_to_physical[&src];
-        self.layers[layer].add_edge_remote_out(t, src, dst, src_pid, props)
+        let src_pid = self.logical_to_physical[&src_id];
+        self.layers[layer].add_edge_remote_out(t, src_id, dst_id, src_pid, props)
     }
 
-    pub(crate) fn add_edge_remote_into(
+    pub(crate) fn add_edge_remote_into<T: InputVertex>(
         &mut self,
         t: i64,
-        src: u64,
-        dst: u64, // we are on the destination shard
+        src: T,
+        dst: T, // we are on the destination shard
         props: &Vec<(String, Prop)>,
         layer: usize,
     ) {
+        let src_id = src.id();
+        let dst_id = dst.id();
         self.add_vertex(t, dst)
             .map_err(|err| println!("{:?}", err))
             .ok();
-        let dst_pid = self.logical_to_physical[&dst];
-        self.layers[layer].add_edge_remote_into(t, src, dst, dst_pid, props)
+        let dst_pid = self.logical_to_physical[&dst_id];
+        self.layers[layer].add_edge_remote_into(t, src_id, dst_id, dst_pid, props)
     }
 
     pub(crate) fn add_edge_properties(
@@ -2183,23 +2193,23 @@ mod graph_test {
             if src_shard == dst_shard {
                 shards[src_shard].add_edge_with_props(
                     t.try_into().unwrap(),
-                    src.into(),
-                    dst.into(),
+                    src,
+                    dst,
                     &some_props,
                     0,
                 );
             } else {
                 shards[src_shard].add_edge_remote_out(
                     t.try_into().unwrap(),
-                    src.into(),
-                    dst.into(),
+                    src,
+                    dst,
                     &some_props,
                     0,
                 );
                 shards[dst_shard].add_edge_remote_into(
                     t.try_into().unwrap(),
-                    src.into(),
-                    dst.into(),
+                    src,
+                    dst,
                     &some_props,
                     0,
                 );

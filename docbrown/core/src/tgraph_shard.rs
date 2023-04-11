@@ -234,33 +234,33 @@ impl TGraphShard<TemporalGraph> {
         })
     }
 
-    pub fn add_edge(
+    pub fn add_edge<T: InputVertex>(
         &self,
         t: i64,
-        src: u64,
-        dst: u64,
+        src: T,
+        dst: T,
         props: &Vec<(String, Prop)>,
         layer: usize,
     ) -> Result<(), GraphError> {
         self.write_shard(|tg| Ok(tg.add_edge_with_props(t, src, dst, props, layer)))
     }
 
-    pub fn add_edge_remote_out(
+    pub fn add_edge_remote_out<T: InputVertex>(
         &self,
         t: i64,
-        src: u64,
-        dst: u64,
+        src: T,
+        dst: T,
         props: &Vec<(String, Prop)>,
         layer: usize,
     ) -> Result<(), GraphError> {
         self.write_shard(|tg| Ok(tg.add_edge_remote_out(t, src, dst, props, layer)))
     }
 
-    pub fn add_edge_remote_into(
+    pub fn add_edge_remote_into<T: InputVertex>(
         &self,
         t: i64,
-        src: u64,
-        dst: u64,
+        src: T,
+        dst: T,
         props: &Vec<(String, Prop)>,
         layer: usize,
     ) -> Result<(), GraphError> {
