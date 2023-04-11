@@ -11,7 +11,6 @@ use std::sync::Arc;
 
 #[derive(Copy, Clone)]
 pub(crate) enum Operations {
-    // FIXME: add support for layers here
     Neighbours {
         dir: Direction,
     },

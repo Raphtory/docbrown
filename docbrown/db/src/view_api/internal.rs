@@ -272,12 +272,6 @@ pub trait GraphViewInternalOps {
     ///
     /// Box<dyn Iterator<Item = EdgeRef> + Send> -  A boxed iterator that yields references to
     /// the edges connected to the vertex.
-    // fn vertex_edges(
-    //     &self,
-    //     v: VertexRef,
-    //     d: Direction,
-    //     layer: Option<usize>,
-    // ) -> Box<dyn Iterator<Item = EdgeRef> + Send + '_>;
 
     fn vertex_edges_all_layers(
         &self,

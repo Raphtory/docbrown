@@ -525,16 +525,6 @@ impl<G: GraphViewOps> GraphViewInternalOps for WindowedGraph<G> {
     /// # Returns
     ///
     /// An iterator over all edges in that vertex direction as references
-    // fn vertex_edges(
-    //     &self,
-    //     v: VertexRef,
-    //     d: Direction,
-    //     layer: Option<usize>,
-    // ) -> Box<dyn Iterator<Item = EdgeRef> + Send> {
-    //     self.graph
-    //         .vertex_edges_window(v, self.t_start, self.t_end, d, layer)
-    // }
-
     fn vertex_edges_all_layers(
         &self,
         v: VertexRef,

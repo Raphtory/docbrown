@@ -570,7 +570,7 @@ impl TemporalGraph {
         d: Direction,
         layer: Option<usize>,
     ) -> Box<dyn Iterator<Item = EdgeRef> + Send + '_> {
-        let w = w.clone(); // FIXME: is this fine t oavoid the compilation error?
+        let w = w.clone();
         let v_pid = self.logical_to_physical[&v];
         match self.layer_iter_optm(layer) {
             LayerIterator::Single(layer) => {
@@ -933,41 +933,6 @@ pub struct EdgeRef {
     pub time: Option<i64>,
     pub is_remote: bool,
 }
-
-// enum LayerIterator {
-//     Single(&EdgeLayer, bool), // key, has_next
-//     All(&Vec<EdgeLayer>, usize),
-// }
-//
-// impl LayerIterator {
-//     fn single(layer: &EdgeLayer) -> Self {
-//         Self::Single(key, true)
-//     }
-//     fn all(layers: &Vec<EdgeLayer>) -> Self {
-//         Self::All(layers, 0)
-//     }
-// }
-//
-// impl Iterator for LayerIterator {
-//     type Item = &EdgeLayer;
-//     fn next(&mut self) -> Option<Self::Item> {
-//         match self {
-//             Self::Single(layer, has_next) => {
-//                 if has_next {
-//                     has_next = false;
-//                     Some(layer)
-//                 } else {
-//                     None
-//                 }
-//             },
-//             Self::All(layers, index) => {
-//                 let current_index = *index;
-//                 index += 1;
-//                 layers.get(current_index)
-//             }
-//         }
-//     }
-// }
 
 #[cfg(test)]
 extern crate quickcheck;

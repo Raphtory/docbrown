@@ -263,12 +263,6 @@ impl GraphViewInternalOps for Graph {
     fn edge_refs(&self, layer: Option<usize>) -> Box<dyn Iterator<Item = EdgeRef> + Send> {
         //FIXME: needs low-level primitive
         let g = self.clone();
-        // let layer = layer.clone();
-        // Box::new(
-        //     self.vertex_refs()
-        //         .flat_map(move |v| g.vertex_edges(v, Direction::OUT, layer.clone())),
-        // )
-
         match layer {
             Some(layer) => Box::new(
                 self.vertex_refs()
@@ -279,15 +273,6 @@ impl GraphViewInternalOps for Graph {
                     .flat_map(move |v| g.vertex_edges_all_layers(v, Direction::OUT)),
             ),
         }
-
-        // let iter = gen!({
-        //     for v_ref in self.vertex_refs() {
-        //         for e_ref in g.vertex_edges(v_ref, Direction::OUT, layer) {
-        //             yield_!(e_ref)
-        //         }
-        //     }
-        // });
-        // Box::new(iter.into_iter())
     }
 
     fn edge_refs_window(
@@ -304,6 +289,7 @@ impl GraphViewInternalOps for Graph {
         )
     }
 
+    // FIXME: we should be able to have just `vertex_edges` which gets layer: Option<usize>
     // fn vertex_edges(
     //     &self,
     //     v: VertexRef,
@@ -313,7 +299,6 @@ impl GraphViewInternalOps for Graph {
     //     Box::new(self.get_shard_from_v(v).vertex_edges(v.g_id, d, layer))
     // }
 
-    // FIXME: we should be able to have just `vertex_edges` which gets layer: Option<usize>
     fn vertex_edges_all_layers(
         &self,
         v: VertexRef,
@@ -1595,13 +1580,6 @@ mod db_tests {
     }
 
     #[test]
-    #[should_panic]
-    fn complain_on_mising_layer() {
-        let g = Graph::new(4);
-        g.layer("missing layer");
-    }
-
-    #[test]
     fn layers() {
         let g = Graph::new(4);
         g.add_edge(0, 11, 22, &vec![], None).unwrap();
@@ -1622,8 +1600,9 @@ mod db_tests {
         assert!(g.edge(11, 44, Some("layer2")).is_some());
 
         let dft_layer = g.default_layer();
-        let layer1 = g.layer("layer1");
-        let layer2 = g.layer("layer2");
+        let layer1 = g.layer("layer1").unwrap();
+        let layer2 = g.layer("layer2").unwrap();
+        assert!(g.layer("missing layer").is_none());
 
         assert_eq!(g.num_edges(), 6);
         assert_eq!(dft_layer.num_edges(), 3);

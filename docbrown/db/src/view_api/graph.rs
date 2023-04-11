@@ -55,7 +55,7 @@ pub trait GraphViewOps: Send + Sync + Sized + GraphViewInternalOps + 'static + C
     fn default_layer(&self) -> LayeredGraph<Self>;
 
     /// Return a graph containing the layer `name`
-    fn layer(&self, name: &str) -> LayeredGraph<Self>;
+    fn layer(&self, name: &str) -> Option<LayeredGraph<Self>>;
 }
 
 impl<G: Send + Sync + Sized + GraphViewInternalOps + 'static + Clone> GraphViewOps for G {
@@ -82,7 +82,7 @@ impl<G: Send + Sync + Sized + GraphViewInternalOps + 'static + Clone> GraphViewO
     fn has_edge<T: Into<VertexRef>>(&self, src: T, dst: T, layer: Option<&str>) -> bool {
         match self.get_layer(layer) {
             Some(layer_id) => self.has_edge_ref(src.into(), dst.into(), layer_id),
-            None => false, // Maybe we should fail instead ?
+            None => false,
         }
     }
 
@@ -102,7 +102,7 @@ impl<G: Send + Sync + Sized + GraphViewInternalOps + 'static + Clone> GraphViewO
         dst: T,
         layer: Option<&str>,
     ) -> Option<EdgeView<Self>> {
-        let layer_id = self.get_layer(layer)?; // Maybe we should fail instead
+        let layer_id = self.get_layer(layer)?;
         self.edge_ref(src.into(), dst.into(), layer_id)
             .map(|e| EdgeView::new(self.clone(), e))
     }
@@ -115,9 +115,9 @@ impl<G: Send + Sync + Sized + GraphViewInternalOps + 'static + Clone> GraphViewO
         LayeredGraph::new(self.clone(), 0)
     }
 
-    fn layer(&self, name: &str) -> LayeredGraph<Self> {
-        let id = self.get_layer(Some(name)).unwrap(); // TODO: bubble up error
-        LayeredGraph::new(self.clone(), id)
+    fn layer(&self, name: &str) -> Option<LayeredGraph<Self>> {
+        let id = self.get_layer(Some(name))?;
+        Some(LayeredGraph::new(self.clone(), id))
     }
 }
 

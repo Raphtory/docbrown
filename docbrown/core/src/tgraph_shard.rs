@@ -386,10 +386,6 @@ impl TGraphShard<TemporalGraph> {
         self.read_shard(|tg| tg.edge_window(src, dst, &w, layer))
     }
 
-    // pub fn edges(&self, layer: Option<Arc<str>>) -> Box<dyn Iterator<Item = EdgeRef> + Send> {
-    //     self.read_shard(|tg| tg.edges(layer))
-    // }
-
     pub fn vertex_edges(
         &self,
         v: u64,
