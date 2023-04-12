@@ -6,18 +6,18 @@ use std::thread::JoinHandle;
 use std::{env, thread};
 
 use chrono::{DateTime, Utc};
-use docbrown_core::tgraph::TemporalGraph;
-use docbrown_core::utils;
-use docbrown_core::{Direction, Prop};
-use docbrown_db::csv_loader::csv::CsvLoader;
+use docbrown::core::tgraph::TemporalGraph;
+use docbrown::core::utils;
+use docbrown::core::{Direction, Prop};
+use docbrown::db::csv_loader::CsvLoader;
 use regex::Regex;
 use serde::Deserialize;
 use std::fs::File;
 use std::io::{prelude::*, BufReader, LineWriter};
 use std::time::Instant;
 
-use docbrown_db::graph::Graph;
-use docbrown_db::view_api::*;
+use docbrown::db::graph::Graph;
+use docbrown::db::view_api::*;
 
 #[derive(Deserialize, std::fmt::Debug)]
 pub struct Sent {
@@ -81,7 +81,7 @@ fn main() {
 
         let now = Instant::now();
 
-        let _ = CsvLoader::new(data_dir)
+        CsvLoader::new(data_dir)
             .with_filter(Regex::new(r".+(sent|received)").unwrap())
             .load_into_graph(&g, |sent: Sent, g: &Graph| {
                 let src = utils::calculate_hash(&sent.addr);
@@ -93,10 +93,11 @@ fn main() {
                 }
 
                 g.add_edge(
-                    time.try_into().unwrap(),
+                    time,
                     src,
                     dst,
                     &vec![("amount".to_string(), Prop::U64(sent.amount_btc))],
+                    None,
                 )
                 .unwrap()
             })
@@ -135,7 +136,7 @@ mod custom_date_format {
     use chrono::{DateTime, TimeZone, Utc};
     use serde::{self, Deserialize, Deserializer, Serializer};
 
-    const FORMAT: &'static str = "%Y-%m-%d %H:%M:%S";
+    const FORMAT: &str = "%Y-%m-%d %H:%M:%S";
 
     // The signature of a serialize_with function must follow the pattern:
     //

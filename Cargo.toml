@@ -1,14 +1,13 @@
 [workspace]
 members = [
-	"docbrown/core",
-	"docbrown/db",
+	"docbrown",
 	"examples/rust",
 	"python"
 ]
-default-members = ["docbrown/core", "docbrown/db", "python"]
+default-members = ["docbrown", "python"]
 
 [workspace.package]
-version = "0.0.7"
+version = "0.0.8"
 documentation = "https://docbrown.readthedocs.io/en/latest/"
 repository = "https://github.com/Raphtory/docbrown/"
 license = "AGPL-3.0-only"
