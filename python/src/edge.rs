@@ -1,13 +1,13 @@
 use crate::dynamic::DynamicGraph;
+use crate::util::*;
 use crate::vertex::PyVertex;
 use crate::wrappers::prop::Prop;
 use docbrown::db::edge::EdgeView;
+use docbrown::db::graph_window::WindowSet;
 use docbrown::db::view_api::*;
 use itertools::Itertools;
-use pyo3::{PyAny, pyclass, pymethods, PyRef, PyRefMut, PyResult};
+use pyo3::{pyclass, pymethods, PyAny, PyRef, PyRefMut, PyResult};
 use std::collections::HashMap;
-use docbrown::db::graph_window::WindowSet;
-use crate::util::*;
 
 #[pyclass(name = "Edge")]
 pub struct PyEdge {

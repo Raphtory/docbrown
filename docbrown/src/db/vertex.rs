@@ -218,7 +218,7 @@ impl<G: GraphViewOps> VertexViewOps for VertexView<G> {
                         .vertex_edges_window(self.vertex, w.start, w.end, dir, None)
                         .map(move |e| EdgeView::new_windowed(g.clone(), e, Some(w.clone()))),
                 )
-            },
+            }
         }
     }
 
@@ -238,7 +238,7 @@ impl<G: GraphViewOps> VertexViewOps for VertexView<G> {
                         .vertex_edges_window(self.vertex, w.start, w.end, dir, None)
                         .map(move |e| EdgeView::new_windowed(g.clone(), e, Some(w.clone()))),
                 )
-            },
+            }
         }
     }
 
@@ -258,7 +258,7 @@ impl<G: GraphViewOps> VertexViewOps for VertexView<G> {
                         .vertex_edges_window(self.vertex, w.start, w.end, dir, None)
                         .map(move |e| EdgeView::new_windowed(g.clone(), e, Some(w.clone()))),
                 )
-            },
+            }
         }
     }
 

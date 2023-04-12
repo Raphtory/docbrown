@@ -8,13 +8,7 @@
 use crate::core::tgraph::{EdgeRef, VertexRef};
 use crate::core::Prop;
 use crate::db::vertex::VertexView;
-<<<<<<< Updated upstream
-use crate::db::view_api::BoxedIter;
-use crate::db::view_api::{EdgeListOps, GraphViewOps};
-=======
-use crate::db::view_api::vertex::BoxedIter;
-use crate::db::view_api::{EdgeListOps, GraphViewOps, TimeOps};
->>>>>>> Stashed changes
+use crate::db::view_api::{BoxedIter, EdgeListOps, GraphViewOps, TimeOps};
 use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};
 use std::ops::Range;
@@ -51,14 +45,14 @@ impl<G: GraphViewOps> EdgeView<G> {
     ///
     /// A new `EdgeView`.
     pub(crate) fn new(graph: G, edge: EdgeRef) -> Self {
-        EdgeView { graph, edge, window: None }
+        EdgeView {
+            graph,
+            edge,
+            window: None,
+        }
     }
 
-    pub(crate) fn new_windowed(
-        graph: G,
-        edge: EdgeRef,
-        window: Option<Range<i64>>,
-    ) -> EdgeView<G> {
+    pub(crate) fn new_windowed(graph: G, edge: EdgeRef, window: Option<Range<i64>>) -> EdgeView<G> {
         EdgeView {
             graph,
             edge,
@@ -194,10 +188,10 @@ impl<G: GraphViewOps> EdgeListOps for BoxedIter<EdgeView<G>> {
     type ValueType<T: Send + Sync> = T;
 
     /// Specifies the associated type for an iterator over vertices.
-    type VList = Box<dyn Iterator<Item=VertexView<G>> + Send>;
+    type VList = Box<dyn Iterator<Item = VertexView<G>> + Send>;
 
     /// Specifies the associated type for the iterator over edges.
-    type IterType = Box<dyn Iterator<Item=EdgeView<G>> + Send>;
+    type IterType = Box<dyn Iterator<Item = EdgeView<G>> + Send>;
 
     fn has_property(self, name: String, include_static: bool) -> BoxedIter<bool> {
         let r: Vec<_> = self
@@ -256,9 +250,9 @@ impl<G: GraphViewOps> EdgeListOps for BoxedIter<EdgeView<G>> {
 
 impl<G: GraphViewOps> EdgeListOps for BoxedIter<BoxedIter<EdgeView<G>>> {
     type Graph = G;
-    type ValueType<T: Send + Sync> = Box<dyn Iterator<Item=T> + Send>;
-    type VList = Box<dyn Iterator<Item=Box<dyn Iterator<Item=VertexView<G>> + Send>> + Send>;
-    type IterType = Box<dyn Iterator<Item=Box<dyn Iterator<Item=EdgeView<G>> + Send>> + Send>;
+    type ValueType<T: Send + Sync> = Box<dyn Iterator<Item = T> + Send>;
+    type VList = Box<dyn Iterator<Item = Box<dyn Iterator<Item = VertexView<G>> + Send>> + Send>;
+    type IterType = Box<dyn Iterator<Item = Box<dyn Iterator<Item = EdgeView<G>> + Send>> + Send>;
 
     fn has_property(self, name: String, include_static: bool) -> BoxedIter<Self::ValueType<bool>> {
         Box::new(self.map(move |it| {
@@ -310,4 +304,4 @@ impl<G: GraphViewOps> EdgeListOps for BoxedIter<BoxedIter<EdgeView<G>>> {
     }
 }
 
-pub type EdgeList<G> = Box<dyn Iterator<Item=EdgeView<G>> + Send>;
+pub type EdgeList<G> = Box<dyn Iterator<Item = EdgeView<G>> + Send>;
