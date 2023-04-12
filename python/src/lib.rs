@@ -1,7 +1,7 @@
 extern crate core;
 
 pub mod algorithms;
-pub mod direction;
+mod direction;
 mod dynamic;
 pub mod edge;
 pub mod graph;
@@ -17,7 +17,6 @@ use crate::algorithms::*;
 use crate::algorithms::{
     all_local_reciprocity, global_clustering_coefficient, global_reciprocity, triplet_count,
 };
-use crate::direction::PyDirection;
 use crate::graph::PyGraph;
 use crate::graph_gen::*;
 use crate::graph_loader::*;
@@ -28,7 +27,6 @@ use pyo3::prelude::*;
 fn raphtory(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_class::<PyGraph>()?;
     m.add_class::<PyPerspective>()?;
-    m.add_class::<PyDirection>()?;
 
     let algorithm_module = PyModule::new(py, "algorithms")?;
     algorithm_module.add_function(wrap_pyfunction!(global_reciprocity, algorithm_module)?)?;

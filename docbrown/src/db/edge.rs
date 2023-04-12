@@ -13,7 +13,6 @@ use crate::db::view_api::BoxedIter;
 use crate::db::view_api::{EdgeListOps, GraphViewOps};
 use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};
-use std::iter::{Filter, Map};
 use std::vec::IntoIter;
 
 /// A view of an edge in the graph.
@@ -169,7 +168,7 @@ impl<G: GraphViewOps> EdgeView<G> {
 
         let r: Vec<EdgeView<G>> = self
             .graph
-            .vertex_edges_t(vertex, direction.unwrap_or(Direction::BOTH), None)
+            .vertex_edges_t(vertex, direction.unwrap_or(Direction::OUT), None)
             .filter(|e| e.edge_id == self.edge.edge_id)
             .map(|e| EdgeView::new(self.graph.clone(), e))
             .collect();

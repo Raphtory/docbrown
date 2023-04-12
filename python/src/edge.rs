@@ -1,11 +1,11 @@
-use crate::direction::PyDirection;
 use crate::dynamic::DynamicGraph;
 use crate::vertex::PyVertex;
 use crate::wrappers::prop::Prop;
+use docbrown::core::Direction;
 use docbrown::db::edge::EdgeView;
 use docbrown::db::view_api::*;
 use itertools::Itertools;
-use pyo3::{pyclass, pymethods, PyRef, PyRefMut};
+use pyo3::{pyclass, pymethods, Py, PyRef, PyRefMut};
 use std::collections::HashMap;
 
 #[pyclass(name = "Edge")]
@@ -86,9 +86,9 @@ impl PyEdge {
         self.edge.dst().into()
     }
 
-    pub fn explode(&self, direction: PyDirection) -> Vec<PyEdge> {
+    pub fn explode(&self) -> Vec<PyEdge> {
         self.edge
-            .explode(Some(direction.into()))
+            .explode(Some(Direction::OUT))
             .into_iter()
             .map(|e| e.into())
             .collect::<Vec<PyEdge>>()
@@ -133,6 +133,11 @@ impl PyEdgeIter {
     }
     fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<PyEdge> {
         slf.iter.next()
+    }
+    fn explode(slf: PyRef<'_, Self>) -> PyEdgeIter {
+        PyEdgeIter {
+            iter: Box::new(slf.iter.map(|e| e.explode()).flatten()),
+        }
     }
 }
 
