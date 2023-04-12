@@ -1469,8 +1469,7 @@ mod db_tests {
         let exploded = g.edge(1, 2).unwrap().explode();
 
         for e in exploded {
-            println!("{:?}", e);
-            println!("{:?}", e.properties(false));
+            println!("{:?}", e.properties(true));
         }
 
         let y = g.vertex_edges_t(g.vertex(1).unwrap().vertex, Direction::OUT);

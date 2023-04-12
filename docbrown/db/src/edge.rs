@@ -74,9 +74,19 @@ impl<G: GraphViewOps> EdgeView<G> {
             Some((_, prop)) => Some(prop.clone()),
         }
     }
+
     pub fn property_history(&self, name: String) -> Vec<(i64, Prop)> {
-        self.graph.temporal_edge_props_vec(self.edge, name)
+        match self.edge.time {
+            None => self.graph.temporal_edge_props_vec(self.edge, name),
+            Some(_) => self.graph.temporal_edge_props_vec_window(
+                self.edge,
+                name,
+                self.edge.time.unwrap(),
+                self.edge.time.unwrap() + 1,
+            ),
+        }
     }
+
     pub fn properties(&self, include_static: bool) -> HashMap<String, Prop> {
         let mut props: HashMap<String, Prop> = self
             .property_histories()
@@ -95,8 +105,18 @@ impl<G: GraphViewOps> EdgeView<G> {
     }
 
     pub fn property_histories(&self) -> HashMap<String, Vec<(i64, Prop)>> {
-        self.graph.temporal_edge_props(self.edge)
+        // match on the self.edge.time option property and run two function s
+        // one for static and one for temporal
+        match self.edge.time {
+            None => self.graph.temporal_edge_props(self.edge),
+            Some(_) => self.graph.temporal_edge_props_window(
+                self.edge,
+                self.edge.time.unwrap(),
+                self.edge.time.unwrap() + 1,
+            ),
+        }
     }
+
     pub fn property_names(&self, include_static: bool) -> Vec<String> {
         let mut names: Vec<String> = self.graph.temporal_edge_prop_names(self.edge);
         if include_static {
