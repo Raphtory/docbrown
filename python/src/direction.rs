@@ -1,9 +1,9 @@
 use docbrown::core::Direction;
-use pyo3::{pyclass, pymethods, PyRef, PyRefMut};
-use pyo3::{FromPyObject, IntoPy, PyObject, Python};
+use pyo3::{pyclass, PyRef, PyRefMut};
+use pyo3::{PyObject, Python};
 use std::fmt;
 
-#[pyclass(name = "PyDirection")]
+#[pyclass(name = "Direction")]
 #[derive(Clone)]
 pub enum PyDirection {
     BOTH,
