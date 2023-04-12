@@ -1685,19 +1685,33 @@ mod db_tests {
     #[test]
     fn test_exploded_edge() {
         let g = Graph::new(1);
-        g.add_edge(0, 1, 2, &vec![("weight".to_string(), Prop::I64(1))])
+        g.add_edge(0, 1, 2, &vec![("weight".to_string(), Prop::I64(1))], None)
             .unwrap();
-        g.add_edge(1, 1, 2, &vec![("weight".to_string(), Prop::I64(2))])
+        g.add_edge(1, 1, 2, &vec![("weight".to_string(), Prop::I64(2))], None)
             .unwrap();
-        g.add_edge(2, 1, 2, &vec![("weight".to_string(), Prop::I64(3))])
+        g.add_edge(2, 1, 2, &vec![("weight".to_string(), Prop::I64(3))], None)
             .unwrap();
 
-        let exploded = g.edge(1, 2).unwrap().explode();
+        let exploded = g.edge(1, 2, None).unwrap().explode();
 
-        for e in exploded {
-            println!("{:?}", e.properties(true));
+        let res = exploded.map(|e| e.properties(false)).collect_vec();
+
+        let mut expected = Vec::new();
+        for i in 1..4 {
+            let mut map = HashMap::new();
+            map.insert("weight".to_string(), Prop::I64(i));
+            expected.push(map);
         }
 
-        let y = g.vertex_edges_t(g.vertex(1).unwrap().vertex, Direction::OUT);
+        assert_eq!(res, expected);
+
+        let e = g
+            .vertex(1)
+            .unwrap()
+            .edges()
+            .explode()
+            .map(|e| e.properties(false))
+            .collect_vec();
+        assert_eq!(e, expected);
     }
 }

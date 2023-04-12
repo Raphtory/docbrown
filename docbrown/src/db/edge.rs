@@ -6,6 +6,7 @@
 //!
 
 use crate::core::tgraph::{EdgeRef, VertexRef};
+use crate::core::Direction;
 use crate::core::Prop;
 use crate::db::vertex::VertexView;
 use crate::db::view_api::vertex::BoxedIter;
@@ -168,7 +169,7 @@ impl<G: GraphViewOps> EdgeView<G> {
 
         let r: Vec<EdgeView<G>> = self
             .graph
-            .vertex_edges_t(vertex, Direction::OUT)
+            .vertex_edges_t(vertex, Direction::OUT, None)
             .filter(|e| e.edge_id == self.edge.edge_id)
             .map(|e| EdgeView::new(self.graph.clone(), e))
             .collect();
