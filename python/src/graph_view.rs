@@ -1,10 +1,9 @@
 use crate::dynamic::DynamicGraph;
 use crate::edge::{PyEdge, PyEdgeIter};
-use crate::util::{adapt_err_value, adapt_result, extract_vertex_ref, through_impl, window_impl};
+use crate::util::{extract_vertex_ref, through_impl, window_impl};
 use crate::vertex::{PyVertex, PyVertices};
-use crate::wrappers::PyPerspectiveSet;
-use docbrown_db::graph_window::WindowSet;
-use docbrown_db::view_api::*;
+use docbrown::db::graph_window::WindowSet;
+use docbrown::db::view_api::*;
 use pyo3::prelude::*;
 
 #[pyclass(name = "GraphView", frozen, subclass)]
@@ -66,10 +65,10 @@ impl PyGraphView {
         Ok(self.graph.has_vertex(v))
     }
 
-    pub fn has_edge(&self, src: &PyAny, dst: &PyAny) -> PyResult<bool> {
+    pub fn has_edge(&self, src: &PyAny, dst: &PyAny, layer: Option<&str>) -> PyResult<bool> {
         let src = extract_vertex_ref(src)?;
         let dst = extract_vertex_ref(dst)?;
-        Ok(self.graph.has_edge(src, dst))
+        Ok(self.graph.has_edge(src, dst, layer))
     }
 
     //******  Getter APIs ******//
@@ -79,14 +78,15 @@ impl PyGraphView {
         Ok(self.graph.vertex(v).map(|v| v.into()))
     }
 
+    #[getter]
     pub fn vertices(&self) -> PyVertices {
         self.graph.vertices().into()
     }
 
-    pub fn edge(&self, src: &PyAny, dst: &PyAny) -> PyResult<Option<PyEdge>> {
+    pub fn edge(&self, src: &PyAny, dst: &PyAny, layer: Option<&str>) -> PyResult<Option<PyEdge>> {
         let src = extract_vertex_ref(src)?;
         let dst = extract_vertex_ref(dst)?;
-        Ok(self.graph.edge(src, dst).map(|we| we.into()))
+        Ok(self.graph.edge(src, dst, layer).map(|we| we.into()))
     }
 
     pub fn edges(&self) -> PyEdgeIter {
@@ -135,7 +135,7 @@ impl PyGraphView {
         let latest_time = self.graph.latest_time().unwrap_or_default();
 
         format!(
-            "Graph(NumEdges({:?}), NumVertices({:?}), EarliestTime({:?}), LatestTime({:?}))",
+            "Graph(number_of_edges={:?}, number_of_vertices={:?}, earliest_time={:?}, latest_time={:?})",
             num_edges, num_vertices, earliest_time, latest_time
         )
     }

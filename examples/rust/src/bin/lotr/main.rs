@@ -1,10 +1,10 @@
-use docbrown_core::Prop;
-use docbrown_core::{state, utils};
-use docbrown_db::program::{
-    GlobalEvalState, Program, TriangleCountS1, TriangleCountS2, TriangleCountSlowS2,
-};
-use docbrown_db::view_api::*;
-use docbrown_db::{csv_loader::csv::CsvLoader, graph::Graph};
+use docbrown::algorithms::triangle_count::{TriangleCountS1, TriangleCountS2, TriangleCountSlowS2};
+use docbrown::core::Prop;
+use docbrown::core::{state, utils};
+use docbrown::db::csv_loader::CsvLoader;
+use docbrown::db::graph::Graph;
+use docbrown::db::program::{GlobalEvalState, Program};
+use docbrown::db::view_api::*;
 use serde::Deserialize;
 use std::path::PathBuf;
 use std::{env, path::Path, time::Instant};
@@ -77,6 +77,7 @@ fn main() {
                         "name".to_string(),
                         Prop::Str("Character Co-occurrence".to_string()),
                     )],
+                    None,
                 );
             })
             .expect("Failed to load graph from CSV data files");

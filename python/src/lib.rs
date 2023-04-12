@@ -11,13 +11,18 @@ pub mod wrappers;
 
 use pyo3::prelude::*;
 
-use crate::algorithms::{all_local_reciprocity, global_reciprocity, local_reciprocity};
+use crate::algorithms::{
+    all_local_reciprocity, global_clustering_coefficient, global_reciprocity, triplet_count,
+};
+
 use crate::graph::PyGraph;
 use crate::wrappers::PyPerspective;
 
 use crate::algorithms::*;
 use crate::graph_gen::*;
 use crate::graph_loader::*;
+#[allow(unused_imports)]
+use pyo3::prelude::*;
 
 #[pymodule]
 fn raphtory(py: Python<'_>, m: &PyModule) -> PyResult<()> {
@@ -26,8 +31,12 @@ fn raphtory(py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     let algorithm_module = PyModule::new(py, "algorithms")?;
     algorithm_module.add_function(wrap_pyfunction!(global_reciprocity, algorithm_module)?)?;
-    algorithm_module.add_function(wrap_pyfunction!(local_reciprocity, algorithm_module)?)?;
     algorithm_module.add_function(wrap_pyfunction!(all_local_reciprocity, algorithm_module)?)?;
+    algorithm_module.add_function(wrap_pyfunction!(triplet_count, algorithm_module)?)?;
+    algorithm_module.add_function(wrap_pyfunction!(
+        global_clustering_coefficient,
+        algorithm_module
+    )?)?;
     algorithm_module.add_function(wrap_pyfunction!(local_triangle_count, algorithm_module)?)?;
     algorithm_module.add_function(wrap_pyfunction!(
         local_clustering_coefficient,

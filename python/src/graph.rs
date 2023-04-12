@@ -2,9 +2,9 @@ use crate::dynamic::DynamicGraph;
 use crate::graph_view::PyGraphView;
 use crate::util::adapt_result;
 use crate::wrappers::Prop;
-use docbrown_core as dbc;
-use docbrown_core::vertex::InputVertex;
-use docbrown_db::graph::Graph;
+use docbrown::core as dbc;
+use docbrown::core::vertex::InputVertex;
+use docbrown::db::graph::Graph;
 use itertools::Itertools;
 use pyo3::exceptions::{PyException, PyTypeError};
 use pyo3::prelude::*;
@@ -80,13 +80,17 @@ impl PyGraph {
         src: &PyAny,
         dst: &PyAny,
         properties: Option<HashMap<String, Prop>>,
+        layer: Option<&str>,
     ) -> PyResult<()> {
         let src = Self::extract_id(src)?;
         let dst = Self::extract_id(dst)?;
-        adapt_result(
-            self.graph
-                .add_edge(timestamp, src, dst, &Self::transform_props(properties)),
-        )
+        adapt_result(self.graph.add_edge(
+            timestamp,
+            src,
+            dst,
+            &Self::transform_props(properties),
+            layer,
+        ))
     }
 
     pub fn add_edge_properties(
@@ -94,12 +98,16 @@ impl PyGraph {
         src: &PyAny,
         dst: &PyAny,
         properties: HashMap<String, Prop>,
+        layer: Option<&str>,
     ) -> PyResult<()> {
         let src = Self::extract_id(src)?;
         let dst = Self::extract_id(dst)?;
-        let result =
-            self.graph
-                .add_edge_properties(src, dst, &Self::transform_props(Some(properties)));
+        let result = self.graph.add_edge_properties(
+            src,
+            dst,
+            &Self::transform_props(Some(properties)),
+            layer,
+        );
         adapt_result(result)
     }
 
@@ -151,6 +159,7 @@ impl PyGraph {
     }
 }
 
+#[derive(Clone)]
 pub struct InputVertexBox {
     id: u64,
     name_prop: Option<dbc::Prop>,
