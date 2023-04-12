@@ -425,6 +425,16 @@ impl GraphViewInternalOps for Graph {
             .temporal_vertex_prop_vec(v.g_id, name)
     }
 
+    fn temporal_vertex_timestamps_vec(&self, v: VertexRef, name: String) -> Vec<i64> {
+        self.get_shard_from_v(v)
+            .temporal_vertex_timestamps_vec(v.g_id, name)
+    }
+
+    fn temporal_vertex_timestamps_vec_window(&self, v: VertexRef, name: String, t_start: i64, t_end: i64) -> Vec<i64> {
+        self.get_shard_from_v(v)
+            .temporal_vertex_timestamps_vec_window(v.g_id, name, t_start..t_end)
+    }
+
     fn temporal_vertex_prop_vec_window(
         &self,
         v: VertexRef,
@@ -483,6 +493,15 @@ impl GraphViewInternalOps for Graph {
             name,
             t_start..t_end,
         )
+    }
+
+    fn temporal_edge_timestamps_vec(
+        &self,
+        e: EdgeRef,
+        name: String
+    ) -> Vec<i64> {
+        self.get_shard_from_e(e)
+            .temporal_edge_timestamps_vec(e.edge_id, name)
     }
 
     fn temporal_edge_props(&self, e: EdgeRef) -> HashMap<String, Vec<(i64, Prop)>> {

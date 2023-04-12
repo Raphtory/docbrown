@@ -860,6 +860,10 @@ impl PyPathFromVertex {
         let path = self.path.clone();
         (move || path.static_property(name.clone())).into()
     }
+    
+    fn history(&self, name: String) -> HistoriesIter {
+        self.path.history(name).into()
+    }
 
     fn in_degree(&self) -> UsizeIterable {
         let path = self.path.clone();

@@ -476,6 +476,10 @@ pub trait GraphViewInternalOps {
     /// and the second element is the property value.
     fn temporal_vertex_prop_vec(&self, v: VertexRef, name: String) -> Vec<(i64, Prop)>;
 
+    fn temporal_vertex_timestamps_vec(&self, v: VertexRef, name: String) -> Vec<i64>;
+
+    fn temporal_vertex_timestamps_vec_window(&self, v: VertexRef, name: String, t_start: i64, t_end: i64) -> Vec<i64>;
+
     /// Returns a vector of all temporal values of the vertex property with the given name for the given vertex
     /// that fall within the specified time window.
     ///
@@ -598,6 +602,12 @@ pub trait GraphViewInternalOps {
         t_start: i64,
         t_end: i64,
     ) -> Vec<(i64, Prop)>;
+
+    fn temporal_edge_timestamps_vec(
+        &self, 
+        e: EdgeRef, 
+        name: String
+    ) -> Vec<i64>;
 
     /// Returns a hash map containing all the temporal properties of the given edge reference,
     /// where each key is the name of a temporal property and each value is a vector of tuples containing

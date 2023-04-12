@@ -798,6 +798,40 @@ impl<G: GraphViewOps> GraphViewInternalOps for WindowedGraph<G> {
         )
     }
 
+    fn temporal_vertex_timestamps_vec(
+        &self,
+        v: VertexRef,
+        name: String,
+    ) -> Vec<i64> {
+        self.graph.temporal_vertex_timestamps_vec(
+            v,
+            name
+        )
+    }
+
+    fn temporal_vertex_timestamps_vec_window(
+        &self,
+        v: VertexRef,
+        name: String,
+        t_start: i64,
+        t_end: i64,
+    ) -> Vec<i64> {
+        self.graph.temporal_vertex_timestamps_vec_window(
+            v, 
+            name,
+            self.actual_start(t_start),
+            self.actual_end(t_end)
+        )
+    }
+
+    fn temporal_edge_timestamps_vec(
+        &self,
+        e: EdgeRef,
+        name: String,
+    ) -> Vec<i64> {
+        self.graph.temporal_edge_timestamps_vec(e, name)
+    }
+
     /// Get all temporal properties of a vertex
     ///
     /// # Arguments

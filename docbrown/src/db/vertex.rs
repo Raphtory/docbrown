@@ -113,6 +113,16 @@ impl<G: GraphViewOps> VertexViewOps for VertexView<G> {
         }
     }
 
+    fn history(&self, name: String) -> Vec<i64> {
+        match &self.window {
+            None => self.graph.temporal_vertex_timestamps_vec(self.vertex, name),
+            Some(_w) => {
+                self.graph
+                    .temporal_vertex_timestamps_vec_window(self.vertex, name, self.earliest_time().unwrap_or_default(), self.latest_time().unwrap_or_default())
+            }
+        }
+    }
+
     fn properties(&self, include_static: bool) -> HashMap<String, Prop> {
         let mut props: HashMap<String, Prop> = self
             .property_histories()
@@ -381,6 +391,11 @@ impl<G: GraphViewOps> VertexListOps for Box<dyn Iterator<Item = VertexView<G>> +
         Box::new(r.into_iter())
     }
 
+    fn history(self, name: String) -> BoxedIter<Vec<i64>> {
+        let r: Vec<_> = self.map(|v| v.history(name.clone())).collect();
+        Box::new(r.into_iter())
+    }
+
     fn properties(self, include_static: bool) -> BoxedIter<HashMap<String, Prop>> {
         let r: Vec<_> = self.map(|v| v.properties(include_static.clone())).collect();
         Box::new(r.into_iter())
@@ -498,6 +513,10 @@ impl<G: GraphViewOps> VertexListOps for BoxedIter<BoxedIter<VertexView<G>>> {
         Box::new(self.map(move |it| it.property_history(name.clone())))
     }
 
+    fn history(self, name: String) -> BoxedIter<Self::ValueType<Vec<i64>>> {
+        Box::new(self.map(move |it| it.history(name.clone())))
+    }
+
     fn properties(self, include_static: bool) -> BoxedIter<Self::ValueType<HashMap<String, Prop>>> {
         Box::new(self.map(move |it| it.properties(include_static)))
     }
@@ -566,7 +585,7 @@ mod vertex_test {
     #[test]
     fn test_all_degrees_window() {
         let g = crate::graph_loader::lotr_graph::lotr_graph(4);
-
+       
         assert_eq!(g.num_edges(), 701);
         assert_eq!(g.vertex("Gandalf").unwrap().degree(), 49);
         assert_eq!(
@@ -634,7 +653,6 @@ mod vertex_test {
     #[test]
     fn test_all_edges_window() {
         let g = crate::graph_loader::lotr_graph::lotr_graph(4);
-
         assert_eq!(g.num_edges(), 701);
         assert_eq!(g.vertex("Gandalf").unwrap().edges().count(), 59);
         assert_eq!(

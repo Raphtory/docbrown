@@ -227,7 +227,7 @@ pub trait VertexListOps:
     /// as a vector of tuples of the form (time, property).
     fn property_history(self, name: String) -> BoxedIter<Self::ValueType<Vec<(i64, Prop)>>>;
     fn properties(self, include_static: bool) -> BoxedIter<Self::ValueType<HashMap<String, Prop>>>;
-
+    fn history(self, name: String) -> BoxedIter<Self::ValueType<Vec<i64>>>;
     /// Returns an iterator over all vertex properties.
     ///
     /// # Returns
