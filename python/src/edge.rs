@@ -1,3 +1,4 @@
+use crate::direction::PyDirection;
 use crate::dynamic::DynamicGraph;
 use crate::vertex::PyVertex;
 use crate::wrappers::prop::Prop;
@@ -6,7 +7,6 @@ use docbrown::db::view_api::*;
 use itertools::Itertools;
 use pyo3::{pyclass, pymethods, PyRef, PyRefMut};
 use std::collections::HashMap;
-use std::vec::IntoIter;
 
 #[pyclass(name = "Edge")]
 pub struct PyEdge {
@@ -86,9 +86,9 @@ impl PyEdge {
         self.edge.dst().into()
     }
 
-    pub fn explode(&self) -> Vec<PyEdge> {
+    pub fn explode(&self, direction: PyDirection) -> Vec<PyEdge> {
         self.edge
-            .explode()
+            .explode(Some(direction.into()))
             .into_iter()
             .map(|e| e.into())
             .collect::<Vec<PyEdge>>()

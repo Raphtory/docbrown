@@ -11,6 +11,7 @@ use crate::core::Prop;
 use crate::db::vertex::VertexView;
 use crate::db::view_api::BoxedIter;
 use crate::db::view_api::{EdgeListOps, GraphViewOps};
+use openssl::version::dir;
 use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};
 use std::iter::{Filter, Map};
@@ -161,7 +162,7 @@ impl<G: GraphViewOps> EdgeView<G> {
         self.edge.edge_id
     }
 
-    pub fn explode(&self) -> Box<IntoIter<EdgeView<G>>> {
+    pub fn explode(&self, direction: Option<Direction>) -> Box<IntoIter<EdgeView<G>>> {
         let vertex = VertexRef {
             g_id: self.edge.src_g_id,
             pid: None,
@@ -169,7 +170,7 @@ impl<G: GraphViewOps> EdgeView<G> {
 
         let r: Vec<EdgeView<G>> = self
             .graph
-            .vertex_edges_t(vertex, Direction::OUT, None)
+            .vertex_edges_t(vertex, direction.unwrap_or(Direction::BOTH), None)
             .filter(|e| e.edge_id == self.edge.edge_id)
             .map(|e| EdgeView::new(self.graph.clone(), e))
             .collect();
@@ -245,8 +246,9 @@ impl<G: GraphViewOps> EdgeListOps for BoxedIter<EdgeView<G>> {
         Box::new(self.into_iter().map(|e| e.dst()))
     }
 
-    fn explode(self) -> Self::IterType {
-        Box::new(self.flat_map(|e| e.explode()))
+    /// returns an iterator of exploded edges that include an edge at each point in time
+    fn explode(self, direction: Option<Direction>) -> Self::IterType {
+        Box::new(self.flat_map(move |e| e.explode(direction)))
     }
 }
 
@@ -305,8 +307,8 @@ impl<G: GraphViewOps> EdgeListOps for BoxedIter<BoxedIter<EdgeView<G>>> {
         Box::new(self.map(|it| it.dst()))
     }
 
-    fn explode(self) -> Self::IterType {
-        Box::new(self.map(|it| it.explode()))
+    fn explode(self, direction: Option<Direction>) -> Self::IterType {
+        Box::new(self.map(move |it| it.explode(direction)))
     }
 }
 

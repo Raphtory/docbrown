@@ -1692,7 +1692,7 @@ mod db_tests {
         g.add_edge(2, 1, 2, &vec![("weight".to_string(), Prop::I64(3))], None)
             .unwrap();
 
-        let exploded = g.edge(1, 2, None).unwrap().explode();
+        let exploded = g.edge(1, 2, None).unwrap().explode(None);
 
         let res = exploded.map(|e| e.properties(false)).collect_vec();
 
@@ -1709,7 +1709,7 @@ mod db_tests {
             .vertex(1)
             .unwrap()
             .edges()
-            .explode()
+            .explode(None)
             .map(|e| e.properties(false))
             .collect_vec();
         assert_eq!(e, expected);

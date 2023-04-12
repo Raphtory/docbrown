@@ -1,4 +1,4 @@
-use crate::core::Prop;
+use crate::core::{Direction, Prop};
 use crate::db::edge::EdgeView;
 use crate::db::view_api::{GraphViewOps, VertexListOps};
 use std::collections::HashMap;
@@ -63,5 +63,7 @@ pub trait EdgeListOps:
 
     /// gets the destination vertices of the edges in the list
     fn dst(self) -> Self::VList;
-    fn explode(self) -> Self::IterType;
+
+    /// returns a list of exploded edges that include an edge at each point in time
+    fn explode(self, direction: Option<Direction>) -> Self::IterType;
 }
