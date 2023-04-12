@@ -6,12 +6,15 @@
 //!
 
 use crate::core::tgraph::{EdgeRef, VertexRef};
+use crate::core::Direction;
 use crate::core::Prop;
 use crate::db::vertex::VertexView;
 use crate::db::view_api::{BoxedIter, EdgeListOps, GraphViewOps, TimeOps};
 use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};
 use std::ops::Range;
+use std::iter::{Filter, Map};
+use std::vec::IntoIter;
 
 #[derive(Clone)]
 /// A view of an edge in the graph.
@@ -86,9 +89,19 @@ impl<G: GraphViewOps> EdgeView<G> {
             Some((_, prop)) => Some(prop.clone()),
         }
     }
+
     pub fn property_history(&self, name: String) -> Vec<(i64, Prop)> {
-        self.graph.temporal_edge_props_vec(self.edge, name)
+        match self.edge.time {
+            None => self.graph.temporal_edge_props_vec(self.edge, name),
+            Some(_) => self.graph.temporal_edge_props_vec_window(
+                self.edge,
+                name,
+                self.edge.time.unwrap(),
+                self.edge.time.unwrap() + 1,
+            ),
+        }
     }
+
     pub fn properties(&self, include_static: bool) -> HashMap<String, Prop> {
         let mut props: HashMap<String, Prop> = self
             .property_histories()
@@ -107,8 +120,18 @@ impl<G: GraphViewOps> EdgeView<G> {
     }
 
     pub fn property_histories(&self) -> HashMap<String, Vec<(i64, Prop)>> {
-        self.graph.temporal_edge_props(self.edge)
+        // match on the self.edge.time option property and run two function s
+        // one for static and one for temporal
+        match self.edge.time {
+            None => self.graph.temporal_edge_props(self.edge),
+            Some(_) => self.graph.temporal_edge_props_window(
+                self.edge,
+                self.edge.time.unwrap(),
+                self.edge.time.unwrap() + 1,
+            ),
+        }
     }
+
     pub fn property_names(&self, include_static: bool) -> Vec<String> {
         let mut names: Vec<String> = self.graph.temporal_edge_prop_names(self.edge);
         if include_static {
@@ -150,6 +173,21 @@ impl<G: GraphViewOps> EdgeView<G> {
 
     pub fn id(&self) -> usize {
         self.edge.edge_id
+    }
+
+    pub fn explode(&self) -> Box<IntoIter<EdgeView<G>>> {
+        let vertex = VertexRef {
+            g_id: self.edge.src_g_id,
+            pid: None,
+        };
+
+        let r: Vec<EdgeView<G>> = self
+            .graph
+            .vertex_edges_t(vertex, Direction::OUT, None)
+            .filter(|e| e.edge_id == self.edge.edge_id)
+            .map(|e| EdgeView::new(self.graph.clone(), e))
+            .collect();
+        Box::new(r.into_iter())
     }
 }
 
@@ -246,6 +284,10 @@ impl<G: GraphViewOps> EdgeListOps for BoxedIter<EdgeView<G>> {
     fn dst(self) -> Self::VList {
         Box::new(self.into_iter().map(|e| e.dst()))
     }
+
+    fn explode(self) -> Self::IterType {
+        Box::new(self.flat_map(|e| e.explode()))
+    }
 }
 
 impl<G: GraphViewOps> EdgeListOps for BoxedIter<BoxedIter<EdgeView<G>>> {
@@ -301,6 +343,10 @@ impl<G: GraphViewOps> EdgeListOps for BoxedIter<BoxedIter<EdgeView<G>>> {
 
     fn dst(self) -> Self::VList {
         Box::new(self.map(|it| it.dst()))
+    }
+
+    fn explode(self) -> Self::IterType {
+        Box::new(self.map(|it| it.explode()))
     }
 }
 

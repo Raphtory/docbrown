@@ -8,6 +8,7 @@ use docbrown::db::view_api::*;
 use itertools::Itertools;
 use pyo3::{pyclass, pymethods, PyAny, PyRef, PyRefMut, PyResult};
 use std::collections::HashMap;
+use std::vec::IntoIter;
 
 #[pyclass(name = "Edge")]
 pub struct PyEdge {
@@ -120,6 +121,14 @@ impl PyEdge {
 
     pub fn through(&self, perspectives: &PyAny) -> PyResult<PyEdgeWindowSet> {
         through_impl(&self.edge, perspectives).map(|p| p.into())
+    }
+    
+    pub fn explode(&self) -> Vec<PyEdge> {
+        self.edge
+            .explode()
+            .into_iter()
+            .map(|e| e.into())
+            .collect::<Vec<PyEdge>>()
     }
 
     pub fn __repr__(&self) -> String {
