@@ -9,7 +9,7 @@ use crate::core::tgraph::{EdgeRef, VertexRef};
 use crate::core::Direction;
 use crate::core::Prop;
 use crate::db::vertex::VertexView;
-use crate::db::view_api::vertex::BoxedIter;
+use crate::db::view_api::BoxedIter;
 use crate::db::view_api::{EdgeListOps, GraphViewOps};
 use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};
