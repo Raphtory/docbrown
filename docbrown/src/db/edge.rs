@@ -13,9 +13,10 @@ use crate::db::view_api::BoxedIter;
 use crate::db::view_api::{EdgeListOps, GraphViewOps};
 use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};
-use std::vec::IntoIter;
+use std::iter;
 
 /// A view of an edge in the graph.
+#[derive(Clone)]
 pub struct EdgeView<G: GraphViewOps> {
     /// A view of an edge in the graph.
     graph: G,
@@ -160,19 +161,23 @@ impl<G: GraphViewOps> EdgeView<G> {
         self.edge.edge_id
     }
 
-    pub fn explode(&self, direction: Option<Direction>) -> Box<IntoIter<EdgeView<G>>> {
+    pub fn explode(&self) -> BoxedIter<EdgeView<G>> {
         let vertex = VertexRef {
             g_id: self.edge.src_g_id,
             pid: None,
         };
 
-        let r: Vec<EdgeView<G>> = self
-            .graph
-            .vertex_edges_t(vertex, direction.unwrap_or(Direction::OUT), None)
-            .filter(|e| e.edge_id == self.edge.edge_id)
-            .map(|e| EdgeView::new(self.graph.clone(), e))
-            .collect();
-        Box::new(r.into_iter())
+        if self.edge.time.is_some() {
+            Box::new(iter::once(self.clone()))
+        } else {
+            let r: Vec<EdgeView<G>> = self
+                .graph
+                .vertex_edges_t(vertex, Direction::OUT, None)
+                .filter(|e| e.edge_id == self.edge.edge_id)
+                .map(|e| EdgeView::new(self.graph.clone(), e))
+                .collect();
+            Box::new(r.into_iter())
+        }
     }
 }
 
@@ -245,8 +250,8 @@ impl<G: GraphViewOps> EdgeListOps for BoxedIter<EdgeView<G>> {
     }
 
     /// returns an iterator of exploded edges that include an edge at each point in time
-    fn explode(self, direction: Option<Direction>) -> Self::IterType {
-        Box::new(self.flat_map(move |e| e.explode(direction)))
+    fn explode(self) -> Self::IterType {
+        Box::new(self.flat_map(move |e| e.explode()))
     }
 }
 
@@ -305,8 +310,8 @@ impl<G: GraphViewOps> EdgeListOps for BoxedIter<BoxedIter<EdgeView<G>>> {
         Box::new(self.map(|it| it.dst()))
     }
 
-    fn explode(self, direction: Option<Direction>) -> Self::IterType {
-        Box::new(self.map(move |it| it.explode(direction)))
+    fn explode(self) -> Self::IterType {
+        Box::new(self.map(move |it| it.explode()))
     }
 }
 

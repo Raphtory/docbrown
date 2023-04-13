@@ -1,11 +1,10 @@
 use crate::dynamic::DynamicGraph;
 use crate::vertex::PyVertex;
 use crate::wrappers::prop::Prop;
-use docbrown::core::Direction;
 use docbrown::db::edge::EdgeView;
 use docbrown::db::view_api::*;
 use itertools::Itertools;
-use pyo3::{pyclass, pymethods, Py, PyRef, PyRefMut};
+use pyo3::{pyclass, pymethods, PyRef, PyRefMut};
 use std::collections::HashMap;
 
 #[pyclass(name = "Edge")]
@@ -88,7 +87,7 @@ impl PyEdge {
 
     pub fn explode(&self) -> Vec<PyEdge> {
         self.edge
-            .explode(Some(Direction::OUT))
+            .explode()
             .into_iter()
             .map(|e| e.into())
             .collect::<Vec<PyEdge>>()
@@ -134,9 +133,54 @@ impl PyEdgeIter {
     fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<PyEdge> {
         slf.iter.next()
     }
-    fn explode(slf: PyRef<'_, Self>) -> PyEdgeIter {
+}
+
+#[pyclass(name = "Edges")]
+pub struct PyEdges {
+    builder: Box<dyn Fn() -> BoxedIter<EdgeView<DynamicGraph>> + Send + 'static>,
+}
+
+impl PyEdges {
+    fn iter(&self) -> BoxedIter<EdgeView<DynamicGraph>> {
+        (self.builder)()
+    }
+
+    fn py_iter(&self) -> BoxedIter<PyEdge> {
+        Box::new(self.iter().map(|e| e.into()))
+    }
+}
+
+#[pymethods]
+impl PyEdges {
+    fn __iter__(&self) -> PyEdgeIter {
         PyEdgeIter {
-            iter: Box::new(slf.iter.map(|e| e.explode()).flatten()),
+            iter: Box::new(self.py_iter()),
+        }
+    }
+
+    fn collect(&self) -> Vec<PyEdge> {
+        self.py_iter().collect()
+    }
+
+    fn first(&self) -> Option<PyEdge> {
+        self.py_iter().next()
+    }
+
+    fn count(&self) -> usize {
+        self.py_iter().count()
+    }
+
+    fn explode(&self) -> PyEdgeIter {
+        let res: BoxedIter<EdgeView<DynamicGraph>> =
+            Box::new(self.iter().flat_map(|e| e.explode()));
+        res.into()
+    }
+}
+
+impl<F: Fn() -> BoxedIter<EdgeView<DynamicGraph>> + Send + 'static> From<F> for PyEdges {
+    fn from(value: F) -> Self {
+        Self {
+            builder: Box::new(value),
         }
     }
 }

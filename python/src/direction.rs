@@ -1,6 +1,5 @@
 use docbrown::core::Direction;
-use pyo3::Python;
-use pyo3::{pyclass, PyRefMut};
+use pyo3::pyclass;
 use std::fmt;
 
 #[pyclass(name = "Direction")]
