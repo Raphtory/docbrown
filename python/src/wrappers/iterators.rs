@@ -34,15 +34,30 @@ py_float_iterable!(Float64Iterable, f64, Float64Iter);
 py_iterator!(U64Iter, u64);
 py_numeric_iterable!(U64Iterable, u64, U64Iter);
 py_iterator!(NestedU64Iter, BoxedIter<u64>, U64Iter);
-py_nested_numeric_iterable!(NestedU64Iterable, u64, NestedU64Iter, U64Iterable, OptionU64Iterable);
+py_nested_numeric_iterable!(
+    NestedU64Iterable,
+    u64,
+    NestedU64Iter,
+    U64Iterable,
+    OptionU64Iterable
+);
 
 py_iterator!(OptionU64Iter, Option<u64>);
 py_iterable!(OptionU64Iterable, Option<u64>, OptionU64Iter);
 
 py_iterator!(I64Iter, i64);
+py_numeric_iterable!(I64Iterable, i64, I64Iter);
 py_iterator!(NestedI64Iter, BoxedIter<i64>, I64Iter);
+py_nested_numeric_iterable!(
+    NestedI64Iterable,
+    i64,
+    NestedI64Iter,
+    I64Iterable,
+    OptionI64Iterable
+);
 
 py_iterator!(OptionI64Iter, Option<i64>);
+py_iterable!(OptionI64Iterable, Option<i64>, OptionI64Iter);
 py_iterator!(NestedOptionI64Iter, BoxedIter<Option<i64>>, OptionI64Iter);
 
 py_iterator!(UsizeIter, usize);

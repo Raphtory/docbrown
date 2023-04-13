@@ -1,9 +1,9 @@
 macro_rules! py_nested_iterable_base {
     ($name:ident, $item:ty) => {
-        use std::sync::Arc;
         #[pyclass]
         pub struct $name {
-            builder: Arc<dyn Fn() -> BoxedIter<BoxedIter<$item>> + Send + Sync + 'static>,
+            builder:
+                std::sync::Arc<dyn Fn() -> BoxedIter<BoxedIter<$item>> + Send + Sync + 'static>,
         }
 
         impl $name {
@@ -15,7 +15,7 @@ macro_rules! py_nested_iterable_base {
         impl<F: Fn() -> BoxedIter<BoxedIter<$item>> + Sync + Send + 'static> From<F> for $name {
             fn from(value: F) -> Self {
                 Self {
-                    builder: Arc::new(value),
+                    builder: std::sync::Arc::new(value),
                 }
             }
         }
