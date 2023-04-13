@@ -2,7 +2,10 @@ use crate::core::tgraph::{EdgeRef, VertexRef};
 use crate::core::{Direction, Prop};
 use rayon::prelude::*;
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::{
+    sync::Arc,
+    ops::Range,
+};
 
 /// The GraphViewInternalOps trait provides a set of methods to query a directed graph
 /// represented by the docbrown_core::tgraph::TGraph struct.
@@ -476,9 +479,9 @@ pub trait GraphViewInternalOps {
     /// and the second element is the property value.
     fn temporal_vertex_prop_vec(&self, v: VertexRef, name: String) -> Vec<(i64, Prop)>;
 
-    fn temporal_vertex_timestamps_vec(&self, v: VertexRef, name: String) -> Vec<i64>;
+    fn temporal_vertex_timestamps_vec(&self, v: VertexRef) -> Vec<i64>;
 
-    fn temporal_vertex_timestamps_vec_window(&self, v: VertexRef, name: String, t_start: i64, t_end: i64) -> Vec<i64>;
+    fn temporal_vertex_timestamps_vec_window(&self, v: VertexRef, t_start: i64, t_end: i64) -> Vec<i64>;
 
     /// Returns a vector of all temporal values of the vertex property with the given name for the given vertex
     /// that fall within the specified time window.
@@ -606,7 +609,33 @@ pub trait GraphViewInternalOps {
     fn temporal_edge_timestamps_vec(
         &self, 
         e: EdgeRef, 
-        name: String
+        layer: usize,
+        d: Direction
+    ) -> Vec<i64>;
+
+    fn temporal_edge_window_timestamps_vec(
+        &self,
+        e: EdgeRef,
+        layer: usize,
+        d: Direction,
+        t_start: i64,
+        t_end: i64,
+    ) -> Vec<i64>;
+
+    fn temporal_remote_edge_timestamps_vec(
+        &self,
+        e: EdgeRef,
+        layer: usize,
+        d: Direction
+    ) -> Vec<i64>;
+
+    fn temporal_remote_edge_window_timestamps_vec(
+        &self,
+        e: EdgeRef,
+        layer: usize,
+        d: Direction,
+        t_start: i64,
+        t_end: i64,
     ) -> Vec<i64>;
 
     /// Returns a hash map containing all the temporal properties of the given edge reference,

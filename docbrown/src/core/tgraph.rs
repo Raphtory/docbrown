@@ -15,6 +15,7 @@ use crate::core::tprop::TProp;
 use crate::core::vertex::InputVertex;
 use crate::core::{bitset::BitSet, Direction};
 use crate::core::{Prop, Time};
+use crate::core::adj::Adj;
 
 use self::errors::MutateGraphError;
 
@@ -203,7 +204,7 @@ impl TemporalGraph {
         }
     }
 
-    pub(crate) fn has_vertex(&self, v: u64) -> bool {
+    pub(crate) fn has_vertex(&self, v: u64) -> bool { 
         self.logical_to_physical.contains_key(&v)
     }
 
@@ -751,30 +752,6 @@ impl TemporalGraph {
             .collect_vec()
     }
 
-    pub(crate) fn temporal_vertex_timestamps_vec(&self, v: u64, name: &str) -> Vec<i64> {
-        let index = self.logical_to_physical[&v];
-        let tprop = self
-            .props
-            .temporal_vertex_prop(index, name)
-            .unwrap_or(&TProp::Empty);
-        tprop
-            .iter()
-            .map(|(t, _p)| *t)
-            .collect_vec()
-    }
-
-    pub(crate) fn temporal_vertex_timestamps_vec_window(&self, v: u64, name: &str, w: &Range<i64>) -> Vec<i64> {
-        let index = self.logical_to_physical[&v];
-        let tprop = self
-            .props
-            .temporal_vertex_prop(index, name)
-            .unwrap_or(&TProp::Empty);
-        tprop
-            .iter_window(w.clone())
-            .map(|(t, _p)| *t)
-            .collect_vec()
-    }
-
     pub(crate) fn temporal_vertex_props(&self, v: u64) -> HashMap<String, Vec<(i64, Prop)>> {
         let index = self.logical_to_physical[&v];
         let names = self.vertex_props.temporal_names(index);
@@ -869,30 +846,12 @@ impl TemporalGraph {
             .collect_vec()
     }
 
-<<<<<<< HEAD:docbrown/src/core/tgraph.rs
     pub(crate) fn temporal_edge_props(
         &self,
         e: usize,
         layer: usize,
     ) -> HashMap<String, Vec<(i64, Prop)>> {
         let names = self.layers[layer].props.temporal_names(e);
-=======
-    pub fn temporal_edge_timestamps_vec(
-        &self,
-        e: usize,
-        name: &str
-    ) -> Vec<i64> {
-        self.props
-        .temporal_edge_prop(e, name)
-        .unwrap_or(&TProp::Empty)
-        .iter()
-        .map(|(t, _p)| *t)
-        .collect_vec()
-    }
-
-    pub(crate) fn temporal_edge_props(&self, e: usize) -> HashMap<String, Vec<(i64, Prop)>> {
-        let names = self.props.temporal_edge_names(e);
->>>>>>> 78eb556 (implementing history function):docbrown/core/src/tgraph.rs
         names
             .into_iter()
             .map(|name| {
@@ -925,7 +884,140 @@ impl TemporalGraph {
             })
             .collect()
     }
-}
+
+    pub(crate) fn temporal_vertex_timestamps_vec(&self, src: u64) -> Vec<i64> {
+        let src_pid =  self.logical_to_physical[&src];
+        self.timestamps[src_pid].iter().map(|t| *t).collect()
+    }   
+
+    pub(crate) fn temporal_vertex_timestamps_vec_window(&self, src: u64, w: Range<i64>) -> Vec<i64> {
+        let src_pid = self.logical_to_physical[&src];
+        self.timestamps[src_pid].range(w).map(|t| *t).collect()
+    }
+
+    pub(crate) fn temporal_edge_timestamps_vec(
+        &self,
+        src: u64,
+        layer: usize,
+        d: Direction
+    ) -> Vec<i64> {
+        let mut list: Vec<i64> = Vec::new();
+        let src_pid = self.logical_to_physical[&src];
+        if d == Direction::IN {
+            match self.layers[layer].adj_lists.get(src_pid).unwrap_or(&Adj::Solo) {
+                Adj::Solo => list,
+                Adj::List {into, ..} => {
+                    list.push(into.find(src_pid).map(|e| e.0).unwrap_or(0));
+                    list
+                 },
+            }
+        } else if d == Direction::OUT {
+            match self.layers[layer].adj_lists.get(src_pid).unwrap_or(&Adj::Solo) {
+                Adj::Solo => list,
+                Adj::List {out, ..} => {
+                    list.push(out.find(src_pid).map(|e| e.0).unwrap_or(0));
+                    list
+                 },
+            }
+        } else {
+            list
+        }
+    }
+
+        pub(crate) fn temporal_edge_window_timestamps_vec(
+            &self,
+            src: u64,
+            layer: usize,
+            d: Direction,
+            w: &Range<i64>
+        ) -> Vec<i64> {
+            let mut list: Vec<i64> = Vec::new();
+            let src_pid = self.logical_to_physical[&src];
+            if d == Direction::IN {
+                match self.layers[layer].adj_lists.get(src_pid).unwrap_or(&Adj::Solo) {
+                    Adj::Solo => list,
+                    Adj::List {into, ..} => {
+                        list.push(into.find_window(src_pid, w).map(|e| e.0).unwrap_or(0));
+                        list
+                     },
+                }
+            } else if d == Direction::OUT {
+                match self.layers[layer].adj_lists.get(src_pid).unwrap_or(&Adj::Solo) {
+                    Adj::Solo => list,
+                    Adj::List {out, ..} => {
+                        list.push(out.find_window(src_pid, w).map(|e| e.0).unwrap_or(0));
+                        list
+                     },
+                }
+            } else {
+                list
+            }
+
+        }
+
+        pub(crate) fn temporal_remote_edge_timestamps_vec(
+            &self,
+            src: u64,
+            layer: usize,
+            d: Direction
+        ) -> Vec<i64> {
+            let mut list: Vec<i64> = Vec::new();
+            let src_pid = self.logical_to_physical[&src];
+            if d == Direction::IN {
+                match self.layers[layer].adj_lists.get(src_pid).unwrap_or(&Adj::Solo) {
+                    Adj::Solo => list,
+                    Adj::List {remote_into, ..} => {
+                        list.push(remote_into.find(src_pid).map(|e| e.0).unwrap_or(0));
+                        list
+                     },
+                }
+            } else if d == Direction::OUT {
+                match self.layers[layer].adj_lists.get(src_pid).unwrap_or(&Adj::Solo) {
+                    Adj::Solo => list,
+                    Adj::List {remote_out, ..} => {
+                        list.push(remote_out.find(src_pid).map(|e| e.0).unwrap_or(0));
+                        list
+                     },
+                }
+            } else {
+                list
+            }
+        }
+
+        pub(crate) fn temporal_remote_edge_window_timestamps_vec(
+            &self,
+            src: u64,
+            layer: usize,
+            w: &Range<i64>,
+            d: Direction
+        ) -> Vec<i64> {
+            let mut list: Vec<i64> = Vec::new();
+            let src_pid = self.logical_to_physical[&src];
+            if d == Direction::IN {
+                match self.layers[layer].adj_lists.get(src_pid).unwrap_or(&Adj::Solo) {
+                    Adj::Solo => list,
+                    Adj::List {remote_into, ..} => {
+                        list.push(remote_into.find_window(src_pid, w).map(|e| e.0).unwrap_or(0));
+                        list
+                     },
+                }
+            } else if d == Direction::OUT {
+                match self.layers[layer].adj_lists.get(src_pid).unwrap_or(&Adj::Solo) {
+                    Adj::Solo => list,
+                    Adj::List {remote_out, ..} => {
+                        list.push(remote_out.find_window(src_pid, w).map(|e| e.0).unwrap_or(0));
+                        list
+                     },
+                }
+            } else {
+                list
+            }
+        }
+
+    }
+
+
+
 
 // helps us track what are we iterating over
 #[derive(Debug, PartialEq, Copy, Clone, Eq, Hash, PartialOrd, Ord)]
@@ -1439,15 +1531,9 @@ mod graph_test {
 
         g.add_vertex(1, 11);
         g.add_vertex(2, 22);
-<<<<<<< HEAD:docbrown/src/core/tgraph.rs
 
         g.add_edge(4, 11, 22, 0);
         g.add_edge(4, 11, 22, 0);
-=======
-        
-        g.add_edge(4, 11, 22);
-        g.add_edge(4, 11, 22);
->>>>>>> 78eb556 (implementing history function):docbrown/core/src/tgraph.rs
 
         let actual = g
             .vertex_edges_window(11, &(1..5), Direction::OUT, None)

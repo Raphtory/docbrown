@@ -17,6 +17,7 @@
 //! ```
 //!
 
+use crate::core::tadjset::Edge;
 use crate::core::tgraph::TemporalGraph;
 use crate::core::tgraph_shard::TGraphShard;
 use crate::core::{
@@ -37,6 +38,7 @@ use std::{
     collections::HashMap,
     path::{Path, PathBuf},
     sync::Arc,
+ 
 };
 
 /// A temporal graph composed of multiple shards.
@@ -425,16 +427,6 @@ impl GraphViewInternalOps for Graph {
             .temporal_vertex_prop_vec(v.g_id, name)
     }
 
-    fn temporal_vertex_timestamps_vec(&self, v: VertexRef, name: String) -> Vec<i64> {
-        self.get_shard_from_v(v)
-            .temporal_vertex_timestamps_vec(v.g_id, name)
-    }
-
-    fn temporal_vertex_timestamps_vec_window(&self, v: VertexRef, name: String, t_start: i64, t_end: i64) -> Vec<i64> {
-        self.get_shard_from_v(v)
-            .temporal_vertex_timestamps_vec_window(v.g_id, name, t_start..t_end)
-    }
-
     fn temporal_vertex_prop_vec_window(
         &self,
         v: VertexRef,
@@ -495,13 +487,56 @@ impl GraphViewInternalOps for Graph {
         )
     }
 
+    fn temporal_vertex_timestamps_vec(&self, v: VertexRef) -> Vec<i64> {
+        self.get_shard_from_v(v)
+            .temporal_vertex_timestamps_vec(v.g_id)
+    }
+
+    fn temporal_vertex_timestamps_vec_window(&self, v: VertexRef, t_start: i64, t_end: i64) -> Vec<i64> {
+        self.get_shard_from_v(v)
+            .temporal_vertex_timestamps_vec_window(v.g_id, t_start..t_end)
+    }
+
     fn temporal_edge_timestamps_vec(
         &self,
         e: EdgeRef,
-        name: String
+        layer: usize, 
+        d: Direction
     ) -> Vec<i64> {
         self.get_shard_from_e(e)
-            .temporal_edge_timestamps_vec(e.edge_id, name)
+            .temporal_edge_timestamps_vec(e.src_g_id, layer, d)
+    }
+
+    fn temporal_edge_window_timestamps_vec(
+        &self,
+        e: EdgeRef,
+        layer: usize,
+        d: Direction,
+        t_start: i64,
+        t_end: i64,
+    ) -> Vec<i64> {
+        self.get_shard_from_e(e).temporal_edge_window_timestamps_vec(e.src_g_id, layer, d, t_start..t_end)
+    }
+
+    fn temporal_remote_edge_timestamps_vec(
+        &self,
+        e: EdgeRef,
+        layer: usize,
+        d: Direction
+    ) -> Vec<i64> {
+        self.get_shard_from_e(e).temporal_remote_edge_timestamps_vec(e.src_g_id, layer, d)
+    }
+
+
+    fn temporal_remote_edge_window_timestamps_vec(
+        &self,
+        e: EdgeRef,
+        layer: usize,
+        d: Direction,
+        t_start: i64,
+        t_end: i64,
+    ) -> Vec<i64> {
+        self.get_shard_from_e(e).temporal_remote_edge_window_timestamps_vec(e.src_g_id, layer, d, t_start..t_end)
     }
 
     fn temporal_edge_props(&self, e: EdgeRef) -> HashMap<String, Vec<(i64, Prop)>> {

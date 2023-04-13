@@ -113,12 +113,12 @@ impl<G: GraphViewOps> VertexViewOps for VertexView<G> {
         }
     }
 
-    fn history(&self, name: String) -> Vec<i64> {
+    fn history(&self) -> Vec<i64> {
         match &self.window {
-            None => self.graph.temporal_vertex_timestamps_vec(self.vertex, name),
+            None => self.graph.temporal_vertex_timestamps_vec(self.vertex),
             Some(_w) => {
                 self.graph
-                    .temporal_vertex_timestamps_vec_window(self.vertex, name, self.earliest_time().unwrap_or_default(), self.latest_time().unwrap_or_default())
+                    .temporal_vertex_timestamps_vec_window(self.vertex, self.earliest_time().unwrap_or_default(), self.latest_time().unwrap_or_default())
             }
         }
     }
@@ -391,8 +391,8 @@ impl<G: GraphViewOps> VertexListOps for Box<dyn Iterator<Item = VertexView<G>> +
         Box::new(r.into_iter())
     }
 
-    fn history(self, name: String) -> BoxedIter<Vec<i64>> {
-        let r: Vec<_> = self.map(|v| v.history(name.clone())).collect();
+    fn history(self) -> BoxedIter<Vec<i64>> {
+        let r: Vec<_> = self.map(|v| v.history()).collect();
         Box::new(r.into_iter())
     }
 
@@ -513,8 +513,8 @@ impl<G: GraphViewOps> VertexListOps for BoxedIter<BoxedIter<VertexView<G>>> {
         Box::new(self.map(move |it| it.property_history(name.clone())))
     }
 
-    fn history(self, name: String) -> BoxedIter<Self::ValueType<Vec<i64>>> {
-        Box::new(self.map(move |it| it.history(name.clone())))
+    fn history(self) -> BoxedIter<Self::ValueType<Vec<i64>>> {
+        Box::new(self.map(move |it| it.history()))
     }
 
     fn properties(self, include_static: bool) -> BoxedIter<Self::ValueType<HashMap<String, Prop>>> {

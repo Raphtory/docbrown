@@ -101,8 +101,8 @@ impl<G: GraphViewOps> EdgeView<G> {
         }
     }
 
-    pub fn history(&self, name: String) -> Vec<i64> {
-        self.graph.temporal_edge_timestamps_vec(self.edge, name)
+    pub fn history(&self, layer: usize, d: Direction) -> Vec<i64> {
+        self.graph.temporal_edge_timestamps_vec(self.edge, layer, d)
     }
 
     pub fn properties(&self, include_static: bool) -> HashMap<String, Prop> {

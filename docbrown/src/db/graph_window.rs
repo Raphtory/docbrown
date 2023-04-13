@@ -45,7 +45,10 @@ use crate::db::perspective::Perspective;
 use crate::db::view_api::internal::GraphViewInternalOps;
 use crate::db::view_api::time::TimeOps;
 use crate::db::view_api::GraphViewOps;
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    ops::Range
+};
 
 /// A set of windowed views of a `Graph`, allows user to iterating over a Graph broken
 /// down into multiple windowed views.
@@ -801,24 +804,20 @@ impl<G: GraphViewOps> GraphViewInternalOps for WindowedGraph<G> {
     fn temporal_vertex_timestamps_vec(
         &self,
         v: VertexRef,
-        name: String,
     ) -> Vec<i64> {
         self.graph.temporal_vertex_timestamps_vec(
-            v,
-            name
+            v
         )
     }
 
     fn temporal_vertex_timestamps_vec_window(
         &self,
         v: VertexRef,
-        name: String,
         t_start: i64,
         t_end: i64,
     ) -> Vec<i64> {
         self.graph.temporal_vertex_timestamps_vec_window(
             v, 
-            name,
             self.actual_start(t_start),
             self.actual_end(t_end)
         )
@@ -827,9 +826,44 @@ impl<G: GraphViewOps> GraphViewInternalOps for WindowedGraph<G> {
     fn temporal_edge_timestamps_vec(
         &self,
         e: EdgeRef,
-        name: String,
+        layer: usize,
+        d: Direction
     ) -> Vec<i64> {
-        self.graph.temporal_edge_timestamps_vec(e, name)
+        self.graph.temporal_edge_timestamps_vec(e, layer, d)
+    }
+
+    fn temporal_edge_window_timestamps_vec(
+        &self,
+        e: EdgeRef,
+        layer: usize,
+        d: Direction,
+        t_start: i64,
+        t_end: i64,
+    ) -> Vec<i64> {
+        self.graph.temporal_edge_window_timestamps_vec(e, layer, d, self.actual_start(t_start),
+        self.actual_end(t_end))
+    }
+
+    fn temporal_remote_edge_timestamps_vec(
+        &self,
+        e: EdgeRef,
+        layer: usize,
+        d: Direction
+    ) -> Vec<i64> {
+        self.graph.temporal_remote_edge_timestamps_vec(e, layer, d)
+    }
+
+    fn temporal_remote_edge_window_timestamps_vec(
+        &self,
+        e: EdgeRef,
+        layer: usize,
+        d: Direction,
+        t_start: i64,
+        t_end: i64,
+    ) -> Vec<i64> {
+        self.graph.temporal_remote_edge_window_timestamps_vec(e, layer, d,
+            self.actual_start(t_start),
+        self.actual_end(t_end))
     }
 
     /// Get all temporal properties of a vertex

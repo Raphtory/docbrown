@@ -571,12 +571,12 @@ impl TGraphShard<TemporalGraph> {
         self.read_shard(|tg| (tg.temporal_vertex_prop_vec_window(v, &name, &w)))
     }
 
-    pub fn temporal_vertex_timestamps_vec(&self, v: u64, name: String) -> Vec<i64> {
-        self.read_shard(|tg| tg.temporal_vertex_timestamps_vec(v, &name))
+    pub fn temporal_vertex_timestamps_vec(&self, v: u64) -> Vec<i64> {
+        self.read_shard(|tg| tg.temporal_vertex_timestamps_vec(v))
     }
     
-    pub fn temporal_vertex_timestamps_vec_window(&self, v: u64, name: String, w: Range<i64>) -> Vec<i64> {
-        self.read_shard(|tg| tg.temporal_vertex_timestamps_vec_window(v, &name, &w))
+    pub fn temporal_vertex_timestamps_vec_window(&self, v: u64, w: Range<i64>) -> Vec<i64> {
+        self.read_shard(|tg| tg.temporal_vertex_timestamps_vec_window(v, w))
     }
 
     pub fn temporal_vertex_props(&self, v: u64) -> HashMap<String, Vec<(i64, Prop)>> {
@@ -622,10 +622,40 @@ impl TGraphShard<TemporalGraph> {
     
     pub fn temporal_edge_timestamps_vec(
         &self,
-        e: usize,
-        name: String
+        src: u64,
+        layer: usize,
+        d: Direction
     ) -> Vec<i64> {
-        self.read_shard(|tg| tg.temporal_edge_timestamps_vec(e, &name))
+        self.read_shard(|tg| tg.temporal_edge_timestamps_vec(src, layer, d))
+    }
+
+    pub fn temporal_edge_window_timestamps_vec(
+        &self,
+        src: u64,
+        layer: usize,
+        d: Direction,
+        w: Range<i64>
+    ) ->  Vec<i64> {
+        self.read_shard(|tg| tg.temporal_edge_window_timestamps_vec(src, layer, d, &w))
+    }
+
+    pub fn temporal_remote_edge_timestamps_vec(
+        &self,
+        src: u64,
+        layer: usize,
+        d: Direction
+    ) ->  Vec<i64> {
+        self.read_shard(|tg| tg.temporal_remote_edge_timestamps_vec(src, layer, d))
+    }
+
+    pub fn temporal_remote_edge_window_timestamps_vec(
+        &self,
+        src: u64,
+        layer: usize,
+        d: Direction,
+        w: Range<i64>
+    ) ->  Vec<i64>  {
+        self.read_shard(|tg| tg.temporal_remote_edge_window_timestamps_vec(src, layer, &w, d))
     }
 
     pub fn temporal_edge_props_window(
