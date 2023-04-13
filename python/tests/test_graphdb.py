@@ -51,6 +51,13 @@ def test_id_iterable():
     assert out_neighbours == {1: {1, 2, 3}, 2: {1}, 3: {2}}
 
 
+def test_vertices_time_iterable():
+    g = create_graph(2)
+
+    assert g.vertices.earliest_time().min() == -1
+    assert g.vertices.latest_time().max() == 7
+
+
 def test_graph_has_edge():
     g = create_graph(2)
 

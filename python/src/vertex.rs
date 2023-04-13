@@ -221,12 +221,14 @@ impl PyVertices {
         self.vertices.name().into()
     }
 
-    fn earliest_time(&self) -> OptionI64Iter {
-        self.vertices.earliest_time().into()
+    fn earliest_time(&self) -> OptionI64Iterable {
+        let vertices = self.vertices.clone();
+        (move || vertices.earliest_time()).into()
     }
 
-    fn latest_time(&self) -> OptionI64Iter {
-        self.vertices.latest_time().into()
+    fn latest_time(&self) -> OptionI64Iterable {
+        let vertices = self.vertices.clone();
+        (move || vertices.latest_time()).into()
     }
 
     fn property(&self, name: String, include_static: Option<bool>) -> OptionPropIter {
@@ -403,12 +405,14 @@ impl PyPathFromGraph {
         self.path.name().into()
     }
 
-    fn earliest_time(&self) -> NestedOptionI64Iter {
-        self.path.earliest_time().into()
+    fn earliest_time(&self) -> NestedOptionI64Iterable {
+        let path = self.path.clone();
+        (move || path.earliest_time()).into()
     }
 
-    fn latest_time(&self) -> NestedOptionI64Iter {
-        self.path.latest_time().into()
+    fn latest_time(&self) -> NestedOptionI64Iterable {
+        let path = self.path.clone();
+        (move || path.latest_time()).into()
     }
 
     fn property(&self, name: String, include_static: Option<bool>) -> NestedOptionPropIter {
@@ -574,12 +578,14 @@ impl PyPathFromVertex {
         self.path.name().into()
     }
 
-    fn earliest_time(&self) -> OptionI64Iter {
-        self.path.earliest_time().into()
+    fn earliest_time(&self) -> OptionI64Iterable {
+        let path = self.path.clone();
+        (move || path.earliest_time()).into()
     }
 
-    fn latest_time(&self) -> OptionI64Iter {
-        self.path.latest_time().into()
+    fn latest_time(&self) -> OptionI64Iterable {
+        let path = self.path.clone();
+        (move || path.latest_time()).into()
     }
 
     fn property(&self, name: String, include_static: Option<bool>) -> OptionPropIter {

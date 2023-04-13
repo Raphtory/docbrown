@@ -60,6 +60,13 @@ macro_rules! py_nested_numeric_methods {
     };
 }
 
+macro_rules! py_nested_iterable {
+    ($name:ident, $item:ty, $iter:ty, $value_iterable:ty) => {
+        py_nested_iterable_base!($name, $item);
+        py_nested_iterable_methods!($name, $item, $iter);
+    };
+}
+
 macro_rules! py_nested_numeric_iterable {
     ($name:ident, $item:ty, $iter:ty, $value_iterable:ty, $option_value_iterable:ty) => {
         py_nested_iterable_base!($name, $item);

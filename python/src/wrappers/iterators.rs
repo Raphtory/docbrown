@@ -44,6 +44,7 @@ py_nested_numeric_iterable!(
 
 py_iterator!(OptionU64Iter, Option<u64>);
 py_iterable!(OptionU64Iterable, Option<u64>, OptionU64Iter);
+py_ord_max_min_methods!(OptionU64Iterable, Option<u64>);
 
 py_iterator!(I64Iter, i64);
 py_numeric_iterable!(I64Iterable, i64, I64Iter);
@@ -58,7 +59,14 @@ py_nested_numeric_iterable!(
 
 py_iterator!(OptionI64Iter, Option<i64>);
 py_iterable!(OptionI64Iterable, Option<i64>, OptionI64Iter);
+py_ord_max_min_methods!(OptionI64Iterable, Option<i64>);
 py_iterator!(NestedOptionI64Iter, BoxedIter<Option<i64>>, OptionI64Iter);
+py_nested_iterable!(
+    NestedOptionI64Iterable,
+    Option<i64>,
+    NestedOptionI64Iter,
+    OptionI64Iterable
+);
 
 py_iterator!(UsizeIter, usize);
 py_iterator!(NestedUsizeIter, BoxedIter<usize>, UsizeIter);
