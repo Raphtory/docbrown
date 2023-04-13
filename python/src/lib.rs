@@ -1,5 +1,8 @@
 extern crate core;
 
+#[macro_use]
+mod macros;
+
 pub mod algorithms;
 mod dynamic;
 pub mod edge;

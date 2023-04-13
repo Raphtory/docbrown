@@ -38,6 +38,14 @@ def test_graph_len_edge_len():
     assert g.num_edges() == 5
 
 
+def test_id_iterable():
+    g = create_graph(2)
+
+    assert g.vertices.id().max() == 3
+    assert g.vertices.id().min() == 1
+    assert set(g.vertices.id().collect()) == {1, 2, 3}
+
+
 def test_graph_has_edge():
     g = create_graph(2)
 

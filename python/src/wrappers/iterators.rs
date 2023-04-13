@@ -1,85 +1,43 @@
 use crate::wrappers::prop::{PropHistories, PropHistory, PropValue, Props};
 use docbrown::core as db_c;
 use docbrown::db::view_api::BoxedIter;
+use num::cast::AsPrimitive;
 use pyo3::prelude::*;
 use std::collections::HashMap;
 use std::i64;
+use std::iter::Sum;
 
-macro_rules! py_iterator {
-    ($name:ident, $item:ty) => {
-        #[pyclass]
-        pub struct $name {
-            iter: Box<dyn Iterator<Item = $item> + Send>,
+pub(crate) trait MeanExt<V>: Iterator<Item = V>
+where
+    V: AsPrimitive<f64> + Sum<V>,
+{
+    fn mean(self) -> f64
+    where
+        Self: Sized,
+    {
+        let mut count: usize = 0;
+        let sum: V = self.inspect(|_| count += 1).sum();
+
+        if count > 0 {
+            sum.as_() / (count as f64)
+        } else {
+            0.0
         }
-
-        #[pymethods]
-        impl $name {
-            fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
-                slf
-            }
-            fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<$item> {
-                slf.iter.next()
-            }
-        }
-
-        impl From<Box<dyn Iterator<Item = $item> + Send>> for $name {
-            fn from(value: Box<dyn Iterator<Item = $item> + Send>) -> Self {
-                Self { iter: value }
-            }
-        }
-
-        impl IntoIterator for $name {
-            type Item = $item;
-            type IntoIter = Box<dyn Iterator<Item = $item> + Send>;
-
-            fn into_iter(self) -> Self::IntoIter {
-                self.iter
-            }
-        }
-    };
-
-    ($name:ident, $item:ty, $pyitem:ty) => {
-        #[pyclass]
-        pub struct $name {
-            iter: Box<dyn Iterator<Item = $pyitem> + Send>,
-        }
-
-        #[pymethods]
-        impl $name {
-            fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
-                slf
-            }
-            fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<$pyitem> {
-                slf.iter.next()
-            }
-        }
-
-        impl From<Box<dyn Iterator<Item = $item> + Send>> for $name {
-            fn from(value: Box<dyn Iterator<Item = $item> + Send>) -> Self {
-                let iter = Box::new(value.map(|v| v.into()));
-                Self { iter }
-            }
-        }
-
-        impl From<Box<dyn Iterator<Item = $pyitem> + Send>> for $name {
-            fn from(value: Box<dyn Iterator<Item = $pyitem> + Send>) -> Self {
-                Self { iter: value }
-            }
-        }
-
-        impl IntoIterator for $name {
-            type Item = $pyitem;
-            type IntoIter = Box<dyn Iterator<Item = $pyitem> + Send>;
-
-            fn into_iter(self) -> Self::IntoIter {
-                self.iter
-            }
-        }
-    };
+    }
 }
 
+impl<I: ?Sized + Iterator<Item = V>, V: AsPrimitive<f64> + Sum<V>> MeanExt<V> for I {}
+
+py_iterator!(Float64Iter, f64);
+py_float_iterable!(Float64Iterable, f64, Float64Iter);
+
 py_iterator!(U64Iter, u64);
+py_numeric_iterable!(U64Iterable, u64, U64Iter);
 py_iterator!(NestedU64Iter, BoxedIter<u64>, U64Iter);
+py_nested_numeric_iterable!(NestedU64Iterable, u64, NestedU64Iter, U64Iterable, OptionU64Iterable);
+
+py_iterator!(OptionU64Iter, Option<u64>);
+py_iterable!(OptionU64Iterable, Option<u64>, OptionU64Iter);
 
 py_iterator!(I64Iter, i64);
 py_iterator!(NestedI64Iter, BoxedIter<i64>, I64Iter);

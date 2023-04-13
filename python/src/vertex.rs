@@ -212,8 +212,9 @@ impl From<Vertices<DynamicGraph>> for PyVertices {
 
 #[pymethods]
 impl PyVertices {
-    fn id(&self) -> U64Iter {
-        self.vertices.id().into()
+    fn id(&self) -> U64Iterable {
+        let vertices = self.vertices.clone();
+        (move || vertices.id()).into()
     }
 
     fn name(&self) -> StringIter {
@@ -393,8 +394,9 @@ impl PyPathFromGraph {
         self.path.iter().into()
     }
 
-    fn id(&self) -> NestedU64Iter {
-        self.path.id().into()
+    fn id(&self) -> NestedU64Iterable {
+        let path = self.path.clone();
+        (move || path.id()).into()
     }
 
     fn name(&self) -> NestedStringIter {
