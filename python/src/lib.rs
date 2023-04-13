@@ -1,7 +1,6 @@
 extern crate core;
 
 pub mod algorithms;
-mod direction;
 mod dynamic;
 pub mod edge;
 pub mod graph;
