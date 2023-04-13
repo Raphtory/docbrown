@@ -44,6 +44,11 @@ def test_id_iterable():
     assert g.vertices.id().max() == 3
     assert g.vertices.id().min() == 1
     assert set(g.vertices.id().collect()) == {1, 2, 3}
+    out_neighbours = g.vertices.out_neighbours().id().collect()
+    out_neighbours = (set(n) for n in out_neighbours)
+    out_neighbours = dict(zip(g.vertices.id(), out_neighbours))
+
+    assert out_neighbours == {1: {1, 2, 3}, 2: {1}, 3: {2}}
 
 
 def test_graph_has_edge():

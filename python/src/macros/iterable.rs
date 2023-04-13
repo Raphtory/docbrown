@@ -28,7 +28,7 @@ macro_rules! py_iter_method {
     ($name:ident, $iter:ty) => {
         #[pymethods]
         impl $name {
-            pub fn __iter(&self) -> $iter {
+            pub fn __iter__(&self) -> $iter {
                 self.iter().into()
             }
         }
