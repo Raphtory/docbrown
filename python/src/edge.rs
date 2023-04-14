@@ -126,7 +126,7 @@ impl PyEdge {
     ///
     /// Arguments:
     ///   name (str): The name of the property to check.
-    ///   
+    ///
     /// Returns:
     ///   True if a static property exists with the given name, False otherwise.
     pub fn has_static_property(&self, name: String) -> bool {
@@ -333,6 +333,10 @@ impl PyEdges {
         PyEdgeIter {
             iter: Box::new(self.py_iter()),
         }
+    }
+
+    fn __len__(&self) -> usize {
+        self.py_iter().count()
     }
 
     /// Returns all edges as a list
