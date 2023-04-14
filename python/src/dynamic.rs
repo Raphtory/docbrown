@@ -97,49 +97,49 @@ impl GraphViewInternalOps for DynamicGraph {
         self.0.degree(v, d, layer)
     }
     
-    fn temporal_vertex_timestamps_vec(&self, v: VertexRef) -> Vec<i64> {
-        self.0.temporal_vertex_timestamps_vec(v)
+    fn vertex_timestamps(&self, v: VertexRef) -> Vec<i64> {
+        self.0.vertex_timestamps(v)
     }
 
-    fn temporal_vertex_timestamps_vec_window(&self, v: VertexRef, t_start: i64, t_end: i64) -> Vec<i64> {
-        self.0.temporal_vertex_timestamps_vec_window(v, t_start, t_end)
+    fn vertex_timestamps_window(&self, v: VertexRef, t_start: i64, t_end: i64) -> Vec<i64> {
+        self.0.vertex_timestamps_window(v, t_start, t_end)
     }
 
-    fn temporal_edge_timestamps_vec(
+    fn edge_timestamps(
             &self, 
             e: EdgeRef, 
             layer: usize,
             d: Direction
         ) -> Vec<i64> {
-        self.0.temporal_edge_timestamps_vec(e, layer, d)
+        self.0.edge_timestamps(e, layer, d)
     }
 
-    fn temporal_edge_window_timestamps_vec(
+    fn edge_window_timestamps(
         &self,
         e: EdgeRef,
         layer: usize,
         d: Direction,
         t_start: i64, t_end: i64
     ) -> Vec<i64> {
-        self.0.temporal_edge_window_timestamps_vec(e, layer, d, t_start, t_end)
+        self.0.edge_window_timestamps(e, layer, d, t_start, t_end)
     }
-    fn temporal_remote_edge_timestamps_vec(
+    fn remote_edge_timestamps(
         &self,
         e: EdgeRef,
         layer: usize,
         d: Direction
     ) -> Vec<i64> {
-        self.0.temporal_remote_edge_timestamps_vec(e, layer, d)
+        self.0.remote_edge_timestamps(e, layer, d)
     }
 
-    fn temporal_remote_edge_window_timestamps_vec(
+    fn remote_edge_window_timestamps(
         &self,
         e: EdgeRef,
         layer: usize,
         d: Direction,
         t_start: i64, t_end: i64
     ) -> Vec<i64> {
-        self.0.temporal_remote_edge_window_timestamps_vec(e, layer, d, t_start, t_end)
+        self.0.remote_edge_window_timestamps(e, layer, d, t_start, t_end)
     }
 
     fn degree_window(

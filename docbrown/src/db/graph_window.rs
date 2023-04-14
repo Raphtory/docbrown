@@ -801,38 +801,38 @@ impl<G: GraphViewOps> GraphViewInternalOps for WindowedGraph<G> {
         )
     }
 
-    fn temporal_vertex_timestamps_vec(
+    fn vertex_timestamps(
         &self,
         v: VertexRef,
     ) -> Vec<i64> {
-        self.graph.temporal_vertex_timestamps_vec(
+        self.graph.vertex_timestamps(
             v
         )
     }
 
-    fn temporal_vertex_timestamps_vec_window(
+    fn vertex_timestamps_window(
         &self,
         v: VertexRef,
         t_start: i64,
         t_end: i64,
     ) -> Vec<i64> {
-        self.graph.temporal_vertex_timestamps_vec_window(
+        self.graph.vertex_timestamps_window(
             v, 
             self.actual_start(t_start),
             self.actual_end(t_end)
         )
     }
 
-    fn temporal_edge_timestamps_vec(
+    fn edge_timestamps(
         &self,
         e: EdgeRef,
         layer: usize,
         d: Direction
     ) -> Vec<i64> {
-        self.graph.temporal_edge_timestamps_vec(e, layer, d)
+        self.graph.edge_timestamps(e, layer, d)
     }
 
-    fn temporal_edge_window_timestamps_vec(
+    fn edge_window_timestamps(
         &self,
         e: EdgeRef,
         layer: usize,
@@ -840,20 +840,20 @@ impl<G: GraphViewOps> GraphViewInternalOps for WindowedGraph<G> {
         t_start: i64,
         t_end: i64,
     ) -> Vec<i64> {
-        self.graph.temporal_edge_window_timestamps_vec(e, layer, d, self.actual_start(t_start),
+        self.graph.edge_window_timestamps(e, layer, d, self.actual_start(t_start),
         self.actual_end(t_end))
     }
 
-    fn temporal_remote_edge_timestamps_vec(
+    fn remote_edge_timestamps(
         &self,
         e: EdgeRef,
         layer: usize,
         d: Direction
     ) -> Vec<i64> {
-        self.graph.temporal_remote_edge_timestamps_vec(e, layer, d)
+        self.graph.remote_edge_timestamps(e, layer, d)
     }
 
-    fn temporal_remote_edge_window_timestamps_vec(
+    fn remote_edge_window_timestamps(
         &self,
         e: EdgeRef,
         layer: usize,
@@ -861,9 +861,7 @@ impl<G: GraphViewOps> GraphViewInternalOps for WindowedGraph<G> {
         t_start: i64,
         t_end: i64,
     ) -> Vec<i64> {
-        self.graph.temporal_remote_edge_window_timestamps_vec(e, layer, d,
-            self.actual_start(t_start),
-        self.actual_end(t_end))
+        self.graph.remote_edge_window_timestamps(e, layer, d, self.actual_start(t_start), self.actual_end(t_end))
     }
 
     /// Get all temporal properties of a vertex

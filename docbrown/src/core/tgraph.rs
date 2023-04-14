@@ -3,6 +3,7 @@
 use std::{
     collections::{BTreeMap, BTreeSet, HashMap},
     ops::Range,
+    any::Any
 };
 
 use itertools::Itertools;
@@ -16,6 +17,8 @@ use crate::core::vertex::InputVertex;
 use crate::core::{bitset::BitSet, Direction};
 use crate::core::{Prop, Time};
 use crate::core::adj::Adj;
+use crate::core::tadjset::AdjEdge;
+
 
 use self::errors::MutateGraphError;
 
@@ -885,46 +888,39 @@ impl TemporalGraph {
             .collect()
     }
 
-    pub(crate) fn temporal_vertex_timestamps_vec(&self, src: u64) -> Vec<i64> {
+    pub(crate) fn vertex_timestamps(&self, src: u64) -> Vec<i64> {
         let src_pid =  self.logical_to_physical[&src];
         self.timestamps[src_pid].iter().map(|t| *t).collect()
     }   
 
-    pub(crate) fn temporal_vertex_timestamps_vec_window(&self, src: u64, w: Range<i64>) -> Vec<i64> {
+    pub(crate) fn vertex_timestamps_window(&self, src: u64, w: Range<i64>) -> Vec<i64> {
         let src_pid = self.logical_to_physical[&src];
         self.timestamps[src_pid].range(w).map(|t| *t).collect()
     }
 
-    pub(crate) fn temporal_edge_timestamps_vec(
+    pub(crate) fn edge_timestamps(
         &self,
         src: u64,
         layer: usize,
         d: Direction
     ) -> Vec<i64> {
-        let mut list: Vec<i64> = Vec::new();
+       
         let src_pid = self.logical_to_physical[&src];
-        if d == Direction::IN {
+        if d == Direction::OUT {
             match self.layers[layer].adj_lists.get(src_pid).unwrap_or(&Adj::Solo) {
-                Adj::Solo => list,
-                Adj::List {into, ..} => {
-                    list.push(into.find(src_pid).map(|e| e.0).unwrap_or(0));
-                    list
-                 },
-            }
-        } else if d == Direction::OUT {
-            match self.layers[layer].adj_lists.get(src_pid).unwrap_or(&Adj::Solo) {
-                Adj::Solo => list,
+                Adj::Solo => vec![],
                 Adj::List {out, ..} => {
-                    list.push(out.find(src_pid).map(|e| e.0).unwrap_or(0));
-                    list
+                    // out.find(src_pid).into_iter().map(|e| e.0).collect::<Vec<i64>>()
+                    // out.find(src_pid).into_iter().map(|AdjEdge(x)| x).collect()
+                  
                  },
             }
         } else {
-            list
+            vec![]
         }
     }
 
-        pub(crate) fn temporal_edge_window_timestamps_vec(
+        pub(crate) fn edge_window_timestamps(
             &self,
             src: u64,
             layer: usize,
@@ -933,15 +929,7 @@ impl TemporalGraph {
         ) -> Vec<i64> {
             let mut list: Vec<i64> = Vec::new();
             let src_pid = self.logical_to_physical[&src];
-            if d == Direction::IN {
-                match self.layers[layer].adj_lists.get(src_pid).unwrap_or(&Adj::Solo) {
-                    Adj::Solo => list,
-                    Adj::List {into, ..} => {
-                        list.push(into.find_window(src_pid, w).map(|e| e.0).unwrap_or(0));
-                        list
-                     },
-                }
-            } else if d == Direction::OUT {
+            if d == Direction::OUT {
                 match self.layers[layer].adj_lists.get(src_pid).unwrap_or(&Adj::Solo) {
                     Adj::Solo => list,
                     Adj::List {out, ..} => {
@@ -955,7 +943,7 @@ impl TemporalGraph {
 
         }
 
-        pub(crate) fn temporal_remote_edge_timestamps_vec(
+        pub(crate) fn remote_edge_timestamps(
             &self,
             src: u64,
             layer: usize,
@@ -963,15 +951,7 @@ impl TemporalGraph {
         ) -> Vec<i64> {
             let mut list: Vec<i64> = Vec::new();
             let src_pid = self.logical_to_physical[&src];
-            if d == Direction::IN {
-                match self.layers[layer].adj_lists.get(src_pid).unwrap_or(&Adj::Solo) {
-                    Adj::Solo => list,
-                    Adj::List {remote_into, ..} => {
-                        list.push(remote_into.find(src_pid).map(|e| e.0).unwrap_or(0));
-                        list
-                     },
-                }
-            } else if d == Direction::OUT {
+            if d == Direction::OUT {
                 match self.layers[layer].adj_lists.get(src_pid).unwrap_or(&Adj::Solo) {
                     Adj::Solo => list,
                     Adj::List {remote_out, ..} => {
@@ -984,7 +964,7 @@ impl TemporalGraph {
             }
         }
 
-        pub(crate) fn temporal_remote_edge_window_timestamps_vec(
+        pub(crate) fn remote_edge_window_timestamps(
             &self,
             src: u64,
             layer: usize,
@@ -993,15 +973,7 @@ impl TemporalGraph {
         ) -> Vec<i64> {
             let mut list: Vec<i64> = Vec::new();
             let src_pid = self.logical_to_physical[&src];
-            if d == Direction::IN {
-                match self.layers[layer].adj_lists.get(src_pid).unwrap_or(&Adj::Solo) {
-                    Adj::Solo => list,
-                    Adj::List {remote_into, ..} => {
-                        list.push(remote_into.find_window(src_pid, w).map(|e| e.0).unwrap_or(0));
-                        list
-                     },
-                }
-            } else if d == Direction::OUT {
+            if d == Direction::OUT {
                 match self.layers[layer].adj_lists.get(src_pid).unwrap_or(&Adj::Solo) {
                     Adj::Solo => list,
                     Adj::List {remote_out, ..} => {

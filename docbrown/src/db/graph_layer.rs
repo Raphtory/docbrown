@@ -432,50 +432,5 @@ impl<G: GraphViewInternalOps> GraphViewInternalOps for LayeredGraph<G> {
     ) -> Box<dyn Iterator<Item = VertexRef> + Send> {
         self.graph.vertices_shard_window(shard_id, t_start, t_end)
     }
-
-    fn temporal_vertex_timestamps_vec(&self, v: VertexRef) -> Vec<i64> {
-       self.graph.temporal_vertex_timestamps_vec(v)
-    }
-
-    fn temporal_vertex_timestamps_vec_window(&self, v: VertexRef, t_start: i64, t_end: i64) -> Vec<i64> {
-       self.graph.temporal_vertex_timestamps_vec_window(v, t_start, t_end)
-    }
-
-    fn temporal_edge_timestamps_vec(
-        &self, 
-        e: EdgeRef,
-        layer: usize,
-        d: Direction
-    ) -> Vec<i64> {
-       self.graph.temporal_edge_timestamps_vec(e, layer, d)
-    }
-
-    fn temporal_edge_window_timestamps_vec(
-        &self,
-        e: EdgeRef,
-        layer: usize,
-        d: Direction,
-        t_start: i64, t_end: i64
-    ) -> Vec<i64> {
-        self.graph.temporal_edge_window_timestamps_vec(e, layer, d, t_start, t_end)
-    }
-    fn temporal_remote_edge_timestamps_vec(
-        &self,
-        e: EdgeRef,
-        layer: usize,
-        d: Direction
-    ) -> Vec<i64> {
-        self.graph.temporal_remote_edge_timestamps_vec(e, layer, d)
-    }
-
-    fn temporal_remote_edge_window_timestamps_vec(
-        &self,
-        e: EdgeRef,
-        layer: usize,
-        d: Direction,
-        t_start: i64, t_end: i64
-    ) -> Vec<i64> {
-        self.graph.temporal_remote_edge_window_timestamps_vec(e, layer, d, t_start, t_end)
-    }
     
 }

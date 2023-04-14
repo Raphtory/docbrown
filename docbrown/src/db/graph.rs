@@ -487,27 +487,27 @@ impl GraphViewInternalOps for Graph {
         )
     }
 
-    fn temporal_vertex_timestamps_vec(&self, v: VertexRef) -> Vec<i64> {
+    fn vertex_timestamps(&self, v: VertexRef) -> Vec<i64> {
         self.get_shard_from_v(v)
-            .temporal_vertex_timestamps_vec(v.g_id)
+            .vertex_timestamps(v.g_id)
     }
 
-    fn temporal_vertex_timestamps_vec_window(&self, v: VertexRef, t_start: i64, t_end: i64) -> Vec<i64> {
+    fn vertex_timestamps_window(&self, v: VertexRef, t_start: i64, t_end: i64) -> Vec<i64> {
         self.get_shard_from_v(v)
-            .temporal_vertex_timestamps_vec_window(v.g_id, t_start..t_end)
+            .vertex_timestamps_window(v.g_id, t_start..t_end)
     }
 
-    fn temporal_edge_timestamps_vec(
+    fn edge_timestamps(
         &self,
         e: EdgeRef,
         layer: usize, 
         d: Direction
     ) -> Vec<i64> {
         self.get_shard_from_e(e)
-            .temporal_edge_timestamps_vec(e.src_g_id, layer, d)
+            .edge_timestamps(e.src_g_id, layer, d)
     }
 
-    fn temporal_edge_window_timestamps_vec(
+    fn edge_window_timestamps(
         &self,
         e: EdgeRef,
         layer: usize,
@@ -515,20 +515,20 @@ impl GraphViewInternalOps for Graph {
         t_start: i64,
         t_end: i64,
     ) -> Vec<i64> {
-        self.get_shard_from_e(e).temporal_edge_window_timestamps_vec(e.src_g_id, layer, d, t_start..t_end)
+        self.get_shard_from_e(e).edge_window_timestamps(e.src_g_id, layer, d, t_start..t_end)
     }
 
-    fn temporal_remote_edge_timestamps_vec(
+    fn remote_edge_timestamps(
         &self,
         e: EdgeRef,
         layer: usize,
         d: Direction
     ) -> Vec<i64> {
-        self.get_shard_from_e(e).temporal_remote_edge_timestamps_vec(e.src_g_id, layer, d)
+        self.get_shard_from_e(e).remote_edge_timestamps(e.src_g_id, layer, d)
     }
 
 
-    fn temporal_remote_edge_window_timestamps_vec(
+    fn remote_edge_window_timestamps(
         &self,
         e: EdgeRef,
         layer: usize,
@@ -536,7 +536,7 @@ impl GraphViewInternalOps for Graph {
         t_start: i64,
         t_end: i64,
     ) -> Vec<i64> {
-        self.get_shard_from_e(e).temporal_remote_edge_window_timestamps_vec(e.src_g_id, layer, d, t_start..t_end)
+        self.get_shard_from_e(e).remote_edge_window_timestamps(e.src_g_id, layer, d, t_start..t_end)
     }
 
     fn temporal_edge_props(&self, e: EdgeRef) -> HashMap<String, Vec<(i64, Prop)>> {
