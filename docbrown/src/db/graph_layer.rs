@@ -432,5 +432,53 @@ impl<G: GraphViewInternalOps> GraphViewInternalOps for LayeredGraph<G> {
     ) -> Box<dyn Iterator<Item = VertexRef> + Send> {
         self.graph.vertices_shard_window(shard_id, t_start, t_end)
     }
+
+    fn vertex_timestamps(&self, v: VertexRef) -> Vec<i64> {
+        todo!()
+    }
+
+    fn vertex_timestamps_window(&self, v: VertexRef, t_start: i64, t_end: i64) -> Vec<i64> {
+        todo!()
+    }
+
+    fn edge_timestamps(
+        &self, 
+        e: EdgeRef, 
+        layer: usize,
+        d: Direction
+    ) -> Vec<i64> {
+        todo!()
+    }
+
+    fn edge_window_timestamps(
+        &self,
+        e: EdgeRef,
+        layer: usize,
+        d: Direction,
+        t_start: i64,
+        t_end: i64,
+    ) -> Vec<i64> {
+        todo!()
+    }
+
+    fn remote_edge_timestamps(
+        &self,
+        e: EdgeRef,
+        layer: usize,
+        d: Direction
+    ) -> Vec<i64> {
+        todo!()
+    }
+
+    fn remote_edge_window_timestamps(
+        &self,
+        e: EdgeRef,
+        layer: usize,
+        d: Direction,
+        t_start: i64,
+        t_end: i64,
+    ) -> Vec<i64> {
+        todo!()
+    }
     
 }
