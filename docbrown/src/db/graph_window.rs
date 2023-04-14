@@ -814,12 +814,12 @@ impl<G: GraphViewOps> GraphViewInternalOps for WindowedGraph<G> {
         &self,
         v: VertexRef,
         t_start: i64,
-        t_end: i64,
+        t_end: i64
     ) -> Vec<i64> {
         self.graph.vertex_timestamps_window(
             v, 
-            self.actual_start(t_start),
-            self.actual_end(t_end)
+            t_start,
+            t_end
         )
     }
 

@@ -116,9 +116,9 @@ impl<G: GraphViewOps> VertexViewOps for VertexView<G> {
     fn history(&self) -> Vec<i64> {
         match &self.window {
             None => self.graph.vertex_timestamps(self.vertex),
-            Some(_w) => {
+            Some(w) => {
                 self.graph
-                    .vertex_timestamps_window(self.vertex, self.earliest_time().unwrap_or_default(), self.latest_time().unwrap_or_default())
+                    .vertex_timestamps_window(self.vertex, w.start, w.end)
             }
         }
     }

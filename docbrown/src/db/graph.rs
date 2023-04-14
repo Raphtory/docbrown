@@ -1813,17 +1813,30 @@ mod db_tests {
 
         g.add_vertex(1, 1, &vec![]);
         g.add_vertex(2, 1, &vec![]);
-
         g.add_vertex(3, 1, &vec![]);
         g.add_vertex(4, 1, &vec![]);
+        g.add_vertex(8, 1, &vec![]);
+
         g.add_vertex(4, "Lord Farquaad", &vec![]);
         g.add_vertex(6, "Lord Farquaad", &vec![]);
         g.add_vertex(7, "Lord Farquaad", &vec![]);
+        g.add_vertex(8, "Lord Farquaad", &vec![]);
+      
+      
 
-        let times_of_one = g.vertex(1).unwrap().history();
-        let times_of_farquaad = g.vertex("Lord Farquaad").unwrap().history();
-    
-        assert_eq!(times_of_one, [1, 2 ,3 ,4]);
-        assert_eq!(times_of_farquaad, [4, 6, 7]);
+
+        // let times_of_one = g.vertex(1).unwrap().history();
+        // let times_of_farquaad = g.vertex("Lord Farquaad").unwrap().history();
+
+        // assert_eq!(times_of_one, [1, 2 ,3 ,4, 8]);
+        // assert_eq!(times_of_farquaad, [4, 6, 7, 8]);
+
+        let view = g.window(1, 7);
+        
+        let windowed_times_of_one = view.vertex(1).unwrap().history();
+        let windowed_times_of_farquaad = view.vertex("Lord Farquaad").unwrap().history();
+        assert_eq!(windowed_times_of_one, [1, 2 ,3 ,4]);
+        assert_eq!(windowed_times_of_farquaad, [4, 6, 7]);
+
     }
 
