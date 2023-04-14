@@ -47,8 +47,20 @@ impl PyGraph {
         )
     }
 
-    //******  Graph Updates  ******//
-
+    ///  Adds a new vertex with the given id and properties to the graph.
+    ///
+    ///  Parameters:
+    ///  -----------
+    ///  timestamp : int
+    ///      The timestamp of the new vertex.
+    ///  id : Any
+    ///      The id of the new vertex.
+    ///  properties : Optional[Dict[str, Prop]]
+    ///      A dictionary of properties to be added to the new vertex.
+    ///
+    ///  Returns:
+    ///  --------
+    ///  None
     pub fn add_vertex(
         &self,
         timestamp: i64,
