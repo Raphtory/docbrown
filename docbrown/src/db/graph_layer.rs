@@ -434,11 +434,11 @@ impl<G: GraphViewInternalOps> GraphViewInternalOps for LayeredGraph<G> {
     }
 
     fn vertex_timestamps(&self, v: VertexRef) -> Vec<i64> {
-        todo!()
+        self.graph.vertex_timestamps(v)
     }
 
     fn vertex_timestamps_window(&self, v: VertexRef, t_start: i64, t_end: i64) -> Vec<i64> {
-        todo!()
+        self.graph.vertex_timestamps_window(v, t_start, t_end)
     }
 
     fn edge_timestamps(
@@ -447,7 +447,7 @@ impl<G: GraphViewInternalOps> GraphViewInternalOps for LayeredGraph<G> {
         layer: usize,
         d: Direction
     ) -> Vec<i64> {
-        todo!()
+        self.graph.edge_timestamps(e, layer, d)
     }
 
     fn edge_window_timestamps(
@@ -458,7 +458,7 @@ impl<G: GraphViewInternalOps> GraphViewInternalOps for LayeredGraph<G> {
         t_start: i64,
         t_end: i64,
     ) -> Vec<i64> {
-        todo!()
+        self.edge_window_timestamps(e, layer, d, t_start, t_end)
     }
 
     fn remote_edge_timestamps(
@@ -467,7 +467,7 @@ impl<G: GraphViewInternalOps> GraphViewInternalOps for LayeredGraph<G> {
         layer: usize,
         d: Direction
     ) -> Vec<i64> {
-        todo!()
+        self.remote_edge_timestamps(e, layer, d)
     }
 
     fn remote_edge_window_timestamps(
@@ -478,7 +478,7 @@ impl<G: GraphViewInternalOps> GraphViewInternalOps for LayeredGraph<G> {
         t_start: i64,
         t_end: i64,
     ) -> Vec<i64> {
-        todo!()
+        self.remote_edge_window_timestamps(e, layer, d, t_start, t_end)
     }
     
 }

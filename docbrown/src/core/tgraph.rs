@@ -912,7 +912,7 @@ impl TemporalGraph {
                 Adj::List {out, ..} => {
                     // out.find(src_pid).into_iter().map(|e| e.0).collect::<Vec<i64>>()
                     // out.find(src_pid).into_iter().map(|AdjEdge(x)| x).collect()
-                  
+                    vec![]
                  },
             }
         } else {
@@ -927,18 +927,16 @@ impl TemporalGraph {
             d: Direction,
             w: &Range<i64>
         ) -> Vec<i64> {
-            let mut list: Vec<i64> = Vec::new();
             let src_pid = self.logical_to_physical[&src];
             if d == Direction::OUT {
                 match self.layers[layer].adj_lists.get(src_pid).unwrap_or(&Adj::Solo) {
-                    Adj::Solo => list,
+                    Adj::Solo => vec![],
                     Adj::List {out, ..} => {
-                        list.push(out.find_window(src_pid, w).map(|e| e.0).unwrap_or(0));
-                        list
+                        vec![]
                      },
                 }
             } else {
-                list
+                vec![]
             }
 
         }
@@ -949,18 +947,17 @@ impl TemporalGraph {
             layer: usize,
             d: Direction
         ) -> Vec<i64> {
-            let mut list: Vec<i64> = Vec::new();
+          
             let src_pid = self.logical_to_physical[&src];
             if d == Direction::OUT {
                 match self.layers[layer].adj_lists.get(src_pid).unwrap_or(&Adj::Solo) {
-                    Adj::Solo => list,
+                    Adj::Solo =>  vec![],
                     Adj::List {remote_out, ..} => {
-                        list.push(remote_out.find(src_pid).map(|e| e.0).unwrap_or(0));
-                        list
+                        vec![]
                      },
                 }
             } else {
-                list
+                vec![]
             }
         }
 
@@ -971,18 +968,17 @@ impl TemporalGraph {
             w: &Range<i64>,
             d: Direction
         ) -> Vec<i64> {
-            let mut list: Vec<i64> = Vec::new();
+   
             let src_pid = self.logical_to_physical[&src];
             if d == Direction::OUT {
                 match self.layers[layer].adj_lists.get(src_pid).unwrap_or(&Adj::Solo) {
-                    Adj::Solo => list,
+                    Adj::Solo =>  vec![],
                     Adj::List {remote_out, ..} => {
-                        list.push(remote_out.find_window(src_pid, w).map(|e| e.0).unwrap_or(0));
-                        list
+                        vec![]
                      },
                 }
             } else {
-                list
+                vec![]
             }
         }
 
@@ -1221,9 +1217,8 @@ mod graph_test {
     #[ignore = "Undecided on the semantics of the time window over vertices shoule be supported in Docbrown"]
     fn add_vertex_at_time_t1_window() {
         let mut g = TemporalGraph::default();
-
+       
         g.add_vertex(9, 1);
-
         assert!(g.has_vertex(9));
         assert!(g.has_vertex_window(9, &(1..15)));
         assert!(g.has_vertex_window(9, &(5..15))); // FIXME: this is wrong and we might need a different kind of window here

@@ -937,6 +937,7 @@ mod db_tests {
     use crate::db::edge::EdgeView;
     use crate::db::path::PathFromVertex;
     use crate::db::perspective::Perspective;
+    use crate::db::vertex::VertexView;
     use crate::db::view_api::*;
     use crate::graphgen::random_attachment::random_attachment;
     use csv::StringRecord;
@@ -1805,4 +1806,24 @@ mod db_tests {
         let mut res_list: Vec<i64> = g.vertex(1).unwrap().at(1).edges().latest_time().collect();
         assert_eq!(res_list, vec![1, 1]);
     }
-}
+
+    #[test]
+    fn check_vertex_history() {
+        let g = Graph::new(1);
+
+        g.add_vertex(1, 1, &vec![]);
+        g.add_vertex(2, 1, &vec![]);
+
+        g.add_vertex(3, 1, &vec![]);
+        g.add_vertex(4, 1, &vec![]);
+        g.add_vertex(4, "Lord Farquaad", &vec![]);
+        g.add_vertex(6, "Lord Farquaad", &vec![]);
+        g.add_vertex(7, "Lord Farquaad", &vec![]);
+
+        let times_of_one = g.vertex(1).unwrap().history();
+        let times_of_farquaad = g.vertex("Lord Farquaad").unwrap().history();
+    
+        assert_eq!(times_of_one, [1, 2 ,3 ,4]);
+        assert_eq!(times_of_farquaad, [4, 6, 7]);
+    }
+
