@@ -1,5 +1,10 @@
+import sys
 from .raphtory import *
-from .plot import draw
+sys.modules["raphtory.algorithms"] = algorithms
+sys.modules["raphtory.graph_gen"] = graph_gen
+sys.modules["raphtory.graph_loader"] = graph_loader
+
+
 from .nullmodels import *
 
 __doc__ = raphtory.__doc__

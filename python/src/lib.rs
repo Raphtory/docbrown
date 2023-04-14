@@ -1,30 +1,40 @@
+extern crate core;
+
 pub mod algorithms;
+mod dynamic;
+pub mod edge;
 pub mod graph;
 pub mod graph_gen;
 pub mod graph_loader;
-pub mod graph_window;
+pub mod graph_view;
+pub mod perspective;
+mod util;
+pub mod vertex;
 pub mod wrappers;
 
-use pyo3::prelude::*;
-
-use crate::algorithms::{all_local_reciprocity, global_reciprocity, local_reciprocity};
-use crate::graph::Graph;
-use crate::wrappers::Perspective;
-
 use crate::algorithms::*;
+use crate::algorithms::{
+    all_local_reciprocity, global_clustering_coefficient, global_reciprocity, triplet_count,
+};
+use crate::graph::PyGraph;
 use crate::graph_gen::*;
 use crate::graph_loader::*;
+use perspective::PyPerspective;
 use pyo3::prelude::*;
 
 #[pymodule]
 fn raphtory(py: Python<'_>, m: &PyModule) -> PyResult<()> {
-    m.add_class::<Graph>()?;
-    m.add_class::<Perspective>()?;
+    m.add_class::<PyGraph>()?;
+    m.add_class::<PyPerspective>()?;
 
     let algorithm_module = PyModule::new(py, "algorithms")?;
     algorithm_module.add_function(wrap_pyfunction!(global_reciprocity, algorithm_module)?)?;
-    algorithm_module.add_function(wrap_pyfunction!(local_reciprocity, algorithm_module)?)?;
     algorithm_module.add_function(wrap_pyfunction!(all_local_reciprocity, algorithm_module)?)?;
+    algorithm_module.add_function(wrap_pyfunction!(triplet_count, algorithm_module)?)?;
+    algorithm_module.add_function(wrap_pyfunction!(
+        global_clustering_coefficient,
+        algorithm_module
+    )?)?;
     algorithm_module.add_function(wrap_pyfunction!(local_triangle_count, algorithm_module)?)?;
     algorithm_module.add_function(wrap_pyfunction!(
         local_clustering_coefficient,
