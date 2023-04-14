@@ -19,6 +19,7 @@
 
 use crate::core::tgraph::TemporalGraph;
 use crate::core::tgraph_shard::TGraphShard;
+use crate::core::time::{IntoTime, IntoTimeWithFormat};
 use crate::core::{
     tgraph::{EdgeRef, VertexRef},
     tgraph_shard::errors::GraphError,
@@ -743,14 +744,25 @@ impl Graph {
     /// let v = g.add_vertex(0, "Alice", &vec![]);
     /// let v = g.add_vertex(0, 5, &vec![]);
     /// ```
-    pub fn add_vertex<T: InputVertex>(
+    pub fn add_vertex<V: InputVertex, T: IntoTime>(
         &self,
-        t: i64,
-        v: T,
+        t: T,
+        v: V,
         props: &Vec<(String, Prop)>,
     ) -> Result<(), GraphError> {
         let shard_id = utils::get_shard_id_from_global_vid(v.id(), self.nr_shards);
-        self.shards[shard_id].add_vertex(t, v, props)
+        self.shards[shard_id].add_vertex(t.into_time()?, v, props)
+    }
+
+    pub fn add_vertex_with_time_format<V: InputVertex>(
+        &self,
+        t: &str,
+        fmt: &str,
+        v: V,
+        props: &Vec<(String, Prop)>,
+    ) -> Result<(), GraphError> {
+        let shard_id = utils::get_shard_id_from_global_vid(v.id(), self.nr_shards);
+        self.shards[shard_id].add_vertex(t.parse_time(fmt)?, v, props)
     }
 
     /// Adds properties to the given input vertex.
@@ -770,9 +782,9 @@ impl Graph {
     /// let properties = vec![("color".to_owned(), Prop::Str("blue".to_owned())), ("weight".to_owned(), Prop::I64(11))];
     /// let result = graph.add_vertex_properties("Alice", &properties);
     /// ```
-    pub fn add_vertex_properties<T: InputVertex>(
+    pub fn add_vertex_properties<V: InputVertex>(
         &self,
-        v: T,
+        v: V,
         data: &Vec<(String, Prop)>,
     ) -> Result<(), GraphError> {
         let shard_id = utils::get_shard_id_from_global_vid(v.id(), self.nr_shards);
@@ -799,32 +811,33 @@ impl Graph {
     /// graph.add_vertex(2, "Bob", &vec![]);
     /// graph.add_edge(3, "Alice", "Bob", &vec![], None);
     /// ```    
-    pub fn add_edge<T: InputVertex>(
+    pub fn add_edge<V: InputVertex, T: IntoTime>(
         &self,
-        t: i64,
-        src: T,
-        dst: T,
+        t: T,
+        src: V,
+        dst: V,
         props: &Vec<(String, Prop)>,
         layer: Option<&str>,
     ) -> Result<(), GraphError> {
+        let time = t.into_time()?;
         let src_shard_id = utils::get_shard_id_from_global_vid(src.id(), self.nr_shards);
         let dst_shard_id = utils::get_shard_id_from_global_vid(dst.id(), self.nr_shards);
 
         let layer_id = self.get_or_allocate_layer(layer);
 
         if src_shard_id == dst_shard_id {
-            self.shards[src_shard_id].add_edge(t, src, dst, props, layer_id)
+            self.shards[src_shard_id].add_edge(time, src, dst, props, layer_id)
         } else {
             // FIXME these are sort of connected, we need to hold both locks for
             // the src partition and dst partition to add a remote edge between both
             self.shards[src_shard_id].add_edge_remote_out(
-                t,
+                time,
                 src.clone(),
                 dst.clone(),
                 props,
                 layer_id,
             )?;
-            self.shards[dst_shard_id].add_edge_remote_into(t, src, dst, props, layer_id)?;
+            self.shards[dst_shard_id].add_edge_remote_into(time, src, dst, props, layer_id)?;
             Ok(())
         }
     }
@@ -849,10 +862,10 @@ impl Graph {
     /// let properties = vec![("price".to_owned(), Prop::I64(100))];
     /// let result = graph.add_edge_properties("Alice", "Bob", &properties, None);
     /// ```
-    pub fn add_edge_properties<T: InputVertex>(
+    pub fn add_edge_properties<V: InputVertex>(
         &self,
-        src: T,
-        dst: T,
+        src: V,
+        dst: V,
         props: &Vec<(String, Prop)>,
         layer: Option<&str>,
     ) -> Result<(), GraphError> {
@@ -909,12 +922,12 @@ mod db_tests {
     }
 
     #[quickcheck]
-    fn add_vertex_grows_graph_len(vs: Vec<(u8, u64)>) {
+    fn add_vertex_grows_graph_len(vs: Vec<(i64, u64)>) {
         let g = Graph::new(2);
 
         let expected_len = vs.iter().map(|(_, v)| v).sorted().dedup().count();
         for (t, v) in vs {
-            g.add_vertex(t.into(), v, &vec![])
+            g.add_vertex(t, v, &vec![])
                 .map_err(|err| println!("{:?}", err))
                 .ok();
         }
