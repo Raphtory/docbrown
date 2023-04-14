@@ -1,3 +1,10 @@
+//! Defines the `Graph` struct, which represents a docbrown graph in memory.
+//!
+//! This is the base class used to create a temporal graph, add vertices and edges,
+//! create windows, and query the graph with a variety of algorithms.
+//! It is a wrapper around a set of shards, which are the actual graph data structures.
+//! In Python, this class wraps around the rust graph.
+
 use crate::dynamic::DynamicGraph;
 use crate::graph_view::PyGraphView;
 use crate::util::adapt_result;
@@ -11,6 +18,7 @@ use pyo3::prelude::*;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
+/// A temporal graph.
 #[pyclass(name="Graph", extends=PyGraphView)]
 pub struct PyGraph {
     pub(crate) graph: Graph,
@@ -33,6 +41,7 @@ impl PyGraph {
     }
 }
 
+/// A temporal graph.
 #[pymethods]
 impl PyGraph {
     #[new]
@@ -47,20 +56,15 @@ impl PyGraph {
         )
     }
 
-    ///  Adds a new vertex with the given id and properties to the graph.
+    /// Adds a new vertex with the given id and properties to the graph.
     ///
-    ///  Parameters:
-    ///  -----------
-    ///  timestamp : int
-    ///      The timestamp of the new vertex.
-    ///  id : Any
-    ///      The id of the new vertex.
-    ///  properties : Optional[Dict[str, Prop]]
-    ///      A dictionary of properties to be added to the new vertex.
+    /// Arguments:
+    ///    timestamp (int): The timestamp of the vertex.
+    ///    id (str or int): The id of the vertex.
+    ///    properties (dict): The properties of the vertex.
     ///
-    ///  Returns:
-    ///  --------
-    ///  None
+    /// Returns:
+    ///   None
     pub fn add_vertex(
         &self,
         timestamp: i64,
@@ -74,6 +78,14 @@ impl PyGraph {
         adapt_result(result)
     }
 
+    /// Adds properties to an existing vertex.
+    ///
+    /// Arguments:
+    ///     id (str or int): The id of the vertex.
+    ///     properties (dict): The properties of the vertex.
+    ///
+    /// Returns:
+    ///    None
     pub fn add_vertex_properties(
         &self,
         id: &PyAny,
@@ -86,6 +98,17 @@ impl PyGraph {
         adapt_result(result)
     }
 
+    /// Adds a new edge with the given source and destination vertices and properties to the graph.
+    ///
+    /// Arguments:
+    ///    timestamp (int): The timestamp of the edge.
+    ///    src (str or int): The id of the source vertex.
+    ///    dst (str or int): The id of the destination vertex.
+    ///    properties (dict): The properties of the edge, as a dict of string and properties
+    ///    layer (str): The layer of the edge.
+    ///
+    /// Returns:
+    ///   None
     pub fn add_edge(
         &self,
         timestamp: i64,
@@ -105,6 +128,16 @@ impl PyGraph {
         ))
     }
 
+    /// Adds properties to an existing edge.
+    ///
+    /// Arguments:
+    ///    src (str or int): The id of the source vertex.
+    ///    dst (str or int): The id of the destination vertex.
+    ///    properties (dict): The properties of the edge, as a dict of string and properties
+    ///    layer (str): The layer of the edge.
+    ///
+    /// Returns:
+    ///  None
     pub fn add_edge_properties(
         &self,
         src: &PyAny,
@@ -126,6 +159,14 @@ impl PyGraph {
     //******  Saving And Loading  ******//
 
     // Alternative constructors are tricky, see: https://gist.github.com/redshiftzero/648e4feeff3843ffd9924f13625f839c
+
+    /// Loads a graph from the given path.
+    ///
+    /// Arguments:
+    ///   path (str): The path to the graph.
+    ///
+    /// Returns:
+    ///  Graph: The loaded graph.
     #[staticmethod]
     pub fn load_from_file(path: String) -> PyResult<Py<PyGraph>> {
         let file_path: PathBuf = [env!("CARGO_MANIFEST_DIR"), &path].iter().collect();
@@ -139,6 +180,13 @@ impl PyGraph {
         }
     }
 
+    /// Saves the graph to the given path.
+    ///
+    /// Arguments:
+    ///  path (str): The path to the graph.
+    ///
+    /// Returns:
+    /// None
     pub fn save_to_file(&self, path: String) -> PyResult<()> {
         match self.graph.save_to_file(Path::new(&path)) {
             Ok(()) => Ok(()),
@@ -159,6 +207,10 @@ impl PyGraph {
             .collect_vec()
     }
 
+    /// Extracts the id from the given python vertex
+    ///
+    /// Arguments:
+    ///     id (str or int): The id of the vertex.
     pub(crate) fn extract_id(id: &PyAny) -> PyResult<InputVertexBox> {
         match id.extract::<String>() {
             Ok(string) => Ok(InputVertexBox::new(string)),
@@ -171,12 +223,16 @@ impl PyGraph {
     }
 }
 
+/// A trait for vertices that can be used as input for the graph.
+/// This allows us to add vertices with different types of ids, either strings or ints.
 #[derive(Clone)]
 pub struct InputVertexBox {
     id: u64,
     name_prop: Option<dbc::Prop>,
 }
 
+/// Implementation for vertices that can be used as input for the graph.
+/// This allows us to add vertices with different types of ids, either strings or ints.
 impl InputVertexBox {
     pub(crate) fn new<T>(vertex: T) -> InputVertexBox
     where
@@ -189,10 +245,15 @@ impl InputVertexBox {
     }
 }
 
+/// Implementation for vertices that can be used as input for the graph.
+/// This allows us to add vertices with different types of ids, either strings or ints.
 impl InputVertex for InputVertexBox {
+    /// Returns the id of the vertex.
     fn id(&self) -> u64 {
         self.id
     }
+
+    /// Returns the name property of the vertex.
     fn name_prop(&self) -> Option<dbc::Prop> {
         self.name_prop.clone()
     }

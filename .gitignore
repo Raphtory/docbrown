@@ -13,3 +13,4 @@ docs/build/*
 .DS_Store
 docs/logs/*
 .python-version
+.ipynb_checkpoints
