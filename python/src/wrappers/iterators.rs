@@ -1,11 +1,15 @@
+use crate::types::repr::{Repr, ReprWrapper};
 use crate::wrappers::prop::{PropHistories, PropHistory, PropValue, Props};
 use docbrown::core as db_c;
 use docbrown::db::view_api::BoxedIter;
 use num::cast::AsPrimitive;
 use pyo3::prelude::*;
 use std::collections::HashMap;
+use std::fmt::{Debug, Display, Formatter};
 use std::i64;
 use std::iter::Sum;
+use std::ops::Deref;
+use std::sync::Arc;
 
 pub(crate) trait MeanExt<V>: Iterator<Item = V>
 where
@@ -60,12 +64,25 @@ py_nested_numeric_iterable!(
 py_iterator!(OptionI64Iter, Option<i64>);
 py_iterable!(OptionI64Iterable, Option<i64>, OptionI64Iter);
 py_ord_max_min_methods!(OptionI64Iterable, Option<i64>);
+py_iterator!(OptionOptionI64Iter, Option<Option<i64>>);
+py_iterable!(
+    OptionOptionI64Iterable,
+    Option<Option<i64>>,
+    OptionOptionI64Iter
+);
+py_ord_max_min_methods!(OptionOptionI64Iterable, Option<Option<i64>>);
+
 py_iterator!(NestedOptionI64Iter, BoxedIter<Option<i64>>, OptionI64Iter);
 py_nested_iterable!(
     NestedOptionI64Iterable,
     Option<i64>,
     NestedOptionI64Iter,
     OptionI64Iterable
+);
+py_nested_ord_max_min_methods!(
+    NestedOptionI64Iterable,
+    Option<i64>,
+    OptionOptionI64Iterable
 );
 
 py_iterator!(UsizeIter, usize);

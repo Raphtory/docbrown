@@ -14,6 +14,7 @@ pub mod perspective;
 mod util;
 pub mod vertex;
 pub mod wrappers;
+pub mod types;
 
 use crate::algorithms::*;
 use crate::algorithms::{

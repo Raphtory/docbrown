@@ -31,6 +31,14 @@ macro_rules! py_iter_method {
             pub fn __iter__(&self) -> $iter {
                 self.iter().into()
             }
+
+            pub fn __len__(&self) -> usize {
+                self.iter().count()
+            }
+
+            pub fn __repr__(&self) -> String {
+                repr!(self.0)
+            }
         }
     };
 }
@@ -95,20 +103,22 @@ macro_rules! py_float_max_min_methods {
 macro_rules! py_iterable_base {
     ($name:ident,$item:ty) => {
         #[pyclass]
-        pub struct $name {
-            builder: Box<dyn Fn() -> BoxedIter<$item> + Send + 'static>,
-        }
+        pub struct $name($crate::types::iterable::Iterable<$item>);
 
-        impl $name {
-            fn iter(&self) -> BoxedIter<$item> {
-                (self.builder)()
+        impl Deref for $name {
+            type Target = $crate::types::iterable::Iterable<$item>;
+
+            fn deref(&self) -> &Self::Target {
+                &self.0
             }
         }
-        impl<F: Fn() -> BoxedIter<$item> + Send + 'static> From<F> for $name {
+
+        impl<F: Fn() -> BoxedIter<$item> + Send + Sync + 'static> From<F> for $name {
             fn from(value: F) -> Self {
-                Self {
-                    builder: Box::new(value),
-                }
+                Self($crate::types::iterable::Iterable::new(
+                    stringify!($name).to_string(),
+                    value,
+                ))
             }
         }
     };
