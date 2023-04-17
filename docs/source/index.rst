@@ -40,3 +40,4 @@ Alternatively, hit next and lets get Raphtory :doc:`installed <Introduction/inst
    Introduction/install.md
    Introduction/apidocs.md
    Introduction/quickstart.md
+   Introduction/api

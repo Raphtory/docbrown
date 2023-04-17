@@ -27,7 +27,7 @@ copyright = '2023, Pometry'
 author = 'Pometry'
 
 # The full version, including alpha/beta/rc tags
-release = "0.0.2"
+release = "0.0.9"
 
 
 # -- General configuration ---------------------------------------------------
@@ -41,10 +41,11 @@ extensions = [
     # 'extractScalaAlgoDocs',
     # 'extractRustDocs', 
     'sphinx.ext.autodoc',
+    'sphinx.ext.autosummary',
     #'processWrapperDocs',
-    'myst_parser',
-    'sphinx_tabs.tabs',
-    "nbsphinx"
+    # 'myst_parser',
+    # 'sphinx_tabs.tabs',
+    # "nbsphinx"
 ]
 
 suppress_warnings = ['myst.header', 'myst.anchor']
@@ -105,7 +106,7 @@ html_theme_options = {
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['images', '_rustdoc']
-nbsphinx_kernel_name = 'python3'
+# nbsphinx_kernel_name = 'python3'
 
 # rst_prolog = f"""
 # .. |binder_link| replace:: Click here to launch the notebook
