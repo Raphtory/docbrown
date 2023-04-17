@@ -1481,7 +1481,7 @@ mod db_tests {
         let g = Graph::new(4);
 
         let data_dir =
-            crate::graph_loader::lotr_graph::lotr_file().expect("Failed to get lotr.csv file");
+            crate::graph_loader::example::lotr_graph::lotr_file().expect("Failed to get lotr.csv file");
 
         fn parse_record(rec: &StringRecord) -> Option<(String, String, i64)> {
             let src = rec.get(0).and_then(|s| s.parse::<String>().ok())?;
@@ -1543,13 +1543,13 @@ mod db_tests {
 
     #[test]
     fn test_lotr_load_graph() {
-        let g = crate::graph_loader::lotr_graph::lotr_graph(4);
+        let g = crate::graph_loader::example::lotr_graph::lotr_graph(4);
         assert_eq!(g.num_edges(), 701);
     }
 
     #[test]
     fn test_graph_at() {
-        let g = crate::graph_loader::lotr_graph::lotr_graph(1);
+        let g = crate::graph_loader::example::lotr_graph::lotr_graph(1);
 
         let g_at_empty = g.at(1);
         let g_at_start = g.at(7059);

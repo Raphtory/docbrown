@@ -109,5 +109,5 @@ nbsphinx_kernel_name = 'python3'
 
 # rst_prolog = f"""
 # .. |binder_link| replace:: Click here to launch the notebook
-# .. _binder_link: https://mybinder.org/v2/gh/Raphtory/Raphtory/v{__version__}?labpath=examples%2Fbinder_python%2Findex.ipynb
+# .. _binder_link: https://mybinder.org/v2/gh/Raphtory/Raphtory/v{__version__}?labpath=example%2Fbinder_python%2Findex.ipynb
 # """

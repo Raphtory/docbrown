@@ -1,7 +1,7 @@
 use docbrown::algorithms::triangle_count::{TriangleCountS1, TriangleCountS2, TriangleCountSlowS2};
 use docbrown::core::Prop;
 use docbrown::core::{state, utils};
-use docbrown::db::csv_loader::CsvLoader;
+use docbrown::graph_loader::source::csv_loader::CsvLoader;
 use docbrown::db::graph::Graph;
 use docbrown::db::program::{GlobalEvalState, Program};
 use docbrown::db::view_api::*;
