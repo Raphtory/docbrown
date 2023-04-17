@@ -22,4 +22,4 @@ test-all: rust-test
 	cd python && pytest
 
 install-python:
-	cd python && maturin develop
+	conda activate py39 && cd python && maturin develop
