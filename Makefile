@@ -22,4 +22,4 @@ test-all: rust-test
 	cd python && pytest
 
 install-python:
-	conda activate py39 && cd python && maturin develop
+	cd python && env VIRTUAL_ENV=$(python3 -c 'import sys; print(sys.base_prefix)') maturin develop
