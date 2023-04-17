@@ -240,6 +240,7 @@ impl PyEdge {
     ///
     /// Returns:
     ///   A new Edge with the properties of this Edge at a specified time.
+    #[pyo3(signature = (end))]
     pub fn at(&self, end: i64) -> PyEdge {
         self.edge.at(end).into()
     }

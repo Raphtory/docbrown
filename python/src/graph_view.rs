@@ -55,7 +55,7 @@ impl PyGraphView {
 
     /// Timestamp of earliest activity in the graph
     ///
-    /// Returns
+    /// Returns:
     ///     the timestamp of the earliest activity in the graph
     pub fn earliest_time(&self) -> Option<i64> {
         self.graph.earliest_time()
@@ -63,7 +63,7 @@ impl PyGraphView {
 
     /// Timestamp of latest activity in the graph
     ///
-    /// Returns
+    /// Returns:
     ///     the timestamp of the latest activity in the graph
     pub fn latest_time(&self) -> Option<i64> {
         self.graph.latest_time()
@@ -71,7 +71,7 @@ impl PyGraphView {
 
     /// Number of edges in the graph
     ///
-    /// Returns
+    /// Returns:
     ///    the number of edges in the graph
     pub fn num_edges(&self) -> usize {
         self.graph.num_edges()
@@ -79,7 +79,7 @@ impl PyGraphView {
 
     /// Number of vertices in the graph
     ///
-    /// Returns
+    /// Returns:
     ///   the number of vertices in the graph
     pub fn num_vertices(&self) -> usize {
         self.graph.num_vertices()
@@ -87,10 +87,10 @@ impl PyGraphView {
 
     /// Returns true if the graph contains the specified vertex
     ///
-    /// Arguments
-    ///    id: the vertex id
+    /// Arguments:
+    ///    id (str or int): the vertex id
     ///
-    /// Returns
+    /// Returns:
     ///   true if the graph contains the specified vertex, false otherwise
     pub fn has_vertex(&self, id: &PyAny) -> PyResult<bool> {
         let v = extract_vertex_ref(id)?;
@@ -99,12 +99,12 @@ impl PyGraphView {
 
     /// Returns true if the graph contains the specified edge
     ///
-    /// Arguments
-    ///   src: the source vertex id (str or int)
-    ///   dst: the destination vertex id  (str or int)
-    ///   layer: the edge layer (optional)
+    /// Arguments:
+    ///   src (str or int): the source vertex id
+    ///   dst (str or int): the destination vertex id  
+    ///   layer (str): the edge layer (optional)
     ///
-    /// Returns
+    /// Returns:
     ///  true if the graph contains the specified edge, false otherwise
     #[pyo3(signature = (src, dst, layer=None))]
     pub fn has_edge(&self, src: &PyAny, dst: &PyAny, layer: Option<&str>) -> PyResult<bool> {
@@ -117,10 +117,10 @@ impl PyGraphView {
 
     /// Gets the vertex with the specified id
     ///
-    /// Arguments
-    ///   id: the vertex id (str or int)
+    /// Arguments:
+    ///   id (str or int): the vertex id
     ///
-    /// Returns
+    /// Returns:
     ///   the vertex with the specified id, or None if the vertex does not exist
     pub fn vertex(&self, id: &PyAny) -> PyResult<Option<PyVertex>> {
         let v = extract_vertex_ref(id)?;
@@ -129,7 +129,7 @@ impl PyGraphView {
 
     /// Gets the vertices in the graph
     ///
-    /// Returns
+    /// Returns:
     ///  the vertices in the graph
     #[getter]
     pub fn vertices(&self) -> PyVertices {
@@ -138,13 +138,13 @@ impl PyGraphView {
 
     /// Gets the edge with the specified source and destination vertices
     ///
-    /// Arguments
-    ///  src: the source vertex id (str or int)
-    ///  dst: the destination vertex id (str or int)
-    ///  layer: the edge layer (optional)
+    /// Arguments:
+    ///     src (str or int): the source vertex id
+    ///     dst (str or int): the destination vertex id
+    ///     layer (str): the edge layer (optional)
     ///
-    /// Returns
-    /// the edge with the specified source and destination vertices, or None if the edge does not exist
+    /// Returns:
+    ///     the edge with the specified source and destination vertices, or None if the edge does not exist
     #[pyo3(signature = (src, dst, layer=None))]
     pub fn edge(&self, src: &PyAny, dst: &PyAny, layer: Option<&str>) -> PyResult<Option<PyEdge>> {
         let src = extract_vertex_ref(src)?;
@@ -154,7 +154,7 @@ impl PyGraphView {
 
     /// Gets all edges in the graph
     ///
-    /// Returns
+    /// Returns:
     ///  the edges in the graph
     pub fn edges(&self) -> PyEdges {
         let clone = self.graph.clone();
@@ -165,7 +165,7 @@ impl PyGraphView {
 
     /// Returns the default start time for perspectives over the view
     ///
-    /// Returns
+    /// Returns:
     ///     the default start time for perspectives over the view
     pub fn start(&self) -> Option<i64> {
         self.graph.start()
@@ -173,8 +173,7 @@ impl PyGraphView {
 
     /// Returns the default end time for perspectives over the view
     ///
-    /// Returns
-    ///
+    /// Returns:
     ///    the default end time for perspectives over the view
     pub fn end(&self) -> Option<i64> {
         self.graph.end()
@@ -185,13 +184,13 @@ impl PyGraphView {
     ///
     /// An expanding window is a window that grows by `step` size at each iteration.
     ///
-    /// Arguments
-    ///    step: the size of the window
-    ///    start: the start time of the window (optional)
-    ///    end: the end time of the window (optional)
+    /// Arguments:
+    ///     step (int) : the size of the window
+    ///     start (int): the start time of the window (optional)
+    ///     end (int): the end time of the window (optional)
     ///
-    /// Returns
-    ///   a `WindowSet` with the given `step` size and optional `start` and `end` times,
+    /// Returns:
+    ///     A `WindowSet` with the given `step` size and optional `start` and `end` times,
     #[pyo3(signature = (step, start=None, end=None))]
     fn expanding(&self, step: u64, start: Option<i64>, end: Option<i64>) -> PyGraphWindowSet {
         self.graph.expanding(step, start, end).into()
@@ -202,13 +201,13 @@ impl PyGraphView {
     ///
     /// A rolling window is a window that moves forward by `step` size at each iteration.
     ///
-    /// Arguments
-    ///     window: the size of the window
-    ///     step: the size of the step (optional)
-    ///     start: the start time of the window (optional)
+    /// Arguments:
+    ///     window (int): the size of the window
+    ///     step (int): the size of the step (optional)
+    ///     start (int): the start time of the window (optional)
     ///     end: the end time of the window (optional)
     ///
-    /// Returns
+    /// Returns:
     ///  a `WindowSet` with the given `window` size and optional `step`, `start` and `end` times,
     fn rolling(
         &self,
@@ -222,11 +221,11 @@ impl PyGraphView {
 
     /// Create a view including all events between `t_start` (inclusive) and `t_end` (exclusive)
     ///
-    /// Arguments
-    ///   t_start: the start time of the window (optional)
-    ///   t_end: the end time of the window (optional)
+    /// Arguments:
+    ///   t_start (int): the start time of the window (optional)
+    ///   t_end (int): the end time of the window (optional)
     ///
-    /// Returns
+    /// Returns:
     ///     a view including all events between `t_start` (inclusive) and `t_end` (exclusive)
     #[pyo3(signature = (t_start=None, t_end=None))]
     pub fn window(&self, t_start: Option<i64>, t_end: Option<i64>) -> PyGraphView {
@@ -235,11 +234,12 @@ impl PyGraphView {
 
     /// Create a view including all events until `end` (inclusive)
     ///
-    /// Arguments
-    ///  end: the end time of the window (optional)
+    /// Arguments:
+    ///     end (int) : the end time of the window
     ///
-    /// Returns
+    /// Returns:
     ///     a view including all events until `end` (inclusive)
+    #[pyo3(signature = (end))]
     pub fn at(&self, end: i64) -> PyGraphView {
         self.graph.at(end).into()
     }
@@ -247,10 +247,10 @@ impl PyGraphView {
     /// Given a PerspectiveSet this returns an iterator of windowed graphs,
     /// creating one window graph for each perspecive in the collection
     ///
-    /// Arguments
+    /// Arguments:
     ///   perspectives: the perspectives to use
     ///
-    /// Returns
+    /// Returns:
     ///  an iterator of windowed graphs
     fn through(&self, perspectives: &PyAny) -> PyResult<PyGraphWindowSet> {
         through_impl(&self.graph, perspectives).map(|p| p.into())

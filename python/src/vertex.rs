@@ -289,9 +289,9 @@ impl PyVertex {
     /// its properties are at those points.
     ///
     /// Arguments:
-    ///  step: The step size of the window.
-    ///  start: The start time of the window. Defaults to the start time of the vertex.
-    ///  end: The end time of the window. Defaults to the end time of the vertex.
+    ///  step (int): The step size of the window.
+    ///  start (int): The start time of the window. Defaults to the start time of the vertex.
+    ///  end (int): The end time of the window. Defaults to the end time of the vertex.
     ///
     /// Returns:
     ///  A `PyVertexWindowSet` object.
@@ -327,11 +327,12 @@ impl PyVertex {
     /// Create a view of the vertex including all events between `t_start` (inclusive) and `t_end` (exclusive)
     ///
     /// Arguments:
-    ///     t_start: The start time of the window. Defaults to the start time of the vertex.
-    ///     t_end: The end time of the window. Defaults to the end time of the vertex.
+    ///     t_start (int): The start time of the window. Defaults to the start time of the vertex.
+    ///     t_end (int): The end time of the window. Defaults to the end time of the vertex.
     ///
     /// Returns:
     ///    A `PyVertex` object.
+    #[pyo3(signature = (t_start = None, t_end = None))]
     pub fn window(&self, t_start: Option<i64>, t_end: Option<i64>) -> PyVertex {
         window_impl(&self.vertex, t_start, t_end).into()
     }
@@ -339,10 +340,11 @@ impl PyVertex {
     /// Create a view of the vertex including all events at `t`.
     ///
     /// Arguments:
-    ///     end: The time of the window.
+    ///     end (int): The time of the window.
     ///
     /// Returns:
     ///     A `PyVertex` object.
+    #[pyo3(signature = (end))]
     pub fn at(&self, end: i64) -> PyVertex {
         self.vertex.at(end).into()
     }
@@ -518,10 +520,19 @@ impl PyVertices {
         self.vertices.rolling(window, step, start, end).into()
     }
 
+    #[pyo3(signature = (t_start = None, t_end = None))]
     pub fn window(&self, t_start: Option<i64>, t_end: Option<i64>) -> PyVertices {
         window_impl(&self.vertices, t_start, t_end).into()
     }
 
+    /// Create a view of the vertices including all events at `t`.
+    ///
+    /// Arguments:
+    ///     end (int): The time of the window.
+    ///
+    /// Returns:
+    ///     A `PyVertices` object.
+    #[pyo3(signature = (end))]
     pub fn at(&self, end: i64) -> PyVertices {
         self.vertices.at(end).into()
     }
@@ -702,10 +713,19 @@ impl PyPathFromGraph {
         self.path.rolling(window, step, start, end).into()
     }
 
+    #[pyo3(signature = (t_start = None, t_end = None))]
     pub fn window(&self, t_start: Option<i64>, t_end: Option<i64>) -> Self {
         window_impl(&self.path, t_start, t_end).into()
     }
 
+    /// Create a view of the vertex including all events at `t`.
+    ///
+    /// Arguments:
+    ///     end (int): The time of the window.
+    ///
+    /// Returns:
+    ///     A `PyVertex` object.
+    #[pyo3(signature = (end))]
     pub fn at(&self, end: i64) -> Self {
         self.path.at(end).into()
     }
@@ -873,10 +893,19 @@ impl PyPathFromVertex {
         self.path.rolling(window, step, start, end).into()
     }
 
+    #[pyo3(signature = (t_start = None, t_end = None))]
     pub fn window(&self, t_start: Option<i64>, t_end: Option<i64>) -> Self {
         window_impl(&self.path, t_start, t_end).into()
     }
 
+    /// Create a view of the vertex including all events at `t`.
+    ///
+    /// Arguments:
+    ///     end (int): The time of the window.
+    ///
+    /// Returns:
+    ///     A `PyVertex` object.
+    #[pyo3(signature = (end))]
     pub fn at(&self, end: i64) -> Self {
         self.path.at(end).into()
     }
