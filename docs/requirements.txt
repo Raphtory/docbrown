@@ -7,4 +7,3 @@ sphinx-tabs
 nbsphinx
 ipykernel
 raphtory
-sphinxcontrib-napoleon
