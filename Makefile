@@ -21,3 +21,5 @@ rust-test:
 test-all: rust-test
 	cd python && pytest
 
+install-python:
+	cd python && maturin develop
