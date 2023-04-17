@@ -5,7 +5,7 @@ use crate::core::utils::get_shard_id_from_global_vid;
 use rustc_hash::FxHashMap;
 use std::{any::Any, fmt::Debug};
 
-#[derive(Debug)]
+#[derive(Debug, Copy)]
 pub struct AccId<A, IN, OUT, ACC: Accumulator<A, IN, OUT>> {
     id: u32,
     _a: std::marker::PhantomData<A>,

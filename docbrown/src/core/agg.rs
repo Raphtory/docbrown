@@ -19,6 +19,7 @@ pub trait Accumulator<A, IN, OUT>: Send + Sync {
     fn finish(a: &A) -> OUT;
 }
 
+#[derive(Clone, Debug, Copy)]
 pub struct MinDef<A: StateType + Bounded + PartialOrd> {
     _marker: PhantomData<A>,
 }
@@ -46,6 +47,7 @@ where
     }
 }
 
+#[derive(Clone, Debug, Copy)]
 pub struct MaxDef<A: StateType + Bounded + PartialOrd> {
     _marker: PhantomData<A>,
 }
@@ -74,6 +76,7 @@ where
         a.clone()
     }
 }
+#[derive(Clone, Debug, Copy)]
 
 pub struct SumDef<A: StateType + Zero + AddAssign<A>> {
     _marker: PhantomData<A>,
@@ -100,6 +103,7 @@ where
     }
 }
 
+#[derive(Clone, Debug, Copy)]
 pub struct ValDef<A: StateType + Zero> {
     _marker: PhantomData<A>,
 }
@@ -125,6 +129,7 @@ where
     }
 }
 
+#[derive(Clone, Debug, Copy)]
 pub struct AvgDef<A: StateType + Zero + AddAssign<A> + TryFrom<usize> + Div<A, Output = A>> {
     _marker: PhantomData<A>,
 }
