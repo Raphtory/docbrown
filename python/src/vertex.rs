@@ -62,8 +62,11 @@ impl PyVertex {
 
     /// Returns the earliest time that the vertex exists.
     ///
+    /// Arguments:
+    ///    None
+    ///
     /// Returns:
-    ///  The earliest time that the vertex exists as an integer.
+    ///     The earliest time that the vertex exists as an integer.
     pub fn earliest_time(&self) -> Option<i64> {
         self.vertex.earliest_time()
     }
@@ -71,7 +74,7 @@ impl PyVertex {
     /// Returns the latest time that the vertex exists.
     ///
     /// Returns:
-    ///  The latest time that the vertex exists as an integer.
+    ///     The latest time that the vertex exists as an integer.
     pub fn latest_time(&self) -> Option<i64> {
         self.vertex.latest_time()
     }
@@ -339,7 +342,7 @@ impl PyVertex {
     ///     end: The time of the window.
     ///
     /// Returns:
-    ///   A `PyVertex` object.
+    ///     A `PyVertex` object.
     pub fn at(&self, end: i64) -> PyVertex {
         self.vertex.at(end).into()
     }

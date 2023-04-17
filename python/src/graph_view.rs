@@ -106,6 +106,7 @@ impl PyGraphView {
     ///
     /// Returns
     ///  true if the graph contains the specified edge, false otherwise
+    #[pyo3(signature = (src, dst, layer=None))]
     pub fn has_edge(&self, src: &PyAny, dst: &PyAny, layer: Option<&str>) -> PyResult<bool> {
         let src = extract_vertex_ref(src)?;
         let dst = extract_vertex_ref(dst)?;
@@ -144,6 +145,7 @@ impl PyGraphView {
     ///
     /// Returns
     /// the edge with the specified source and destination vertices, or None if the edge does not exist
+    #[pyo3(signature = (src, dst, layer=None))]
     pub fn edge(&self, src: &PyAny, dst: &PyAny, layer: Option<&str>) -> PyResult<Option<PyEdge>> {
         let src = extract_vertex_ref(src)?;
         let dst = extract_vertex_ref(dst)?;
@@ -190,6 +192,7 @@ impl PyGraphView {
     ///
     /// Returns
     ///   a `WindowSet` with the given `step` size and optional `start` and `end` times,
+    #[pyo3(signature = (step, start=None, end=None))]
     fn expanding(&self, step: u64, start: Option<i64>, end: Option<i64>) -> PyGraphWindowSet {
         self.graph.expanding(step, start, end).into()
     }
@@ -225,6 +228,7 @@ impl PyGraphView {
     ///
     /// Returns
     ///     a view including all events between `t_start` (inclusive) and `t_end` (exclusive)
+    #[pyo3(signature = (t_start=None, t_end=None))]
     pub fn window(&self, t_start: Option<i64>, t_end: Option<i64>) -> PyGraphView {
         window_impl(&self.graph, t_start, t_end).into()
     }

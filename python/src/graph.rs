@@ -65,6 +65,7 @@ impl PyGraph {
     ///
     /// Returns:
     ///   None
+    #[pyo3(signature = (timestamp, id, properties=None))]
     pub fn add_vertex(
         &self,
         timestamp: i64,
@@ -109,6 +110,7 @@ impl PyGraph {
     ///
     /// Returns:
     ///   None
+    #[pyo3(signature = (timestamp, src, dst, properties=None, layer=None))]
     pub fn add_edge(
         &self,
         timestamp: i64,
@@ -138,6 +140,7 @@ impl PyGraph {
     ///
     /// Returns:
     ///  None
+    #[pyo3(signature = (src, dst, properties, layer=None))]
     pub fn add_edge_properties(
         &self,
         src: &PyAny,
