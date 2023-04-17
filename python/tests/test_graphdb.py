@@ -780,3 +780,25 @@ def test_edge_earliest_latest_time():
 
 
 
+    
+def test_vertex_history():
+    g = Graph(1)
+
+    g.add_vertex(1, 1, {})
+    g.add_vertex(2, 1, {})
+    g.add_vertex(3, 1, {})
+    g.add_vertex(4, 1, {})
+    g.add_vertex(8, 1, {})
+
+    g.add_vertex(4, "Lord Farquaad", {})
+    g.add_vertex(6, "Lord Farquaad", {})
+    g.add_vertex(7, "Lord Farquaad", {})
+    g.add_vertex(8, "Lord Farquaad", {})
+                 
+    assert(g.vertex(1).history() == [1, 2, 3, 4, 8])
+    assert(g.vertex("Lord Farquaad").history() == [4, 6, 7, 8])
+
+    view = g.window(1, 8)
+
+    assert(view.vertex(1).history() == [1, 2 ,3 ,4])
+    assert(view.vertex("Lord Farquaad").history() == [4, 6, 7])
