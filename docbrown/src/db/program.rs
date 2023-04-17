@@ -31,6 +31,25 @@ pub struct AggRef<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(AccId<A, IN, OUT, AC
 where
     A: StateType;
 
+// impl AggRef new
+impl<A, IN, OUT, ACC: Accumulator<A, IN, OUT>> AggRef<A, IN, OUT, ACC>
+where
+    A: StateType,
+{
+    /// Creates a new `AggRef` object.
+    ///
+    /// # Arguments
+    ///
+    /// * `agg_ref` - The ID of the accumulator to reference.
+    ///
+    /// # Returns
+    ///
+    /// An `AggRef` object.
+    pub(crate) fn new(agg_ref: AccId<A, IN, OUT, ACC>) -> Self {
+        Self(agg_ref)
+    }
+}
+
 /// A struct representing the local state of a shard.
 pub struct LocalState<G: GraphViewOps> {
     ss: usize,
@@ -137,7 +156,7 @@ impl<G: GraphViewOps> LocalState<G> {
         };
 
         let mut c = 0;
-        println!("LOCAL STEP KICK-OFF");
+        // println!("LOCAL STEP KICK-OFF");
         iter.for_each(|v| {
             f(EvalVertexView::new(
                 self.ss,
@@ -178,7 +197,6 @@ pub struct GlobalEvalState<G: GraphViewOps> {
     // running state
     pub next_vertex_set: Option<Vec<Arc<FxHashSet<u64>>>>,
     states: Vec<Arc<parking_lot::RwLock<Option<ShuffleComputeState<CS>>>>>,
-    post_agg_state: Arc<parking_lot::RwLock<Option<ShuffleComputeState<CS>>>>, // FIXME this is a pointer to one of the states in states, beware of deadlocks
 }
 
 /// Implementation of the GlobalEvalState struct.
@@ -302,7 +320,7 @@ impl<G: GraphViewOps> GlobalEvalState<G> {
         OUT: StateType,
         A: StateType,
     {
-        let state = self.post_agg_state.read();
+        let state = self.states[0].read();
         let state = state.as_ref().unwrap();
         state.read_global(self.ss, agg)
     }
@@ -348,7 +366,7 @@ impl<G: GraphViewOps> GlobalEvalState<G> {
             keep_past_state,
             next_vertex_set: None,
             states,
-            post_agg_state: Arc::new(parking_lot::RwLock::new(None)),
+            // post_agg_state: Arc::new(parking_lot::RwLock::new(None)),
         }
     }
 
@@ -420,7 +438,6 @@ impl<G: GraphViewOps> GlobalEvalState<G> {
             .into_par_iter()
             .reduce_with(|left, right| {
                 let t_id = std::thread::current().id();
-                println!("MERGING aggregator states! {t_id:?}");
                 // peel left
                 let left_placeholder = &mut left.write();
                 let mut state1 = left_placeholder.take().unwrap();
@@ -434,26 +451,44 @@ impl<G: GraphViewOps> GlobalEvalState<G> {
                 **left_placeholder = Some(state1);
                 **right_placeholder = Some(state2);
 
-                println!("DONE MERGING aggregator states! {t_id:?}");
                 left.clone()
             })
             .unwrap();
 
-        if !Arc::ptr_eq(&self.post_agg_state, &new_global_state)
-            && self.post_agg_state.read().is_some()
-        {
-            let left_placeholder = &mut self.post_agg_state.write();
-            let mut state1 = left_placeholder.take().unwrap();
+        println!("DONE FULL MERGE! {new_global_state:?}");
 
-            let right_placeholder = &mut new_global_state.write();
-            let state2 = right_placeholder.take().unwrap();
-            state1.merge_mut(&state2, &agg, self.ss);
-        } else {
-            self.post_agg_state = new_global_state;
-        }
+        // if !Arc::ptr_eq(&self.post_agg_state, &new_global_state)
+        //     && self.post_agg_state.read().is_some()
+        // {
+        //     let left_placeholder = &mut self.post_agg_state.write();
+        //     let mut state1 = left_placeholder.take().unwrap();
+
+        //     let right_placeholder = &mut new_global_state.write();
+        //     let state2 = right_placeholder.take().unwrap();
+        //     state1.merge_mut(&state2, &agg, self.ss);
+        // } else {
+        //     self.post_agg_state = new_global_state;
+        // }
+
+        // selective broadcast
+        // we set the state with id agg in shard_state to the value in global_state
+        self.states.par_iter().for_each(|shard_state| {
+            if !Arc::ptr_eq(&new_global_state, &shard_state) {
+                let shard_state_pl = &mut shard_state.write();
+                let mut shard_state = shard_state_pl.take().unwrap();
+
+                let global_state_pl = new_global_state.read();
+
+                if let Some(global_state) = &global_state_pl.as_ref() {
+                    shard_state.set_from_other(&global_state, &agg, self.ss);
+                }
+
+                **shard_state_pl = Some(shard_state);
+            }
+        });
 
         // if the new state is not the same as the old one then we merge them too
-        println!("DONE FULL MERGE!");
+        // println!("DONE FULL MERGE!");
         AggRef(agg)
     }
 
@@ -461,23 +496,23 @@ impl<G: GraphViewOps> GlobalEvalState<G> {
     ///
     /// This method sets the state of each shard to the current value of `post_agg_state`.
     ///
-    fn broadcast_state(&mut self) {
-        let broadcast_state = self.post_agg_state.read();
+    // fn broadcast_state(&mut self) {
+    //     let broadcast_state = self.post_agg_state.read();
 
-        for state in self.states.iter() {
-            // this avoids a deadlock since we may already hold the read lock
-            if Arc::ptr_eq(state, &self.post_agg_state) {
-                continue;
-            }
+    //     for state in self.states.iter() {
+    //         // this avoids a deadlock since we may already hold the read lock
+    //         if Arc::ptr_eq(state, &self.post_agg_state) {
+    //             continue;
+    //         }
 
-            let mut state = state.write();
+    //         let mut state = state.write();
 
-            let prev = state.take();
-            drop(prev); // not sure if this is needed but I really want the old state to be dropped
-            let new_shard_state = broadcast_state.clone();
-            *state = new_shard_state;
-        }
-    }
+    //         let prev = state.take();
+    //         drop(prev); // not sure if this is needed but I really want the old state to be dropped
+    //         let new_shard_state = broadcast_state.clone();
+    //         *state = new_shard_state;
+    //     }
+    // }
 
     /// Executes a single step computation.
     ///
@@ -490,9 +525,9 @@ impl<G: GraphViewOps> GlobalEvalState<G> {
     where
         F: Fn(EvalVertexView<G>) -> bool + Sync,
     {
-        println!("START BROADCAST STATE");
-        self.broadcast_state();
-        println!("DONE BROADCAST STATE");
+        // println!("START BROADCAST STATE");
+        // self.broadcast_state();
+        // println!("DONE BROADCAST STATE");
 
         let ss = self.ss;
         let graph = Arc::new(self.g.clone());
@@ -500,7 +535,7 @@ impl<G: GraphViewOps> GlobalEvalState<G> {
             .collect_vec()
             .par_iter()
             .map(|shard| {
-                println!("STARTED POST_EVAL SHARD {:#?}", shard);
+                // println!("STARTED POST_EVAL SHARD {:#?}", shard);
                 let i = *shard;
                 let local_state = self.states[i].clone();
                 // take control of the actual state
@@ -533,12 +568,12 @@ impl<G: GraphViewOps> GlobalEvalState<G> {
                 }
                 // put back the local state
                 **local_state = Some(own_state);
-                println!("DONE POST_EVAL SHARD {:#?}", shard);
+                // println!("DONE POST_EVAL SHARD {:#?}", shard);
                 Arc::new(next_vertex_set)
             })
             .collect::<Vec<_>>();
 
-        println!("DONE POST_EVAL SHARD ALL");
+        // println!("DONE POST_EVAL SHARD ALL");
         self.next_vertex_set = Some(next_vertex_set);
     }
 }

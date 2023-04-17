@@ -216,7 +216,7 @@ impl Program for UnweightedPageRankS1 {
     }
 
     fn post_eval<G: GraphViewOps>(&self, c: &mut GlobalEvalState<G>) {
-        let _ = c.agg(sum::<SumF32>(1));
+        let _ = c.agg(self.recv_score);
         c.step(|_| true)
     }
 
@@ -249,10 +249,10 @@ impl Program for UnweightedPageRankS2 {
 
     fn local_eval<G: GraphViewOps>(&self, c: &LocalState<G>) {
         let damping_factor = 0.85;
-        let score: AggRef<MulF32, MulF32, MulF32, ValDef<MulF32>> = c.agg(self.score.clone());
+        let score: AggRef<MulF32, MulF32, MulF32, ValDef<MulF32>> = c.agg(self.score);
         let recv_score: AggRef<SumF32, SumF32, SumF32, SumDef<SumF32>> =
             c.agg(self.recv_score.clone());
-        let max_diff: AggRef<f32, f32, f32, MaxDef<f32>> = c.global_agg(self.max_diff.clone());
+        let max_diff: AggRef<f32, f32, f32, MaxDef<f32>> = c.global_agg(self.max_diff);
 
         c.step(|s| {
             s.update(
@@ -274,8 +274,21 @@ impl Program for UnweightedPageRankS2 {
     }
 
     fn post_eval<G: GraphViewOps>(&self, c: &mut GlobalEvalState<G>) {
-        let _ = c.global_agg(max::<f32>(2));
-        c.step(|_| true)
+        let _ = c.global_agg(self.max_diff);
+        c.step(|s| {
+
+            let curr = s.read(&AggRef::new(self.score));
+            let prev = s.read_prev(&AggRef::new(self.score));
+
+            println!(
+                "POST EVAL prev = {:?}, curr = {:?}, id = {}",
+                prev,
+                curr,
+                s.global_id(),
+            );
+            true
+
+        })
     }
 
     #[allow(unused_variables)]
@@ -520,11 +533,12 @@ mod page_rank_tests {
         // run step3 for graph2
         pg_s2_g2.run_step(&graph_2, &mut c_g2);
 
+        // println!("SHARDS! c_g2: {:?}", c_g2);
 
-        let (actual_g1_part0, actual_g2) = lift_state(pg_s1_g1.score, &c_g1,&c_g2);
+        let (actual_g1_part0, actual_g2) = lift_state(pg_s2_g1.score, &c_g1,&c_g2);
         assert_partitions_data_equal_post_step(actual_g1_part0, actual_g2);
 
-        let (actual_g1_part0, actual_g2) = lift_state(pg_s1_g1.recv_score, &c_g1,&c_g2);
+        let (actual_g1_part0, actual_g2) = lift_state(pg_s2_g1.recv_score, &c_g1, &c_g2);
         assert_partitions_data_equal_post_step(actual_g1_part0, actual_g2);
 
     }

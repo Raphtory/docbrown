@@ -508,6 +508,28 @@ impl<CS: ComputeState + Send + Clone> ShardComputeState<CS> {
         Some(cs.finalize::<A, IN, OUT, ACC>(ss))
     }
 
+    fn set_from_other<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(
+        &mut self,
+        other: &Self,
+        agg_ref: &AccId<A, IN, OUT, ACC>,
+        ss: usize,
+    ) where
+        A: StateType,
+    {
+        match (
+            self.states.get_mut(&agg_ref.id),
+            other.states.get(&agg_ref.id),
+        ) {
+            (Some(self_cs), Some(other_cs)) => {
+                *self_cs = other_cs.clone();
+            }
+            (None, Some(other_cs)) => {
+                self.states.insert(agg_ref.id, other_cs.clone());
+            }
+            _ => { }
+        }
+    }
+
     fn merge<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(
         &mut self,
         other: &Self,
@@ -526,7 +548,7 @@ impl<CS: ComputeState + Send + Clone> ShardComputeState<CS> {
             (None, Some(other_cs)) => {
                 self.states.insert(agg_ref.id, other_cs.clone());
             }
-            _ => {}
+            _ => { }
         }
     }
 
@@ -656,6 +678,23 @@ impl<CS: ComputeState + Send + Sync> ShuffleComputeState<CS> {
             .iter_mut()
             .zip(other.parts.iter())
             .for_each(|(s, o)| s.merge(o, agg_ref, ss));
+    }
+
+    pub fn set_from_other<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(
+        &mut self,
+        other: &Self,
+        agg_ref: &AccId<A, IN, OUT, ACC>,
+        ss: usize,
+    ) where
+        A: StateType,
+    {
+        // zip the two partitions
+        // merge each shard
+        assert_eq!(self.parts.len(), other.parts.len());
+        self.parts
+            .iter_mut()
+            .zip(other.parts.iter())
+            .for_each(|(s, o)| s.set_from_other(o, agg_ref, ss));
     }
 
     pub fn merge_mut_global<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(
