@@ -45,6 +45,7 @@ impl PyEdge {
     ///
     /// Returns:
     ///   The value of the property with the given name.
+    #[pyo3(signature = (*name, include_static = false))]
     pub fn property(&self, name: String, include_static: Option<bool>) -> Option<Prop> {
         let include_static = include_static.unwrap_or(true);
         self.edge

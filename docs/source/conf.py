@@ -46,6 +46,7 @@ extensions = [
     # 'myst_parser',
     # 'sphinx_tabs.tabs',
     # "nbsphinx"
+    'sphinxcontrib.napoleon'
 ]
 
 suppress_warnings = ['myst.header', 'myst.anchor']
