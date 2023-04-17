@@ -1,6 +1,6 @@
-use crate::types::repr::{Repr, ReprWrapper};
+use crate::types::repr::Repr;
 use docbrown::db::view_api::BoxedIter;
-use std::fmt::{Display, Formatter};
+use std::fmt::Formatter;
 use std::sync::Arc;
 
 pub struct Iterable<I: Send> {
@@ -18,9 +18,9 @@ impl<I: Send> Iterable<I> {
     }
 }
 
-impl<I: Send> Repr for &&ReprWrapper<'_, Iterable<I>> {
+impl<I: Send + Repr> Repr for Iterable<I> {
     fn repr(&self) -> String {
-        let values: Vec<String> = self.get().iter().take(11).map(|v| repr!(v)).collect();
+        let values: Vec<String> = self.iter().take(11).map(|v| v.repr()).collect();
         let res = if values.len() < 11 {
             "[".to_string() + &values.join(", ") + "]"
         } else {
@@ -50,14 +50,13 @@ impl<I: Send> NestedIterable<I> {
     }
 }
 
-impl<I: Send> Repr for &&ReprWrapper<'_, NestedIterable<I>> {
+impl<I: Send + Repr> Repr for NestedIterable<I> {
     fn repr(&self) -> String {
         let values: Vec<String> = self
-            .get()
             .iter()
             .take(11)
             .map(|it| {
-                let values: Vec<String> = it.take(11).map(|v| repr!(v)).collect();
+                let values: Vec<String> = it.take(11).map(|v| v.repr()).collect();
                 let res = if values.len() < 11 {
                     "[".to_string() + &values.join(", ") + "]"
                 } else {

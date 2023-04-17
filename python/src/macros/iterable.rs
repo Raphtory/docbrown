@@ -37,7 +37,7 @@ macro_rules! py_iter_method {
             }
 
             pub fn __repr__(&self) -> String {
-                repr!(self.0)
+                format!("{}({})", stringify!($name), self.0.repr())
             }
         }
     };

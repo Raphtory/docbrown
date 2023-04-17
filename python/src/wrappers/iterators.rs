@@ -1,4 +1,4 @@
-use crate::types::repr::{Repr, ReprWrapper};
+use crate::types::repr::Repr;
 use crate::wrappers::prop::{PropHistories, PropHistory, PropValue, Props};
 use docbrown::core as db_c;
 use docbrown::db::view_api::BoxedIter;
