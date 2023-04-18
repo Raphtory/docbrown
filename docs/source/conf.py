@@ -41,7 +41,6 @@ extensions = [
     # 'extractScalaAlgoDocs',
     # 'extractRustDocs', 
     'sphinx.ext.autodoc',
-    'sphinx.ext.autosummary',
     #'processWrapperDocs',
     # 'myst_parser',
     # 'sphinx_tabs.tabs',
@@ -65,7 +64,7 @@ autodoc_member_order = 'groupwise'
 autodoc_typehints_format = "short"
 
 autosummary_generate = True
-autosummary_ignore_module_all = False
+autosummary_ignore_module_all = True
 # Extension options
 myst_enable_extensions = ["deflist", "dollarmath"]
 myst_heading_anchors = 3

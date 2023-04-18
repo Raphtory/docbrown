@@ -2,6 +2,11 @@ API
 ===
 
 .. autosummary::
-   :toctree: generated
+   :toctree: _autosummary
 
    raphtory
+   raphtory.algorithms
+   raphtory.nullmodels
+   raphtory.vis
+   raphtory.graph_loader
+   raphtory.graph_gen
