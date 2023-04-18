@@ -33,12 +33,26 @@ If you would like a brief summary of what it's used for before fully diving into
 
 
 .. toctree::
-   :hidden:
    :maxdepth: 1
+   :hidden:
+   :caption: Quick Start (Python)
+
+   install/python/raphtory.ipynb
+
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+   :caption: Quick Start (Rust)
+
+   Introduction/quickstart.md
+   Introduction/install.md
+
+.. toctree::
+   :maxdepth: 1
+   :hidden:
    :caption: Introduction
 
-   Introduction/install.md
-   Introduction/quickstart.md
+   Introduction/ingestion.ipynb
    Introduction/how_does_it_work
 
 

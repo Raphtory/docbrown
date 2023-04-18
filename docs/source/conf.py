@@ -43,7 +43,7 @@ extensions = [
     'sphinx.ext.autodoc',
     #'processWrapperDocs',
     # 'sphinx_tabs.tabs',
-    # "nbsphinx"
+    "nbsphinx",
     'sphinx.ext.napoleon',
     'myst_parser',
 ]
