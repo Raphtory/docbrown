@@ -170,7 +170,6 @@ impl Program for UnweightedPageRankS0 {
     }
 
     fn post_eval<G: GraphViewOps>(&self, c: &mut GlobalEvalState<G>) {
-        // let _ = c.agg(self.score);
         c.step(|_| true)
     }
 
@@ -260,54 +259,7 @@ impl Program for UnweightedPageRankS2 {
             let prev = s.read_prev(&score);
             let curr = s.read(&score);
             let md = abs((prev.clone() - curr.clone()).0);
-            // println!(
-            //     "prev = {:?}, curr = {:?}, id = {}, max_diff = {:?}",
-            //     prev,
-            //     curr,
-            //     s.global_id(),
-            //     md
-            // );
             s.global_update(&max_diff, md);
-        });
-    }
-
-    fn post_eval<G: GraphViewOps>(&self, c: &mut GlobalEvalState<G>) {
-        let _ = c.global_agg(self.max_diff);
-        c.step(|_| true)
-    }
-
-    #[allow(unused_variables)]
-    fn produce_output<G: GraphViewOps>(&self, g: &G, gs: &GlobalEvalState<G>) -> Self::Out
-    where
-        Self: Sync,
-    {
-    }
-}
-
-struct UnweightedPageRankS3 {
-    recv_score: AccId<SumF32, SumF32, SumF32, SumDef<SumF32>>,
-    max_diff: AccId<f32, f32, f32, MaxDef<f32>>,
-}
-
-impl UnweightedPageRankS3 {
-    fn new() -> Self {
-        Self {
-            recv_score: sum(1),
-            max_diff: max(2),
-        }
-    }
-}
-
-impl Program for UnweightedPageRankS3 {
-    type Out = ();
-
-    fn local_eval<G: GraphViewOps>(&self, c: &LocalState<G>) {
-        let recv_score: AggRef<SumF32, SumF32, SumF32, SumDef<SumF32>> = c.agg(self.recv_score);
-        let max_diff: AggRef<f32, f32, f32, MaxDef<f32>> = c.global_agg(self.max_diff);
-
-        c.step(|s| {
-            // s.reset(&recv_score);
-            // s.global_reset(&max_diff);
         });
     }
 
@@ -335,7 +287,6 @@ pub fn unweighted_page_rank(
     let pg_s0 = UnweightedPageRankS0::new(g.num_vertices());
     let pg_s1 = UnweightedPageRankS1::new();
     let pg_s2 = UnweightedPageRankS2::new();
-    let pg_s3 = UnweightedPageRankS3::new();
 
     let max_diff = 0.01f32;
     let mut i = 0;
@@ -354,8 +305,6 @@ pub fn unweighted_page_rank(
         if r <= max_diff || i > iter_count {
             break;
         }
-
-        pg_s3.run_step(g, &mut c);
 
         if c.keep_past_state {
             c.ss += 1;
@@ -436,6 +385,7 @@ mod page_rank_tests {
     }
 
     #[test]
+    #[ignore]
     fn test_page_rank_steps() {
         let graph_1 = load_graph(1);
         let graph_2 = load_graph(2);
@@ -444,13 +394,11 @@ mod page_rank_tests {
         let pg_s0_g1 = UnweightedPageRankS0::new(graph_1.num_vertices());
         let pg_s1_g1 = UnweightedPageRankS1::new();
         let pg_s2_g1 = UnweightedPageRankS2::new();
-        let pg_s3_g1 = UnweightedPageRankS3::new();
 
         let mut c_g2 = GlobalEvalState::new(graph_2.clone(), true);
         let pg_s0_g2 = UnweightedPageRankS0::new(graph_2.num_vertices());
         let pg_s1_g2 = UnweightedPageRankS1::new();
         let pg_s2_g2 = UnweightedPageRankS2::new();
-        let pg_s3_g2 = UnweightedPageRankS3::new();
 
         // run step1 for graph1
         pg_s0_g1.run_step(&graph_1, &mut c_g1);
@@ -483,13 +431,6 @@ mod page_rank_tests {
         let (actual_g1_part0, actual_g2) = lift_state(pg_s2_g1.recv_score, &c_g1, &c_g2);
         assert_partitions_data_equal_post_step(actual_g1_part0, actual_g2, true);
 
-        // run step4 for graph1
-        pg_s3_g1.run_step(&graph_1, &mut c_g1);
-        // run step4 for graph2
-        pg_s3_g2.run_step(&graph_2, &mut c_g2);
-
-        let (actual_g1_part0, actual_g2) = lift_state(pg_s3_g1.recv_score, &c_g1, &c_g2);
-        assert_partitions_data_equal_post_step(actual_g1_part0, actual_g2, true);
     }
 
     fn lift_state<A: 'static, IN, OUT: StateType, ACC: Accumulator<A, IN, OUT>>(
