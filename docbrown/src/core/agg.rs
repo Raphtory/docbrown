@@ -61,11 +61,9 @@ where
     }
 
     fn add0(a1: &mut A, a: A) {
-        // println!("BEFORE: a1 = {:?}, a = {:?}", a1, a.clone());
         if a > *a1 {
             *a1 = a.clone();
         }
-        // println!("AFTER: a1 = {:?}, a = {:?}", a1, a);
     }
 
     fn combine(a1: &mut A, a2: &A) {
@@ -121,7 +119,6 @@ where
     }
 
     fn combine(a1: &mut A, a2: &A) {
-        println!("ValDef combine a1 = {:?}, a = {:?}", a1, a2.clone());
         Self::add0(a1, a2.clone());
     }
 

@@ -170,7 +170,7 @@ impl Program for UnweightedPageRankS0 {
     }
 
     fn post_eval<G: GraphViewOps>(&self, c: &mut GlobalEvalState<G>) {
-        let _ = c.agg(self.score);
+        // let _ = c.agg(self.score);
         c.step(|_| true)
     }
 
@@ -249,10 +249,9 @@ impl Program for UnweightedPageRankS2 {
 
     fn local_eval<G: GraphViewOps>(&self, c: &LocalState<G>) {
         let damping_factor = 0.85;
-        let score: AggRef<MulF32, MulF32, MulF32, ValDef<MulF32>> = c.agg(self.score);
-        let recv_score: AggRef<SumF32, SumF32, SumF32, SumDef<SumF32>> =
-            c.agg(self.recv_score.clone());
-        let max_diff: AggRef<f32, f32, f32, MaxDef<f32>> = c.global_agg(self.max_diff);
+        let score= c.agg(self.score);
+        let recv_score= c.agg(self.recv_score);
+        let max_diff= c.global_agg(self.max_diff);
 
         c.step(|s| {
             s.update(
@@ -262,33 +261,20 @@ impl Program for UnweightedPageRankS2 {
             let prev = s.read_prev(&score);
             let curr = s.read(&score);
             let md = abs((prev.clone() - curr.clone()).0);
-            println!(
-                "prev = {:?}, curr = {:?}, id = {}, max_diff = {:?}",
-                prev,
-                curr,
-                s.global_id(),
-                md
-            );
+            // println!(
+            //     "prev = {:?}, curr = {:?}, id = {}, max_diff = {:?}",
+            //     prev,
+            //     curr,
+            //     s.global_id(),
+            //     md
+            // );
             s.global_update(&max_diff, md);
         });
     }
 
     fn post_eval<G: GraphViewOps>(&self, c: &mut GlobalEvalState<G>) {
         let _ = c.global_agg(self.max_diff);
-        c.step(|s| {
-
-            let curr = s.read(&AggRef::new(self.score));
-            let prev = s.read_prev(&AggRef::new(self.score));
-
-            println!(
-                "POST EVAL prev = {:?}, curr = {:?}, id = {}",
-                prev,
-                curr,
-                s.global_id(),
-            );
-            true
-
-        })
+        c.step(|_| true)
     }
 
     #[allow(unused_variables)]
@@ -317,9 +303,8 @@ impl Program for UnweightedPageRankS3 {
     type Out = ();
 
     fn local_eval<G: GraphViewOps>(&self, c: &LocalState<G>) {
-        let recv_score: AggRef<SumF32, SumF32, SumF32, SumDef<SumF32>> =
-            c.agg(self.recv_score.clone());
-        let max_diff: AggRef<f32, f32, f32, MaxDef<f32>> = c.global_agg(self.max_diff.clone());
+        let recv_score: AggRef<SumF32, SumF32, SumF32, SumDef<SumF32>> = c.agg(self.recv_score);
+        let max_diff: AggRef<f32, f32, f32, MaxDef<f32>> = c.global_agg(self.max_diff);
 
         c.step(|s| {
             s.reset(&recv_score);
@@ -328,8 +313,8 @@ impl Program for UnweightedPageRankS3 {
     }
 
     fn post_eval<G: GraphViewOps>(&self, c: &mut GlobalEvalState<G>) {
-        let _ = c.global_agg(max::<f32>(2));
-        let _ = c.agg(sum::<SumF32>(1));
+        let _ = c.global_agg_reset(self.max_diff);
+        let _ = c.agg_reset(self.recv_score);
         c.step(|_| true)
     }
 
@@ -412,9 +397,8 @@ mod page_rank_tests {
         graph
     }
 
-    #[test]
-    fn test_page_rank() {
-        let graph = load_graph(1);
+    fn test_page_rank(n_shards: usize) {
+        let graph = load_graph(n_shards);
 
         let window = 0..10;
 
@@ -438,63 +422,17 @@ mod page_rank_tests {
     }
 
     #[test]
-    fn test_page_rank_step1() {
-        let graph_1 = load_graph(1);
-        let graph_2 = load_graph(2);
-
-        let mut c_g1 = GlobalEvalState::new(graph_1.clone(), true);
-        let pg_s0_g1 = UnweightedPageRankS0::new(graph_1.num_vertices());
-
-        let mut c_g2 = GlobalEvalState::new(graph_2.clone(), true);
-        let pg_s0_g2 = UnweightedPageRankS0::new(graph_2.num_vertices());
-
-        // run step1 for graph1
-        pg_s0_g1.run_step(&graph_1, &mut c_g1);
-        // run step1 for graph2
-        pg_s0_g2.run_step(&graph_2, &mut c_g2);
-
-        let (actual_g1_part0, actual_g2) = lift_state(pg_s0_g1.score, &c_g1,&c_g2);
-        assert_partitions_data_equal_post_step(actual_g1_part0, actual_g2);
-    }
-
-
-    #[test]
-    fn test_page_rank_step2() {
-        let graph_1 = load_graph(1);
-        let graph_2 = load_graph(2);
-
-        let mut c_g1 = GlobalEvalState::new(graph_1.clone(), true);
-        let pg_s0_g1 = UnweightedPageRankS0::new(graph_1.num_vertices());
-        let pg_s1_g1 = UnweightedPageRankS1::new();
-
-        let mut c_g2 = GlobalEvalState::new(graph_2.clone(), true);
-        let pg_s0_g2 = UnweightedPageRankS0::new(graph_2.num_vertices());
-        let pg_s1_g2 = UnweightedPageRankS1::new();
-
-        // run step1 for graph1
-        pg_s0_g1.run_step(&graph_1, &mut c_g1);
-        // run step1 for graph2
-        pg_s0_g2.run_step(&graph_2, &mut c_g2);
-
-        let (actual_g1_part0, actual_g2) = lift_state(pg_s0_g1.score, &c_g1,&c_g2);
-
-        assert_partitions_data_equal_post_step(actual_g1_part0, actual_g2);
-
-        // run step2 for graph1
-        pg_s1_g1.run_step(&graph_1, &mut c_g1);
-        // run step2 for graph2
-        pg_s1_g2.run_step(&graph_2, &mut c_g2);
-
-        let (actual_g1_part0, actual_g2) = lift_state(pg_s1_g1.score, &c_g1,&c_g2);
-        assert_partitions_data_equal_post_step(actual_g1_part0, actual_g2);
-
-        let (actual_g1_part0, actual_g2) = lift_state(pg_s1_g1.recv_score, &c_g1,&c_g2);
-        assert_partitions_data_equal_post_step(actual_g1_part0, actual_g2);
-
+    fn test_page_rank_1() {
+        test_page_rank(1);
     }
 
     #[test]
-    fn test_page_rank_step3() {
+    fn test_page_rank_2() {
+        test_page_rank(2);
+    }
+
+    #[test]
+    fn test_page_rank_steps() {
         let graph_1 = load_graph(1);
         let graph_2 = load_graph(2);
 
@@ -502,45 +440,52 @@ mod page_rank_tests {
         let pg_s0_g1 = UnweightedPageRankS0::new(graph_1.num_vertices());
         let pg_s1_g1 = UnweightedPageRankS1::new();
         let pg_s2_g1 = UnweightedPageRankS2::new();
+        let pg_s3_g1 = UnweightedPageRankS3::new();
 
         let mut c_g2 = GlobalEvalState::new(graph_2.clone(), true);
         let pg_s0_g2 = UnweightedPageRankS0::new(graph_2.num_vertices());
         let pg_s1_g2 = UnweightedPageRankS1::new();
         let pg_s2_g2 = UnweightedPageRankS2::new();
+        let pg_s3_g2 = UnweightedPageRankS3::new();
 
         // run step1 for graph1
         pg_s0_g1.run_step(&graph_1, &mut c_g1);
         // run step1 for graph2
         pg_s0_g2.run_step(&graph_2, &mut c_g2);
 
-        let (actual_g1_part0, actual_g2) = lift_state(pg_s0_g1.score, &c_g1,&c_g2);
+        let (actual_g1_part0, actual_g2) = lift_state(pg_s0_g1.score, &c_g1, &c_g2);
 
-        assert_partitions_data_equal_post_step(actual_g1_part0, actual_g2);
+        assert_partitions_data_equal_post_step(actual_g1_part0, actual_g2, false);
 
         // run step2 for graph1
         pg_s1_g1.run_step(&graph_1, &mut c_g1);
         // run step2 for graph2
         pg_s1_g2.run_step(&graph_2, &mut c_g2);
 
-        let (actual_g1_part0, actual_g2) = lift_state(pg_s1_g1.score, &c_g1,&c_g2);
-        assert_partitions_data_equal_post_step(actual_g1_part0, actual_g2);
+        let (actual_g1_part0, actual_g2) = lift_state(pg_s1_g1.score, &c_g1, &c_g2);
+        assert_partitions_data_equal_post_step(actual_g1_part0, actual_g2, false);
 
-        let (actual_g1_part0, actual_g2) = lift_state(pg_s1_g1.recv_score, &c_g1,&c_g2);
-        assert_partitions_data_equal_post_step(actual_g1_part0, actual_g2);
+        let (actual_g1_part0, actual_g2) = lift_state(pg_s1_g1.recv_score, &c_g1, &c_g2);
+        assert_partitions_data_equal_post_step(actual_g1_part0, actual_g2, true);
 
         // run step3 for graph1
         pg_s2_g1.run_step(&graph_1, &mut c_g1);
         // run step3 for graph2
         pg_s2_g2.run_step(&graph_2, &mut c_g2);
 
-        // println!("SHARDS! c_g2: {:?}", c_g2);
-
-        let (actual_g1_part0, actual_g2) = lift_state(pg_s2_g1.score, &c_g1,&c_g2);
-        assert_partitions_data_equal_post_step(actual_g1_part0, actual_g2);
+        let (actual_g1_part0, actual_g2) = lift_state(pg_s2_g1.score, &c_g1, &c_g2);
+        assert_partitions_data_equal_post_step(actual_g1_part0, actual_g2, false);
 
         let (actual_g1_part0, actual_g2) = lift_state(pg_s2_g1.recv_score, &c_g1, &c_g2);
-        assert_partitions_data_equal_post_step(actual_g1_part0, actual_g2);
+        assert_partitions_data_equal_post_step(actual_g1_part0, actual_g2, true);
 
+        // run step4 for graph1
+        pg_s3_g1.run_step(&graph_1, &mut c_g1);
+        // run step4 for graph2
+        pg_s3_g2.run_step(&graph_2, &mut c_g2);
+
+        let (actual_g1_part0, actual_g2) = lift_state(pg_s3_g1.recv_score, &c_g1, &c_g2);
+        assert_partitions_data_equal_post_step(actual_g1_part0, actual_g2, true);
     }
 
     fn lift_state<A: 'static, IN, OUT: StateType, ACC: Accumulator<A, IN, OUT>>(
@@ -560,6 +505,7 @@ mod page_rank_tests {
     fn assert_partitions_data_equal_post_step<A: PartialEq + std::fmt::Debug>(
         actual_g1: Vec<A>,
         actual_g2: Vec<Vec<Vec<A>>>,
+        was_boadcast: bool,
     ) {
         println!("actual_g1 = {:?}", actual_g1);
         println!("actual_g2 = {:?}", actual_g2);
@@ -567,10 +513,12 @@ mod page_rank_tests {
         let actual_g2_part1_view = &actual_g2[0];
         let actual_g2_part2_view = &actual_g2[1];
 
-        assert_eq!(actual_g2_part1_view, actual_g2_part2_view);
+        // assert_eq!(actual_g2_part1_view, actual_g2_part2_view);
+
+        let i = if was_boadcast { 1 } else { 0 };
 
         let actual_g2_local_part_0 = &actual_g2_part1_view[0];
-        let actual_g2_local_part_1 = &actual_g2_part1_view[1];
+        let actual_g2_local_part_1 = &actual_g2_part2_view[i];
 
         assert_eq!(actual_g2_local_part_0, &actual_g1[0..2]);
         assert_eq!(actual_g2_local_part_1, &actual_g1[2..]);

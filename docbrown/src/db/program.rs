@@ -197,6 +197,7 @@ pub struct GlobalEvalState<G: GraphViewOps> {
     // running state
     pub next_vertex_set: Option<Vec<Arc<FxHashSet<u64>>>>,
     states: Vec<Arc<parking_lot::RwLock<Option<ShuffleComputeState<CS>>>>>,
+    resetable_states: Vec<u32>
 }
 
 /// Implementation of the GlobalEvalState struct.
@@ -366,7 +367,7 @@ impl<G: GraphViewOps> GlobalEvalState<G> {
             keep_past_state,
             next_vertex_set: None,
             states,
-            // post_agg_state: Arc::new(parking_lot::RwLock::new(None)),
+            resetable_states: Vec::new(),
         }
     }
 
@@ -393,7 +394,72 @@ impl<G: GraphViewOps> GlobalEvalState<G> {
     where
         A: StateType,
     {
-        self.agg(agg)
+        self.agg_internal(agg, false)
+    }
+
+
+    /// Runs the global aggregation function for the given accumulator.
+    ///
+    /// # Arguments
+    ///
+    /// * `agg` - The `AccId` object representing the accumulator.
+    ///
+    /// # Type Parameters
+    ///
+    /// * `A` - The type of the state that the accumulator uses.
+    /// * `IN` - The input type of the accumulator.
+    /// * `OUT` - The output type of the accumulator.
+    /// * `ACC` - The type of the accumulator.
+    ///
+    /// # Return Value
+    ///
+    /// An `AggRef` object representing the new state for the accumulator.
+    pub(crate) fn global_agg_reset<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(
+        &mut self,
+        agg: AccId<A, IN, OUT, ACC>,
+    ) -> AggRef<A, IN, OUT, ACC>
+    where
+        A: StateType,
+    {
+        self.agg_internal(agg, true)
+    }
+
+
+    /// Applies an accumulator to the states of all shards in parallel.
+    ///
+    /// This method removes the accumulated state represented by `agg_ref` from the states,
+    /// then merges it across all states (in parallel), and updates the post_agg_state.
+    /// If the new state is not the same as the old one, then it merges them too.
+    /// Finally, it resets the accumulator while keeping the old value available
+    ///
+    /// # Arguments
+    ///
+    /// * `self` - A mutable reference to a `Shuffle` instance.
+    /// * `agg` - The accumulator function to apply to the states.
+    ///
+    /// # Type parameters
+    ///
+    /// * `A` - The type of the state.
+    /// * `IN` - The type of the input to the accumulator.
+    /// * `OUT` - The type of the output from the accumulator.
+    /// * `ACC` - The type of the accumulator.
+    ///
+    /// # Constraints
+    ///
+    /// * `A` must implement `StateType`.
+    ///
+    /// # Returns
+    ///
+    /// An `AggRef` representing the result of the accumulator operation.
+    ///
+    pub(crate) fn agg_reset<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(
+        &mut self,
+        agg: AccId<A, IN, OUT, ACC>,
+    ) -> AggRef<A, IN, OUT, ACC>
+    where
+        A: StateType,
+    {
+        self.agg_internal(agg, true)
     }
 
     /// Applies an accumulator to the states of all shards in parallel.
@@ -429,6 +495,21 @@ impl<G: GraphViewOps> GlobalEvalState<G> {
     where
         A: StateType,
     {
+        self.agg_internal(agg, false)
+    }
+
+    fn agg_internal<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(
+        &mut self,
+        agg: AccId<A, IN, OUT, ACC>,
+        reset: bool,
+    ) -> AggRef<A, IN, OUT, ACC>
+    where
+        A: StateType,
+    {
+        if reset {
+            self.resetable_states.push(agg.id());
+        }
+
         let states = self.states.clone();
 
         // remove the accumulated state represendet by agg_ref from the states
@@ -437,7 +518,6 @@ impl<G: GraphViewOps> GlobalEvalState<G> {
         let new_global_state = states
             .into_par_iter()
             .reduce_with(|left, right| {
-                let t_id = std::thread::current().id();
                 // peel left
                 let left_placeholder = &mut left.write();
                 let mut state1 = left_placeholder.take().unwrap();
@@ -455,7 +535,7 @@ impl<G: GraphViewOps> GlobalEvalState<G> {
             })
             .unwrap();
 
-        println!("DONE FULL MERGE! {new_global_state:?}");
+        // println!("DONE FULL MERGE! {new_global_state:?}");
 
         // if !Arc::ptr_eq(&self.post_agg_state, &new_global_state)
         //     && self.post_agg_state.read().is_some()
@@ -566,6 +646,9 @@ impl<G: GraphViewOps> GlobalEvalState<G> {
                 if self.keep_past_state {
                     own_state.copy_over_next_ss(self.ss);
                 }
+                
+                own_state.reset_resetable_states(self.ss, &self.resetable_states);
+
                 // put back the local state
                 **local_state = Some(own_state);
                 // println!("DONE POST_EVAL SHARD {:#?}", shard);
@@ -573,6 +656,7 @@ impl<G: GraphViewOps> GlobalEvalState<G> {
             })
             .collect::<Vec<_>>();
 
+        self.resetable_states.clear();
         // println!("DONE POST_EVAL SHARD ALL");
         self.next_vertex_set = Some(next_vertex_set);
     }
@@ -861,17 +945,17 @@ pub trait Program {
                 self.local_eval(&rc_state);
 
                 let t_id = std::thread::current().id();
-                println!(
-                    "DONE LOCAL STEP ss: {}, shard: {}, thread: {t_id:?}",
-                    c.ss, i
-                );
+                // println!(
+                //     "DONE LOCAL STEP ss: {}, shard: {}, thread: {t_id:?}",
+                //     c.ss, i
+                // );
                 // put back the state
                 **local_state = Some(rc_state.consume());
             });
 
         // here we merge all the accumulators
         self.post_eval(c);
-        println!("DONE POST STEP ss: {}", c.ss)
+        // println!("DONE POST STEP ss: {}", c.ss)
     }
 
     /// Runs the program on a graph, with a given window and iteration count.
