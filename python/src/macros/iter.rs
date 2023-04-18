@@ -32,12 +32,6 @@ macro_rules! py_iterator_methods {
             }
         }
 
-        // impl From<Box<dyn Iterator<Item = $pyitem> + Send>> for $name {
-        //     fn from(value: Box<dyn Iterator<Item = $pyitem> + Send>) -> Self {
-        //         Self { iter: value }
-        //     }
-        // }
-
         impl IntoIterator for $name {
             type Item = $pyitem;
             type IntoIter = Box<dyn Iterator<Item = $pyitem> + Send>;
