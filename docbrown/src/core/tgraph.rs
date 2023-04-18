@@ -974,7 +974,8 @@ mod graph_test {
 
         let v_id = 1;
         let ts = 1;
-        g.add_vertex_with_props(ts, v_id, &vec![("type".into(), Prop::Str("wallet".into()))]).unwrap();
+        g.add_vertex_with_props(ts, v_id, &vec![("type".into(), Prop::Str("wallet".into()))])
+            .unwrap();
 
         assert!(g.has_vertex(v_id));
         assert!(g.has_vertex_window(v_id, &(1..15)));
@@ -1002,7 +1003,8 @@ mod graph_test {
                 ("type".into(), Prop::Str("wallet".into())),
                 ("active".into(), Prop::U32(0)),
             ],
-        ).unwrap();
+        )
+        .unwrap();
 
         let res = g
             .vertices()
@@ -1030,7 +1032,8 @@ mod graph_test {
                 ("type".into(), Prop::Str("wallet".into())),
                 ("active".into(), Prop::U32(0)),
             ],
-        ).unwrap();
+        )
+        .unwrap();
 
         g.add_vertex_with_props(
             2,
@@ -1039,7 +1042,8 @@ mod graph_test {
                 ("type".into(), Prop::Str("wallet".into())),
                 ("active".into(), Prop::U32(1)),
             ],
-        ).unwrap();
+        )
+        .unwrap();
 
         g.add_vertex_with_props(
             3,
@@ -1048,7 +1052,8 @@ mod graph_test {
                 ("type".into(), Prop::Str("wallet".into())),
                 ("active".into(), Prop::U32(2)),
             ],
-        ).unwrap();
+        )
+        .unwrap();
 
         let res: Vec<(i64, Prop)> = g
             .vertices()
@@ -1076,9 +1081,11 @@ mod graph_test {
                 ("type".into(), Prop::Str("wallet".into())),
                 ("active".into(), Prop::U32(0)),
             ],
-        ).unwrap();
+        )
+        .unwrap();
 
-        g.add_vertex_with_props(2, 1, &vec![("label".into(), Prop::I32(12345))]).unwrap();
+        g.add_vertex_with_props(2, 1, &vec![("label".into(), Prop::I32(12345))])
+            .unwrap();
 
         g.add_vertex_with_props(
             3,
@@ -1087,7 +1094,8 @@ mod graph_test {
                 ("origin".into(), Prop::F32(0.1)),
                 ("active".into(), Prop::U32(2)),
             ],
-        ).unwrap();
+        )
+        .unwrap();
 
         let res = g
             .vertices()
@@ -2152,8 +2160,12 @@ mod graph_test {
             let src_shard = utils::get_shard_id_from_global_vid(src, n_shards);
             let dst_shard = utils::get_shard_id_from_global_vid(dst, n_shards);
 
-            shards[src_shard].add_vertex(t.try_into().unwrap(), src as u64).unwrap();
-            shards[dst_shard].add_vertex(t.try_into().unwrap(), dst as u64).unwrap();
+            shards[src_shard]
+                .add_vertex(t.try_into().unwrap(), src as u64)
+                .unwrap();
+            shards[dst_shard]
+                .add_vertex(t.try_into().unwrap(), dst as u64)
+                .unwrap();
 
             if src_shard == dst_shard {
                 shards[src_shard].add_edge_with_props(

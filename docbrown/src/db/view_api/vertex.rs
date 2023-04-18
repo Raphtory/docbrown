@@ -112,7 +112,7 @@ pub trait VertexViewOps: TimeOps {
     /// # Returns
     ///
     /// The degree of this vertex.
-    fn degree(&self) -> Self::ValueType<usize>;
+    fn degree(&self,layer:Option<String>) -> Self::ValueType<usize>;
 
     /// Get the in-degree of this vertex (i.e., the number of edges that point into it).
     ///

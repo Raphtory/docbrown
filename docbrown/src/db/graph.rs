@@ -1480,8 +1480,8 @@ mod db_tests {
     fn db_lotr() {
         let g = Graph::new(4);
 
-        let data_dir =
-            crate::graph_loader::example::lotr_graph::lotr_file().expect("Failed to get lotr.csv file");
+        let data_dir = crate::graph_loader::example::lotr_graph::lotr_file()
+            .expect("Failed to get lotr.csv file");
 
         fn parse_record(rec: &StringRecord) -> Option<(String, String, i64)> {
             let src = rec.get(0).and_then(|s| s.parse::<String>().ok())?;
@@ -1614,10 +1614,10 @@ mod db_tests {
         let vertex1 = layer1.vertex(11).unwrap();
         let vertex2 = layer2.vertex(11).unwrap();
 
-        assert_eq!(vertex.degree(), 3);
-        assert_eq!(vertex_dft.degree(), 2);
-        assert_eq!(vertex1.degree(), 1);
-        assert_eq!(vertex2.degree(), 2);
+        assert_eq!(vertex.degree(None), 3);
+        assert_eq!(vertex_dft.degree(None), 2);
+        assert_eq!(vertex1.degree(None), 1);
+        assert_eq!(vertex2.degree(None), 2);
 
         assert_eq!(vertex.out_degree(), 3);
         assert_eq!(vertex_dft.out_degree(), 2);

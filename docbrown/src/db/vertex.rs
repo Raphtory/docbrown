@@ -102,7 +102,7 @@ impl<G: GraphViewOps> VertexViewOps for VertexView<G> {
             Some((_, prop)) => Some(prop.clone()),
         }
     }
-    
+
     fn property_history(&self, name: String) -> Vec<(i64, Prop)> {
         match &self.window {
             None => self.graph.temporal_vertex_prop_vec(self.vertex, name),
@@ -172,7 +172,7 @@ impl<G: GraphViewOps> VertexViewOps for VertexView<G> {
         self.graph.static_vertex_prop(self.vertex, name)
     }
 
-    fn degree(&self) -> usize {
+    fn degree(&self,layer:Option<String>) -> usize {
         let dir = Direction::BOTH;
         match &self.window {
             None => self.graph.degree(self.vertex, dir, None),
@@ -416,7 +416,7 @@ impl<G: GraphViewOps> VertexListOps for Box<dyn Iterator<Item = VertexView<G>> +
     }
 
     fn degree(self) -> BoxedIter<usize> {
-        let r: Vec<_> = self.map(|v| v.degree()).collect();
+        let r: Vec<_> = self.map(|v| v.degree(None)).collect();
         Box::new(r.into_iter())
     }
 
@@ -568,9 +568,9 @@ mod vertex_test {
         let g = crate::graph_loader::example::lotr_graph::lotr_graph(4);
 
         assert_eq!(g.num_edges(), 701);
-        assert_eq!(g.vertex("Gandalf").unwrap().degree(), 49);
+        assert_eq!(g.vertex("Gandalf").unwrap().degree(None), 49);
         assert_eq!(
-            g.vertex("Gandalf").unwrap().window(1356, 24792).degree(),
+            g.vertex("Gandalf").unwrap().window(1356, 24792).degree(None),
             34
         );
         assert_eq!(g.vertex("Gandalf").unwrap().in_degree(), 24);

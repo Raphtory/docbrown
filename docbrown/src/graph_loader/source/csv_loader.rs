@@ -404,8 +404,8 @@ impl CsvLoader {
 mod csv_loader_test {
     use crate::core::utils::calculate_hash;
     use crate::core::Prop;
-    use crate::graph_loader::source::csv_loader::CsvLoader;
     use crate::db::graph::Graph;
+    use crate::graph_loader::source::csv_loader::CsvLoader;
     use regex::Regex;
     use serde::Deserialize;
     use std::path::{Path, PathBuf};
@@ -472,7 +472,8 @@ mod csv_loader_test {
                         Prop::Str("Character Co-occurrence".to_string()),
                     )],
                     None,
-                ).unwrap();
+                )
+                .unwrap();
             })
             .expect("Csv did not parse.");
     }

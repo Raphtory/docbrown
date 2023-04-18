@@ -1618,6 +1618,7 @@ dependencies = [
  "regex",
  "replace_with",
  "serde",
+ "tokio",
 ]
 
 [[package]]

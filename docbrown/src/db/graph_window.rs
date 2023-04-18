@@ -1070,7 +1070,7 @@ mod views_test {
         let actual = wg
             .vertices()
             .iter()
-            .map(|v| (v.id(), v.degree()))
+            .map(|v| (v.id(), v.degree(None)))
             .collect::<Vec<_>>();
 
         let expected = vec![(2, 1), (1, 2)];

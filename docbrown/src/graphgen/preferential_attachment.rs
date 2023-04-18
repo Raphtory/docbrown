@@ -48,7 +48,7 @@ pub fn ba_preferential_attachment(graph: &Graph, vertices_to_add: usize, edges_p
     let mut latest_time = graph.end().unwrap_or(0);
     let view = graph.window(i64::MIN, i64::MAX);
     let mut ids: Vec<u64> = view.vertices().id().collect();
-    let r: Vec<usize> = view.vertices().degree().collect();
+    let r: Vec<usize> = view.vertices().degree(None).collect();
     let mut degrees: Vec<usize> = r;
     let mut edge_count: usize = degrees.iter().sum();
 
