@@ -9,7 +9,6 @@ use docbrown::db::view_api::*;
 use itertools::Itertools;
 use pyo3::{pyclass, pymethods, PyAny, PyRef, PyRefMut, PyResult};
 use std::collections::HashMap;
-use std::fmt::format;
 use std::sync::Arc;
 
 #[pyclass(name = "Edge")]

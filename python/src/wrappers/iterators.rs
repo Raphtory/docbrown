@@ -5,11 +5,9 @@ use docbrown::db::view_api::BoxedIter;
 use num::cast::AsPrimitive;
 use pyo3::prelude::*;
 use std::collections::HashMap;
-use std::fmt::{Debug, Display, Formatter};
 use std::i64;
 use std::iter::Sum;
 use std::ops::Deref;
-use std::sync::Arc;
 
 pub(crate) trait MeanExt<V>: Iterator<Item = V>
 where

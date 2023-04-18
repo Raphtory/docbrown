@@ -1,8 +1,5 @@
-use futures::AsyncReadExt;
 use itertools::Itertools;
 use std::collections::HashMap;
-use std::ops::Deref;
-use std::ptr::addr_of;
 
 pub fn iterator_repr<I: Iterator<Item = V>, V: Repr>(iter: I) -> String {
     let values: Vec<String> = iter.take(11).map(|v| v.repr()).collect();
