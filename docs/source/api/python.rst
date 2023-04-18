@@ -1,4 +1,4 @@
-API
+API (Python)
 ===
 
 .. autosummary::

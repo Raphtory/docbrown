@@ -14,3 +14,8 @@ docs/build/*
 docs/logs/*
 .python-version
 .ipynb_checkpoints
+docs/source/_rustdoc/*
+docs/build/*
+docs/logs/*
+docs/api/_autosummary/*
+

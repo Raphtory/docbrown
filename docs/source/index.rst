@@ -38,6 +38,12 @@ Alternatively, hit next and lets get Raphtory :doc:`installed <Introduction/inst
    :caption: Introduction
 
    Introduction/install.md
-   Introduction/apidocs.md
    Introduction/quickstart.md
-   Introduction/api
+
+.. toctree::
+   :maxdepth: 2
+   :hidden:
+   :caption: API
+
+   api/python.rst
+   api/rust
