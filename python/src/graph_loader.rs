@@ -8,13 +8,13 @@ use pyo3::prelude::*;
 /// and is a list of interactions between characters in the Lord of the Rings books
 /// and movies. The dataset is a CSV file with the following columns:
 ///
-/// - src_id: The ID of the source character
-/// - dst_id: The ID of the destination character
-/// - time: The time of the interaction (in page)
+/// * src_id: The ID of the source character
+/// * dst_id: The ID of the destination character
+/// * time: The time of the interaction (in page)
 ///
-/// ## Dataset statistics
-/// * Number of nodes (subreddits) 139
-/// * Number of edges (hyperlink between subreddits) 701
+/// Dataset statistics:
+///    * Number of nodes (subreddits) 139
+///    * Number of edges (hyperlink between subreddits) 701
 ///
 ///
 /// Arguments:
@@ -35,16 +35,16 @@ pub(crate) fn lotr_graph(shards: usize) -> PyResult<Py<PyGraph>> {
 /// from publicly available Reddit data of 2.5 years from Jan 2014 to April 2017.
 /// *NOTE: It may take a while to download the dataset
 ///
-/// ## Dataset statistics
-/// * Number of nodes (subreddits) 35,776
-/// * Number of edges (hyperlink between subreddits) 137,821
-/// * Timespan Jan 2014 - April 2017
+/// Dataset statistics:
+///   * Number of nodes (subreddits) 35,776
+///   * Number of edges (hyperlink between subreddits) 137,821
+///   * Timespan Jan 2014 - April 2017
 ///
-/// ## Source
-/// S. Kumar, W.L. Hamilton, J. Leskovec, D. Jurafsky. Community Interaction and Conflict
-/// on the Web. World Wide Web Conference, 2018.
+/// Source:
+///     * S. Kumar, W.L. Hamilton, J. Leskovec, D. Jurafsky. Community Interaction and Conflict
+///     on the Web. World Wide Web Conference, 2018.
 ///
-/// ## Properties
+/// Properties:
 ///
 ///  * SOURCE_SUBREDDIT: the subreddit where the link originates
 ///  * TARGET_SUBREDDIT: the subreddit where the link ends
