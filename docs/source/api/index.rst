@@ -1,19 +1,16 @@
-#################
-  API
-#################
 
 Python
 =======
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
 
-   python/python
+   python
 
 Rust
 =======
 
-The documentation within the source code is hosted `as rust code here`_.
+*  `Rust Docs`_
 
 
-.. _as rust code here: ../../_static/docbrown/index.html
+.. _Rust Docs: ../../_static/docbrown/index.html
