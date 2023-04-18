@@ -113,3 +113,4 @@ html_static_path = ['images', '_rustdoc']
 # .. _binder_link: https://mybinder.org/v2/gh/Raphtory/Raphtory/v{__version__}?labpath=examples%2Fbinder_python%2Findex.ipynb
 # """
 
+fake_var = False
