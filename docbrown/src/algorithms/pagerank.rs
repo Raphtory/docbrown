@@ -200,9 +200,8 @@ impl Program for UnweightedPageRankS1 {
     type Out = ();
 
     fn local_eval<G: GraphViewOps>(&self, c: &LocalState<G>) {
-        let score: AggRef<MulF32, MulF32, MulF32, ValDef<MulF32>> = c.agg(self.score.clone());
-        let recv_score: AggRef<SumF32, SumF32, SumF32, SumDef<SumF32>> =
-            c.agg(self.recv_score.clone());
+        let score: AggRef<MulF32, MulF32, MulF32, ValDef<MulF32>> = c.agg(self.score);
+        let recv_score: AggRef<SumF32, SumF32, SumF32, SumDef<SumF32>> = c.agg(self.recv_score);
 
         c.step(|s| {
             let out_degree = s.out_degree();
@@ -307,8 +306,8 @@ impl Program for UnweightedPageRankS3 {
         let max_diff: AggRef<f32, f32, f32, MaxDef<f32>> = c.global_agg(self.max_diff);
 
         c.step(|s| {
-            s.reset(&recv_score);
-            s.global_reset(&max_diff);
+            // s.reset(&recv_score);
+            // s.global_reset(&max_diff);
         });
     }
 
@@ -429,6 +428,11 @@ mod page_rank_tests {
     #[test]
     fn test_page_rank_2() {
         test_page_rank(2);
+    }
+
+    #[test]
+    fn test_page_rank_3() {
+        test_page_rank(3);
     }
 
     #[test]

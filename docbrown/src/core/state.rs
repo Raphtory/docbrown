@@ -742,6 +742,7 @@ impl<CS: ComputeState + Send + Sync> ShuffleComputeState<CS> {
     }
 
     pub fn reset_states(&mut self, ss: usize, states: &Vec<u32>) {
+        self.global.reset_states(ss, states);
         self.parts
             .iter_mut()
             .for_each(|p| p.reset_states(ss, states));
