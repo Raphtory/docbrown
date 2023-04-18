@@ -107,40 +107,19 @@ impl GraphViewInternalOps for DynamicGraph {
 
     fn edge_timestamps(
             &self, 
-            e: EdgeRef, 
-            layer: usize,
-            d: Direction
+            e: EdgeRef
         ) -> Vec<i64> {
-        self.0.edge_timestamps(e, layer, d)
+        self.0.edge_timestamps(e)
     }
 
     fn edge_window_timestamps(
         &self,
         e: EdgeRef,
-        layer: usize,
-        d: Direction,
         t_start: i64, t_end: i64
     ) -> Vec<i64> {
-        self.0.edge_window_timestamps(e, layer, d, t_start, t_end)
-    }
-    fn remote_edge_timestamps(
-        &self,
-        e: EdgeRef,
-        layer: usize,
-        d: Direction
-    ) -> Vec<i64> {
-        self.0.remote_edge_timestamps(e, layer, d)
+        self.0.edge_window_timestamps(e, t_start, t_end)
     }
 
-    fn remote_edge_window_timestamps(
-        &self,
-        e: EdgeRef,
-        layer: usize,
-        d: Direction,
-        t_start: i64, t_end: i64
-    ) -> Vec<i64> {
-        self.0.remote_edge_window_timestamps(e, layer, d, t_start, t_end)
-    }
 
     fn degree_window(
         &self,
