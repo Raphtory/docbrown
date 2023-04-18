@@ -321,6 +321,10 @@ impl PyVertices {
         self.vertices.neighbours().into()
     }
 
+    fn collect(&self) -> Vec<PyVertex> {
+        self.__iter__().into_iter().collect()
+    }
+
     //******  Perspective APIS  ******//
     pub fn start(&self) -> Option<i64> {
         self.vertices.start()
@@ -403,6 +407,9 @@ impl PyPathFromGraph {
         self.path.iter().into()
     }
 
+    fn collect(&self) -> Vec<Vec<PyVertex>> {
+        self.__iter__().into_iter().map(|it| it.collect()).collect()
+    }
     fn id(&self) -> NestedU64Iterable {
         let path = self.path.clone();
         (move || path.id()).into()
@@ -580,6 +587,10 @@ impl From<PathFromVertex<DynamicGraph>> for PyPathFromVertex {
 impl PyPathFromVertex {
     fn __iter__(&self) -> PyVertexIterator {
         self.path.iter().into()
+    }
+
+    fn collect(&self) -> Vec<PyVertex> {
+        self.__iter__().into_iter().collect()
     }
 
     fn id(&self) -> U64Iterable {
