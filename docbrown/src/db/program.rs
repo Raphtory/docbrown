@@ -647,7 +647,7 @@ impl<G: GraphViewOps> GlobalEvalState<G> {
                     own_state.copy_over_next_ss(self.ss);
                 }
                 
-                own_state.reset_resetable_states(self.ss, &self.resetable_states);
+                own_state.reset_states(self.ss, &self.resetable_states);
 
                 // put back the local state
                 **local_state = Some(own_state);
@@ -917,8 +917,6 @@ pub trait Program {
     where
         Self: Sync,
     {
-        println!("RUN STEP {:#?}", c.ss);
-
         let next_vertex_set = c.next_vertex_set.clone();
         let graph = g.clone();
 
@@ -944,11 +942,6 @@ pub trait Program {
 
                 self.local_eval(&rc_state);
 
-                let t_id = std::thread::current().id();
-                // println!(
-                //     "DONE LOCAL STEP ss: {}, shard: {}, thread: {t_id:?}",
-                //     c.ss, i
-                // );
                 // put back the state
                 **local_state = Some(rc_state.consume());
             });
