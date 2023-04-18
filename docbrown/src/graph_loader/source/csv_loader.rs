@@ -472,7 +472,7 @@ mod csv_loader_test {
                         Prop::Str("Character Co-occurrence".to_string()),
                     )],
                     None,
-                );
+                ).unwrap();
             })
             .expect("Csv did not parse.");
     }
