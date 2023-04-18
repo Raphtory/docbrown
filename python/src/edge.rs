@@ -45,7 +45,7 @@ impl PyEdge {
     ///
     /// Returns:
     ///   The value of the property with the given name.
-    #[pyo3(signature = (*name, include_static = false))]
+    #[pyo3(signature = (name, include_static = true))]
     pub fn property(&self, name: String, include_static: Option<bool>) -> Option<Prop> {
         let include_static = include_static.unwrap_or(true);
         self.edge
@@ -62,7 +62,7 @@ impl PyEdge {
     ///
     /// Returns:
     ///  The value of the property with the given name.
-    #[pyo3(signature = (*name))]
+    #[pyo3(signature = (name))]
     pub fn property_history(&self, name: String) -> Vec<(i64, Prop)> {
         self.edge
             .property_history(name)
@@ -78,7 +78,7 @@ impl PyEdge {
     ///
     /// Returns:
     ///   A dictionary of all properties on the edge.
-    #[pyo3(signature = (include_static = false))]
+    #[pyo3(signature = (include_static = true))]
     pub fn properties(&self, include_static: Option<bool>) -> HashMap<String, Prop> {
         let include_static = include_static.unwrap_or(true);
         self.edge
@@ -107,7 +107,7 @@ impl PyEdge {
     ///
     /// Returns:
     ///   A list of all property names on the edge.
-    #[pyo3(signature = (include_static = false))]
+    #[pyo3(signature = (include_static = true))]
     pub fn property_names(&self, include_static: Option<bool>) -> Vec<String> {
         let include_static = include_static.unwrap_or(true);
         self.edge.property_names(include_static)
@@ -121,7 +121,7 @@ impl PyEdge {
     ///
     /// Returns:
     /// True if a property exists with the given name, False otherwise.
-    #[pyo3(signature = (*name, include_static = false))]
+    #[pyo3(signature = (name, include_static = true))]
     pub fn has_property(&self, name: String, include_static: Option<bool>) -> bool {
         let include_static = include_static.unwrap_or(true);
         self.edge.has_property(name, include_static)
@@ -193,7 +193,7 @@ impl PyEdge {
     ///
     /// Returns:
     ///   A set of windows containing edges that fall in the time period
-    #[pyo3(signature = (*step, start = None, end = None))]
+    #[pyo3(signature = (step, start = None, end = None))]
     fn expanding(&self, step: u64, start: Option<i64>, end: Option<i64>) -> PyEdgeWindowSet {
         self.edge.expanding(step, start, end).into()
     }
