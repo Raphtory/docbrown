@@ -116,10 +116,9 @@ impl<G: GraphViewOps> VertexViewOps for VertexView<G> {
     fn history(&self) -> Vec<i64> {
         match &self.window {
             None => self.graph.vertex_timestamps(self.vertex),
-            Some(w) => {
-                self.graph
-                    .vertex_timestamps_window(self.vertex, w.start, w.end)
-            }
+            Some(w) => self
+                .graph
+                .vertex_timestamps_window(self.vertex, w.start, w.end),
         }
     }
 
@@ -585,7 +584,7 @@ mod vertex_test {
     #[test]
     fn test_all_degrees_window() {
         let g = crate::graph_loader::lotr_graph::lotr_graph(4);
-      
+
         assert_eq!(g.num_edges(), 701);
         assert_eq!(g.vertex("Gandalf").unwrap().degree(), 49);
         assert_eq!(

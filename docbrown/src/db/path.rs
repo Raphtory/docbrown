@@ -111,7 +111,9 @@ impl<G: GraphViewOps> VertexViewOps for PathFromGraph<G> {
         Box::new(self.iter().map(move |it| it.property_history(name.clone())))
     }
 
-    fn history(&self) -> Box<dyn Iterator<Item = Box<dyn Iterator<Item = Vec<i64>> + Send>> + Send> {
+    fn history(
+        &self,
+    ) -> Box<dyn Iterator<Item = Box<dyn Iterator<Item = Vec<i64>> + Send>> + Send> {
         Box::new(self.iter().map(move |it| it.history()))
     }
 
@@ -346,7 +348,7 @@ impl<G: GraphViewOps> VertexViewOps for PathFromVertex<G> {
         self.iter().property_history(name)
     }
 
-    fn history(&self) ->  Self::ValueType<Vec<i64>> {
+    fn history(&self) -> Self::ValueType<Vec<i64>> {
         self.iter().history()
     }
 

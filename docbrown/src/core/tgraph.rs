@@ -1,24 +1,23 @@
 //! A data structure for representing temporal graphs.
 
 use std::{
+    any::Any,
     collections::{BTreeMap, BTreeSet, HashMap},
     ops::Range,
-    any::Any
 };
 
 use itertools::Itertools;
 use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
 
+use crate::core::adj::Adj;
 use crate::core::edge_layer::EdgeLayer;
 use crate::core::props::Props;
+use crate::core::tadjset::AdjEdge;
 use crate::core::tprop::TProp;
 use crate::core::vertex::InputVertex;
 use crate::core::{bitset::BitSet, Direction};
 use crate::core::{Prop, Time};
-use crate::core::adj::Adj;
-use crate::core::tadjset::AdjEdge;
-
 
 use self::errors::MutateGraphError;
 
@@ -209,7 +208,7 @@ impl TemporalGraph {
         }
     }
 
-    pub(crate) fn has_vertex(&self, v: u64) -> bool { 
+    pub(crate) fn has_vertex(&self, v: u64) -> bool {
         self.logical_to_physical.contains_key(&v)
     }
 
@@ -891,51 +890,36 @@ impl TemporalGraph {
     }
 
     pub(crate) fn vertex_timestamps(&self, src: u64) -> Vec<i64> {
-        let src_pid =  self.logical_to_physical[&src];
+        let src_pid = self.logical_to_physical[&src];
         self.timestamps[src_pid].iter().map(|t| *t).collect()
-    }   
+    }
 
     pub(crate) fn vertex_timestamps_window(&self, src: u64, w: Range<i64>) -> Vec<i64> {
         let src_pid = self.logical_to_physical[&src];
         self.timestamps[src_pid].range(w).map(|t| *t).collect()
     }
 
-
-
-
     pub(crate) fn edge_timestamps(
         &self,
         src: u64,
         dst: u64,
-        layer: usize
+        layer: usize,
+        window: Option<Range<i64>>,
+        nr_shards: usize,
     ) -> Vec<i64> {
-        let src_pid = self.logical_to_physical[&src];
-        let dst_pid = self.logical_to_physical[&dst];
-        self.layers[layer].get_edge_history(src_pid, dst_pid)
-    }
-    
-    
+        let src_shard_id = utils::get_shard_id_from_global_vid(src.id(), nr_shards);
+        let dst_shard_id = utils::get_shard_id_from_global_vid(dst.id(), nr_shards);
 
-        pub(crate) fn edge_window_timestamps(
-            &self,
-            src: u64,
-            dst: u64,
-            layer: usize,
-            w: Range<i64>
-        ) -> Vec<i64> {
+        if src_shard_id == dst_shard_id {
             let src_pid = self.logical_to_physical[&src];
             let dst_pid = self.logical_to_physical[&dst];
-            if self.layers[layer].has_local_edge(src_pid, dst_pid) {
-                self.layers[layer].get_edge_history_window(w, src_pid, dst_pid)
-            } else {
-                self.layers[layer].get_edge_history_window(w, src_pid, dst_pid)
-            }       
-           
-         
+            self.layers[layer].get_edge_history(src_pid, dst_pid, true, window)
+        } else {
+            let src_pid = self.logical_to_physical[&src];
+            self.layers[layer].get_edge_history(src_pid, dst.try_into().unwrap(), false, window)
         }
-
-
     }
+}
 
 // helps us track what are we iterating over
 #[derive(Debug, PartialEq, Copy, Clone, Eq, Hash, PartialOrd, Ord)]
@@ -1167,7 +1151,7 @@ mod graph_test {
     #[ignore = "Undecided on the semantics of the time window over vertices shoule be supported in Docbrown"]
     fn add_vertex_at_time_t1_window() {
         let mut g = TemporalGraph::default();
-       
+
         g.add_vertex(9, 1);
         assert!(g.has_vertex(9));
         assert!(g.has_vertex_window(9, &(1..15)));

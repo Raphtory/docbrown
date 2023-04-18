@@ -45,10 +45,7 @@ use crate::db::perspective::Perspective;
 use crate::db::view_api::internal::GraphViewInternalOps;
 use crate::db::view_api::time::TimeOps;
 use crate::db::view_api::GraphViewOps;
-use std::{
-    collections::HashMap,
-    ops::Range
-};
+use std::{collections::HashMap, ops::Range};
 
 /// A set of windowed views of a `Graph`, allows user to iterating over a Graph broken
 /// down into multiple windowed views.
@@ -801,47 +798,25 @@ impl<G: GraphViewOps> GraphViewInternalOps for WindowedGraph<G> {
         )
     }
 
-    fn vertex_timestamps(
-        &self,
-        v: VertexRef,
-    ) -> Vec<i64> {
-        self.graph.vertex_timestamps_window(
-            v,
-            self.t_start,
-            self.t_end
-        )
+    fn vertex_timestamps(&self, v: VertexRef) -> Vec<i64> {
+        self.graph
+            .vertex_timestamps_window(v, self.t_start, self.t_end)
     }
 
-    fn vertex_timestamps_window(
-        &self,
-        v: VertexRef,
-        t_start: i64,
-        t_end: i64
-    ) -> Vec<i64> {
-        self.graph.vertex_timestamps_window(
-            v, 
-            self.actual_start(t_start),
-            self.actual_end(t_end)
-        )
+    fn vertex_timestamps_window(&self, v: VertexRef, t_start: i64, t_end: i64) -> Vec<i64> {
+        self.graph
+            .vertex_timestamps_window(v, self.actual_start(t_start), self.actual_end(t_end))
     }
 
-    fn edge_timestamps(
-        &self,
-        e: EdgeRef
-    ) -> Vec<i64> {
-        self.graph.edge_window_timestamps(e, self.t_start, self.t_end)
+    fn edge_timestamps(&self, e: EdgeRef) -> Vec<i64> {
+        self.graph
+            .edge_window_timestamps(e, self.t_start, self.t_end)
     }
 
-    fn edge_window_timestamps(
-        &self,
-        e: EdgeRef,
-        t_start: i64,
-        t_end: i64,
-    ) -> Vec<i64> {
-        self.graph.edge_window_timestamps(e,  self.actual_start(t_start),
-        self.actual_end(t_end))
+    fn edge_window_timestamps(&self, e: EdgeRef, t_start: i64, t_end: i64) -> Vec<i64> {
+        self.graph
+            .edge_window_timestamps(e, self.actual_start(t_start), self.actual_end(t_end))
     }
-
 
     /// Get all temporal properties of a vertex
     ///

@@ -96,7 +96,7 @@ impl GraphViewInternalOps for DynamicGraph {
     fn degree(&self, v: VertexRef, d: Direction, layer: Option<usize>) -> usize {
         self.0.degree(v, d, layer)
     }
-    
+
     fn vertex_timestamps(&self, v: VertexRef) -> Vec<i64> {
         self.0.vertex_timestamps(v)
     }
@@ -105,21 +105,13 @@ impl GraphViewInternalOps for DynamicGraph {
         self.0.vertex_timestamps_window(v, t_start, t_end)
     }
 
-    fn edge_timestamps(
-            &self, 
-            e: EdgeRef
-        ) -> Vec<i64> {
+    fn edge_timestamps(&self, e: EdgeRef) -> Vec<i64> {
         self.0.edge_timestamps(e)
     }
 
-    fn edge_window_timestamps(
-        &self,
-        e: EdgeRef,
-        t_start: i64, t_end: i64
-    ) -> Vec<i64> {
+    fn edge_window_timestamps(&self, e: EdgeRef, t_start: i64, t_end: i64) -> Vec<i64> {
         self.0.edge_window_timestamps(e, t_start, t_end)
     }
-
 
     fn degree_window(
         &self,

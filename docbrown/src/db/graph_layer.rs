@@ -441,21 +441,11 @@ impl<G: GraphViewInternalOps> GraphViewInternalOps for LayeredGraph<G> {
         self.graph.vertex_timestamps_window(v, t_start, t_end)
     }
 
-    fn edge_timestamps(
-        &self, 
-        e: EdgeRef, 
-    ) -> Vec<i64> {
+    fn edge_timestamps(&self, e: EdgeRef) -> Vec<i64> {
         self.graph.edge_timestamps(e)
     }
 
-    fn edge_window_timestamps(
-        &self,
-        e: EdgeRef,
-        t_start: i64,
-        t_end: i64,
-    ) -> Vec<i64> {
-        self.edge_window_timestamps(e,  t_start, t_end)
+    fn edge_window_timestamps(&self, e: EdgeRef, t_start: i64, t_end: i64) -> Vec<i64> {
+        self.edge_window_timestamps(e, t_start, t_end)
     }
-
-    
 }

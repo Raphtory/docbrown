@@ -263,7 +263,6 @@ impl<
     // pub fn find_edge_history(&self, v: V) -> Vec<i64> {
     //     self.iter().filter_map(|(u, adjedge)| u == &v )
     // }
-
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]

@@ -39,7 +39,6 @@ use std::{
     collections::HashMap,
     path::{Path, PathBuf},
     sync::Arc,
- 
 };
 
 /// A temporal graph composed of multiple shards.
@@ -489,8 +488,7 @@ impl GraphViewInternalOps for Graph {
     }
 
     fn vertex_timestamps(&self, v: VertexRef) -> Vec<i64> {
-        self.get_shard_from_v(v)
-            .vertex_timestamps(v.g_id)
+        self.get_shard_from_v(v).vertex_timestamps(v.g_id)
     }
 
     fn vertex_timestamps_window(&self, v: VertexRef, t_start: i64, t_end: i64) -> Vec<i64> {
@@ -498,21 +496,18 @@ impl GraphViewInternalOps for Graph {
             .vertex_timestamps_window(v.g_id, t_start..t_end)
     }
 
-    fn edge_timestamps(
-        &self,
-        e: EdgeRef
-    ) -> Vec<i64> {
+    fn edge_timestamps(&self, e: EdgeRef) -> Vec<i64> {
         self.get_shard_from_e(e)
             .edge_timestamps(e.src_g_id, e.dst_g_id, e.layer_id)
     }
 
-    fn edge_window_timestamps(
-        &self,
-        e: EdgeRef,
-        t_start: i64,
-        t_end: i64,
-    ) -> Vec<i64> {
-        self.get_shard_from_e(e).edge_window_timestamps(e.src_g_id,e.dst_g_id,e.layer_id, t_start..t_end)
+    fn edge_window_timestamps(&self, e: EdgeRef, t_start: i64, t_end: i64) -> Vec<i64> {
+        self.get_shard_from_e(e).edge_window_timestamps(
+            e.src_g_id,
+            e.dst_g_id,
+            e.layer_id,
+            t_start..t_end,
+        )
     }
 
     fn temporal_edge_props(&self, e: EdgeRef) -> HashMap<String, Vec<(i64, Prop)>> {
@@ -1797,33 +1792,31 @@ mod db_tests {
         g.add_vertex(6, "Lord Farquaad", &vec![]);
         g.add_vertex(7, "Lord Farquaad", &vec![]);
         g.add_vertex(8, "Lord Farquaad", &vec![]);
-      
+
         let times_of_one = g.vertex(1).unwrap().history();
         let times_of_farquaad = g.vertex("Lord Farquaad").unwrap().history();
 
-        assert_eq!(times_of_one, [1, 2 ,3 ,4, 8]);
+        assert_eq!(times_of_one, [1, 2, 3, 4, 8]);
         assert_eq!(times_of_farquaad, [4, 6, 7, 8]);
 
         let view = g.window(1, 8);
-  
+
         let windowed_times_of_one = view.vertex(1).unwrap().history();
         let windowed_times_of_farquaad = view.vertex("Lord Farquaad").unwrap().history();
-        assert_eq!(windowed_times_of_one, [1, 2 ,3 ,4]);
+        assert_eq!(windowed_times_of_one, [1, 2, 3, 4]);
         assert_eq!(windowed_times_of_farquaad, [4, 6, 7]);
-
     }
 
     #[test]
     fn check_edge_history() {
         let g = Graph::new(1);
 
-
         g.add_edge(1, 1, 2, &vec![], None);
         g.add_edge(2, 1, 3, &vec![], None);
         g.add_edge(3, 1, 2, &vec![], None);
 
-        let times_of_onetwo = g.edge(1,2, None).unwrap().history();
+        let times_of_onetwo = g.edge(1, 2, None).unwrap().history();
 
-        assert_eq!(times_of_onetwo, [1,3]);
+        assert_eq!(times_of_onetwo, [1, 3]);
     }
 }

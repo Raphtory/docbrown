@@ -103,10 +103,7 @@ impl<G: GraphViewOps> EdgeView<G> {
 
     pub fn history(&self) -> Vec<i64> {
         self.graph.edge_timestamps(self.edge)
-
     }
-     
-    
 
     pub fn properties(&self, include_static: bool) -> HashMap<String, Prop> {
         let mut props: HashMap<String, Prop> = self
