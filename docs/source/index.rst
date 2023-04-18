@@ -29,21 +29,14 @@ Note: DocBrown is in heavy active development.
 If you would like a brief summary of what it's used for before fully diving into the getting start guide please check out our latest talks and blogs on the `Raphtory website <https://raphtory.com>`_.
 
 
-Alternatively, hit next and lets get Raphtory :doc:`installed <Introduction/install>`. If you want to dive headfirst into the API's you can visit the  :doc:`RustDocs <Introduction/apidocs>`.
+Alternatively, hit next and lets get Raphtory :doc:`installed <Introduction/install>`. If you want to dive headfirst into the API's you can visit the  :doc:`Python and Rust docs <api/index>`.
 
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 4
    :hidden:
    :caption: Introduction
 
    Introduction/install.md
    Introduction/quickstart.md
-
-.. toctree::
-   :maxdepth: 2
-   :hidden:
-   :caption: API
-
-   api/python.rst
-   api/rust
+   api/index

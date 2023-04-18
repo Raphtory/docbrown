@@ -42,10 +42,10 @@ extensions = [
     # 'extractRustDocs', 
     'sphinx.ext.autodoc',
     #'processWrapperDocs',
-    # 'myst_parser',
     # 'sphinx_tabs.tabs',
     # "nbsphinx"
     'sphinx.ext.napoleon',
+    'myst_parser',
 ]
 
 suppress_warnings = ['myst.header', 'myst.anchor']
