@@ -112,3 +112,4 @@ html_static_path = ['images', '_rustdoc']
 # .. |binder_link| replace:: Click here to launch the notebook
 # .. _binder_link: https://mybinder.org/v2/gh/Raphtory/Raphtory/v{__version__}?labpath=examples%2Fbinder_python%2Findex.ipynb
 # """
+
