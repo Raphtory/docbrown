@@ -24,12 +24,14 @@ macro_rules! py_nested_iterable_base {
 
 macro_rules! py_nested_iterable_methods {
     ($name:ident, $item:ty, $iter:ty) => {
-        py_iter_method!($name, $iter);
+        py_iterable_base_methods!($name, $iter);
 
         #[pymethods]
         impl $name {
             pub fn collect(&self) -> Vec<Vec<$item>> {
-                self.iter().map(|it| it.collect()).collect()
+                self.iter()
+                    .map(|it| it.map(|v| v.into()).collect())
+                    .collect()
             }
         }
     };
@@ -114,8 +116,11 @@ macro_rules! py_nested_float_max_min_methods {
 
 macro_rules! py_nested_iterable {
     ($name:ident, $item:ty, $iter:ty, $value_iterable:ty) => {
+        py_nested_iterable!($name, $item, $item, $iter, $value_iterable);
+    };
+    ($name:ident, $item:ty, $pyitem:ty, $iter:ty, $value_iterable:ty) => {
         py_nested_iterable_base!($name, $item);
-        py_nested_iterable_methods!($name, $item, $iter);
+        py_nested_iterable_methods!($name, $pyitem, $iter);
     };
 }
 

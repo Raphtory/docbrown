@@ -1,5 +1,6 @@
 use crate::dynamic::DynamicGraph;
 use crate::edge::{PyEdges, PyNestedEdges};
+use crate::types::repr::{iterator_repr, Repr};
 use crate::util::{extract_vertex_ref, through_impl, window_impl};
 use crate::wrappers::iterators::*;
 use crate::wrappers::prop::Prop;
@@ -180,6 +181,12 @@ impl PyVertex {
     }
 
     pub fn __repr__(&self) -> String {
+        self.repr()
+    }
+}
+
+impl Repr for PyVertex {
+    fn repr(&self) -> String {
         let properties: String = self
             .properties(Some(true))
             .iter()
@@ -217,8 +224,9 @@ impl PyVertices {
         (move || vertices.id()).into()
     }
 
-    fn name(&self) -> StringIter {
-        self.vertices.name().into()
+    fn name(&self) -> StringIterable {
+        let vertices = self.vertices.clone();
+        (move || vertices.name()).into()
     }
 
     fn earliest_time(&self) -> OptionI64Iterable {
@@ -237,50 +245,53 @@ impl PyVertices {
             .into()
     }
 
-    fn property_history(&self, name: String) -> PropHistoryIter {
-        self.vertices.property_history(name).into()
+    fn property_history(&self, name: String) -> PropHistoryIterable {
+        let vertices = self.vertices.clone();
+        (move || vertices.property_history(name.clone())).into()
     }
 
-    fn properties(&self, include_static: Option<bool>) -> PropsIter {
-        self.vertices
-            .properties(include_static.unwrap_or(true))
-            .into()
+    fn properties(&self, include_static: Option<bool>) -> PropsIterable {
+        let vertices = self.vertices.clone();
+        (move || vertices.properties(include_static.unwrap_or(true))).into()
     }
 
-    fn property_histories(&self) -> PropHistoriesIter {
-        self.vertices.property_histories().into()
+    fn property_histories(&self) -> PropHistoriesIterable {
+        let vertices = self.vertices.clone();
+        (move || vertices.property_histories()).into()
     }
 
-    fn property_names(&self, include_static: Option<bool>) -> StringVecIter {
-        self.vertices
-            .property_names(include_static.unwrap_or(true))
-            .into()
+    fn property_names(&self, include_static: Option<bool>) -> StringVecIterable {
+        let vertices = self.vertices.clone();
+        (move || vertices.property_names(include_static.unwrap_or(true))).into()
     }
 
-    fn has_property(&self, name: String, include_static: Option<bool>) -> BoolIter {
-        self.vertices
-            .has_property(name, include_static.unwrap_or(true))
-            .into()
+    fn has_property(&self, name: String, include_static: Option<bool>) -> BoolIterable {
+        let vertices = self.vertices.clone();
+        (move || vertices.has_property(name.clone(), include_static.unwrap_or(true))).into()
     }
 
-    fn has_static_property(&self, name: String) -> BoolIter {
-        self.vertices.has_static_property(name).into()
+    fn has_static_property(&self, name: String) -> BoolIterable {
+        let vertices = self.vertices.clone();
+        (move || vertices.has_static_property(name.clone())).into()
     }
 
     fn static_property(&self, name: String) -> OptionPropIter {
         self.vertices.static_property(name).into()
     }
 
-    fn degree(&self) -> UsizeIter {
-        self.vertices.degree().into()
+    fn degree(&self) -> UsizeIterable {
+        let vertices = self.vertices.clone();
+        (move || vertices.degree()).into()
     }
 
-    fn in_degree(&self) -> UsizeIter {
-        self.vertices.in_degree().into()
+    fn in_degree(&self) -> UsizeIterable {
+        let vertices = self.vertices.clone();
+        (move || vertices.in_degree()).into()
     }
 
-    fn out_degree(&self) -> UsizeIter {
-        self.vertices.out_degree().into()
+    fn out_degree(&self) -> UsizeIterable {
+        let vertices = self.vertices.clone();
+        (move || vertices.out_degree()).into()
     }
 
     fn edges(&self) -> PyNestedEdges {
@@ -371,17 +382,13 @@ impl PyVertices {
     }
 
     pub fn __repr__(&self) -> String {
-        let values = self
-            .__iter__()
-            .into_iter()
-            .take(11)
-            .map(|v| v.__repr__())
-            .collect_vec();
-        if values.len() < 11 {
-            "Vertices(".to_string() + &values.join(", ") + ")"
-        } else {
-            "Vertices(".to_string() + &values[0..10].join(", ") + " ... )"
-        }
+        self.repr()
+    }
+}
+
+impl Repr for PyVertices {
+    fn repr(&self) -> String {
+        format!("Vertices({})", iterator_repr(self.__iter__().into_iter()))
     }
 }
 
@@ -401,8 +408,9 @@ impl PyPathFromGraph {
         (move || path.id()).into()
     }
 
-    fn name(&self) -> NestedStringIter {
-        self.path.name().into()
+    fn name(&self) -> NestedStringIterable {
+        let path = self.path.clone();
+        (move || path.name()).into()
     }
 
     fn earliest_time(&self) -> NestedOptionI64Iterable {
@@ -415,54 +423,59 @@ impl PyPathFromGraph {
         (move || path.latest_time()).into()
     }
 
-    fn property(&self, name: String, include_static: Option<bool>) -> NestedOptionPropIter {
-        self.path
-            .property(name, include_static.unwrap_or(true))
-            .into()
+    fn property(&self, name: String, include_static: Option<bool>) -> NestedOptionPropIterable {
+        let path = self.path.clone();
+        (move || path.property(name.clone(), include_static.unwrap_or(true))).into()
     }
 
-    fn property_history(&self, name: String) -> NestedPropHistoryIter {
-        self.path.property_history(name).into()
+    fn property_history(&self, name: String) -> NestedPropHistoryIterable {
+        let path = self.path.clone();
+        (move || path.property_history(name.clone())).into()
     }
 
-    fn properties(&self, include_static: Option<bool>) -> NestedPropsIter {
-        self.path.properties(include_static.unwrap_or(true)).into()
+    fn properties(&self, include_static: Option<bool>) -> NestedPropsIterable {
+        let path = self.path.clone();
+        (move || path.properties(include_static.unwrap_or(true))).into()
     }
 
-    fn property_histories(&self) -> NestedPropHistoriesIter {
-        self.path.property_histories().into()
+    fn property_histories(&self) -> NestedPropHistoriesIterable {
+        let path = self.path.clone();
+        (move || path.property_histories()).into()
     }
 
-    fn property_names(&self, include_static: Option<bool>) -> NestedStringVecIter {
-        self.path
-            .property_names(include_static.unwrap_or(true))
-            .into()
+    fn property_names(&self, include_static: Option<bool>) -> NestedStringVecIterable {
+        let path = self.path.clone();
+        (move || path.property_names(include_static.unwrap_or(true))).into()
     }
 
-    fn has_property(&self, name: String, include_static: Option<bool>) -> NestedBoolIter {
-        self.path
-            .has_property(name, include_static.unwrap_or(true))
-            .into()
+    fn has_property(&self, name: String, include_static: Option<bool>) -> NestedBoolIterable {
+        let path = self.path.clone();
+        (move || path.has_property(name.clone(), include_static.unwrap_or(true))).into()
     }
 
-    fn has_static_property(&self, name: String) -> NestedBoolIter {
-        self.path.has_static_property(name).into()
+    fn has_static_property(&self, name: String) -> NestedBoolIterable {
+        let path = self.path.clone();
+        (move || path.has_static_property(name.clone())).into()
     }
 
-    fn static_property(&self, name: String) -> NestedOptionPropIter {
-        self.path.static_property(name).into()
+    fn static_property(&self, name: String) -> NestedOptionPropIterable {
+        let path = self.path.clone();
+        (move || path.static_property(name.clone())).into()
     }
 
-    fn degree(&self) -> NestedUsizeIter {
-        self.path.degree().into()
+    fn degree(&self) -> NestedUsizeIterable {
+        let path = self.path.clone();
+        (move || path.degree()).into()
     }
 
-    fn in_degree(&self) -> NestedUsizeIter {
-        self.path.in_degree().into()
+    fn in_degree(&self) -> NestedUsizeIterable {
+        let path = self.path.clone();
+        (move || path.in_degree()).into()
     }
 
-    fn out_degree(&self) -> NestedUsizeIter {
-        self.path.out_degree().into()
+    fn out_degree(&self) -> NestedUsizeIterable {
+        let path = self.path.clone();
+        (move || path.out_degree()).into()
     }
 
     fn edges(&self) -> PyNestedEdges {
@@ -533,17 +546,16 @@ impl PyPathFromGraph {
     }
 
     fn __repr__(&self) -> String {
-        let values = self
-            .__iter__()
-            .into_iter()
-            .take(11)
-            .map(|v| v.__repr__())
-            .collect_vec();
-        if values.len() < 11 {
-            "WindowedVerticesPath(".to_string() + &values.join(", ") + ")"
-        } else {
-            "WindowedVerticesPath(".to_string() + &values.join(", ") + " ... )"
-        }
+        self.repr()
+    }
+}
+
+impl Repr for PyPathFromGraph {
+    fn repr(&self) -> String {
+        format!(
+            "PathFromGraph({})",
+            iterator_repr(self.__iter__().into_iter())
+        )
     }
 }
 
@@ -570,12 +582,14 @@ impl PyPathFromVertex {
         self.path.iter().into()
     }
 
-    fn id(&self) -> U64Iter {
-        self.path.id().into()
+    fn id(&self) -> U64Iterable {
+        let path = self.path.clone();
+        (move || path.id()).into()
     }
 
-    fn name(&self) -> StringIter {
-        self.path.name().into()
+    fn name(&self) -> StringIterable {
+        let path = self.path.clone();
+        (move || path.name()).into()
     }
 
     fn earliest_time(&self) -> OptionI64Iterable {
@@ -588,54 +602,59 @@ impl PyPathFromVertex {
         (move || path.latest_time()).into()
     }
 
-    fn property(&self, name: String, include_static: Option<bool>) -> OptionPropIter {
-        self.path
-            .property(name, include_static.unwrap_or(true))
-            .into()
+    fn property(&self, name: String, include_static: Option<bool>) -> OptionPropIterable {
+        let path = self.path.clone();
+        (move || path.property(name.clone(), include_static.unwrap_or(true))).into()
     }
 
-    fn property_history(&self, name: String) -> PropHistoryIter {
-        self.path.property_history(name).into()
+    fn property_history(&self, name: String) -> PropHistoryIterable {
+        let path = self.path.clone();
+        (move || path.property_history(name.clone())).into()
     }
 
-    fn properties(&self, include_static: Option<bool>) -> PropsIter {
-        self.path.properties(include_static.unwrap_or(true)).into()
+    fn properties(&self, include_static: Option<bool>) -> PropsIterable {
+        let path = self.path.clone();
+        (move || path.properties(include_static.unwrap_or(true))).into()
     }
 
-    fn property_histories(&self) -> PropHistoriesIter {
-        self.path.property_histories().into()
+    fn property_histories(&self) -> PropHistoriesIterable {
+        let path = self.path.clone();
+        (move || path.property_histories()).into()
     }
 
-    fn property_names(&self, include_static: Option<bool>) -> StringVecIter {
-        self.path
-            .property_names(include_static.unwrap_or(true))
-            .into()
+    fn property_names(&self, include_static: Option<bool>) -> StringVecIterable {
+        let path = self.path.clone();
+        (move || path.property_names(include_static.unwrap_or(true))).into()
     }
 
-    fn has_property(&self, name: String, include_static: Option<bool>) -> BoolIter {
-        self.path
-            .has_property(name, include_static.unwrap_or(true))
-            .into()
+    fn has_property(&self, name: String, include_static: Option<bool>) -> BoolIterable {
+        let path = self.path.clone();
+        (move || path.has_property(name.clone(), include_static.unwrap_or(true))).into()
     }
 
-    fn has_static_property(&self, name: String) -> BoolIter {
-        self.path.has_static_property(name).into()
+    fn has_static_property(&self, name: String) -> BoolIterable {
+        let path = self.path.clone();
+        (move || path.has_static_property(name.clone())).into()
     }
 
-    fn static_property(&self, name: String) -> OptionPropIter {
-        self.path.static_property(name).into()
+    fn static_property(&self, name: String) -> OptionPropIterable {
+        let path = self.path.clone();
+        (move || path.static_property(name.clone())).into()
     }
 
-    fn in_degree(&self) -> UsizeIter {
-        self.path.in_degree().into()
+    fn in_degree(&self) -> UsizeIterable {
+        let path = self.path.clone();
+        (move || path.in_degree()).into()
     }
 
-    fn out_degree(&self) -> UsizeIter {
-        self.path.out_degree().into()
+    fn out_degree(&self) -> UsizeIterable {
+        let path = self.path.clone();
+        (move || path.out_degree()).into()
     }
 
-    fn degree(&self) -> UsizeIter {
-        self.path.degree().into()
+    fn degree(&self) -> UsizeIterable {
+        let path = self.path.clone();
+        (move || path.degree()).into()
     }
 
     fn edges(&self) -> PyEdges {
@@ -706,17 +725,16 @@ impl PyPathFromVertex {
     }
 
     fn __repr__(&self) -> String {
-        let values = self
-            .__iter__()
-            .into_iter()
-            .take(11)
-            .map(|v| v.__repr__())
-            .collect_vec();
-        if values.len() < 11 {
-            "PathFromVertex(".to_string() + &values.join(", ") + ")"
-        } else {
-            "PathFromVertex(".to_string() + &values[0..10].join(", ") + " ... )"
-        }
+        self.repr()
+    }
+}
+
+impl Repr for PyPathFromVertex {
+    fn repr(&self) -> String {
+        format!(
+            "PathFromVertex({})",
+            iterator_repr(self.__iter__().into_iter())
+        )
     }
 }
 

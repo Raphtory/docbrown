@@ -47,7 +47,7 @@ py_nested_numeric_iterable!(
 );
 
 py_iterator!(OptionU64Iter, Option<u64>);
-py_iterable!(OptionU64Iterable, Option<u64>, OptionU64Iter);
+py_iterable!(OptionU64Iterable, Option<u64>, Option<u64>, OptionU64Iter);
 py_ord_max_min_methods!(OptionU64Iterable, Option<u64>);
 
 py_iterator!(I64Iter, i64);
@@ -86,41 +86,98 @@ py_nested_ord_max_min_methods!(
 );
 
 py_iterator!(UsizeIter, usize);
+py_numeric_iterable!(UsizeIterable, usize, UsizeIter);
+py_iterator!(OptionUsizeIter, Option<usize>);
+py_iterable!(OptionUsizeIterable, Option<usize>, OptionUsizeIter);
+py_ord_max_min_methods!(OptionUsizeIterable, Option<usize>);
 py_iterator!(NestedUsizeIter, BoxedIter<usize>, UsizeIter);
+py_nested_numeric_iterable!(
+    NestedUsizeIterable,
+    usize,
+    NestedUsizeIter,
+    UsizeIterable,
+    OptionUsizeIterable
+);
 
 py_iterator!(BoolIter, bool);
+py_iterable!(BoolIterable, bool, BoolIter);
 py_iterator!(NestedBoolIter, BoxedIter<bool>, BoolIter);
+py_nested_iterable!(NestedBoolIterable, bool, NestedBoolIter, BoolIterable);
 
 py_iterator!(StringIter, String);
+py_iterable!(StringIterable, String, StringIter);
 py_iterator!(NestedStringIter, BoxedIter<String>, StringIter);
+py_nested_iterable!(
+    NestedStringIterable,
+    String,
+    NestedStringIter,
+    StringIterable
+);
 
 py_iterator!(StringVecIter, Vec<String>);
+py_iterable!(StringVecIterable, Vec<String>, StringVecIter);
 py_iterator!(NestedStringVecIter, BoxedIter<Vec<String>>, StringVecIter);
+py_nested_iterable!(
+    NestedStringVecIterable,
+    Vec<String>,
+    NestedStringVecIter,
+    StringVecIterable
+);
 
 py_iterator!(OptionPropIter, Option<db_c::Prop>, PropValue);
+py_iterable!(
+    OptionPropIterable,
+    Option<db_c::Prop>,
+    PropValue,
+    OptionPropIter
+);
 py_iterator!(
     NestedOptionPropIter,
     BoxedIter<Option<db_c::Prop>>,
     OptionPropIter
 );
+py_nested_iterable!(
+    NestedOptionPropIterable,
+    Option<db_c::Prop>,
+    PropValue,
+    NestedOptionPropIter,
+    OptionPropIterable
+);
 
 py_iterator!(PropHistoryIter, Vec<(i64, db_c::Prop)>, PropHistory);
+py_iterable!(
+    PropHistoryIterable,
+    Vec<(i64, db_c::Prop)>,
+    PropHistory,
+    PropHistoryIter
+);
 py_iterator!(
     NestedPropHistoryIter,
     BoxedIter<Vec<(i64, db_c::Prop)>>,
     PropHistoryIter
 );
+py_nested_iterable!(
+    NestedPropHistoryIterable,
+    Vec<(i64, db_c::Prop)>,
+    PropHistory,
+    NestedPropHistoryIter,
+    PropHistoryIterable
+);
 
 py_iterator!(PropsIter, HashMap<String, db_c::Prop>, Props);
+py_iterable!(PropsIterable, HashMap<String, db_c::Prop>, Props, PropsIter);
 py_iterator!(
     NestedPropsIter,
     BoxedIter<HashMap<String, db_c::Prop>>,
     PropsIter
 );
+py_nested_iterable!(NestedPropsIterable, HashMap<String, db_c::Prop>, Props, NestedPropsIter, PropsIterable);
 
 py_iterator!(PropHistoriesIter, HashMap<String, Vec<(i64, db_c::Prop)>>, PropHistories);
+py_iterable!(PropHistoriesIterable, HashMap<String, Vec<(i64, db_c::Prop)>>, PropHistories, PropHistoriesIter);
 py_iterator!(
     NestedPropHistoriesIter,
     BoxedIter<HashMap<String, Vec<(i64, db_c::Prop)>>>,
     PropHistoriesIter
 );
+py_nested_iterable!(NestedPropHistoriesIterable, HashMap<String, Vec<(i64, db_c::Prop)>>, PropHistories, NestedPropHistoriesIter, PropHistoriesIterable);
