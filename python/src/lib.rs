@@ -11,10 +11,10 @@ pub mod graph_gen;
 pub mod graph_loader;
 pub mod graph_view;
 pub mod perspective;
+pub mod types;
 mod util;
 pub mod vertex;
 pub mod wrappers;
-pub mod types;
 
 use crate::algorithms::*;
 use crate::algorithms::{

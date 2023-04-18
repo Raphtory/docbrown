@@ -1,4 +1,5 @@
-macro_rules! py_iterator_struct {
+// Internal macro for generating the iterator struct (with or without name)
+macro_rules! _py_iterator_struct {
     ($name:ident, $pyitem:ty) => {
         #[pyclass]
         pub struct $name {
@@ -13,7 +14,8 @@ macro_rules! py_iterator_struct {
     };
 }
 
-macro_rules! py_iterator_methods {
+// internal macro for adding methods to iterators
+macro_rules! _py_iterator_methods {
     ($name:ident, $item:ty, $pyitem:ty) => {
         #[pymethods]
         impl $name {
@@ -50,17 +52,18 @@ macro_rules! py_iterator_methods {
 /// * `name` - The identifier for the new struct
 /// * `item` - The type of `Item` for the wrapped iterator
 /// * `pyitem` - The type of the python wrapper for `Item` (optional if `item` implements `IntoPy`)
+/// * `pyname` - The python-side name for the iterator (optional, defaults to `name`)
 macro_rules! py_iterator {
     ($name:ident, $item:ty) => {
-        py_iterator_struct!($name, $item);
-        py_iterator_methods!($name, $item, $item);
+        _py_iterator_struct!($name, $item);
+        _py_iterator_methods!($name, $item, $item);
     };
     ($name:ident, $item:ty, $pyitem:ty) => {
-        py_iterator_struct!($name, $pyitem);
-        py_iterator_methods!($name, $item, $pyitem);
+        _py_iterator_struct!($name, $pyitem);
+        _py_iterator_methods!($name, $item, $pyitem);
     };
     ($name:ident, $item:ty, $pyitem:ty, $pyname:literal) => {
-        py_iterator_struct!($name, $pyname, $pyitem);
-        py_iterator_methods!($name, $item, $pyitem);
+        _py_iterator_struct!($name, $pyname, $pyitem);
+        _py_iterator_methods!($name, $item, $pyitem);
     };
 }
