@@ -17,5 +17,4 @@ docs/logs/*
 docs/source/_rustdoc/*
 docs/build/*
 docs/logs/*
-docs/api/_autosummary/*
-
+_autosummary
