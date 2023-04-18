@@ -444,41 +444,18 @@ impl<G: GraphViewInternalOps> GraphViewInternalOps for LayeredGraph<G> {
     fn edge_timestamps(
         &self, 
         e: EdgeRef, 
-        layer: usize,
-        d: Direction
     ) -> Vec<i64> {
-        self.graph.edge_timestamps(e, layer, d)
+        self.graph.edge_timestamps(e)
     }
 
     fn edge_window_timestamps(
         &self,
         e: EdgeRef,
-        layer: usize,
-        d: Direction,
         t_start: i64,
         t_end: i64,
     ) -> Vec<i64> {
-        self.edge_window_timestamps(e, layer, d, t_start, t_end)
+        self.edge_window_timestamps(e,  t_start, t_end)
     }
 
-    fn remote_edge_timestamps(
-        &self,
-        e: EdgeRef,
-        layer: usize,
-        d: Direction
-    ) -> Vec<i64> {
-        self.remote_edge_timestamps(e, layer, d)
-    }
-
-    fn remote_edge_window_timestamps(
-        &self,
-        e: EdgeRef,
-        layer: usize,
-        d: Direction,
-        t_start: i64,
-        t_end: i64,
-    ) -> Vec<i64> {
-        self.remote_edge_window_timestamps(e, layer, d, t_start, t_end)
-    }
     
 }

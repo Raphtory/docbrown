@@ -22,6 +22,8 @@ use crate::core::tadjset::AdjEdge;
 
 use self::errors::MutateGraphError;
 
+use super::utils;
+
 pub(crate) mod errors {
     use crate::core::props::IllegalMutate;
 
@@ -898,94 +900,42 @@ impl TemporalGraph {
         self.timestamps[src_pid].range(w).map(|t| *t).collect()
     }
 
+
+
+
     pub(crate) fn edge_timestamps(
         &self,
         src: u64,
-        layer: usize,
-        d: Direction
+        dst: u64,
+        layer: usize
     ) -> Vec<i64> {
-       
         let src_pid = self.logical_to_physical[&src];
-        if d == Direction::OUT {
-            match self.layers[layer].adj_lists.get(src_pid).unwrap_or(&Adj::Solo) {
-                Adj::Solo => vec![],
-                Adj::List {out, ..} => {
-                    // out.find(src_pid).into_iter().map(|e| e.0).collect::<Vec<i64>>()
-                    // out.find(src_pid).into_iter().map(|AdjEdge(x)| x).collect()
-                    vec![]
-                 },
-            }
-        } else {
-            vec![]
-        }
+        let dst_pid = self.logical_to_physical[&dst];
+        self.layers[layer].get_edge_history(src_pid, dst_pid)
     }
+    
+    
 
         pub(crate) fn edge_window_timestamps(
             &self,
             src: u64,
+            dst: u64,
             layer: usize,
-            d: Direction,
-            w: &Range<i64>
+            w: Range<i64>
         ) -> Vec<i64> {
             let src_pid = self.logical_to_physical[&src];
-            if d == Direction::OUT {
-                match self.layers[layer].adj_lists.get(src_pid).unwrap_or(&Adj::Solo) {
-                    Adj::Solo => vec![],
-                    Adj::List {out, ..} => {
-                        vec![]
-                     },
-                }
+            let dst_pid = self.logical_to_physical[&dst];
+            if self.layers[layer].has_local_edge(src_pid, dst_pid) {
+                self.layers[layer].get_edge_history_window(w, src_pid, dst_pid)
             } else {
-                vec![]
-            }
-
+                self.layers[layer].get_edge_history_window(w, src_pid, dst_pid)
+            }       
+           
+         
         }
 
-        pub(crate) fn remote_edge_timestamps(
-            &self,
-            src: u64,
-            layer: usize,
-            d: Direction
-        ) -> Vec<i64> {
-          
-            let src_pid = self.logical_to_physical[&src];
-            if d == Direction::OUT {
-                match self.layers[layer].adj_lists.get(src_pid).unwrap_or(&Adj::Solo) {
-                    Adj::Solo =>  vec![],
-                    Adj::List {remote_out, ..} => {
-                        vec![]
-                     },
-                }
-            } else {
-                vec![]
-            }
-        }
-
-        pub(crate) fn remote_edge_window_timestamps(
-            &self,
-            src: u64,
-            layer: usize,
-            w: &Range<i64>,
-            d: Direction
-        ) -> Vec<i64> {
-   
-            let src_pid = self.logical_to_physical[&src];
-            if d == Direction::OUT {
-                match self.layers[layer].adj_lists.get(src_pid).unwrap_or(&Adj::Solo) {
-                    Adj::Solo =>  vec![],
-                    Adj::List {remote_out, ..} => {
-                        vec![]
-                     },
-                }
-            } else {
-                vec![]
-            }
-        }
 
     }
-
-
-
 
 // helps us track what are we iterating over
 #[derive(Debug, PartialEq, Copy, Clone, Eq, Hash, PartialOrd, Ord)]

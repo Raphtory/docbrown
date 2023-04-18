@@ -27,6 +27,7 @@ use crate::core::{
     vertex::InputVertex,
     Direction, Prop,
 };
+
 use crate::db::graph_immutable::ImmutableGraph;
 use crate::db::view_api::internal::GraphViewInternalOps;
 use itertools::Itertools;
@@ -499,44 +500,19 @@ impl GraphViewInternalOps for Graph {
 
     fn edge_timestamps(
         &self,
-        e: EdgeRef,
-        layer: usize, 
-        d: Direction
+        e: EdgeRef
     ) -> Vec<i64> {
         self.get_shard_from_e(e)
-            .edge_timestamps(e.src_g_id, layer, d)
+            .edge_timestamps(e.src_g_id, e.dst_g_id, e.layer_id)
     }
 
     fn edge_window_timestamps(
         &self,
         e: EdgeRef,
-        layer: usize,
-        d: Direction,
         t_start: i64,
         t_end: i64,
     ) -> Vec<i64> {
-        self.get_shard_from_e(e).edge_window_timestamps(e.src_g_id, layer, d, t_start..t_end)
-    }
-
-    fn remote_edge_timestamps(
-        &self,
-        e: EdgeRef,
-        layer: usize,
-        d: Direction
-    ) -> Vec<i64> {
-        self.get_shard_from_e(e).remote_edge_timestamps(e.src_g_id, layer, d)
-    }
-
-
-    fn remote_edge_window_timestamps(
-        &self,
-        e: EdgeRef,
-        layer: usize,
-        d: Direction,
-        t_start: i64,
-        t_end: i64,
-    ) -> Vec<i64> {
-        self.get_shard_from_e(e).remote_edge_window_timestamps(e.src_g_id, layer, d, t_start..t_end)
+        self.get_shard_from_e(e).edge_window_timestamps(e.src_g_id,e.dst_g_id,e.layer_id, t_start..t_end)
     }
 
     fn temporal_edge_props(&self, e: EdgeRef) -> HashMap<String, Vec<(i64, Prop)>> {
@@ -1822,17 +1798,14 @@ mod db_tests {
         g.add_vertex(7, "Lord Farquaad", &vec![]);
         g.add_vertex(8, "Lord Farquaad", &vec![]);
       
-      
+        let times_of_one = g.vertex(1).unwrap().history();
+        let times_of_farquaad = g.vertex("Lord Farquaad").unwrap().history();
 
+        assert_eq!(times_of_one, [1, 2 ,3 ,4, 8]);
+        assert_eq!(times_of_farquaad, [4, 6, 7, 8]);
 
-        // let times_of_one = g.vertex(1).unwrap().history();
-        // let times_of_farquaad = g.vertex("Lord Farquaad").unwrap().history();
-
-        // assert_eq!(times_of_one, [1, 2 ,3 ,4, 8]);
-        // assert_eq!(times_of_farquaad, [4, 6, 7, 8]);
-
-        let view = g.window(1, 7);
-        
+        let view = g.window(1, 8);
+  
         let windowed_times_of_one = view.vertex(1).unwrap().history();
         let windowed_times_of_farquaad = view.vertex("Lord Farquaad").unwrap().history();
         assert_eq!(windowed_times_of_one, [1, 2 ,3 ,4]);
@@ -1840,3 +1813,17 @@ mod db_tests {
 
     }
 
+    #[test]
+    fn check_edge_history() {
+        let g = Graph::new(1);
+
+
+        g.add_edge(1, 1, 2, &vec![], None);
+        g.add_edge(2, 1, 3, &vec![], None);
+        g.add_edge(3, 1, 2, &vec![], None);
+
+        let times_of_onetwo = g.edge(1,2, None).unwrap().history();
+
+        assert_eq!(times_of_onetwo, [1,3]);
+    }
+}

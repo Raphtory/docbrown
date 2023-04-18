@@ -15,6 +15,8 @@ use serde::{Deserialize, Serialize};
 use crate::core::bitset::BitSet;
 use crate::core::sorted_vec_map::SVM;
 
+use super::adj;
+
 const SMALL_SET: usize = 1024;
 
 /**
@@ -257,6 +259,11 @@ impl<
     pub fn find_window(&self, v: V, w: &Range<Time>) -> Option<AdjEdge> {
         self.iter_window(w).find(|t| t.0 == v).map(|f| f.1)
     }
+
+    // pub fn find_edge_history(&self, v: V) -> Vec<i64> {
+    //     self.iter().filter_map(|(u, adjedge)| u == &v )
+    // }
+
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]

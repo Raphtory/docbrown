@@ -608,32 +608,12 @@ pub trait GraphViewInternalOps {
 
     fn edge_timestamps(
         &self, 
-        e: EdgeRef, 
-        layer: usize,
-        d: Direction
+        e: EdgeRef
     ) -> Vec<i64>;
 
     fn edge_window_timestamps(
         &self,
         e: EdgeRef,
-        layer: usize,
-        d: Direction,
-        t_start: i64,
-        t_end: i64,
-    ) -> Vec<i64>;
-
-    fn remote_edge_timestamps(
-        &self,
-        e: EdgeRef,
-        layer: usize,
-        d: Direction
-    ) -> Vec<i64>;
-
-    fn remote_edge_window_timestamps(
-        &self,
-        e: EdgeRef,
-        layer: usize,
-        d: Direction,
         t_start: i64,
         t_end: i64,
     ) -> Vec<i64>;

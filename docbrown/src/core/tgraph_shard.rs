@@ -623,39 +623,20 @@ impl TGraphShard<TemporalGraph> {
     pub fn edge_timestamps(
         &self,
         src: u64,
-        layer: usize,
-        d: Direction
+        dst: u64,
+        layer: usize
     ) -> Vec<i64> {
-        self.read_shard(|tg| tg.edge_timestamps(src, layer, d))
+        self.read_shard(|tg| tg.edge_timestamps(src, dst,layer))
     }
 
     pub fn edge_window_timestamps(
         &self,
         src: u64,
+        dst: u64,
         layer: usize,
-        d: Direction,
         w: Range<i64>
     ) ->  Vec<i64> {
-        self.read_shard(|tg| tg.edge_window_timestamps(src, layer, d, &w))
-    }
-
-    pub fn remote_edge_timestamps(
-        &self,
-        src: u64,
-        layer: usize,
-        d: Direction
-    ) ->  Vec<i64> {
-        self.read_shard(|tg| tg.remote_edge_timestamps(src, layer, d))
-    }
-
-    pub fn remote_edge_window_timestamps(
-        &self,
-        src: u64,
-        layer: usize,
-        d: Direction,
-        w: Range<i64>
-    ) ->  Vec<i64>  {
-        self.read_shard(|tg| tg.remote_edge_window_timestamps(src, layer, &w, d))
+        self.read_shard(|tg| tg.edge_window_timestamps(src, dst, layer, w))
     }
 
     pub fn temporal_edge_props_window(
