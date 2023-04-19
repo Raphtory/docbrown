@@ -97,7 +97,7 @@ impl<G: GraphViewOps> VertexViewOps for Vertices<G> {
         self.iter().static_property(name)
     }
 
-    fn degree(&self,layer:Option<String>) -> Self::ValueType<usize> {
+    fn degree(&self, layer: Option<String>) -> Self::ValueType<usize> {
         self.iter().degree()
     }
 

@@ -192,7 +192,7 @@ impl PyVertex {
     /// Returns
     ///     The degree of this vertex.
     pub fn degree(&self) -> usize {
-        self.vertex.degree()
+        self.vertex.degree(None)
     }
 
     /// Get the in-degree of this vertex (i.e., the number of edges that are incident to it from other vertices).
@@ -459,7 +459,7 @@ impl PyVertices {
     }
 
     fn degree(&self) -> UsizeIter {
-        self.vertices.degree().into()
+        self.vertices.degree(None).into()
     }
 
     fn in_degree(&self) -> UsizeIter {
@@ -647,7 +647,7 @@ impl PyPathFromGraph {
     }
 
     fn degree(&self) -> NestedUsizeIter {
-        self.path.degree().into()
+        self.path.degree(None).into()
     }
 
     fn in_degree(&self) -> NestedUsizeIter {
@@ -835,7 +835,7 @@ impl PyPathFromVertex {
     }
 
     fn degree(&self) -> UsizeIter {
-        self.path.degree().into()
+        self.path.degree(None).into()
     }
 
     fn edges(&self) -> PyEdges {

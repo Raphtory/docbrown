@@ -170,14 +170,14 @@ mod test {
         let mut expected_1 = wg1
             .vertices()
             .iter()
-            .map(|vs| (vs.id(), vs.degree(), vs.out_degree(), vs.in_degree()))
+            .map(|vs| (vs.id(), vs.degree(None), vs.out_degree(), vs.in_degree()))
             .collect::<Vec<_>>();
         expected_1.sort_by(|v1, v2| v1.0.cmp(&v2.0));
 
         let mut expected_n = wgn
             .vertices()
             .iter()
-            .map(|vs| (vs.id(), vs.degree(), vs.out_degree(), vs.in_degree()))
+            .map(|vs| (vs.id(), vs.degree(None), vs.out_degree(), vs.in_degree()))
             .collect::<Vec<_>>();
 
         expected_n.sort_by(|v1, v2| v1.0.cmp(&v2.0));

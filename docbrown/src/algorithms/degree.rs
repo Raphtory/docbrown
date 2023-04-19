@@ -89,8 +89,12 @@ pub fn min_in_degree<G: GraphViewOps>(graph: &G) -> usize {
 }
 
 /// The average degree of all vertices in the graph.
-pub fn average_degree<G: GraphViewOps>(graph: &G,layer:Option<String>) -> f64 {
-    let r: Vec<usize> = graph.vertices().into_iter().map(|v| v.degree(None)).collect();
+pub fn average_degree<G: GraphViewOps>(graph: &G) -> f64 {
+    let r: Vec<usize> = graph
+        .vertices()
+        .into_iter()
+        .map(|v| v.degree(None))
+        .collect();
 
     let degree_totals = r
         .into_iter()
@@ -138,7 +142,7 @@ mod degree_test {
         let actual_min_in_degree = min_in_degree(&g);
 
         let expected_average_degree = 2.0;
-        let actual_average_degree = average_degree(&g,None);
+        let actual_average_degree = average_degree(&g);
 
         assert_eq!(expected_max_out_degree, actual_max_out_degree);
         assert_eq!(expected_max_in_degree, actual_max_in_degree);
