@@ -44,7 +44,7 @@ pub mod tadjset;
 mod tcell;
 pub mod tgraph;
 pub mod tgraph_shard;
-pub(crate) mod time;
+pub mod time;
 mod tprop;
 pub mod utils;
 pub mod vertex;

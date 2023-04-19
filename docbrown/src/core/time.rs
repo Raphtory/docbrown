@@ -53,11 +53,22 @@ impl IntoBoundWithFormat for &str {
     }
 }
 
+// TODO: make private again
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub(crate) enum Interval {
+pub enum Interval {
     Discrete(u64),
     Temporal(Duration),
     // Calendar(Duration, Months, Years), // TODO
+}
+
+pub trait AlignmentType {
+    fn epoch_alignment() -> bool;
+}
+
+impl AlignmentType for &str {
+    fn epoch_alignment() -> bool {
+        true
+    }
 }
 
 impl TryFrom<&str> for Interval {
@@ -94,9 +105,22 @@ impl TryFrom<&str> for Interval {
     }
 }
 
-impl From<u64> for Interval {
-    fn from(value: u64) -> Self {
-        Self::Discrete(value)
+// impl From<u64> for Interval {
+//     fn from(value: u64) -> Self {
+//         Self::Discrete(value)
+//     }
+// }
+
+impl AlignmentType for u64 {
+    fn epoch_alignment() -> bool {
+        false
+    }
+}
+
+impl TryFrom<u64> for Interval {
+    type Error = ParseTimeError;
+    fn try_from(value: u64) -> Result<Self, Self::Error> {
+        Ok(Self::Discrete(value))
     }
 }
 
