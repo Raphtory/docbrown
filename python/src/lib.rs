@@ -1,5 +1,8 @@
 extern crate core;
 
+#[macro_use]
+mod macros;
+
 pub mod algorithms;
 mod dynamic;
 pub mod edge;
@@ -8,6 +11,7 @@ pub mod graph_gen;
 pub mod graph_loader;
 pub mod graph_view;
 pub mod perspective;
+pub mod types;
 mod util;
 pub mod vertex;
 pub mod wrappers;
@@ -22,6 +26,7 @@ use crate::graph_loader::*;
 use perspective::PyPerspective;
 use pyo3::prelude::*;
 
+/// Raphtory graph analytics library
 #[pymodule]
 fn raphtory(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_class::<PyGraph>()?;
