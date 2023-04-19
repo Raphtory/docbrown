@@ -3,7 +3,7 @@ use crate::core::{
     Direction, Prop,
 };
 use crate::db::view_api::internal::GraphViewInternalOps;
-use std::collections::HashMap;
+use std::{collections::HashMap, ops::Range};
 
 #[derive(Debug, Clone)]
 pub struct LayeredGraph<G: GraphViewInternalOps> {
@@ -441,11 +441,7 @@ impl<G: GraphViewInternalOps> GraphViewInternalOps for LayeredGraph<G> {
         self.graph.vertex_timestamps_window(v, t_start, t_end)
     }
 
-    fn edge_timestamps(&self, e: EdgeRef) -> Vec<i64> {
-        self.graph.edge_timestamps(e)
-    }
-
-    fn edge_window_timestamps(&self, e: EdgeRef, t_start: i64, t_end: i64) -> Vec<i64> {
-        self.edge_window_timestamps(e, t_start, t_end)
+    fn edge_timestamps(&self, e: EdgeRef, window: Option<Range<i64>>) -> Vec<i64> {
+        self.graph.edge_timestamps(e, window)
     }
 }

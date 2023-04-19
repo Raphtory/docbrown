@@ -603,9 +603,7 @@ pub trait GraphViewInternalOps {
         t_end: i64,
     ) -> Vec<(i64, Prop)>;
 
-    fn edge_timestamps(&self, e: EdgeRef) -> Vec<i64>;
-
-    fn edge_window_timestamps(&self, e: EdgeRef, t_start: i64, t_end: i64) -> Vec<i64>;
+    fn edge_timestamps(&self, e: EdgeRef, window: Option<Range<i64>>) -> Vec<i64>;
 
     /// Returns a hash map containing all the temporal properties of the given edge reference,
     /// where each key is the name of a temporal property and each value is a vector of tuples containing

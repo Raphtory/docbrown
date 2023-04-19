@@ -5,6 +5,7 @@ use docbrown::db::view_api::internal::GraphViewInternalOps;
 use docbrown::db::view_api::GraphViewOps;
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::ops::Range;
 
 trait DynamicGraphView: GraphViewInternalOps + Send + Sync + 'static {}
 
@@ -105,12 +106,8 @@ impl GraphViewInternalOps for DynamicGraph {
         self.0.vertex_timestamps_window(v, t_start, t_end)
     }
 
-    fn edge_timestamps(&self, e: EdgeRef) -> Vec<i64> {
-        self.0.edge_timestamps(e)
-    }
-
-    fn edge_window_timestamps(&self, e: EdgeRef, t_start: i64, t_end: i64) -> Vec<i64> {
-        self.0.edge_window_timestamps(e, t_start, t_end)
+    fn edge_timestamps(&self, e: EdgeRef, window: Option<Range<i64>>) -> Vec<i64> {
+        self.0.edge_timestamps(e, window)
     }
 
     fn degree_window(

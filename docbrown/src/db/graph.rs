@@ -37,6 +37,7 @@ use serde::{Deserialize, Serialize};
 use std::cmp::{max, min};
 use std::{
     collections::HashMap,
+    ops::Range,
     path::{Path, PathBuf},
     sync::Arc,
 };
@@ -496,17 +497,13 @@ impl GraphViewInternalOps for Graph {
             .vertex_timestamps_window(v.g_id, t_start..t_end)
     }
 
-    fn edge_timestamps(&self, e: EdgeRef) -> Vec<i64> {
-        self.get_shard_from_e(e)
-            .edge_timestamps(e.src_g_id, e.dst_g_id, e.layer_id)
-    }
-
-    fn edge_window_timestamps(&self, e: EdgeRef, t_start: i64, t_end: i64) -> Vec<i64> {
-        self.get_shard_from_e(e).edge_window_timestamps(
+    fn edge_timestamps(&self, e: EdgeRef, window: Option<Range<i64>>) -> Vec<i64> {
+        self.get_shard_from_e(e).edge_timestamps(
             e.src_g_id,
             e.dst_g_id,
             e.layer_id,
-            t_start..t_end,
+            window,
+            self.nr_shards,
         )
     }
 
@@ -1814,9 +1811,19 @@ mod db_tests {
         g.add_edge(1, 1, 2, &vec![], None);
         g.add_edge(2, 1, 3, &vec![], None);
         g.add_edge(3, 1, 2, &vec![], None);
-
-        let times_of_onetwo = g.edge(1, 2, None).unwrap().history();
+        g.add_edge(4, 1, 4, &vec![], None);
+        
+            
+        let times_of_onetwo = g.edge(1, 2, None).unwrap().history(None);
+        let times_of_four = g.edge(1,4, None).unwrap().history(Some(2..5));
+        let times_of_outside_window = g.edge(1,4, None).unwrap().history(Some(1..4));
+      
+        let view = g.window(1, 5);
+        let windowed_times_of_four = view.edge(1,4, None).unwrap().history(Some(1..5));
 
         assert_eq!(times_of_onetwo, [1, 3]);
+        assert_eq!(times_of_four, [4]);
+        assert_eq!(times_of_outside_window, []);
+        assert_eq!(windowed_times_of_four, [4]);
     }
 }

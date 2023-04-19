@@ -227,35 +227,55 @@ impl EdgeLayer {
             } => {
                 if vs.contains(&dst_pid) {
                     match window {
-                        None => t_index.iter(),
-                        Some(w) => t_index.range(w),
+                        None => t_index
+                            .iter()
+                            .filter_map(|(time, bitset)| {
+                                if bitset.contains(&dst_pid) {
+                                    Some(*time)
+                                } else {
+                                    None
+                                }
+                            })
+                            .collect(),
+                        Some(w) => t_index
+                            .range(w)
+                            .filter_map(|(time, bitset)| {
+                                if bitset.contains(&dst_pid) {
+                                    Some(*time)
+                                } else {
+                                    None
+                                }
+                            })
+                            .collect(),
                     }
-                    .filter_map(|(time, bitset)| {
-                        if bitset.contains(&dst_pid) {
-                            Some(*time)
-                        } else {
-                            None
-                        }
-                    })
-                    .collect()
                 } else {
                     vec![]
                 }
             }
             super::tadjset::TAdjSet::Large { vs, t_index } => {
-                if vs.contains(&dst_pid) {
+                if vs.contains_key(&dst_pid) {
                     match window {
-                        None => t_index.iter(),
-                        Some(w) => t_index.range(w),
+                        None => t_index
+                            .iter()
+                            .filter_map(|(time, bitset)| {
+                                if bitset.contains(&dst_pid) {
+                                    Some(*time)
+                                } else {
+                                    None
+                                }
+                            })
+                            .collect(),
+                        Some(w) => t_index
+                            .range(w)
+                            .filter_map(|(time, bitset)| {
+                                if bitset.contains(&dst_pid) {
+                                    Some(*time)
+                                } else {
+                                    None
+                                }
+                            })
+                            .collect(),
                     }
-                    .filter_map(|(time, bitset)| {
-                        if bitset.contains(&dst_pid) {
-                            Some(*time)
-                        } else {
-                            None
-                        }
-                    })
-                    .collect()
                 } else {
                     vec![]
                 }
@@ -278,7 +298,7 @@ impl EdgeLayer {
                 if local {
                     self.edge_history_helper(out, dst_pid, window)
                 } else {
-                    self.edge_history(remote_out, dst_pid, window)
+                    self.edge_history_helper(remote_out, dst_pid, window)
                 }
             }
         }

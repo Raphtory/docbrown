@@ -808,14 +808,8 @@ impl<G: GraphViewOps> GraphViewInternalOps for WindowedGraph<G> {
             .vertex_timestamps_window(v, self.actual_start(t_start), self.actual_end(t_end))
     }
 
-    fn edge_timestamps(&self, e: EdgeRef) -> Vec<i64> {
-        self.graph
-            .edge_window_timestamps(e, self.t_start, self.t_end)
-    }
-
-    fn edge_window_timestamps(&self, e: EdgeRef, t_start: i64, t_end: i64) -> Vec<i64> {
-        self.graph
-            .edge_window_timestamps(e, self.actual_start(t_start), self.actual_end(t_end))
+    fn edge_timestamps(&self, e: EdgeRef, window: Option<Range<i64>>) -> Vec<i64> {
+        self.graph.edge_timestamps(e, window)
     }
 
     /// Get all temporal properties of a vertex

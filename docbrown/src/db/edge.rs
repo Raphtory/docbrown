@@ -12,8 +12,8 @@ use crate::db::vertex::VertexView;
 use crate::db::view_api::{BoxedIter, EdgeListOps, GraphViewOps, TimeOps};
 use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};
-use std::iter;
 use std::ops::Range;
+use std::iter;
 
 /// A view of an edge in the graph.
 #[derive(Clone)]
@@ -101,8 +101,8 @@ impl<G: GraphViewOps> EdgeView<G> {
         }
     }
 
-    pub fn history(&self) -> Vec<i64> {
-        self.graph.edge_timestamps(self.edge)
+    pub fn history(&self, window: Option<Range<i64>>) -> Vec<i64> {
+        self.graph.edge_timestamps(self.edge, window)
     }
 
     pub fn properties(&self, include_static: bool) -> HashMap<String, Prop> {
