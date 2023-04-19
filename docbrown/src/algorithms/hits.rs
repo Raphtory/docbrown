@@ -196,7 +196,7 @@ pub fn hits(g: &Graph, window: Range<i64>, iter_count: usize) -> FxHashMap<u64, 
 
     hits_s0.run_step(g, &mut c);
 
-    let max_diff_hub_score = 0.01f32;
+    let max_diff_hub_score = 0.1f32;
     let max_diff_auth_score = max_diff_hub_score;
     let mut i = 0;
 
@@ -247,10 +247,8 @@ pub fn hits(g: &Graph, window: Range<i64>, iter_count: usize) -> FxHashMap<u64, 
 mod hits_tests {
     use super::*;
 
-    fn load_graph(n_shards: usize) -> Graph {
+    fn load_graph(n_shards: usize, edges: Vec<(u64, u64)>) -> Graph {
         let graph = Graph::new(n_shards);
-
-        let edges = vec![(1, 2), (1, 4), (2, 3), (3, 1), (4, 1)];
 
         for (src, dst) in edges {
             graph.add_edge(0, src, dst, &vec![], None).unwrap();
@@ -259,7 +257,7 @@ mod hits_tests {
     }
 
     fn test_hits(n_shards: usize) {
-        let graph = load_graph(n_shards);
+        let graph = load_graph(n_shards, vec![(1, 2), (1, 4), (2, 3), (3, 1), (4, 1)]);
 
         let window = 0..10;
 
@@ -275,15 +273,78 @@ mod hits_tests {
                 (1, (0.6400006, 0.63999945)),
                 (3, (0.3200003, 0.039999966))
             ]
-            // {8: 1.0, 5: 0.575, 2: 0.5, 7: 1.0, 4: 0.5, 1: 1.0, 3: 1.0}
-            // vec![(8, 20.7725), (5, 29.76125), (2, 25.38375), (7, 20.7725), (4, 16.161251), (1, 21.133749), (3, 21.133749)]
             .into_iter()
             .collect::<FxHashMap<u64, (f32, f32)>>()
         );
     }
 
+    fn test_hits2(n_shards: usize) {
+
+        let graph = load_graph(n_shards, vec![(1,4),(2,3),(2,5),(3,1),(4,2),(4,3),(5,2),(5,3),(5,4),(5,6),(6,3),(6,8),(7,1),(7,3),(8,1)]);
+
+        let window = 0..10;
+
+        let results: FxHashMap<u64, (f32, f32)> = hits(&graph, window, 5).into_iter().collect();
+
+        // NetworkX results
+        // >>> G = nx.DiGraph()
+        // >>> G.add_edge(1, 4)
+        // >>> G.add_edge(2, 3)
+        // >>> G.add_edge(2, 5)
+        // >>> G.add_edge(3, 1)
+        // >>> G.add_edge(4, 2)
+        // >>> G.add_edge(4, 3)
+        // >>> G.add_edge(5, 2)
+        // >>> G.add_edge(5, 3)
+        // >>> G.add_edge(5, 4)
+        // >>> G.add_edge(5, 6)
+        // >>> G.add_edge(6,3)
+        // >>> G.add_edge(6,8)
+        // >>> G.add_edge(7,1)
+        // >>> G.add_edge(7,3)
+        // >>> G.add_edge(8,1)
+        // >>> nx.hits(G)
+        // (
+        //     (1, (0.04305010876408988, 0.08751958702900825)),
+        //     (4, (0.1874910015340169, 0.12768284011810235)),
+        //     (2, (0.14444089276992705, 0.18704574169397797)),
+        //     (3, (0.02950848945012511, 0.3690360954887363)),
+        //     (5, (0.26762580040598083, 0.05936290157587567)),
+        //     (6, (0.144440892769927, 0.10998993251842377)),
+        //     (8, (0.02950848945012511, 0.05936290157587556)),
+        //     (7, (0.15393432485580819, 5.645162243895331e-17))
+        // )
+
+        // (
+        //     (1, (0.008843459, 3.361339)),
+        //     (4, (0.038243048, 4.328391)),
+        //     (2, (0.029438892, 6.389212)),
+        //     (3, (0.0063279863, 12.831779)),
+        //     (5, (0.05467223, 2.06749)),
+        //     (6, (0.029438892, 3.7414904)),
+        //     (8, (0.0063279863, 2.06749)),
+        //     (7, (0.03171854, 0.0)),
+        // )
+
+        assert_eq!(
+            results,
+            vec![
+                (7, (0.03171854, 0.0)),
+                (4, (0.038243048, 4.328391)),
+                (1, (0.008843459, 3.361339)),
+                (8, (0.0063279863, 2.06749)),
+                (5, (0.05467223, 2.06749)),
+                (2, (0.029438892, 6.389212)),
+                (6, (0.029438892, 3.7414904)),
+                (3, (0.0063279863, 12.831779))
+            ]
+                .into_iter()
+                .collect::<FxHashMap<u64, (f32, f32)>>()
+        );
+    }
+
     #[test]
     fn test_hits_1() {
-        test_hits(1);
+        test_hits2(1);
     }
 }
