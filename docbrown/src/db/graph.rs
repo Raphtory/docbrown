@@ -1778,16 +1778,16 @@ mod db_tests {
     fn check_vertex_history() {
         let g = Graph::new(1);
 
-        g.add_vertex(1, 1, &vec![]);
-        g.add_vertex(2, 1, &vec![]);
-        g.add_vertex(3, 1, &vec![]);
-        g.add_vertex(4, 1, &vec![]);
-        g.add_vertex(8, 1, &vec![]);
+        g.add_vertex(1, 1, &vec![]).unwrap();
+        g.add_vertex(2, 1, &vec![]).unwrap();
+        g.add_vertex(3, 1, &vec![]).unwrap();
+        g.add_vertex(4, 1, &vec![]).unwrap();
+        g.add_vertex(8, 1, &vec![]).unwrap();
 
-        g.add_vertex(4, "Lord Farquaad", &vec![]);
-        g.add_vertex(6, "Lord Farquaad", &vec![]);
-        g.add_vertex(7, "Lord Farquaad", &vec![]);
-        g.add_vertex(8, "Lord Farquaad", &vec![]);
+        g.add_vertex(4, "Lord Farquaad", &vec![]).unwrap();
+        g.add_vertex(6, "Lord Farquaad", &vec![]).unwrap();
+        g.add_vertex(7, "Lord Farquaad", &vec![]).unwrap();
+        g.add_vertex(8, "Lord Farquaad", &vec![]).unwrap();
 
         let times_of_one = g.vertex(1).unwrap().history();
         let times_of_farquaad = g.vertex("Lord Farquaad").unwrap().history();
@@ -1807,10 +1807,10 @@ mod db_tests {
     fn check_edge_history() {
         let g = Graph::new(1);
 
-        g.add_edge(1, 1, 2, &vec![], None);
-        g.add_edge(2, 1, 3, &vec![], None);
-        g.add_edge(3, 1, 2, &vec![], None);
-        g.add_edge(4, 1, 4, &vec![], None);
+        g.add_edge(1, 1, 2, &vec![], None).unwrap();
+        g.add_edge(2, 1, 3, &vec![], None).unwrap();
+        g.add_edge(3, 1, 2, &vec![], None).unwrap();
+        g.add_edge(4, 1, 4, &vec![], None).unwrap();
 
         let times_of_onetwo = g.edge(1, 2, None).unwrap().history();
         //todo: bug that Pedro will fix in PR
