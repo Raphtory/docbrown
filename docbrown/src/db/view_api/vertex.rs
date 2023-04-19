@@ -30,6 +30,8 @@ pub trait VertexViewOps: TimeOps {
     /// Gets the property value of this vertex given the name of the property.
     fn property(&self, name: String, include_static: bool) -> Self::ValueType<Option<Prop>>;
 
+    fn history(&self) -> Self::ValueType<Vec<i64>>;
+
     /// Get the temporal property value of this vertex.
     ///
     /// # Arguments

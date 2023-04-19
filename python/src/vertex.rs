@@ -350,6 +350,10 @@ impl PyVertex {
         self.vertex.at(end).into()
     }
 
+    pub fn history(&self) -> Vec<i64> {
+        self.vertex.history()
+    }
+
     /// Creates a `WindowSet` from a set of perspectives
     ///
     /// Arguments:

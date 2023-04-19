@@ -1,7 +1,6 @@
 //! A data structure for representing temporal graphs.
 
 use std::{
-    any::Any,
     collections::{BTreeMap, BTreeSet, HashMap},
     ops::Range,
 };
@@ -10,10 +9,8 @@ use itertools::Itertools;
 use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
 
-use crate::core::adj::Adj;
 use crate::core::edge_layer::EdgeLayer;
 use crate::core::props::Props;
-use crate::core::tadjset::AdjEdge;
 use crate::core::tprop::TProp;
 use crate::core::vertex::InputVertex;
 use crate::core::{bitset::BitSet, Direction};

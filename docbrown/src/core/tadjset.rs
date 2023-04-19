@@ -15,8 +15,6 @@ use serde::{Deserialize, Serialize};
 use crate::core::bitset::BitSet;
 use crate::core::sorted_vec_map::SVM;
 
-use super::adj;
-
 const SMALL_SET: usize = 1024;
 
 /**

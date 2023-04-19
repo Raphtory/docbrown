@@ -4,8 +4,8 @@ use docbrown::db::graph::Graph;
 use docbrown::db::view_api::internal::GraphViewInternalOps;
 use docbrown::db::view_api::GraphViewOps;
 use std::collections::HashMap;
-use std::sync::Arc;
 use std::ops::Range;
+use std::sync::Arc;
 
 trait DynamicGraphView: GraphViewInternalOps + Send + Sync + 'static {}
 
