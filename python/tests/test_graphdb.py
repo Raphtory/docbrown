@@ -779,8 +779,6 @@ def test_edge_earliest_latest_time():
     assert g.vertex(1).at(1).edges().latest_time() == [1, 1]
 
 
-
-    
 def test_vertex_history():
     g = Graph(1)
 
@@ -802,3 +800,16 @@ def test_vertex_history():
 
     assert(view.vertex(1).history() == [1, 2 ,3 ,4])
     assert(view.vertex("Lord Farquaad").history() == [4, 6, 7])
+
+def test_edge_history():
+    g = Graph(1)
+
+    g.add_edge(1, 1, 2, {})
+    g.add_edge(2, 1, 3, {})
+    g.add_edge(3, 1, 2, {})
+    g.add_edge(4, 1, 4, {})
+
+    view = g.window(1, 5)
+
+    assert(g.edge(1,2).history() == [1,3])
+    assert(view.edge(1, 4).history() == [4])

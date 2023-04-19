@@ -74,6 +74,10 @@ impl PyEdge {
             .collect()
     }
 
+    pub fn history(&self) -> Vec<i64> {
+        self.edge.history()
+    }
+
     /// Returns a dictionary of all properties on the edge.
     ///
     /// Arguments:
