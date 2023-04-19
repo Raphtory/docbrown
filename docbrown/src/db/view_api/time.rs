@@ -1,5 +1,6 @@
-use crate::core::time::{AlignmentType, Interval, ParseTimeError};
-use std::cmp::{max, min};
+use crate::core::time::{Interval, IntervalSize, ParseTimeError};
+use std::array::IntoIter;
+use std::cmp::{max, min, Ordering};
 use std::iter;
 
 /// Trait defining time query operations
@@ -40,24 +41,19 @@ pub trait TimeOps {
     /// using an expanding window.
     ///
     /// An expanding window is a window that grows by `step` size at each iteration.
-    fn expanding<I>(
-        &self,
-        step: I,
-    ) -> Result<Box<dyn Iterator<Item = Self::WindowedViewType>>, ParseTimeError>
+    fn expanding<I>(&self, step: I) -> Result<WindowIterator<Self>, ParseTimeError>
     where
         Self: Sized + Clone + 'static, // TODO: is this fine???
-        I: TryInto<Interval, Error = ParseTimeError> + AlignmentType,
+        I: TryInto<Interval, Error = ParseTimeError>,
     {
         let parent = self.clone();
         match (self.start(), self.end()) {
             (Some(start), Some(end)) => {
                 let step: Interval = step.try_into()?;
-                let epoch_alignment = I::epoch_alignment();
-                let cursor_iter = build_cursor(start, end, step, epoch_alignment);
-                let window_iter = cursor_iter.map(move |cursor| parent.at(cursor));
-                Ok(Box::new(window_iter))
+
+                Ok(WindowIterator::new(parent, start, end, step, None))
             }
-            _ => Ok(Box::new(iter::empty())),
+            _ => Ok(WindowIterator::empty(parent)),
         }
     }
 
@@ -65,14 +61,10 @@ pub trait TimeOps {
     /// using a rolling window.
     ///
     /// A rolling window is a window that moves forward by `step` size at each iteration.
-    fn rolling<I>(
-        &self,
-        window: I,
-        step: Option<I>,
-    ) -> Result<Box<dyn Iterator<Item = Self::WindowedViewType>>, ParseTimeError>
+    fn rolling<I>(&self, window: I, step: Option<I>) -> Result<WindowIterator<Self>, ParseTimeError>
     where
         Self: Sized + Clone + 'static, // TODO: is this fine???
-        I: TryInto<Interval, Error = ParseTimeError> + AlignmentType,
+        I: TryInto<Interval, Error = ParseTimeError>,
     {
         let parent = self.clone();
         match (self.start(), self.end()) {
@@ -82,36 +74,67 @@ pub trait TimeOps {
                     Some(step) => step.try_into()?,
                     None => window,
                 };
-                let epoch_alignment = I::epoch_alignment();
-                let cursor_iter = build_cursor(start, end, step, epoch_alignment);
-                let window_iter =
-                    cursor_iter.map(move |cursor| parent.window(cursor - window + 1, cursor + 1));
-                Ok(Box::new(window_iter))
+                Ok(WindowIterator::new(parent, start, end, step, Some(window)))
             }
-            _ => Ok(Box::new(iter::empty())),
+            _ => Ok(WindowIterator::empty(parent)),
         }
     }
 
     // TODO pub fn weeks(n), days(n), hours(n), minutes(n), seconds(n), millis(n)
 }
 
-fn build_cursor(
-    timeline_start: i64,
+pub struct WindowIterator<T: TimeOps> {
+    view: T,
+    cursor: i64,
     end: i64,
     step: Interval,
-    epoch_alignment: bool,
-) -> Box<dyn Iterator<Item = i64>> {
-    let cursor_start = if epoch_alignment {
-        let step = step.to_millis().unwrap();
-        let prev_perspective_exclusive_end = (timeline_start / step) * step; // timeline.start 5 step 3 -> 3, timeline.start 6 step 3 -> 6, timeline.start 7 step 3 -> 6
-        let prev_perspective_inclusive_end = prev_perspective_exclusive_end - 1;
-        prev_perspective_inclusive_end + step
-    } else {
-        timeline_start + step - 1
-    };
-    let cursor_iter = iter::successors(Some(cursor_start), move |cursor| Some(*cursor + step))
-        .take_while(move |cursor| *cursor < end);
-    Box::new(cursor_iter)
+    window: Option<Interval>,
+}
+
+impl<T: TimeOps> WindowIterator<T> {
+    fn new(
+        view: T,
+        timeline_start: i64,
+        end: i64,
+        step: Interval,
+        window: Option<Interval>,
+    ) -> Self {
+        let cursor_start = if step.epoch_alignment {
+            let step = step.to_millis().unwrap();
+            let prev_perspective_exclusive_end = (timeline_start / step) * step; // timeline.start 5 step 3 -> 3, timeline.start 6 step 3 -> 6, timeline.start 7 step 3 -> 6
+            let prev_perspective_inclusive_end = prev_perspective_exclusive_end - 1;
+            prev_perspective_inclusive_end + step
+        } else {
+            timeline_start + step - 1
+        };
+        Self {
+            view,
+            cursor: cursor_start,
+            end,
+            step,
+            window,
+        }
+    }
+
+    fn empty(view: T) -> Self {
+        // timeline_start is greater than end, so no windows to return, even with end inclusive
+        WindowIterator::new(view, 1, 0, Default::default(), None)
+    }
+}
+
+impl<T: TimeOps> Iterator for WindowIterator<T> {
+    type Item = T::WindowedViewType;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.cursor < self.end {
+            let window_start = self.cursor + 1;
+            let window_end = self.window.map(|w| window_start - w).unwrap_or(i64::MIN);
+            let window = self.view.window(window_start, window_end);
+            self.cursor = self.cursor + self.step;
+            Some(window)
+        } else {
+            None
+        }
+    }
 }
 
 #[cfg(test)]
@@ -119,6 +142,7 @@ mod time_tests {
     use crate::db::graph::Graph;
     use crate::db::graph_window::WindowedGraph;
     use crate::db::view_api::internal::GraphViewInternalOps;
+    use crate::db::view_api::time::WindowIterator;
     use crate::db::view_api::{GraphViewOps, TimeOps};
     use chrono::format::parse;
     use chrono::NaiveDateTime;
@@ -134,10 +158,8 @@ mod time_tests {
         g
     }
 
-    fn assert_bounds<G>(
-        windows: Box<dyn Iterator<Item = WindowedGraph<G>>>,
-        expected: Vec<(i64, i64)>,
-    ) where
+    fn assert_bounds<G>(windows: WindowIterator<G>, expected: Vec<(i64, i64)>)
+    where
         G: GraphViewOps + GraphViewInternalOps,
     {
         let window_bounds = windows

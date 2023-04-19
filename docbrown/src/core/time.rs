@@ -55,19 +55,25 @@ impl IntoBoundWithFormat for &str {
 
 // TODO: make private again
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub enum Interval {
+pub enum IntervalSize {
     Discrete(u64),
     Temporal(Duration),
     // Calendar(Duration, Months, Years), // TODO
 }
 
-pub trait AlignmentType {
-    fn epoch_alignment() -> bool;
+// TODO: make private again
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Interval {
+    pub(crate) epoch_alignment: bool,
+    size: IntervalSize,
 }
 
-impl AlignmentType for &str {
-    fn epoch_alignment() -> bool {
-        true
+impl Default for Interval {
+    fn default() -> Self {
+        Self {
+            epoch_alignment: false,
+            size: IntervalSize::Discrete(1),
+        }
     }
 }
 
@@ -96,31 +102,23 @@ impl TryFrom<&str> for Interval {
             });
 
         if errors.is_empty() {
-            Ok(Interval::Temporal(
-                durations.into_iter().reduce(|a, b| a + b).unwrap(),
-            ))
+            Ok(Self {
+                epoch_alignment: true,
+                size: IntervalSize::Temporal(durations.into_iter().reduce(|a, b| a + b).unwrap()),
+            })
         } else {
             Err(errors.get(0).unwrap().clone())
         }
     }
 }
 
-// impl From<u64> for Interval {
-//     fn from(value: u64) -> Self {
-//         Self::Discrete(value)
-//     }
-// }
-
-impl AlignmentType for u64 {
-    fn epoch_alignment() -> bool {
-        false
-    }
-}
-
 impl TryFrom<u64> for Interval {
     type Error = ParseTimeError;
     fn try_from(value: u64) -> Result<Self, Self::Error> {
-        Ok(Self::Discrete(value))
+        Ok(Self {
+            epoch_alignment: false,
+            size: IntervalSize::Discrete(value),
+        })
     }
 }
 
@@ -144,10 +142,10 @@ pub enum ParseTimeError {
 impl Interval {
     /// Return an option because there might be no exact translation to millis for some intervals
     pub(crate) fn to_millis(&self) -> Option<i64> {
-        // TODO: maybe should be u64
-        match self {
-            Self::Discrete(millis) => Some(*millis as i64),
-            Self::Temporal(duration) => Some(duration.num_milliseconds()),
+        // TODO: maybe should return u64
+        match self.size {
+            IntervalSize::Discrete(millis) => Some(millis as i64),
+            IntervalSize::Temporal(duration) => Some(duration.num_milliseconds()),
         }
     }
 
@@ -169,9 +167,9 @@ impl Interval {
 impl Sub<Interval> for i64 {
     type Output = i64;
     fn sub(self, rhs: Interval) -> Self::Output {
-        match rhs {
-            Interval::Discrete(number) => self - (number as i64),
-            Interval::Temporal(duration) => self - duration.num_milliseconds(),
+        match rhs.size {
+            IntervalSize::Discrete(number) => self - (number as i64),
+            IntervalSize::Temporal(duration) => self - duration.num_milliseconds(),
         }
     }
 }
@@ -179,9 +177,9 @@ impl Sub<Interval> for i64 {
 impl Add<Interval> for i64 {
     type Output = i64;
     fn add(self, rhs: Interval) -> Self::Output {
-        match rhs {
-            Interval::Discrete(number) => self + (number as i64),
-            Interval::Temporal(duration) => self + duration.num_milliseconds(),
+        match rhs.size {
+            IntervalSize::Discrete(number) => self + (number as i64),
+            IntervalSize::Temporal(duration) => self + duration.num_milliseconds(),
         }
     }
 }

@@ -1,9 +1,9 @@
 //! The API for querying a view of the graph in a read-only state
 use crate::dynamic::DynamicGraph;
 use crate::edge::{PyEdge, PyEdges};
-use crate::util::{extract_vertex_ref, through_impl, window_impl};
+use crate::util::{expanding_impl, extract_vertex_ref, rolling_impl, window_impl};
 use crate::vertex::{PyVertex, PyVertices};
-use docbrown::db::graph_window::WindowSet;
+use docbrown::db::view_api::time::WindowIterator;
 use docbrown::db::view_api::*;
 use pyo3::prelude::*;
 
@@ -26,11 +26,11 @@ impl<G: GraphViewOps> From<G> for PyGraphView {
 /// down into multiple windowed views.
 #[pyclass(name = "GraphWindowSet")]
 pub struct PyGraphWindowSet {
-    window_set: WindowSet<DynamicGraph>,
+    window_set: WindowIterator<DynamicGraph>,
 }
 
-impl From<WindowSet<DynamicGraph>> for PyGraphWindowSet {
-    fn from(value: WindowSet<DynamicGraph>) -> Self {
+impl From<WindowIterator<DynamicGraph>> for PyGraphWindowSet {
+    fn from(value: WindowIterator<DynamicGraph>) -> Self {
         Self { window_set: value }
     }
 }
@@ -191,9 +191,9 @@ impl PyGraphView {
     ///
     /// Returns:
     ///     A `WindowSet` with the given `step` size and optional `start` and `end` times,
-    #[pyo3(signature = (step, start=None, end=None))]
-    fn expanding(&self, step: u64, start: Option<i64>, end: Option<i64>) -> PyGraphWindowSet {
-        self.graph.expanding(step, start, end).into()
+    #[pyo3(signature = (step))]
+    fn expanding(&self, step: &PyAny) -> PyResult<PyGraphWindowSet> {
+        expanding_impl(&self.graph, step)
     }
 
     /// Creates a `WindowSet` with the given `window` size and optional `step`, `start` and `end` times,
@@ -209,14 +209,8 @@ impl PyGraphView {
     ///
     /// Returns:
     ///  a `WindowSet` with the given `window` size and optional `step`, `start` and `end` times,
-    fn rolling(
-        &self,
-        window: u64,
-        step: Option<u64>,
-        start: Option<i64>,
-        end: Option<i64>,
-    ) -> PyGraphWindowSet {
-        self.graph.rolling(window, step, start, end).into()
+    fn rolling(&self, window: &PyAny, step: Option<&PyAny>) -> PyResult<PyGraphWindowSet> {
+        rolling_impl(&self.graph, window, step)
     }
 
     /// Create a view including all events between `t_start` (inclusive) and `t_end` (exclusive)
@@ -242,18 +236,6 @@ impl PyGraphView {
     #[pyo3(signature = (end))]
     pub fn at(&self, end: i64) -> PyGraphView {
         self.graph.at(end).into()
-    }
-
-    /// Given a PerspectiveSet this returns an iterator of windowed graphs,
-    /// creating one window graph for each perspecive in the collection
-    ///
-    /// Arguments:
-    ///   perspectives: the perspectives to use
-    ///
-    /// Returns:
-    ///  an iterator of windowed graphs
-    fn through(&self, perspectives: &PyAny) -> PyResult<PyGraphWindowSet> {
-        through_impl(&self.graph, perspectives).map(|p| p.into())
     }
 
     /// Displays the graph
