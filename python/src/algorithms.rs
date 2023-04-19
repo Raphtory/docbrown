@@ -17,6 +17,7 @@ use docbrown::algorithms::reciprocity::{
     all_local_reciprocity as all_local_reciprocity_rs, global_reciprocity as global_reciprocity_rs,
 };
 use pyo3::prelude::*;
+use docbrown::core::vertex::InputVertex;
 
 /// Local triangle count - calculates the number of triangles (a cycle of length 3) for a node.
 /// It measures the local clustering of a graph.
@@ -35,8 +36,9 @@ use pyo3::prelude::*;
 /// to identify critical junctions or potential traffic bottlenecks.
 ///
 #[pyfunction]
-pub(crate) fn local_triangle_count(g: &PyGraphView, v: u64) -> Option<usize> {
-    local_triangle_count_rs(&g.graph, v)
+pub(crate) fn local_triangle_count(g: &PyGraphView, v: &PyAny) -> Option<usize> {
+    let v = g.extract_id(v);
+    local_triangle_count_rs(&g.graph, v.unwrap().id())
 }
 
 /// Local Clustering coefficient - measures the degree to which nodes in a graph tend to cluster together.
@@ -61,8 +63,9 @@ pub(crate) fn local_triangle_count(g: &PyGraphView, v: u64) -> Option<usize> {
 /// its neighbors are relatively less connected with each other, suggesting a more fragmented
 /// or diverse community.
 #[pyfunction]
-pub(crate) fn local_clustering_coefficient(g: &PyGraphView, v: u64) -> Option<f32> {
-    local_clustering_coefficient_rs(&g.graph, v)
+pub(crate) fn local_clustering_coefficient(g: &PyGraphView, v: &PyAny) -> Option<f32> {
+    let v = g.extract_id(v);
+    local_clustering_coefficient_rs(&g.graph, v.unwrap().id())
 }
 
 /// Graph density - measures how dense or sparse a graph is.
