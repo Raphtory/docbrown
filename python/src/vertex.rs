@@ -350,6 +350,10 @@ impl PyVertex {
         self.vertex.at(end).into()
     }
 
+    /// Returns the history of a vertex, including vertex additions and changes made to vertex.
+    ///
+    /// Returns:
+    ///     A list of timestamps of the event history of vertex.
     pub fn history(&self) -> Vec<i64> {
         self.vertex.history()
     }

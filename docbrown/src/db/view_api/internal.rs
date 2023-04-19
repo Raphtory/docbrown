@@ -476,8 +476,28 @@ pub trait GraphViewInternalOps {
     /// and the second element is the property value.
     fn temporal_vertex_prop_vec(&self, v: VertexRef, name: String) -> Vec<(i64, Prop)>;
 
+    /// Returns a vector of all temporal values of the vertex 
+    ///
+    /// # Arguments
+    ///
+    /// * `v` - A reference to the vertex for which to retrieve the timestamp.
+    ///
+    /// # Returns
+    ///
+    /// A vector of timestamps representing the temporal values for the given vertex.
     fn vertex_timestamps(&self, v: VertexRef) -> Vec<i64>;
 
+    /// Returns a vector of all temporal values of the vertex for a given window.
+    ///
+    /// # Arguments
+    ///
+    /// * `v` - A reference to the vertex for which to retrieve the timestamp.
+    /// * `t_start` - The start time of the window.
+    /// * `t_end` - The end time of the window.
+    ///
+    /// # Returns
+    ///
+    /// A vector of timestamps representing the temporal values for the given vertex in a given window.
     fn vertex_timestamps_window(&self, v: VertexRef, t_start: i64, t_end: i64) -> Vec<i64>;
 
     /// Returns a vector of all temporal values of the vertex property with the given name for the given vertex
