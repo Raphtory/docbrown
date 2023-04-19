@@ -102,7 +102,6 @@ impl<G: GraphViewOps> EdgeView<G> {
     }
 
     pub fn history(&self) -> Vec<i64> {
-        print!("window: {:?}", self.window.clone());
         self.graph.edge_timestamps(self.edge, self.window.clone())
     }
 

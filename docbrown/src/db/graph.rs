@@ -1813,7 +1813,7 @@ mod db_tests {
         g.add_edge(4, 1, 4, &vec![], None).unwrap();
 
         let times_of_onetwo = g.edge(1, 2, None).unwrap().history();
-        //todo: bug that Pedro will fix in PR
+        //todo: bug that Pedro will fix in his PR
         //let times_of_four = g.edge(1, 4, None).unwrap().window(1,5).history();
         let times_of_outside_window = g.edge(1, 4, None).unwrap().window(1, 5).history();
 
@@ -1824,5 +1824,77 @@ mod db_tests {
         //assert_eq!(times_of_four, [4]);
         assert_eq!(times_of_outside_window, []);
         assert_eq!(windowed_times_of_four, [4]);
+    }
+
+    #[test]
+    fn check_edge_history_on_multiple_shards() {
+        let g = Graph::new(10);
+
+        g.add_edge(1, 1, 2, &vec![], None).unwrap();
+        g.add_edge(2, 1, 3, &vec![], None).unwrap();
+        g.add_edge(3, 1, 2, &vec![], None).unwrap();
+        g.add_edge(4, 1, 4, &vec![], None).unwrap();
+        g.add_edge(5, 1, 4, &vec![], None).unwrap();
+        g.add_edge(6, 1, 4, &vec![], None).unwrap();
+        g.add_edge(7, 1, 4, &vec![], None).unwrap();
+        g.add_edge(8, 1, 4, &vec![], None).unwrap();
+        g.add_edge(9, 1, 4, &vec![], None).unwrap();
+        g.add_edge(10, 1, 4, &vec![], None).unwrap();
+
+        let times_of_onetwo = g.edge(1, 2, None).unwrap().history();
+        let times_of_four = g.edge(1, 4, None).unwrap().window(1, 5).history();
+        let times_of_outside_window = g.edge(1, 4, None).unwrap().window(1, 4).history();
+
+        // todo: bug for Pedro to fix in his PR
+        // let times_of_four_higher = g.edge(1, 4, None).unwrap().window(6, 11).history();
+
+        let view = g.window(1, 11);
+        let windowed_times_of_four = view.edge(1, 4, None).unwrap().window(2, 5).history();
+        let windowed_times_of_four_higher = view.edge(1, 4, None).unwrap().window(8, 11).history();
+
+        assert_eq!(times_of_onetwo, [1, 3]);
+        assert_eq!(times_of_four, [4]);
+        // assert_eq!(times_of_four_higher, [6,7,8,9,10]);
+        assert_eq!(times_of_outside_window, []);
+        assert_eq!(windowed_times_of_four, [4]);
+        assert_eq!(windowed_times_of_four_higher, [8, 9, 10]);
+    }
+
+    #[test]
+    fn check_vertex_history_multiple_shards() {
+        let g = Graph::new(10);
+
+        g.add_vertex(1, 1, &vec![]).unwrap();
+        g.add_vertex(2, 1, &vec![]).unwrap();
+        g.add_vertex(3, 1, &vec![]).unwrap();
+        g.add_vertex(4, 1, &vec![]).unwrap();
+        g.add_vertex(5, 2, &vec![]).unwrap();
+        g.add_vertex(6, 2, &vec![]).unwrap();
+        g.add_vertex(7, 2, &vec![]).unwrap();
+        g.add_vertex(8, 1, &vec![]).unwrap();
+        g.add_vertex(9, 2, &vec![]).unwrap();
+        g.add_vertex(10, 2, &vec![]).unwrap();
+
+        g.add_vertex(4, "Lord Farquaad", &vec![]).unwrap();
+        g.add_vertex(6, "Lord Farquaad", &vec![]).unwrap();
+        g.add_vertex(7, "Lord Farquaad", &vec![]).unwrap();
+        g.add_vertex(8, "Lord Farquaad", &vec![]).unwrap();
+
+        let times_of_one = g.vertex(1).unwrap().history();
+        let times_of_farquaad = g.vertex("Lord Farquaad").unwrap().history();
+        let times_of_upper = g.vertex(2).unwrap().history();
+
+        assert_eq!(times_of_one, [1, 2, 3, 4, 8]);
+        assert_eq!(times_of_farquaad, [4, 6, 7, 8]);
+        assert_eq!(times_of_upper, [5, 6, 7, 9, 10]);
+
+        let view = g.window(1, 8);
+        let windowed_times_of_one = view.vertex(1).unwrap().history();
+        let windowed_times_of_two = view.vertex(2).unwrap().history();
+        let windowed_times_of_farquaad = view.vertex("Lord Farquaad").unwrap().history();
+
+        assert_eq!(windowed_times_of_one, [1, 2, 3, 4]);
+        assert_eq!(windowed_times_of_farquaad, [4, 6, 7]);
+        assert_eq!(windowed_times_of_two, [5, 6, 7]);
     }
 }
