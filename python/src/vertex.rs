@@ -239,10 +239,9 @@ impl PyVertices {
         (move || vertices.latest_time()).into()
     }
 
-    fn property(&self, name: String, include_static: Option<bool>) -> OptionPropIter {
-        self.vertices
-            .property(name, include_static.unwrap_or(true))
-            .into()
+    fn property(&self, name: String, include_static: Option<bool>) -> OptionPropIterable {
+        let vertices = self.vertices.clone();
+        (move || vertices.property(name.clone(), include_static.unwrap_or(true))).into()
     }
 
     fn property_history(&self, name: String) -> PropHistoryIterable {
@@ -275,8 +274,9 @@ impl PyVertices {
         (move || vertices.has_static_property(name.clone())).into()
     }
 
-    fn static_property(&self, name: String) -> OptionPropIter {
-        self.vertices.static_property(name).into()
+    fn static_property(&self, name: String) -> OptionPropIterable {
+        let vertices = self.vertices.clone();
+        (move || vertices.static_property(name.clone())).into()
     }
 
     fn degree(&self) -> UsizeIterable {
