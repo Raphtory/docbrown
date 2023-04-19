@@ -263,10 +263,6 @@ pub trait ComputeState: Debug + Clone {
     fn iter_keys(&self) -> Box<dyn Iterator<Item = u64> + '_>;
     fn iter_keys_changed(&self, ss: usize) -> Box<dyn Iterator<Item = u64> + '_>;
 
-    fn reset<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(&mut self, ki: usize)
-    where
-        A: StateType;
-
     fn agg<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(&mut self, ss: usize, a: IN, ki: usize)
     where
         A: StateType;
@@ -345,7 +341,6 @@ impl ComputeState for ComputeStateMap {
             .unwrap();
 
         current.map.get(&(i as u64)).map(|v| {
-            // println!("0 = {:?}, 1 = {:?}", ACC::finish(&v[0]), ACC::finish(&v[1]));
             ACC::finish(&v[ss % 2])
         })
     }
@@ -383,20 +378,6 @@ impl ComputeState for ComputeStateMap {
 
     fn iter_keys_changed(&self, ss: usize) -> Box<dyn Iterator<Item = u64> + '_> {
         self.current().iter_keys_changed(ss)
-    }
-
-    fn reset<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(&mut self, i: usize)
-    where
-        A: StateType,
-    {
-        let current = self
-            .current_mut()
-            .as_mut_any()
-            .downcast_mut::<MapArray<A>>()
-            .unwrap();
-        current
-            .map
-            .insert(i as u64, [current.zero.clone(), current.zero.clone()]);
     }
 
     fn agg<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(&mut self, ss: usize, a: IN, i: usize)
@@ -614,20 +595,6 @@ impl<CS: ComputeState + Send + Clone> ShardComputeState<CS> {
         }
     }
 
-    fn reset<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(
-        &mut self,
-        into: usize,
-        agg_ref: &AccId<A, IN, OUT, ACC>,
-    ) where
-        A: StateType,
-    {
-        let state = self
-            .states
-            .entry(agg_ref.id)
-            .or_insert_with(|| CS::new_mutable_primitive(ACC::zero()));
-        state.reset::<A, IN, OUT, ACC>(into);
-    }
-
     fn accumulate_into<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(
         &mut self,
         ss: usize,
@@ -770,26 +737,6 @@ impl<CS: ComputeState + Send + Sync> ShuffleComputeState<CS> {
             .states
             .iter()
             .flat_map(move |(_, cs)| cs.iter_keys_changed(ss))
-    }
-
-    pub fn reset<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(
-        &mut self,
-        into: usize,
-        agg_ref: &AccId<A, IN, OUT, ACC>,
-    ) where
-        A: StateType,
-    {
-        let part = get_shard_id_from_global_vid(into, self.parts.len());
-        self.parts[part].reset(into, agg_ref)
-    }
-
-    pub fn reset_global<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(
-        &mut self,
-        agg_ref: &AccId<A, IN, OUT, ACC>,
-    ) where
-        A: StateType,
-    {
-        self.global.reset(GLOBAL_STATE_KEY, agg_ref)
     }
 
     pub fn accumulate_into<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(

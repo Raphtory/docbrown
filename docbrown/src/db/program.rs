@@ -665,24 +665,6 @@ pub struct EvalVertexView<G: GraphViewOps> {
 
 /// `EvalVertexView` represents a view of a vertex in a computation graph.
 impl<G: GraphViewOps> EvalVertexView<G> {
-    /// Update the vertex state with the provided input value using the given accumulator.
-    pub fn reset<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(&self, agg_r: &AggRef<A, IN, OUT, ACC>)
-    where
-        A: StateType,
-    {
-        let AggRef(agg) = agg_r;
-        self.state.borrow_mut().reset(self.vv.id() as usize, &agg)
-    }
-
-    pub fn global_reset<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(
-        &self,
-        agg_r: &AggRef<A, IN, OUT, ACC>,
-    ) where
-        A: StateType,
-    {
-        let AggRef(agg) = agg_r;
-        self.state.borrow_mut().reset_global(&agg)
-    }
 
     pub fn update<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(
         &self,
