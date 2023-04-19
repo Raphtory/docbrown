@@ -187,6 +187,13 @@ impl Program for HitsS2 {
     }
 }
 
+// HITS (Hubs and Authority) Algorithm:
+// AuthScore of a vertex (A) = Sum of HubScore of all vertices pointing at vertex (A) from previous iteration /
+//     Sum of AuthScore of all vertices in the current iteration
+//
+// HubScore of a vertex (A) = Sum of AuthScore of all vertices pointing away from vertex (A) from previous iteration /
+//     Sum of HubScore of all vertices in the current iteration
+
 #[allow(unused_variables)]
 pub fn hits(g: &Graph, window: Range<i64>, iter_count: usize) -> FxHashMap<u64, (f32, f32)> {
     let mut c = GlobalEvalState::new(g.clone(), true);
