@@ -1286,27 +1286,27 @@ mod db_tests {
             .map_err(|err| println!("{:?}", err))
             .ok();
 
-        assert_eq!(g.end(), Some(5));
+        assert_eq!(g.end(), Some(6));
         assert_eq!(g.start(), Some(5));
 
         let g = Graph::new(4);
 
         g.add_edge(10, 1, 2, &vec![], None).unwrap();
-        assert_eq!(g.end(), Some(10));
+        assert_eq!(g.end(), Some(11));
         assert_eq!(g.start(), Some(10));
 
         g.add_vertex(5, 1, &vec![])
             .map_err(|err| println!("{:?}", err))
             .ok();
-        assert_eq!(g.end(), Some(10));
+        assert_eq!(g.end(), Some(11));
         assert_eq!(g.start(), Some(5));
 
         g.add_edge(20, 3, 4, &vec![], None).unwrap();
-        assert_eq!(g.end(), Some(20));
+        assert_eq!(g.end(), Some(21));
         assert_eq!(g.start(), Some(5));
 
         random_attachment(&g, 100, 10);
-        assert_eq!(g.end(), Some(126));
+        assert_eq!(g.end(), Some(127));
         assert_eq!(g.start(), Some(5));
     }
 

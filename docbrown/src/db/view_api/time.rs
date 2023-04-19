@@ -126,8 +126,8 @@ impl<T: TimeOps> Iterator for WindowIterator<T> {
     type Item = T::WindowedViewType;
     fn next(&mut self) -> Option<Self::Item> {
         if self.cursor < self.end {
-            let window_start = self.cursor + 1;
-            let window_end = self.window.map(|w| window_start - w).unwrap_or(i64::MIN);
+            let window_end = self.cursor + 1;
+            let window_start = self.window.map(|w| window_end - w).unwrap_or(i64::MIN);
             let window = self.view.window(window_start, window_end);
             self.cursor = self.cursor + self.step;
             Some(window)
