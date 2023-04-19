@@ -1894,13 +1894,9 @@ mod graph_test {
             for rec_res in reader.records() {
                 if let Ok(rec) = rec_res {
                     if let Some((src, dst, t)) = parse_record(&rec) {
-                        let src_id = utils::calculate_hash(&src);
-
-                        let dst_id = utils::calculate_hash(&dst);
-
-                        g.add_vertex(t, src_id).unwrap();
-                        g.add_vertex(t, dst_id).unwrap();
-                        g.add_edge_with_props(t, src_id, dst_id, &vec![], 0);
+                        g.add_vertex(t, src.clone()).unwrap();
+                        g.add_vertex(t, src.clone()).unwrap();
+                        g.add_edge_with_props(t, src, dst, &vec![], 0);
                     }
                 }
             }
