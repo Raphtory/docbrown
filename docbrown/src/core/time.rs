@@ -1,8 +1,31 @@
-use chrono::{DateTime, Duration, NaiveDate, NaiveDateTime, ParseError};
+use chrono::{DateTime, Duration, NaiveDateTime};
 use itertools::{Either, Itertools};
 use regex::Regex;
-use std::num::ParseIntError;
+
+use crate::core::time::error::*;
 use std::ops::{Add, Sub};
+
+pub mod error {
+    use chrono::ParseError;
+    use std::num::ParseIntError;
+
+    #[derive(thiserror::Error, Debug, Clone, PartialEq)]
+    pub enum ParseTimeError {
+        #[error("the interval string doesn't contain a complete number of number-unit pairs")]
+        InvalidPairs,
+        #[error(
+            "one of the tokens in the interval string supposed to be a number couldn't be parsed"
+        )]
+        ParseInt {
+            #[from]
+            source: ParseIntError,
+        },
+        #[error("'{0}' is not a valid unit")]
+        InvalidUnit(String),
+        #[error(transparent)]
+        ParseError(#[from] ParseError),
+    }
+}
 
 pub trait IntoTime {
     fn into_time(&self) -> Result<i64, ParseTimeError>;
@@ -100,21 +123,6 @@ impl TryFrom<u64> for Interval {
     }
 }
 
-#[derive(thiserror::Error, Debug, Clone, PartialEq)]
-pub enum ParseTimeError {
-    #[error("the interval string doesn't contain a complete number of number-unit pairs")]
-    InvalidPairs,
-    #[error("one of the tokens in the interval string supposed to be a number couldn't be parsed")]
-    ParseInt {
-        #[from]
-        source: ParseIntError,
-    },
-    #[error("'{0}' is not a valid unit")]
-    InvalidUnit(String),
-    #[error(transparent)]
-    ParseError(#[from] ParseError),
-}
-
 impl Interval {
     /// Return an option because there might be no exact translation to millis for some intervals
     pub(crate) fn to_millis(&self) -> Option<i64> {
@@ -161,7 +169,7 @@ impl Add<Interval> for i64 {
 }
 
 #[cfg(test)]
-mod perspective_tests {
+mod time_tests {
     use crate::core::time::{Interval, ParseTimeError};
     use std::num::ParseIntError;
     #[test]

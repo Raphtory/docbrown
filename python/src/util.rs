@@ -4,7 +4,8 @@
 //! These functions are not part of the public API and are not exported to the Python module.
 use crate::vertex::PyVertex;
 use docbrown::core::tgraph::VertexRef;
-use docbrown::core::time::{Interval, ParseTimeError};
+use docbrown::core::time::error::ParseTimeError;
+use docbrown::core::time::Interval;
 use docbrown::db::view_api::time::WindowSet;
 use docbrown::db::view_api::TimeOps;
 use pyo3::exceptions::{PyException, PyTypeError};

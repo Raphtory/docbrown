@@ -80,7 +80,7 @@ mod lock {
 
 pub mod errors {
     use crate::core::tgraph::errors::MutateGraphError;
-    use crate::core::time::ParseTimeError;
+    use crate::core::time::error::ParseTimeError;
 
     #[derive(thiserror::Error, Debug, PartialEq)]
     pub enum GraphError {

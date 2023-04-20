@@ -1,4 +1,5 @@
-use crate::core::time::{Interval, IntervalSize, ParseTimeError};
+use crate::core::time::error::ParseTimeError;
+use crate::core::time::{Interval, IntervalSize};
 use std::array::IntoIter;
 use std::cmp::{max, min, Ordering};
 use std::iter;
