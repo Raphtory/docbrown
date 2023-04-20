@@ -5,15 +5,18 @@
 //! edge as it existed at a particular point in time, or as it existed over a particular time range.
 //!
 use crate::dynamic::DynamicGraph;
+use crate::types::repr::{iterator_repr, Repr};
 use crate::util::*;
 use crate::vertex::PyVertex;
 use crate::wrappers::prop::Prop;
+use docbrown::core::vertex::InputVertex;
 use docbrown::db::edge::EdgeView;
 use docbrown::db::graph_window::WindowSet;
 use docbrown::db::view_api::*;
 use itertools::Itertools;
 use pyo3::{pyclass, pymethods, PyAny, PyRef, PyRefMut, PyResult};
 use std::collections::HashMap;
+use std::sync::Arc;
 
 /// PyEdge is a Python class that represents an edge in the graph.
 /// An edge is a directed connection between two vertices.
@@ -69,6 +72,16 @@ impl PyEdge {
             .into_iter()
             .map(|(k, v)| (k, v.into()))
             .collect()
+    }
+
+    /// Returns a list of timestamps of when an edge is added or change to an edge is made.
+    ///
+    /// Returns:
+    ///     A list of timestamps.
+    ///
+
+    pub fn history(&self) -> Vec<i64> {
+        self.edge.history()
     }
 
     /// Returns a dictionary of all properties on the edge.
@@ -270,8 +283,30 @@ impl PyEdge {
             .collect::<Vec<PyEdge>>()
     }
 
+    /// Gets the earliest time of an edge.
+    ///
+    /// Returns:
+    ///     (int) The earliest time of an edge
+    pub fn earliest_time(&self) -> Option<i64> {
+        self.edge.earliest_time()
+    }
+
+    /// Gets the latest time of an edge.
+    ///
+    /// Returns:
+    ///     (int) The latest time of an edge
+    pub fn latest_time(&self) -> Option<i64> {
+        self.edge.latest_time()
+    }
+
     /// Displays the Edge as a string.
     pub fn __repr__(&self) -> String {
+        self.repr()
+    }
+}
+
+impl Repr for PyEdge {
+    fn repr(&self) -> String {
         let properties = &self
             .properties(Some(true))
             .iter()
@@ -280,48 +315,36 @@ impl PyEdge {
 
         let source = self.edge.src().name();
         let target = self.edge.dst().name();
+        let earliest_time = self.edge.earliest_time();
+        let latest_time = self.edge.latest_time();
         if properties.is_empty() {
             format!(
-                "Edge(source={}, target={})",
+                "Edge(source={}, target={}, earliest_time={}, latest_time={})",
                 source.trim_matches('"'),
-                target.trim_matches('"')
+                target.trim_matches('"'),
+                earliest_time.unwrap_or(0),
+                latest_time.unwrap_or(0),
             )
         } else {
             let property_string: String = "{".to_string() + &properties + "}";
             format!(
-                "Edge(source={}, target={}, properties={})",
+                "Edge(source={}, target={}, earliest_time={}, latest_time={}, properties={})",
                 source.trim_matches('"'),
                 target.trim_matches('"'),
+                earliest_time.unwrap_or(0),
+                latest_time.unwrap_or(0),
                 property_string
             )
         }
     }
 }
 
-/// An iterable of edges.
-#[pyclass(name = "EdgeIter")]
-pub struct PyEdgeIter {
-    iter: Box<dyn Iterator<Item = PyEdge> + Send>,
-}
-
-/// An iterable of edges.
-#[pymethods]
-impl PyEdgeIter {
-    /// returns the object itself
-    fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
-        slf
-    }
-
-    /// returns the next edge
-    fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<PyEdge> {
-        slf.iter.next()
-    }
-}
+py_iterator!(PyEdgeIter, EdgeView<DynamicGraph>, PyEdge, "EdgeIter");
 
 /// A list of edges that can be iterated over.
 #[pyclass(name = "Edges")]
 pub struct PyEdges {
-    builder: Box<dyn Fn() -> BoxedIter<EdgeView<DynamicGraph>> + Send + 'static>,
+    builder: Arc<dyn Fn() -> BoxedIter<EdgeView<DynamicGraph>> + Send + Sync + 'static>,
 }
 
 impl PyEdges {
@@ -366,57 +389,51 @@ impl PyEdges {
     /// Explodes the edges into a list of edges. This is useful when you want to iterate over
     /// the properties of an Edge at every single point in time. This will return a seperate edge
     /// each time a property had been changed.
-    fn explode(&self) -> PyEdgeIter {
-        let res: BoxedIter<EdgeView<DynamicGraph>> =
-            Box::new(self.iter().flat_map(|e| e.explode()));
-        res.into()
+    fn explode(&self) -> PyEdges {
+        let builder = self.builder.clone();
+        (move || {
+            let iter: BoxedIter<EdgeView<DynamicGraph>> =
+                Box::new(builder().flat_map(|e| e.explode()));
+            iter
+        })
+        .into()
+    }
+
+    /// Returns the earliest time of the edges.
+    fn earliest_time(&self) -> Vec<Option<i64>> {
+        self.py_iter().map(|e| e.earliest_time()).collect()
+    }
+
+    /// Returns the latest time of the edges.
+    fn latest_time(&self) -> Vec<Option<i64>> {
+        self.py_iter().map(|e| e.latest_time()).collect()
+    }
+
+    fn __repr__(&self) -> String {
+        self.repr()
     }
 }
 
-impl<F: Fn() -> BoxedIter<EdgeView<DynamicGraph>> + Send + 'static> From<F> for PyEdges {
+impl Repr for PyEdges {
+    fn repr(&self) -> String {
+        format!("Edges({})", iterator_repr(self.__iter__().into_iter()))
+    }
+}
+
+impl<F: Fn() -> BoxedIter<EdgeView<DynamicGraph>> + Send + Sync + 'static> From<F> for PyEdges {
     fn from(value: F) -> Self {
         Self {
-            builder: Box::new(value),
+            builder: Arc::new(value),
         }
     }
 }
 
-impl From<Box<dyn Iterator<Item = PyEdge> + Send>> for PyEdgeIter {
-    fn from(value: Box<dyn Iterator<Item = PyEdge> + Send>) -> Self {
-        Self { iter: value }
-    }
-}
-
-impl From<Box<dyn Iterator<Item = EdgeView<DynamicGraph>> + Send>> for PyEdgeIter {
-    fn from(value: Box<dyn Iterator<Item = EdgeView<DynamicGraph>> + Send>) -> Self {
-        Self {
-            iter: Box::new(value.map(|e| e.into())),
-        }
-    }
-}
-
-#[pyclass(name = "NestedEdgeIter")]
-pub struct PyNestedEdgeIter {
-    iter: BoxedIter<PyEdgeIter>,
-}
-
-#[pymethods]
-impl PyNestedEdgeIter {
-    fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
-        slf
-    }
-    fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<PyEdgeIter> {
-        slf.iter.next()
-    }
-}
-
-impl From<BoxedIter<BoxedIter<EdgeView<DynamicGraph>>>> for PyNestedEdgeIter {
-    fn from(value: BoxedIter<BoxedIter<EdgeView<DynamicGraph>>>) -> Self {
-        Self {
-            iter: Box::new(value.map(|e| e.into())),
-        }
-    }
-}
+py_iterator!(
+    PyNestedEdgeIter,
+    BoxedIter<EdgeView<DynamicGraph>>,
+    PyEdgeIter,
+    "NestedEdgeIter"
+);
 
 #[pyclass(name = "EdgeWindowSet")]
 pub struct PyEdgeWindowSet {
@@ -442,7 +459,7 @@ impl PyEdgeWindowSet {
 
 #[pyclass(name = "NestedEdges")]
 pub struct PyNestedEdges {
-    builder: Box<dyn Fn() -> BoxedIter<BoxedIter<EdgeView<DynamicGraph>>> + Send + 'static>,
+    builder: Arc<dyn Fn() -> BoxedIter<BoxedIter<EdgeView<DynamicGraph>>> + Send + Sync + 'static>,
 }
 
 impl PyNestedEdges {
@@ -463,22 +480,26 @@ impl PyNestedEdges {
             .collect()
     }
 
-    fn explode(&self) -> PyNestedEdgeIter {
-        let res: BoxedIter<BoxedIter<EdgeView<DynamicGraph>>> = Box::new(self.iter().map(|e| {
-            let inner_box: BoxedIter<EdgeView<DynamicGraph>> =
-                Box::new(e.flat_map(|e| e.explode()));
-            inner_box
-        }));
-        res.into()
+    fn explode(&self) -> PyNestedEdges {
+        let builder = self.builder.clone();
+        (move || {
+            let iter: BoxedIter<BoxedIter<EdgeView<DynamicGraph>>> = Box::new(builder().map(|e| {
+                let inner_box: BoxedIter<EdgeView<DynamicGraph>> =
+                    Box::new(e.flat_map(|e| e.explode()));
+                inner_box
+            }));
+            iter
+        })
+        .into()
     }
 }
 
-impl<F: Fn() -> BoxedIter<BoxedIter<EdgeView<DynamicGraph>>> + Send + 'static> From<F>
+impl<F: Fn() -> BoxedIter<BoxedIter<EdgeView<DynamicGraph>>> + Send + Sync + 'static> From<F>
     for PyNestedEdges
 {
     fn from(value: F) -> Self {
         Self {
-            builder: Box::new(value),
+            builder: Arc::new(value),
         }
     }
 }
