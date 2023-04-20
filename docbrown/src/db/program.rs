@@ -10,7 +10,7 @@ use std::{
 
 use crate::core::{
     agg::Accumulator,
-    state::{AccId, ShuffleComputeState},
+    state::{AccId, ComputeState, ShuffleComputeState},
     state::{ComputeStateMap, StateType},
 };
 use crate::db::vertex::VertexView;
@@ -18,8 +18,6 @@ use crate::db::view_api::{GraphViewOps, VertexViewOps};
 use itertools::Itertools;
 use rayon::prelude::*;
 use rustc_hash::FxHashSet;
-
-type CS = ComputeStateMap;
 
 /// A reference to an accumulator for aggregation operations.
 /// `A` is the type of the state being accumulated.
@@ -51,7 +49,7 @@ where
 }
 
 /// A struct representing the local state of a shard.
-pub struct LocalState<G: GraphViewOps> {
+pub struct BaseLocalState<G: GraphViewOps, CS: ComputeState> {
     ss: usize,
     shard: usize,
     graph: G,
@@ -59,7 +57,9 @@ pub struct LocalState<G: GraphViewOps> {
     next_vertex_set: Option<Arc<FxHashSet<u64>>>,
 }
 
-impl<G: GraphViewOps> LocalState<G> {
+pub type LocalState<G> = BaseLocalState<G, ComputeStateMap>;
+
+impl<G: GraphViewOps, CS: ComputeState> BaseLocalState<G, CS> {
     /// Creates a new `LocalState` object.
     ///
     /// # Arguments
@@ -137,7 +137,7 @@ impl<G: GraphViewOps> LocalState<G> {
     /// * `f` - The function to execute on each vertex.
     pub(crate) fn step<F>(&self, f: F)
     where
-        F: Fn(EvalVertexView<G>),
+        F: Fn(EvalVertexView<G, CS>),
     {
         let graph = self.graph.clone();
 
@@ -185,15 +185,17 @@ impl<G: GraphViewOps> LocalState<G> {
 ///  * `post_agg_state`: an arc pointer to a read-write lock that contains the state of the computation after aggregation.
 ///
 #[derive(Debug)]
-pub struct GlobalEvalState<G: GraphViewOps> {
+pub struct BaseGlobalEvalState<G: GraphViewOps, CS: ComputeState> {
     pub ss: usize,
     g: G,
     pub keep_past_state: bool,
     // running state
     pub next_vertex_set: Option<Vec<Arc<FxHashSet<u64>>>>,
     states: Vec<Arc<parking_lot::RwLock<Option<ShuffleComputeState<CS>>>>>,
-    resetable_states: Vec<u32>
+    resetable_states: Vec<u32>,
 }
+
+pub type GlobalEvalState<G> = BaseGlobalEvalState<G, ComputeStateMap>;
 
 /// Implementation of the GlobalEvalState struct.
 /// The GlobalEvalState struct is used to represent the state of the computation across all shards.
@@ -202,7 +204,7 @@ pub struct GlobalEvalState<G: GraphViewOps> {
 ///
 ///
 ///
-impl<G: GraphViewOps> GlobalEvalState<G> {
+impl<G: GraphViewOps, CS: ComputeState> BaseGlobalEvalState<G, CS> {
     /// Reads the vector partitions for the given accumulator.
     ///
     /// # Arguments
@@ -391,7 +393,6 @@ impl<G: GraphViewOps> GlobalEvalState<G> {
         self.agg_internal(agg, false)
     }
 
-
     /// Runs the global aggregation function for the given accumulator.
     ///
     /// # Arguments
@@ -417,7 +418,6 @@ impl<G: GraphViewOps> GlobalEvalState<G> {
     {
         self.agg_internal(agg, true)
     }
-
 
     /// Applies an accumulator to the states of all shards in parallel.
     ///
@@ -559,7 +559,7 @@ impl<G: GraphViewOps> GlobalEvalState<G> {
     ///
     pub(crate) fn step<F>(&mut self, f: F)
     where
-        F: Fn(EvalVertexView<G>) -> bool + Sync,
+        F: Fn(EvalVertexView<G, CS>) -> bool + Sync,
     {
         let ss = self.ss;
         let graph = Arc::new(self.g.clone());
@@ -597,7 +597,7 @@ impl<G: GraphViewOps> GlobalEvalState<G> {
                 if self.keep_past_state {
                     own_state.copy_over_next_ss(self.ss);
                 }
-                
+
                 own_state.reset_states(self.ss, &self.resetable_states);
 
                 // put back the local state
@@ -616,7 +616,7 @@ impl<G: GraphViewOps> GlobalEvalState<G> {
 /// The entry contains a reference to a `ShuffleComputeState` and an `AccId` representing the accumulator
 /// for which the entry is being accessed. It also contains the index of the entry in the shuffle table
 /// and the super-step counter.
-pub struct Entry<'a, A: StateType, IN, OUT, ACC: Accumulator<A, IN, OUT>> {
+pub struct Entry<'a, A: StateType, IN, OUT, ACC: Accumulator<A, IN, OUT>, CS: ComputeState> {
     state: Ref<'a, ShuffleComputeState<CS>>,
     acc_id: AccId<A, IN, OUT, ACC>,
     i: usize,
@@ -624,7 +624,9 @@ pub struct Entry<'a, A: StateType, IN, OUT, ACC: Accumulator<A, IN, OUT>> {
 }
 
 // Entry implementation has read_ref function to access Option<&A>
-impl<'a, A: StateType, IN, OUT, ACC: Accumulator<A, IN, OUT>> Entry<'a, A, IN, OUT, ACC> {
+impl<'a, A: StateType, IN, OUT, ACC: Accumulator<A, IN, OUT>, CS: ComputeState>
+    Entry<'a, A, IN, OUT, ACC, CS>
+{
     /// Creates a new `Entry` instance.
     ///
     /// # Arguments
@@ -638,7 +640,7 @@ impl<'a, A: StateType, IN, OUT, ACC: Accumulator<A, IN, OUT>> Entry<'a, A, IN, O
         acc_id: AccId<A, IN, OUT, ACC>,
         i: usize,
         ss: usize,
-    ) -> Entry<'a, A, IN, OUT, ACC> {
+    ) -> Entry<'a, A, IN, OUT, ACC, CS> {
         Entry {
             state,
             acc_id,
@@ -657,15 +659,14 @@ impl<'a, A: StateType, IN, OUT, ACC: Accumulator<A, IN, OUT>> Entry<'a, A, IN, O
 ///
 /// The view contains the evaluation step, the `WindowedVertex` representing the vertex, and a shared
 /// reference to the `ShuffleComputeState`.
-pub struct EvalVertexView<G: GraphViewOps> {
+pub struct EvalVertexView<G: GraphViewOps, CS: ComputeState> {
     ss: usize,
     vv: VertexView<G>,
     state: Rc<RefCell<ShuffleComputeState<CS>>>,
 }
 
 /// `EvalVertexView` represents a view of a vertex in a computation graph.
-impl<G: GraphViewOps> EvalVertexView<G> {
-
+impl<G: GraphViewOps, CS: ComputeState> EvalVertexView<G, CS> {
     pub fn update<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(
         &self,
         agg_r: &AggRef<A, IN, OUT, ACC>,
@@ -727,7 +728,7 @@ impl<G: GraphViewOps> EvalVertexView<G> {
     pub fn entry<A, IN, OUT, ACC: Accumulator<A, IN, OUT>>(
         &self,
         agg_r: &AggRef<A, IN, OUT, ACC>,
-    ) -> Entry<'_, A, IN, OUT, ACC>
+    ) -> Entry<'_, A, IN, OUT, ACC, CS>
     where
         A: StateType,
     {
@@ -935,7 +936,11 @@ pub trait Program {
     ///
     /// Panics if the state lock is contended.
     #[allow(unused_variables)]
-    fn produce_output<G: GraphViewOps>(&self, g: &G, gs: &GlobalEvalState<G>) -> Self::Out
+    fn produce_output<G: GraphViewOps>(
+        &self,
+        g: &G,
+        gs: &GlobalEvalState<G>,
+    ) -> Self::Out
     where
         Self: Sync;
 }
