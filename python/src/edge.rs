@@ -12,7 +12,7 @@ use crate::wrappers::prop::Prop;
 use docbrown::core::time::{Interval, ParseTimeError};
 use docbrown::core::vertex::InputVertex;
 use docbrown::db::edge::EdgeView;
-use docbrown::db::view_api::time::WindowIterator;
+use docbrown::db::view_api::time::WindowSet;
 use docbrown::db::view_api::*;
 use itertools::Itertools;
 use pyo3::{pyclass, pymethods, PyAny, PyRef, PyRefMut, PyResult};
@@ -409,11 +409,11 @@ py_iterator!(
 
 #[pyclass(name = "EdgeWindowSet")]
 pub struct PyEdgeWindowSet {
-    window_set: WindowIterator<EdgeView<DynamicGraph>>,
+    window_set: WindowSet<EdgeView<DynamicGraph>>,
 }
 
-impl From<WindowIterator<EdgeView<DynamicGraph>>> for PyEdgeWindowSet {
-    fn from(value: WindowIterator<EdgeView<DynamicGraph>>) -> Self {
+impl From<WindowSet<EdgeView<DynamicGraph>>> for PyEdgeWindowSet {
+    fn from(value: WindowSet<EdgeView<DynamicGraph>>) -> Self {
         Self { window_set: value }
     }
 }

@@ -11,7 +11,7 @@ use docbrown::core::tgraph::VertexRef;
 use docbrown::db::path::{PathFromGraph, PathFromVertex};
 use docbrown::db::vertex::VertexView;
 use docbrown::db::vertices::Vertices;
-use docbrown::db::view_api::time::WindowIterator;
+use docbrown::db::view_api::time::WindowSet;
 use docbrown::db::view_api::*;
 use itertools::Itertools;
 use pyo3::exceptions::PyIndexError;
@@ -981,11 +981,11 @@ impl PathIterator {
 
 #[pyclass(name = "VertexWindowSet")]
 pub struct PyVertexWindowSet {
-    window_set: WindowIterator<VertexView<DynamicGraph>>,
+    window_set: WindowSet<VertexView<DynamicGraph>>,
 }
 
-impl From<WindowIterator<VertexView<DynamicGraph>>> for PyVertexWindowSet {
-    fn from(value: WindowIterator<VertexView<DynamicGraph>>) -> Self {
+impl From<WindowSet<VertexView<DynamicGraph>>> for PyVertexWindowSet {
+    fn from(value: WindowSet<VertexView<DynamicGraph>>) -> Self {
         Self { window_set: value }
     }
 }
@@ -1002,11 +1002,11 @@ impl PyVertexWindowSet {
 
 #[pyclass(name = "VerticesWindowSet")]
 pub struct PyVerticesWindowSet {
-    window_set: WindowIterator<Vertices<DynamicGraph>>,
+    window_set: WindowSet<Vertices<DynamicGraph>>,
 }
 
-impl From<WindowIterator<Vertices<DynamicGraph>>> for PyVerticesWindowSet {
-    fn from(value: WindowIterator<Vertices<DynamicGraph>>) -> Self {
+impl From<WindowSet<Vertices<DynamicGraph>>> for PyVerticesWindowSet {
+    fn from(value: WindowSet<Vertices<DynamicGraph>>) -> Self {
         Self { window_set: value }
     }
 }
@@ -1023,11 +1023,11 @@ impl PyVerticesWindowSet {
 
 #[pyclass(name = "PathFromGraphWindowSet")]
 pub struct PyPathFromGraphWindowSet {
-    window_set: WindowIterator<PathFromGraph<DynamicGraph>>,
+    window_set: WindowSet<PathFromGraph<DynamicGraph>>,
 }
 
-impl From<WindowIterator<PathFromGraph<DynamicGraph>>> for PyPathFromGraphWindowSet {
-    fn from(value: WindowIterator<PathFromGraph<DynamicGraph>>) -> Self {
+impl From<WindowSet<PathFromGraph<DynamicGraph>>> for PyPathFromGraphWindowSet {
+    fn from(value: WindowSet<PathFromGraph<DynamicGraph>>) -> Self {
         Self { window_set: value }
     }
 }
@@ -1044,11 +1044,11 @@ impl PyPathFromGraphWindowSet {
 
 #[pyclass(name = "PathFromVertexWindowSet")]
 pub struct PyPathFromVertexWindowSet {
-    window_set: WindowIterator<PathFromVertex<DynamicGraph>>,
+    window_set: WindowSet<PathFromVertex<DynamicGraph>>,
 }
 
-impl From<WindowIterator<PathFromVertex<DynamicGraph>>> for PyPathFromVertexWindowSet {
-    fn from(value: WindowIterator<PathFromVertex<DynamicGraph>>) -> Self {
+impl From<WindowSet<PathFromVertex<DynamicGraph>>> for PyPathFromVertexWindowSet {
+    fn from(value: WindowSet<PathFromVertex<DynamicGraph>>) -> Self {
         Self { window_set: value }
     }
 }

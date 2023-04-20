@@ -41,7 +41,7 @@ pub trait TimeOps {
     /// using an expanding window.
     ///
     /// An expanding window is a window that grows by `step` size at each iteration.
-    fn expanding<I>(&self, step: I) -> Result<WindowIterator<Self>, ParseTimeError>
+    fn expanding<I>(&self, step: I) -> Result<WindowSet<Self>, ParseTimeError>
     where
         Self: Sized + Clone + 'static, // TODO: is this fine???
         I: TryInto<Interval, Error = ParseTimeError>,
@@ -51,9 +51,9 @@ pub trait TimeOps {
             (Some(start), Some(end)) => {
                 let step: Interval = step.try_into()?;
 
-                Ok(WindowIterator::new(parent, start, end, step, None))
+                Ok(WindowSet::new(parent, start, end, step, None))
             }
-            _ => Ok(WindowIterator::empty(parent)),
+            _ => Ok(WindowSet::empty(parent)),
         }
     }
 
@@ -61,7 +61,7 @@ pub trait TimeOps {
     /// using a rolling window.
     ///
     /// A rolling window is a window that moves forward by `step` size at each iteration.
-    fn rolling<I>(&self, window: I, step: Option<I>) -> Result<WindowIterator<Self>, ParseTimeError>
+    fn rolling<I>(&self, window: I, step: Option<I>) -> Result<WindowSet<Self>, ParseTimeError>
     where
         Self: Sized + Clone + 'static, // TODO: is this fine???
         I: TryInto<Interval, Error = ParseTimeError>,
@@ -74,16 +74,16 @@ pub trait TimeOps {
                     Some(step) => step.try_into()?,
                     None => window,
                 };
-                Ok(WindowIterator::new(parent, start, end, step, Some(window)))
+                Ok(WindowSet::new(parent, start, end, step, Some(window)))
             }
-            _ => Ok(WindowIterator::empty(parent)),
+            _ => Ok(WindowSet::empty(parent)),
         }
     }
 
     // TODO pub fn weeks(n), days(n), hours(n), minutes(n), seconds(n), millis(n)
 }
 
-pub struct WindowIterator<T: TimeOps> {
+pub struct WindowSet<T: TimeOps> {
     view: T,
     cursor: i64,
     end: i64,
@@ -91,7 +91,7 @@ pub struct WindowIterator<T: TimeOps> {
     window: Option<Interval>,
 }
 
-impl<T: TimeOps> WindowIterator<T> {
+impl<T: TimeOps> WindowSet<T> {
     fn new(
         view: T,
         timeline_start: i64,
@@ -118,11 +118,11 @@ impl<T: TimeOps> WindowIterator<T> {
 
     fn empty(view: T) -> Self {
         // timeline_start is greater than end, so no windows to return, even with end inclusive
-        WindowIterator::new(view, 1, 0, Default::default(), None)
+        WindowSet::new(view, 1, 0, Default::default(), None)
     }
 }
 
-impl<T: TimeOps> Iterator for WindowIterator<T> {
+impl<T: TimeOps> Iterator for WindowSet<T> {
     type Item = T::WindowedViewType;
     fn next(&mut self) -> Option<Self::Item> {
         if self.cursor < self.end {
@@ -142,7 +142,7 @@ mod time_tests {
     use crate::db::graph::Graph;
     use crate::db::graph_window::WindowedGraph;
     use crate::db::view_api::internal::GraphViewInternalOps;
-    use crate::db::view_api::time::WindowIterator;
+    use crate::db::view_api::time::WindowSet;
     use crate::db::view_api::{GraphViewOps, TimeOps};
     use chrono::format::parse;
     use chrono::NaiveDateTime;
@@ -158,7 +158,7 @@ mod time_tests {
         g
     }
 
-    fn assert_bounds<G>(windows: WindowIterator<G>, expected: Vec<(i64, i64)>)
+    fn assert_bounds<G>(windows: WindowSet<G>, expected: Vec<(i64, i64)>)
     where
         G: GraphViewOps + GraphViewInternalOps,
     {

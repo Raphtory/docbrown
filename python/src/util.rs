@@ -5,7 +5,7 @@
 use crate::vertex::PyVertex;
 use docbrown::core::tgraph::VertexRef;
 use docbrown::core::time::{Interval, ParseTimeError};
-use docbrown::db::view_api::time::WindowIterator;
+use docbrown::db::view_api::time::WindowSet;
 use docbrown::db::view_api::TimeOps;
 use pyo3::exceptions::{PyException, PyTypeError};
 use pyo3::prelude::*;
@@ -62,7 +62,7 @@ where
 pub(crate) fn expanding_impl<T, O>(slf: &T, step: &PyAny) -> PyResult<O>
 where
     T: TimeOps + Clone + 'static, // FIXME: is this fine?
-    O: From<WindowIterator<T>>,
+    O: From<WindowSet<T>>,
 {
     let step = extract_interval(step)?;
     adapt_result(slf.expanding(step)).map(|iter| iter.into())
@@ -71,7 +71,7 @@ where
 pub(crate) fn rolling_impl<T, O>(slf: &T, window: &PyAny, step: Option<&PyAny>) -> PyResult<O>
 where
     T: TimeOps + Clone + 'static, //  FIXME: is this fine?
-    O: From<WindowIterator<T>>,
+    O: From<WindowSet<T>>,
 {
     let window = extract_interval(window)?;
     let step = step.map(|step| extract_interval(step)).transpose()?;

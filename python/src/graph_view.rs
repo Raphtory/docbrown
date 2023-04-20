@@ -3,7 +3,7 @@ use crate::dynamic::DynamicGraph;
 use crate::edge::{PyEdge, PyEdges};
 use crate::util::{expanding_impl, extract_vertex_ref, rolling_impl, window_impl};
 use crate::vertex::{PyVertex, PyVertices};
-use docbrown::db::view_api::time::WindowIterator;
+use docbrown::db::view_api::time::WindowSet;
 use docbrown::db::view_api::*;
 use pyo3::prelude::*;
 
@@ -26,11 +26,11 @@ impl<G: GraphViewOps> From<G> for PyGraphView {
 /// down into multiple windowed views.
 #[pyclass(name = "GraphWindowSet")]
 pub struct PyGraphWindowSet {
-    window_set: WindowIterator<DynamicGraph>,
+    window_set: WindowSet<DynamicGraph>,
 }
 
-impl From<WindowIterator<DynamicGraph>> for PyGraphWindowSet {
-    fn from(value: WindowIterator<DynamicGraph>) -> Self {
+impl From<WindowSet<DynamicGraph>> for PyGraphWindowSet {
+    fn from(value: WindowSet<DynamicGraph>) -> Self {
         Self { window_set: value }
     }
 }
