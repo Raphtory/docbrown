@@ -50,8 +50,6 @@ struct HitsS1 {
     auth_score: AccId<MulF32, MulF32, MulF32, ValDef<MulF32>>,
     recv_hub_score: AccId<SumF32, SumF32, SumF32, SumDef<SumF32>>,
     recv_auth_score: AccId<SumF32, SumF32, SumF32, SumDef<SumF32>>,
-    total_hub_score: AccId<SumF32, SumF32, SumF32, SumDef<SumF32>>,
-    total_auth_score: AccId<SumF32, SumF32, SumF32, SumDef<SumF32>>,
 }
 
 impl HitsS1 {
@@ -61,8 +59,6 @@ impl HitsS1 {
             auth_score: val(1),
             recv_hub_score: sum(2),
             recv_auth_score: sum(3),
-            total_hub_score: sum(4),
-            total_auth_score: sum(5),
         }
     }
 }
@@ -75,26 +71,22 @@ impl Program for HitsS1 {
         let auth_score = c.agg(self.auth_score);
         let recv_hub_score = c.agg(self.recv_hub_score);
         let recv_auth_score = c.agg(self.recv_auth_score);
-        let total_hub_score = c.global_agg(self.total_hub_score);
-        let total_auth_score = c.global_agg(self.total_auth_score);
 
         c.step(|s| {
+            let hub_score = s.read(&hub_score).0;
+            let auth_score = s.read(&auth_score).0;
             for t in s.neighbours_out() {
-                t.update(&recv_hub_score, SumF32(s.read(&hub_score).0))
+                t.update(&recv_hub_score, SumF32(hub_score))
             }
             for t in s.neighbours_in() {
-                t.update(&recv_auth_score, SumF32(s.read(&auth_score).0))
+                t.update(&recv_auth_score, SumF32(auth_score))
             }
-            s.global_update(&total_hub_score, SumF32(s.read(&hub_score).0));
-            s.global_update(&total_auth_score, SumF32(s.read(&auth_score).0));
         });
     }
 
     fn post_eval<G: GraphViewOps>(&self, c: &mut GlobalEvalState<G>) {
         let _ = c.agg(self.recv_hub_score);
         let _ = c.agg(self.recv_auth_score);
-        let _ = c.global_agg(self.total_hub_score);
-        let _ = c.global_agg(self.total_auth_score);
         c.step(|_| true)
     }
 
@@ -107,6 +99,56 @@ impl Program for HitsS1 {
 }
 
 struct HitsS2 {
+    recv_hub_score: AccId<SumF32, SumF32, SumF32, SumDef<SumF32>>,
+    recv_auth_score: AccId<SumF32, SumF32, SumF32, SumDef<SumF32>>,
+    total_hub_score: AccId<SumF32, SumF32, SumF32, SumDef<SumF32>>,
+    total_auth_score: AccId<SumF32, SumF32, SumF32, SumDef<SumF32>>,
+}
+
+impl HitsS2 {
+    fn new() -> Self {
+        Self {
+            recv_hub_score: sum(2),
+            recv_auth_score: sum(3),
+            total_hub_score: sum(4),
+            total_auth_score: sum(5),
+        }
+    }
+}
+
+impl Program for HitsS2 {
+    type Out = ();
+
+    fn local_eval<G: GraphViewOps>(&self, c: &LocalState<G>) {
+        let recv_hub_score = c.agg(self.recv_hub_score);
+        let recv_auth_score = c.agg(self.recv_auth_score);
+        let total_hub_score = c.global_agg(self.total_hub_score);
+        let total_auth_score = c.global_agg(self.total_auth_score);
+
+        c.step(|s| {
+            let recv_hub_score = s.read(&recv_hub_score).0;
+            let recv_auth_score = s.read(&recv_auth_score).0;
+
+            s.global_update(&total_hub_score, SumF32(recv_hub_score));
+            s.global_update(&total_auth_score, SumF32(recv_auth_score));
+        });
+    }
+
+    fn post_eval<G: GraphViewOps>(&self, c: &mut GlobalEvalState<G>) {
+        let _ = c.global_agg(self.total_hub_score);
+        let _ = c.global_agg(self.total_auth_score);
+        c.step(|_| true)
+    }
+
+    #[allow(unused_variables)]
+    fn produce_output<G: GraphViewOps>(&self, g: &G, gs: &GlobalEvalState<G>) -> Self::Out
+        where
+            Self: Sync,
+    {
+    }
+}
+
+struct HitsS3 {
     hub_score: AccId<MulF32, MulF32, MulF32, ValDef<MulF32>>,
     auth_score: AccId<MulF32, MulF32, MulF32, ValDef<MulF32>>,
     recv_hub_score: AccId<SumF32, SumF32, SumF32, SumDef<SumF32>>,
@@ -117,7 +159,7 @@ struct HitsS2 {
     max_diff_auth_score: AccId<f32, f32, f32, MaxDef<f32>>,
 }
 
-impl HitsS2 {
+impl HitsS3 {
     fn new() -> Self {
         Self {
             hub_score: val(0),
@@ -132,7 +174,7 @@ impl HitsS2 {
     }
 }
 
-impl Program for HitsS2 {
+impl Program for HitsS3 {
     type Out = ();
 
     fn local_eval<G: GraphViewOps>(&self, c: &LocalState<G>) {
@@ -146,15 +188,18 @@ impl Program for HitsS2 {
         let max_diff_auth_score = c.global_agg(self.max_diff_auth_score);
 
         c.step(|s| {
-            println!("total_hub_score = {}", s.read_global(&total_hub_score).0);
-            s.update(
-                &hub_score,
-                MulF32(s.read(&recv_auth_score).0 / s.read_global(&total_hub_score).0),
-            );
-            println!("total_auth_score = {}", s.read_global(&total_auth_score).0);
+            let recv_hub_score = s.read(&recv_hub_score).0;
+            let recv_auth_score = s.read(&recv_auth_score).0;
+            println!("s = {}, recv_hub_score = {}", s.global_id(), recv_hub_score);
+            println!("s = {}, recv_auth_score = {}", s.global_id(), recv_auth_score);
+
             s.update(
                 &auth_score,
-                MulF32(s.read(&recv_hub_score).0 / s.read_global(&total_auth_score).0),
+                MulF32(recv_hub_score / s.read_global(&total_hub_score).0),
+            );
+            s.update(
+                &hub_score,
+                MulF32(recv_auth_score / s.read_global(&total_auth_score).0),
             );
 
             let prev_hub_score = s.read_prev(&hub_score);
@@ -164,7 +209,7 @@ impl Program for HitsS2 {
 
             let prev_auth_score = s.read_prev(&auth_score);
             let curr_auth_score = s.read(&auth_score);
-            let md_auth_score = abs((prev_auth_score.clone() - curr_auth_score.clone()).0);
+            let md_auth_score = abs((prev_auth_score - curr_auth_score).0);
             s.global_update(&max_diff_auth_score, md_auth_score);
         });
     }
@@ -189,10 +234,10 @@ impl Program for HitsS2 {
 
 // HITS (Hubs and Authority) Algorithm:
 // AuthScore of a vertex (A) = Sum of HubScore of all vertices pointing at vertex (A) from previous iteration /
-//     Sum of AuthScore of all vertices in the current iteration
+//     Sum of HubScore of all vertices in the current iteration
 //
 // HubScore of a vertex (A) = Sum of AuthScore of all vertices pointing away from vertex (A) from previous iteration /
-//     Sum of HubScore of all vertices in the current iteration
+//     Sum of AuthScore of all vertices in the current iteration
 
 #[allow(unused_variables)]
 pub fn hits(g: &Graph, window: Range<i64>, iter_count: usize) -> FxHashMap<u64, (f32, f32)> {
@@ -200,19 +245,23 @@ pub fn hits(g: &Graph, window: Range<i64>, iter_count: usize) -> FxHashMap<u64, 
     let hits_s0 = HitsS0::new();
     let hits_s1 = HitsS1::new();
     let hits_s2 = HitsS2::new();
+    let hits_s3 = HitsS3::new();
 
     hits_s0.run_step(g, &mut c);
 
-    let max_diff_hub_score = 0.1f32;
+    let max_diff_hub_score = 0.01f32;
     let max_diff_auth_score = max_diff_hub_score;
     let mut i = 0;
 
     loop {
         hits_s1.run_step(g, &mut c);
-        println!("vec parts0: {:?}", c.read_vec_partitions(&val::<MulF32>(0)));
-        println!("vec parts1: {:?}", c.read_vec_partitions(&val::<MulF32>(1)));
+        println!("step1, hub: {:?}", c.read_vec_partitions(&val::<MulF32>(0)));
+        println!("step1, auth: {:?}", c.read_vec_partitions(&val::<MulF32>(1)));
 
         hits_s2.run_step(g, &mut c);
+        hits_s3.run_step(g, &mut c);
+        println!("total_hub = {:?}", c.read_global_state(&sum::<SumF32>(4)).unwrap());
+        println!("total_auth = {:?}", c.read_global_state(&sum::<SumF32>(5)).unwrap());
 
         let r1 = c.read_global_state(&max::<f32>(6)).unwrap();
         println!("max_diff_hub = {:?}", r1);
@@ -264,34 +313,12 @@ mod hits_tests {
     }
 
     fn test_hits(n_shards: usize) {
-        let graph = load_graph(n_shards, vec![(1, 2), (1, 4), (2, 3), (3, 1), (4, 1)]);
-
-        let window = 0..10;
-
-        let results: FxHashMap<u64, (f32, f32)> = hits(&graph, window, 100).into_iter().collect();
-
-        // ({1: 3.0327917367337087, 2: 1.9760675728086853e-16, 3: -1.0163958683668544, 4: -1.0163958683668544}, {1: -0.5040656372650013, 2: 0.7520328186325006, 3: 9.799998124421708e-17, 4: 0.7520328186325006})
-
-        assert_eq!(
-            results,
-            vec![
-                (2, (0.040000036, 0.31999972)),
-                (4, (0.3200003, 0.31999972)),
-                (1, (0.6400006, 0.63999945)),
-                (3, (0.3200003, 0.039999966))
-            ]
-            .into_iter()
-            .collect::<FxHashMap<u64, (f32, f32)>>()
-        );
-    }
-
-    fn test_hits2(n_shards: usize) {
 
         let graph = load_graph(n_shards, vec![(1,4),(2,3),(2,5),(3,1),(4,2),(4,3),(5,2),(5,3),(5,4),(5,6),(6,3),(6,8),(7,1),(7,3),(8,1)]);
 
         let window = 0..10;
 
-        let results: FxHashMap<u64, (f32, f32)> = hits(&graph, window, 5).into_iter().collect();
+        let results: FxHashMap<u64, (f32, f32)> = hits(&graph, window, 20).into_iter().collect();
 
         // NetworkX results
         // >>> G = nx.DiGraph()
@@ -318,32 +345,21 @@ mod hits_tests {
         //     (4, (0.1874910015340169, 0.12768284011810235)),
         //     (5, (0.26762580040598083, 0.05936290157587567)),
         //     (6, (0.144440892769927, 0.10998993251842377)),
-        //     (8, (0.02950848945012511, 0.05936290157587556)),
         //     (7, (0.15393432485580819, 5.645162243895331e-17))
-        // )
-
-        // (
-        //     (1, (0.008843459, 3.361339)),
-        //     (2, (0.029438892, 6.389212)),
-        //     (3, (0.0063279863, 12.831779)),
-        //     (4, (0.038243048, 4.328391)),
-        //     (5, (0.05467223, 2.06749)),
-        //     (6, (0.029438892, 3.7414904)),
-        //     (8, (0.0063279863, 2.06749)),
-        //     (7, (0.03171854, 0.0)),
+        //     (8, (0.02950848945012511, 0.05936290157587556)),
         // )
 
         assert_eq!(
             results,
             vec![
-                (7, (0.03171854, 0.0)),
-                (4, (0.038243048, 4.328391)),
-                (1, (0.008843459, 3.361339)),
-                (8, (0.0063279863, 2.06749)),
-                (5, (0.05467223, 2.06749)),
-                (2, (0.029438892, 6.389212)),
-                (6, (0.029438892, 3.7414904)),
-                (3, (0.0063279863, 12.831779))
+                (7, (0.15471625, 0.0)),
+                (4, (0.18654142, 0.12442485)),
+                (1, (0.043136504, 0.096625775)),
+                (8, (0.030866565, 0.05943252)),
+                (5, (0.26667947, 0.05943252)),
+                (2, (0.14359663, 0.18366565)),
+                (6, (0.14359663, 0.10755368)),
+                (3, (0.030866565, 0.36886504))
             ]
                 .into_iter()
                 .collect::<FxHashMap<u64, (f32, f32)>>()
@@ -352,6 +368,6 @@ mod hits_tests {
 
     #[test]
     fn test_hits_1() {
-        test_hits2(1);
+        test_hits(1);
     }
 }
