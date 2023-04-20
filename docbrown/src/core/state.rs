@@ -748,7 +748,7 @@ impl<CS: ComputeState + Send + Sync> ShuffleComputeState<CS> {
     ) where
         A: StateType,
     {
-        let part = get_shard_id_from_global_vid(into, self.parts.len());
+        let part = get_shard_id_from_global_vid(into as u64, self.parts.len());
         self.parts[part].accumulate_into(ss, into, a, agg_ref)
     }
 
@@ -774,7 +774,7 @@ impl<CS: ComputeState + Send + Sync> ShuffleComputeState<CS> {
         A: StateType,
         OUT: Debug,
     {
-        let part = get_shard_id_from_global_vid(into, self.parts.len());
+        let part = get_shard_id_from_global_vid(into as u64, self.parts.len());
         self.parts[part].read::<A, IN, OUT, ACC>(into, agg_ref.id, ss)
     }
 
@@ -787,7 +787,7 @@ impl<CS: ComputeState + Send + Sync> ShuffleComputeState<CS> {
     where
         A: StateType,
     {
-        let part = get_shard_id_from_global_vid(into, self.parts.len());
+        let part = get_shard_id_from_global_vid(into as u64, self.parts.len());
         self.parts[part].read_ref::<A, IN, OUT, ACC>(into, agg_ref.id, ss)
     }
 
