@@ -31,28 +31,6 @@ impl IntoTimeWithFormat for &str {
     }
 }
 
-pub(crate) trait IntoBoundWithFormat {
-    fn into_bound(&self, format: Option<&str>) -> Result<i64, ParseTimeError>;
-}
-
-impl IntoBoundWithFormat for &str {
-    fn into_bound(&self, format: Option<&str>) -> Result<i64, ParseTimeError> {
-        let date_format = format.unwrap_or("%Y-%m-%d");
-        let date_result = NaiveDate::parse_from_str(self, date_format);
-
-        let datetime = match date_result {
-            Ok(date) => date.and_hms_milli_opt(23, 59, 59, 999).unwrap(),
-            Err(date_err) => {
-                let datetime_format = format.unwrap_or("%Y-%m-%d %H:%M:%S"); // TODO: add millis
-                NaiveDateTime::parse_from_str(self, datetime_format).map_err(|datetime_err| {
-                    ParseTimeError::InvalidBound(self.to_string(), date_err, datetime_err)
-                })?
-            }
-        };
-        Ok(datetime.timestamp_millis())
-    }
-}
-
 // TODO: make private again
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum IntervalSize {
@@ -135,8 +113,6 @@ pub enum ParseTimeError {
     InvalidUnit(String),
     #[error(transparent)]
     ParseError(#[from] ParseError),
-    #[error("bound couldn't be parse as date because {0} or as datetime because {1}")]
-    InvalidBound(String, ParseError, ParseError),
 }
 
 impl Interval {
@@ -187,6 +163,7 @@ impl Add<Interval> for i64 {
 #[cfg(test)]
 mod perspective_tests {
     use crate::core::time::{Interval, ParseTimeError};
+    use std::num::ParseIntError;
     #[test]
     fn interval_parsing() {
         let second: i64 = 1000;
@@ -232,5 +209,13 @@ mod perspective_tests {
 
         let result: Result<Interval, ParseTimeError> = "1 daay".try_into();
         assert_eq!(result, Err(ParseTimeError::InvalidUnit("daay".to_string())));
+
+        let result: Result<Interval, ParseTimeError> = "day 1".try_into();
+        // assert!(matches!(result.unwrap_err(), ParseTimeError::ParseInt(_)));
+
+        match result {
+            Err(ParseTimeError::ParseInt { .. }) => (),
+            _ => panic!(),
+        }
     }
 }

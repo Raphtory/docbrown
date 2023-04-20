@@ -1540,19 +1540,16 @@ mod db_tests {
         assert!(g.has_vertex("Gandalf"))
     }
 
-    // TODO: bring back this
-    // #[test]
-    // fn test_through_on_empty_graph() {
-    //     let g = Graph::new(1);
-    //
-    //     let perspectives = Perspective::rolling(1, Some(1), Some(-100), Some(100));
-    //     let first_view = g.through_perspectives(perspectives).next();
-    //     assert!(first_view.is_none());
-    //
-    //     let perspectives = vec![Perspective::new(Some(-10), Some(10))].into_iter();
-    //     let first_view = g.through_iter(Box::new(perspectives)).next();
-    //     assert!(first_view.is_none());
-    // }
+    #[test]
+    fn test_through_on_empty_graph() {
+        let g = Graph::new(1);
+
+        let rolling = g.rolling(1, None).unwrap().collect_vec();
+        assert!(rolling.is_empty());
+
+        let expanding = g.expanding(1).unwrap().collect_vec();
+        assert!(expanding.is_empty());
+    }
 
     #[test]
     fn test_lotr_load_graph() {
