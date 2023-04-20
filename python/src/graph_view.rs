@@ -2,14 +2,11 @@
 use crate::dynamic::DynamicGraph;
 use crate::edge::{PyEdge, PyEdges};
 
-use docbrown::core::vertex::InputVertex;
-use pyo3::exceptions::PyTypeError;
 use crate::util::{extract_vertex_ref, through_impl, window_impl};
 use crate::vertex::{PyVertex, PyVertices};
 use docbrown::db::graph_window::WindowSet;
 use docbrown::db::view_api::*;
 use pyo3::prelude::*;
-use docbrown::core::Prop;
 
 /// Graph view is a read-only version of a graph at a certain point in time.
 #[pyclass(name = "GraphView", frozen, subclass)]
@@ -271,59 +268,6 @@ impl PyGraphView {
             "Graph(number_of_edges={:?}, number_of_vertices={:?}, earliest_time={:?}, latest_time={:?})",
             num_edges, num_vertices, earliest_time, latest_time
         )
-    }
-
-    /// Extracts the id from the given python vertex
-    ///
-    /// Arguments:
-    ///     id (str or int): The id of the vertex.
-    pub(crate) fn extract_id(&self, id: &PyAny) -> PyResult<InputVertexBox> {
-        match id.extract::<String>() {
-            Ok(string) => Ok(InputVertexBox::new(string)),
-            Err(_) => {
-                let msg = "IDs need to be strings or an unsigned integers";
-                let number = id.extract::<u64>().map_err(|_| PyTypeError::new_err(msg))?;
-                Ok(InputVertexBox::new(number))
-            }
-        }
-    }
-
-}
-
-/// A trait for vertices that can be used as input for the graph.
-/// This allows us to add vertices with different types of ids, either strings or ints.
-#[pyclass(name = "InputVertexBox")]
-#[derive(Clone)]
-pub struct InputVertexBox {
-    id: u64,
-    name_prop: Option<Prop>,
-}
-
-/// Implementation for vertices that can be used as input for the graph.
-/// This allows us to add vertices with different types of ids, either strings or ints.
-impl InputVertexBox {
-    pub(crate) fn new<T>(vertex: T) -> InputVertexBox
-    where
-        T: InputVertex,
-    {
-        InputVertexBox {
-            id: vertex.id(),
-            name_prop: vertex.name_prop(),
-        }
-    }
-}
-
-/// Implementation for vertices that can be used as input for the graph.
-/// This allows us to add vertices with different types of ids, either strings or ints.
-impl InputVertex for InputVertexBox {
-    /// Returns the id of the vertex.
-    fn id(&self) -> u64 {
-        self.id
-    }
-
-    /// Returns the name property of the vertex.
-    fn name_prop(&self) -> Option<Prop> {
-        self.name_prop.clone()
     }
 }
 
