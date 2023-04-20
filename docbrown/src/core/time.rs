@@ -39,8 +39,35 @@ impl IntoTime for i64 {
 }
 
 impl IntoTime for &str {
+    /// Tries to parse the timestamp as RFC3339 and then as ISO 8601 with local format and all
+    /// fields mandatory except for milliseconds and allows replacing the T with a space
     fn into_time(&self) -> Result<i64, ParseTimeError> {
-        Ok(DateTime::parse_from_rfc3339(self)?.timestamp_millis())
+        let rfc_result = DateTime::parse_from_rfc3339(self);
+        if let Ok(datetime) = rfc_result {
+            return Ok(datetime.timestamp_millis());
+        }
+
+        let result = NaiveDateTime::parse_from_str(self, "%Y-%m-%dT%H:%M:%S%.3f");
+        if let Ok(datetime) = result {
+            return Ok(datetime.timestamp_millis());
+        }
+
+        let result = NaiveDateTime::parse_from_str(self, "%Y-%m-%dT%H:%M:%S%");
+        if let Ok(datetime) = result {
+            return Ok(datetime.timestamp_millis());
+        }
+
+        let result = NaiveDateTime::parse_from_str(self, "%Y-%m-%d %H:%M:%S%.3f");
+        if let Ok(datetime) = result {
+            return Ok(datetime.timestamp_millis());
+        }
+
+        let result = NaiveDateTime::parse_from_str(self, "%Y-%m-%d %H:%M:%S%");
+        if let Ok(datetime) = result {
+            return Ok(datetime.timestamp_millis());
+        }
+
+        Err(rfc_result.unwrap_err().into())
     }
 }
 
@@ -50,7 +77,7 @@ pub(crate) trait IntoTimeWithFormat {
 
 impl IntoTimeWithFormat for &str {
     fn parse_time(&self, fmt: &str) -> Result<i64, ParseTimeError> {
-        Ok(DateTime::parse_from_str(self, fmt)?.timestamp_millis())
+        Ok(NaiveDateTime::parse_from_str(self, fmt)?.timestamp_millis())
     }
 }
 

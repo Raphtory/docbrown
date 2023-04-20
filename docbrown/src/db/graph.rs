@@ -754,15 +754,15 @@ impl Graph {
         self.shards[shard_id].add_vertex(t.into_time()?, v, props)
     }
 
-    pub fn add_vertex_with_time_format<V: InputVertex>(
+    pub fn add_vertex_with_custom_time_format<V: InputVertex>(
         &self,
         t: &str,
         fmt: &str,
         v: V,
         props: &Vec<(String, Prop)>,
     ) -> Result<(), GraphError> {
-        let shard_id = utils::get_shard_id_from_global_vid(v.id(), self.nr_shards);
-        self.shards[shard_id].add_vertex(t.parse_time(fmt)?, v, props)
+        let time: i64 = t.parse_time(fmt)?;
+        self.add_vertex(time, v, props)
     }
 
     /// Adds properties to the given input vertex.
@@ -842,6 +842,19 @@ impl Graph {
         }
     }
 
+    pub fn add_edge_with_custom_time_format<V: InputVertex>(
+        &self,
+        t: &str,
+        fmt: &str,
+        src: V,
+        dst: V,
+        props: &Vec<(String, Prop)>,
+        layer: Option<&str>,
+    ) -> Result<(), GraphError> {
+        let time: i64 = t.parse_time(fmt)?;
+        self.add_edge(time, src, dst, props, layer)
+    }
+
     /// Adds properties to an existing edge between a source and destination vertices
     ///
     /// # Arguments
@@ -897,6 +910,7 @@ mod db_tests {
     use crate::db::path::PathFromVertex;
     use crate::db::view_api::*;
     use crate::graphgen::random_attachment::random_attachment;
+    use chrono::NaiveDateTime;
     use csv::StringRecord;
     use itertools::Itertools;
     use quickcheck::quickcheck;
@@ -1541,7 +1555,7 @@ mod db_tests {
     }
 
     #[test]
-    fn test_through_on_empty_graph() {
+    fn test_time_range_on_empty_graph() {
         let g = Graph::new(1);
 
         let rolling = g.rolling(1, None).unwrap().collect_vec();
@@ -1760,5 +1774,33 @@ mod db_tests {
 
         let mut res_list: Vec<i64> = g.vertex(1).unwrap().at(1).edges().latest_time().collect();
         assert_eq!(res_list, vec![1, 1]);
+    }
+
+    fn parse_date(datetime: &str) -> i64 {
+        NaiveDateTime::parse_from_str(datetime, "%Y-%m-%d %H:%M:%S%.3f")
+            .unwrap()
+            .timestamp_millis()
+    }
+
+    #[test]
+    fn test_ingesting_timestamps() {
+        let earliest_time = parse_date("2022-06-06 12:34:00.000");
+        let latest_time = parse_date("2022-06-07 12:34:00.000");
+
+        let g = Graph::new(4);
+        g.add_vertex("2022-06-06T12:34:00.000", 0, &vec![]).unwrap();
+        g.add_edge("2022-06-07T12:34:00", 1, 2, &vec![], None)
+            .unwrap();
+        assert_eq!(g.earliest_time().unwrap(), earliest_time);
+        assert_eq!(g.latest_time().unwrap(), latest_time);
+
+        let g = Graph::new(4);
+        let fmt = "%Y-%m-%d %H:%M";
+        g.add_vertex_with_custom_time_format("2022-06-06 12:34", fmt, 0, &vec![])
+            .unwrap();
+        g.add_edge_with_custom_time_format("2022-06-07 12:34", fmt, 1, 2, &vec![], None)
+            .unwrap();
+        assert_eq!(g.earliest_time().unwrap(), earliest_time);
+        assert_eq!(g.latest_time().unwrap(), latest_time);
     }
 }
