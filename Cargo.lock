@@ -412,6 +412,7 @@ dependencies = [
  "genawaiter",
  "itertools",
  "num-traits",
+ "once_cell",
  "openssl",
  "parking_lot",
  "pretty_assertions",
