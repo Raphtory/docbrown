@@ -270,4 +270,3 @@ impl PyGraphView {
         )
     }
 }
-

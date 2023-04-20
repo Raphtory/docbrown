@@ -5,6 +5,7 @@
 use crate::graph_view::PyGraphView;
 use std::collections::HashMap;
 
+use crate::util;
 use docbrown::algorithms::degree::{
     average_degree as average_degree_rs, max_in_degree as max_in_degree_rs,
     max_out_degree as max_out_degree_rs, min_in_degree as min_in_degree_rs,
@@ -17,7 +18,6 @@ use docbrown::algorithms::reciprocity::{
     all_local_reciprocity as all_local_reciprocity_rs, global_reciprocity as global_reciprocity_rs,
 };
 use pyo3::prelude::*;
-use crate::util;
 
 /// Local triangle count - calculates the number of triangles (a cycle of length 3) for a node.
 /// It measures the local clustering of a graph.
