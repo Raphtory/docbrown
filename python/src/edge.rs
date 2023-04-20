@@ -6,7 +6,7 @@
 //!
 use crate::dynamic::DynamicGraph;
 use crate::types::repr::{iterator_repr, Repr};
-use crate::util::*;
+use crate::utils::*;
 use crate::vertex::PyVertex;
 use crate::wrappers::prop::Prop;
 use docbrown::db::edge::EdgeView;

@@ -2,7 +2,7 @@
 use crate::dynamic::DynamicGraph;
 use crate::edge::{PyEdge, PyEdges};
 
-use crate::util::{extract_vertex_ref, through_impl, window_impl};
+use crate::utils::{extract_vertex_ref, through_impl, window_impl};
 use crate::vertex::{PyVertex, PyVertices};
 use docbrown::db::graph_window::WindowSet;
 use docbrown::db::view_api::*;
