@@ -181,7 +181,7 @@ impl<G: GraphViewOps> VertexViewOps for VertexView<G> {
         self.graph.static_vertex_prop(self.vertex, name)
     }
 
-    fn degree(&self, layer: Option<String>) -> usize {
+    fn degree(&self, _layer: Option<String>) -> usize {
         let dir = Direction::BOTH;
         match &self.window {
             None => self.graph.degree(self.vertex, dir, None),

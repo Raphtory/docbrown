@@ -904,7 +904,6 @@ mod db_tests {
     use crate::db::edge::EdgeView;
     use crate::db::path::PathFromVertex;
     use crate::db::perspective::Perspective;
-    use crate::db::vertex::VertexView;
     use crate::db::view_api::*;
     use crate::graphgen::random_attachment::random_attachment;
     use csv::StringRecord;
@@ -1747,8 +1746,6 @@ mod db_tests {
         g.add_edge(1, 1, 3, &vec![], None).unwrap();
         g.add_edge(2, 1, 3, &vec![], None).unwrap();
 
-        let expected: i64 = 1;
-
         let mut res = g.edge(1, 2, None).unwrap().earliest_time().unwrap();
         assert_eq!(res, 0);
 
@@ -1761,16 +1758,16 @@ mod db_tests {
         res = g.at(1).edge(1, 2, None).unwrap().latest_time().unwrap();
         assert_eq!(res, 1);
 
-        let mut res_list: Vec<i64> = g.vertex(1).unwrap().edges().earliest_time().collect();
+        let res_list: Vec<i64> = g.vertex(1).unwrap().edges().earliest_time().collect();
         assert_eq!(res_list, vec![0, 0]);
 
-        let mut res_list: Vec<i64> = g.vertex(1).unwrap().edges().latest_time().collect();
+        let res_list: Vec<i64> = g.vertex(1).unwrap().edges().latest_time().collect();
         assert_eq!(res_list, vec![2, 2]);
 
-        let mut res_list: Vec<i64> = g.vertex(1).unwrap().at(1).edges().earliest_time().collect();
+        let res_list: Vec<i64> = g.vertex(1).unwrap().at(1).edges().earliest_time().collect();
         assert_eq!(res_list, vec![0, 0]);
 
-        let mut res_list: Vec<i64> = g.vertex(1).unwrap().at(1).edges().latest_time().collect();
+        let res_list: Vec<i64> = g.vertex(1).unwrap().at(1).edges().latest_time().collect();
         assert_eq!(res_list, vec![1, 1]);
     }
 

@@ -9,7 +9,6 @@ use crate::types::repr::{iterator_repr, Repr};
 use crate::util::*;
 use crate::vertex::PyVertex;
 use crate::wrappers::prop::Prop;
-use docbrown::core::vertex::InputVertex;
 use docbrown::db::edge::EdgeView;
 use docbrown::db::graph_window::WindowSet;
 use docbrown::db::view_api::*;

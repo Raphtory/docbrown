@@ -522,7 +522,7 @@ impl<CS: ComputeState + Send + Clone> ShardComputeState<CS> {
         &mut self,
         other: &Self,
         agg_ref: &AccId<A, IN, OUT, ACC>,
-        ss: usize,
+        _ss: usize,
     ) where
         A: StateType,
     {

@@ -171,7 +171,7 @@ impl<G: GraphViewOps> VertexViewOps for PathFromGraph<G> {
 
     fn degree(
         &self,
-        layer: Option<String>,
+        _layer: Option<String>,
     ) -> Box<dyn Iterator<Item = Box<dyn Iterator<Item = usize> + Send>> + Send> {
         Box::new(self.iter().map(|it| it.degree(None)))
     }
@@ -379,7 +379,7 @@ impl<G: GraphViewOps> VertexViewOps for PathFromVertex<G> {
         self.iter().static_property(name)
     }
 
-    fn degree(&self, layer: Option<String>) -> Self::ValueType<usize> {
+    fn degree(&self, _layer: Option<String>) -> Self::ValueType<usize> {
         self.iter().degree()
     }
 
