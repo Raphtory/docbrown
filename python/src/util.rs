@@ -62,7 +62,7 @@ where
 
 pub(crate) fn expanding_impl<T, O>(slf: &T, step: &PyAny) -> PyResult<O>
 where
-    T: TimeOps + Clone + 'static, // FIXME: is this fine?
+    T: TimeOps + Clone + 'static,
     O: From<WindowSet<T>>,
 {
     let step = extract_interval(step)?;
@@ -71,7 +71,7 @@ where
 
 pub(crate) fn rolling_impl<T, O>(slf: &T, window: &PyAny, step: Option<&PyAny>) -> PyResult<O>
 where
-    T: TimeOps + Clone + 'static, //  FIXME: is this fine?
+    T: TimeOps + Clone + 'static,
     O: From<WindowSet<T>>,
 {
     let window = extract_interval(window)?;

@@ -1916,16 +1916,10 @@ mod db_tests {
         assert_eq!(windowed_times_of_two, [5, 6, 7]);
     }
 
-    fn parse_date(datetime: &str) -> i64 {
-        NaiveDateTime::parse_from_str(datetime, "%Y-%m-%d %H:%M:%S%.3f")
-            .unwrap()
-            .timestamp_millis()
-    }
-
     #[test]
     fn test_ingesting_timestamps() {
-        let earliest_time = parse_date("2022-06-06 12:34:00.000");
-        let latest_time = parse_date("2022-06-07 12:34:00.000");
+        let earliest_time = "2022-06-06 12:34:00".into_time().unwrap();
+        let latest_time = "2022-06-07 12:34:00".into_time().unwrap();
 
         let g = Graph::new(4);
         g.add_vertex("2022-06-06T12:34:00.000", 0, &vec![]).unwrap();

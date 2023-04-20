@@ -29,7 +29,6 @@ pub mod error {
 
 pub trait IntoTime {
     fn into_time(&self) -> Result<i64, ParseTimeError>;
-    // fn epoch_alignment() -> bool;
 }
 
 impl IntoTime for i64 {
@@ -81,15 +80,13 @@ impl IntoTimeWithFormat for &str {
     }
 }
 
-// TODO: make private again
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub enum IntervalSize {
+pub(crate) enum IntervalSize {
     Discrete(u64),
     Temporal(Duration),
     // Calendar(Duration, Months, Years), // TODO
 }
 
-// TODO: make private again
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Interval {
     pub(crate) epoch_alignment: bool,
@@ -152,11 +149,10 @@ impl TryFrom<u64> for Interval {
 
 impl Interval {
     /// Return an option because there might be no exact translation to millis for some intervals
-    pub(crate) fn to_millis(&self) -> Option<i64> {
-        // TODO: maybe should return u64
+    pub(crate) fn to_millis(&self) -> Option<u64> {
         match self.size {
-            IntervalSize::Discrete(millis) => Some(millis as i64),
-            IntervalSize::Temporal(duration) => Some(duration.num_milliseconds()),
+            IntervalSize::Discrete(millis) => Some(millis),
+            IntervalSize::Temporal(duration) => Some(duration.num_milliseconds() as u64),
         }
     }
 
@@ -201,7 +197,7 @@ mod time_tests {
     use std::num::ParseIntError;
     #[test]
     fn interval_parsing() {
-        let second: i64 = 1000;
+        let second: u64 = 1000;
         let minute = 60 * second;
         let hour = 60 * minute;
         let day = 24 * hour;
@@ -246,7 +242,6 @@ mod time_tests {
         assert_eq!(result, Err(ParseTimeError::InvalidUnit("daay".to_string())));
 
         let result: Result<Interval, ParseTimeError> = "day 1".try_into();
-        // assert!(matches!(result.unwrap_err(), ParseTimeError::ParseInt(_)));
 
         match result {
             Err(ParseTimeError::ParseInt { .. }) => (),
