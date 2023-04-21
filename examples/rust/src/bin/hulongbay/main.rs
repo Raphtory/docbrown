@@ -17,7 +17,6 @@ use docbrown::core::{Direction, Prop};
 use docbrown::db::graph::Graph;
 use docbrown::db::program::{GlobalEvalState, Program};
 use docbrown::db::view_api::*;
-use docbrown::graph_loader::souce::csv_loader::CsvLoader;
 use itertools::Itertools;
 use regex::Regex;
 use serde::Deserialize;
