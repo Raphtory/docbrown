@@ -8,18 +8,18 @@ use crate::db::{
 use crate::algorithms::three_node_motifs::*;
 use rustc_hash::FxHashMap;
 
-pub fn star_motif_count<G:GraphViewOps>(graph:&G, v:u64, delta:i64) -> [u64;24] {
+pub fn star_motif_count<G:GraphViewOps>(graph:&G, v:u64, delta:i64) -> [usize;24] {
     if let Some(vertex) = graph.vertex(v) {
         let neigh_map : HashMap<u64,usize> = vertex.neighbours().iter().enumerate().map(|(num,nb)| (nb.id(), num) ).into_iter().collect();
         let exploded_edges = vertex.edges()
         .explode()
-        .map(|edge| if edge.src().id()==v {star_event(neigh_map[&edge.dst().id()],1,edge.start().unwrap())} else {star_event(neigh_map[&edge.src().id()],0,edge.start().unwrap())})
+        .map(|edge| if edge.src().id()==v {star_event(neigh_map[&edge.dst().id()],1,edge.time().unwrap())} else {star_event(neigh_map[&edge.src().id()],0,edge.time().unwrap())})
         .collect::<Vec<StarEvent>>();
         let mut star_count = init_star_count(neigh_map.len());
         star_count.execute(&exploded_edges, 10);
-        star_count.concat_counts().clone();
+        star_count.return_counts()
     }
-    [0;24]
+    else {[0;24]}
 }
 
 pub fn twonode_motif_count<G:GraphViewOps>(graph:&G, v:u64, delta:i64) -> [u64;8] {
@@ -36,10 +36,10 @@ pub fn twonode_motif_count<G:GraphViewOps>(graph:&G, v:u64, delta:i64) -> [u64;8
                 .map(|e| two_node_event(if e.src().id()==v {1} else {0}, e.time().unwrap()))
                 .collect::<Vec<TwoNodeEvent>>(),
                 (Some(o), None) => o.explode()
-                .map(|e| two_node_event(1, e.latest_time().unwrap()))
+                .map(|e| two_node_event(1, e.time().unwrap()))
                 .collect::<Vec<TwoNodeEvent>>(),
                 (None, Some(i)) => i.explode()
-                .map(|e| two_node_event(0, e.latest_time().unwrap()))
+                .map(|e| two_node_event(0, e.time().unwrap()))
                 .collect::<Vec<TwoNodeEvent>>(),
                 (None, None) => Vec::new()
             };
@@ -85,7 +85,7 @@ mod local_motif_test {
             graph.add_edge(*time, *src, *dst, &vec![], None);
         }
 
-        let counts = twonode_motif_count(&graph, 1, 100);
+        let counts = star_motif_count(&graph, 1, 100);
         print!("{:?}",counts)
     }
 }
