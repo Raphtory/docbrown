@@ -9,8 +9,11 @@ use crate::types::repr::{iterator_repr, Repr};
 use crate::util::*;
 use crate::vertex::PyVertex;
 use crate::wrappers::prop::Prop;
+use docbrown::core::time::error::ParseTimeError;
+use docbrown::core::time::Interval;
+use docbrown::core::vertex::InputVertex;
 use docbrown::db::edge::EdgeView;
-use docbrown::db::graph_window::WindowSet;
+use docbrown::db::view_api::time::WindowSet;
 use docbrown::db::view_api::*;
 use itertools::Itertools;
 use pyo3::{pyclass, pymethods, PyAny, PyRef, PyRefMut, PyResult};
@@ -71,6 +74,16 @@ impl PyEdge {
             .into_iter()
             .map(|(k, v)| (k, v.into()))
             .collect()
+    }
+
+    /// Returns a list of timestamps of when an edge is added or change to an edge is made.
+    ///
+    /// Returns:
+    ///     A list of timestamps.
+    ///
+
+    pub fn history(&self) -> Vec<i64> {
+        self.edge.history()
     }
 
     /// Returns a dictionary of all properties on the edge.
@@ -190,14 +203,12 @@ impl PyEdge {
     ///
     /// Arguments:
     ///   step (int): The step size to use when calculating the duration.
-    ///   start (int): The start time to use when calculating the duration.
-    ///   end (int): The end time to use when calculating the duration.
     ///
     /// Returns:
     ///   A set of windows containing edges that fall in the time period
-    #[pyo3(signature = (step, start = None, end = None))]
-    fn expanding(&self, step: u64, start: Option<i64>, end: Option<i64>) -> PyEdgeWindowSet {
-        self.edge.expanding(step, start, end).into()
+    #[pyo3(signature = (step))]
+    fn expanding(&self, step: &PyAny) -> PyResult<PyEdgeWindowSet> {
+        expanding_impl(&self.edge, step)
     }
 
     /// Get a set of Edge windows for a given window size, step, start time
@@ -212,14 +223,8 @@ impl PyEdge {
     ///
     /// Returns:
     ///   A set of windows containing edges that fall in the time period
-    fn rolling(
-        &self,
-        window: u64,
-        step: Option<u64>,
-        start: Option<i64>,
-        end: Option<i64>,
-    ) -> PyEdgeWindowSet {
-        self.edge.rolling(window, step, start, end).into()
+    fn rolling(&self, window: &PyAny, step: Option<&PyAny>) -> PyResult<PyEdgeWindowSet> {
+        rolling_impl(&self.edge, window, step)
     }
 
     /// Get a new Edge with the properties of this Edge within the specified time window.
@@ -247,17 +252,6 @@ impl PyEdge {
         self.edge.at(end).into()
     }
 
-    /// Creates a WindowSet from a set of perspectives
-    ///
-    /// Arguments:
-    ///   perspectives (list): A list of perspectives to create the WindowSet from.
-    ///
-    /// Returns:
-    ///   A WindowSet containing the windows of the perspectives.
-    pub fn through(&self, perspectives: &PyAny) -> PyResult<PyEdgeWindowSet> {
-        through_impl(&self.edge, perspectives).map(|p| p.into())
-    }
-
     /// Explodes an Edge into a list of PyEdges. This is useful when you want to iterate over
     /// the properties of an Edge at every single point in time. This will return a seperate edge
     /// each time a property had been changed.
@@ -270,6 +264,22 @@ impl PyEdge {
             .into_iter()
             .map(|e| e.into())
             .collect::<Vec<PyEdge>>()
+    }
+
+    /// Gets the earliest time of an edge.
+    ///
+    /// Returns:
+    ///     (int) The earliest time of an edge
+    pub fn earliest_time(&self) -> Option<i64> {
+        self.edge.earliest_time()
+    }
+
+    /// Gets the latest time of an edge.
+    ///
+    /// Returns:
+    ///     (int) The latest time of an edge
+    pub fn latest_time(&self) -> Option<i64> {
+        self.edge.latest_time()
     }
 
     /// Displays the Edge as a string.
@@ -288,18 +298,24 @@ impl Repr for PyEdge {
 
         let source = self.edge.src().name();
         let target = self.edge.dst().name();
+        let earliest_time = self.edge.earliest_time();
+        let latest_time = self.edge.latest_time();
         if properties.is_empty() {
             format!(
-                "Edge(source={}, target={})",
+                "Edge(source={}, target={}, earliest_time={}, latest_time={})",
                 source.trim_matches('"'),
-                target.trim_matches('"')
+                target.trim_matches('"'),
+                earliest_time.unwrap_or(0),
+                latest_time.unwrap_or(0),
             )
         } else {
             let property_string: String = "{".to_string() + &properties + "}";
             format!(
-                "Edge(source={}, target={}, properties={})",
+                "Edge(source={}, target={}, earliest_time={}, latest_time={}, properties={})",
                 source.trim_matches('"'),
                 target.trim_matches('"'),
+                earliest_time.unwrap_or(0),
+                latest_time.unwrap_or(0),
                 property_string
             )
         }
@@ -364,6 +380,16 @@ impl PyEdges {
             iter
         })
         .into()
+    }
+
+    /// Returns the earliest time of the edges.
+    fn earliest_time(&self) -> Vec<Option<i64>> {
+        self.py_iter().map(|e| e.earliest_time()).collect()
+    }
+
+    /// Returns the latest time of the edges.
+    fn latest_time(&self) -> Vec<Option<i64>> {
+        self.py_iter().map(|e| e.latest_time()).collect()
     }
 
     fn __repr__(&self) -> String {
