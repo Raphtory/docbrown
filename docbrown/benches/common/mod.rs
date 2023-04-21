@@ -235,7 +235,7 @@ pub fn run_analysis_benchmarks<F, G>(
     });
 
     bench(group, "max_degree", parameter, |b: &mut Bencher| {
-        b.iter(|| graph.vertices().into_iter().map(|v| v.degree(None)).max())
+        b.iter(|| graph.vertices().into_iter().map(|v| v.degree()).max())
     });
 
     bench(
@@ -247,7 +247,7 @@ pub fn run_analysis_benchmarks<F, G>(
             let v = graph
                 .vertex(*vertices.choose(&mut rng).expect("non-empty graph"))
                 .expect("existing vertex");
-            b.iter(|| v.neighbours().degree(None).max())
+            b.iter(|| v.neighbours().degree().max())
         },
     );
 }

@@ -131,14 +131,14 @@ fn main() {
 
     // assert_eq!(v.in_degree().unwrap(), 24);
     // assert_eq!(v.out_degree().unwrap(), 35);
-    // assert_eq!(v.degree(None).unwrap(), 49);
+    // assert_eq!(v.degree().unwrap(), 49);
     //
     // let windowed_graph = graph.window(0, i64::MAX);
     // let v = windowed_graph.vertex(gandalf).unwrap().unwrap();
     //
     // assert_eq!(v.in_degree().unwrap(), 24);
     // assert_eq!(v.out_degree().unwrap(), 35);
-    // assert_eq!(v.degree(None).unwrap(), 49);
+    // assert_eq!(v.degree().unwrap(), 49);
     //
     // let windowed_graph = graph.window(100, 9000);
     // let v = windowed_graph.vertex(gandalf).unwrap().unwrap();
