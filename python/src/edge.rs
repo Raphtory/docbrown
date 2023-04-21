@@ -279,6 +279,14 @@ impl PyEdge {
         self.edge.latest_time()
     }
 
+    /// Gets the time of an exploded edge.
+    ///
+    /// Returns:
+    ///     (int) The time of an exploded edge
+    pub fn time(&self) -> Option<i64> {
+        self.edge.time()
+    }
+
     /// Displays the Edge as a string.
     pub fn __repr__(&self) -> String {
         self.repr()
