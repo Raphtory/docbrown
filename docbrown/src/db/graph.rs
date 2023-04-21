@@ -929,14 +929,10 @@ mod db_tests {
     use crate::core::utils;
     use crate::db::edge::EdgeView;
     use crate::db::path::PathFromVertex;
-    use crate::db::perspective::Perspective;
-    use crate::db::vertex::VertexView;
     use crate::db::view_api::*;
     use crate::graphgen::random_attachment::random_attachment;
-    use chrono::NaiveDateTime;
     use csv::StringRecord;
     use itertools::Itertools;
-    use quickcheck::quickcheck;
     use std::fs;
     use std::sync::Arc;
     use tempdir::TempDir;

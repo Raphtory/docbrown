@@ -48,13 +48,19 @@ fn load_movies(row: Row, graph: &Graph) {
         .unwrap();
 }
 
-pub async fn neo4j_movie_graph(shards: usize) -> Graph {
+pub async fn neo4j_movie_graph(
+    uri: String,
+    username: String,
+    password: String,
+    database: String,    shards: usize
+
+) -> Graph {
     let g = Graph::new(shards);
     let neo = Neo4JConnection::new(
-        "127.0.0.1:7687".to_string(),
-        "neo4j".to_string(),
-        "password".to_string(),
-        "neo4j".to_string(),
+        uri,
+        username,
+        password,
+        database,
     )
     .await
     .unwrap();

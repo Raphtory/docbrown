@@ -340,9 +340,10 @@ impl ComputeState for ComputeStateMap {
             .downcast_ref::<MapArray<A>>()
             .unwrap();
 
-        current.map.get(&(i as u64)).map(|v| {
-            ACC::finish(&v[ss % 2])
-        })
+        current
+            .map
+            .get(&(i as u64))
+            .map(|v| ACC::finish(&v[ss % 2]))
     }
 
     fn read_ref<A: StateType, IN, OUT, ACC: Accumulator<A, IN, OUT>>(
@@ -466,14 +467,12 @@ impl ComputeState for ComputeStateMap {
             .map(|(k, v)| (k, ACC::finish(&v[ss % 2])))
             .fold(b, |b, (k, out)| f(b, k, out))
     }
-
 }
 
 const GLOBAL_STATE_KEY: usize = 0;
 #[derive(Debug, Clone)]
 pub struct ShardComputeState<CS: ComputeState + Send> {
     states: FxHashMap<u32, CS>,
-
 }
 
 impl<CS: ComputeState + Send + Clone> ShardComputeState<CS> {
@@ -542,7 +541,7 @@ impl<CS: ComputeState + Send + Clone> ShardComputeState<CS> {
             (None, Some(other_cs)) => {
                 self.states.insert(agg_ref.id, other_cs.clone());
             }
-            _ => { }
+            _ => {}
         }
     }
 
@@ -564,7 +563,7 @@ impl<CS: ComputeState + Send + Clone> ShardComputeState<CS> {
             (None, Some(other_cs)) => {
                 self.states.insert(agg_ref.id, other_cs.clone());
             }
-            _ => { }
+            _ => {}
         }
     }
 

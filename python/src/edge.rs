@@ -9,8 +9,6 @@ use crate::types::repr::{iterator_repr, Repr};
 use crate::utils::*;
 use crate::vertex::PyVertex;
 use crate::wrappers::prop::Prop;
-use docbrown::core::time::error::ParseTimeError;
-use docbrown::core::time::Interval;
 use docbrown::db::edge::EdgeView;
 use docbrown::db::view_api::time::WindowSet;
 use docbrown::db::view_api::*;

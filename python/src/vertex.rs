@@ -4,7 +4,7 @@
 use crate::dynamic::DynamicGraph;
 use crate::edge::{PyEdges, PyNestedEdges};
 use crate::types::repr::{iterator_repr, Repr};
-use crate::util::{expanding_impl, extract_vertex_ref, rolling_impl, window_impl};
+use crate::utils::{expanding_impl, extract_vertex_ref, rolling_impl, window_impl};
 use crate::wrappers::iterators::*;
 use crate::wrappers::prop::Prop;
 use docbrown::core::tgraph::VertexRef;
@@ -193,7 +193,7 @@ impl PyVertex {
     /// Returns
     ///     The degree of this vertex.
     pub fn degree(&self) -> usize {
-        self.vertex.degree(None)
+        self.vertex.degree()
     }
 
     /// Get the in-degree of this vertex (i.e., the number of edges that are incident to it from other vertices).
@@ -462,7 +462,7 @@ impl PyVertices {
 
     fn degree(&self) -> UsizeIterable {
         let vertices = self.vertices.clone();
-        (move || vertices.degree(None)).into()
+        (move || vertices.degree()).into()
     }
 
     fn in_degree(&self) -> UsizeIterable {
@@ -652,7 +652,7 @@ impl PyPathFromGraph {
 
     fn degree(&self) -> NestedUsizeIterable {
         let path = self.path.clone();
-        (move || path.degree(None)).into()
+        (move || path.degree()).into()
     }
 
     fn in_degree(&self) -> NestedUsizeIterable {
@@ -839,7 +839,7 @@ impl PyPathFromVertex {
 
     fn degree(&self) -> UsizeIterable {
         let path = self.path.clone();
-        (move || path.degree(None)).into()
+        (move || path.degree()).into()
     }
 
     fn edges(&self) -> PyEdges {

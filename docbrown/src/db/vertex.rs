@@ -588,10 +588,7 @@ mod vertex_test {
         assert_eq!(g.num_edges(), 701);
         assert_eq!(g.vertex("Gandalf").unwrap().degree(), 49);
         assert_eq!(
-            g.vertex("Gandalf")
-                .unwrap()
-                .window(1356, 24792)
-                .degree(),
+            g.vertex("Gandalf").unwrap().window(1356, 24792).degree(),
             34
         );
         assert_eq!(g.vertex("Gandalf").unwrap().in_degree(), 24);

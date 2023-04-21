@@ -90,11 +90,7 @@ pub fn min_in_degree<G: GraphViewOps>(graph: &G) -> usize {
 
 /// The average degree of all vertices in the graph.
 pub fn average_degree<G: GraphViewOps>(graph: &G) -> f64 {
-    let r: Vec<usize> = graph
-        .vertices()
-        .into_iter()
-        .map(|v| v.degree())
-        .collect();
+    let r: Vec<usize> = graph.vertices().into_iter().map(|v| v.degree()).collect();
 
     let degree_totals = r
         .into_iter()
