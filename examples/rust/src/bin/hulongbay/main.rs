@@ -24,6 +24,7 @@ use serde::Deserialize;
 use std::fs::File;
 use std::io::{prelude::*, BufReader, LineWriter};
 use std::time::Instant;
+use docbrown::graph_loader::source::csv_loader::CsvLoader;
 
 #[derive(Deserialize, Debug)]
 pub struct Edge {
