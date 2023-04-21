@@ -10,18 +10,23 @@ fn map3D(d1:usize, d2:usize, d3:usize) -> usize {
 }
 
 // Two Node Motifs
-struct TwoNodeEvent{
-    dir:usize,
-    time:i64,
+pub struct TwoNodeEvent{
+    pub dir:usize,
+    pub time:i64,
 }
-struct TwoNodeCounter {
+pub struct TwoNodeCounter {
     count1d:[u64;2],
     count2d:[u64;4],
-    count3d:[u64;8],
+    pub count3d:[u64;8],
 }
+
+pub fn two_node_event(dir:usize,time:i64) -> TwoNodeEvent {
+    TwoNodeEvent { dir: dir, time: time }
+}
+
 impl TwoNodeCounter {
 
-    fn execute(&mut self, events:&[TwoNodeEvent], delta: i64) {
+    pub fn execute(&mut self, events:&Vec<TwoNodeEvent>, delta: i64) {
         let mut start = 0;
         for event in events.iter() {
             while events[start].time + delta < event.time {
@@ -49,15 +54,29 @@ impl TwoNodeCounter {
         // 1d counter
         self.count1d[dir]+=1;
     }
+
+    pub fn return_counts(&self) -> [u64;8]{
+        self.count3d
+    }
+
+}
+
+pub fn init_two_node_count() -> TwoNodeCounter {
+    TwoNodeCounter {count1d:[0;2], count2d:[0;4], count3d:[0;8]}
 }
 
 // Star Motifs
-struct StarEvent{
+pub struct StarEvent{
     nb:usize,
     dir:usize,
-    time:usize,
+    time:i64,
 }
-struct StarCounter{
+
+pub fn star_event(nb:usize, dir:usize, time:i64) -> StarEvent {
+    StarEvent{nb:nb,dir:dir,time:time}
+}
+
+pub struct StarCounter{
     N: usize,
     pre_nodes:Vec<usize>,
     post_nodes:Vec<usize>,
@@ -67,7 +86,6 @@ struct StarCounter{
     count_pre:[usize;8],
     count_mid:[usize;8],
     count_post:[usize;8],
-    final_counts:[usize;8],
 }
 impl StarCounter { 
     fn push_pre(&mut self, cur_edge:&StarEvent) {
@@ -83,11 +101,13 @@ impl StarCounter {
     }
 
     fn pop_pre(&mut self, cur_edge:&StarEvent) {
+        self.pre_nodes[cur_edge.dir*self.N + cur_edge.nb]-=1;
         self.pre_sum[map2D(cur_edge.dir, incoming)] -= self.pre_nodes[incoming*self.N + cur_edge.nb];
         self.pre_sum[map2D(cur_edge.dir, outgoing)] -= self.pre_nodes[outgoing*self.N + cur_edge.nb];
     }
 
     fn pop_post(&mut self, cur_edge:&StarEvent) {
+        self.post_nodes[cur_edge.dir*self.N + cur_edge.nb]-=1;
         self.post_sum[map2D(cur_edge.dir, incoming)] -= self.post_nodes[incoming*self.N + cur_edge.nb];
         self.post_sum[map2D(cur_edge.dir, outgoing)] -= self.post_nodes[outgoing*self.N + cur_edge.nb];
     }
@@ -106,7 +126,7 @@ impl StarCounter {
         self.mid_sum[map2D(cur_edge.dir, outgoing)] += self.post_nodes[outgoing*self.N + cur_edge.nb];
     }
 
-    fn execute(&mut self, edges:&Vec<StarEvent>, delta:usize) {
+    pub fn execute(&mut self, edges:&Vec<StarEvent>, delta:i64) {
         let L = edges.len();
         if L < 3 {
             return;
@@ -128,14 +148,13 @@ impl StarCounter {
         }
     }
 
-    fn concat_counts(&self) -> Vec<usize> {
+    pub fn concat_counts(&self) -> Vec<usize> {
         [self.count_pre,self.count_mid,self.count_post].concat()
     }
 }
-fn init_star_count(neighbours:Vec<usize>) -> StarCounter {
-    let N = neighbours.len();
+pub fn init_star_count(N:usize) -> StarCounter {
     StarCounter {N:N, pre_nodes: vec![0;2*N], post_nodes: vec![0;2*N], pre_sum: [0;8], mid_sum: [0;8], post_sum: [0;8],
-         count_pre:[0;8], count_mid:[0;8], count_post:[0;8], final_counts: [0;8] }
+         count_pre:[0;8], count_mid:[0;8], count_post:[0;8]}
 }
 
 // Triangle Motifs
@@ -251,7 +270,7 @@ use super::{map2D, TwoNodeEvent,incoming,outgoing, TwoNodeCounter, TriangleEdge,
 
     #[test]
     fn two_node_test() {
-        let events = [TwoNodeEvent{dir:outgoing,time:1}, TwoNodeEvent{dir:outgoing,time:2}, TwoNodeEvent{dir:outgoing,time:3}];
+        let events = vec![TwoNodeEvent{dir:outgoing,time:1}, TwoNodeEvent{dir:outgoing,time:2}, TwoNodeEvent{dir:outgoing,time:3}];
         let mut twonc = TwoNodeCounter{count1d:[0;2],count2d:[0;4],count3d:[0;8]};
         twonc.execute(&events, 5);
         println!("motifs are {:?}",twonc.count3d);
