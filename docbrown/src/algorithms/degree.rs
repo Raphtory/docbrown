@@ -93,7 +93,7 @@ pub fn average_degree<G: GraphViewOps>(graph: &G) -> f64 {
     let r: Vec<usize> = graph
         .vertices()
         .into_iter()
-        .map(|v| v.degree(None))
+        .map(|v| v.degree())
         .collect();
 
     let degree_totals = r

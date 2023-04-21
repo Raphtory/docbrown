@@ -11,7 +11,7 @@ use rustc_hash::FxHashSet;
 pub fn local_triangle_count<G: GraphViewOps>(graph: &G, v: u64) -> Result<usize, GraphError> {
     let vertex = graph.vertex(v).unwrap();
 
-    let count = if vertex.degree(None) >= 2 {
+    let count = if vertex.degree() >= 2 {
         let r: Result<Vec<_>, _> = vertex
             .neighbours()
             .id()

@@ -181,7 +181,7 @@ impl<G: GraphViewOps> VertexViewOps for VertexView<G> {
         self.graph.static_vertex_prop(self.vertex, name)
     }
 
-    fn degree(&self, _layer: Option<String>) -> usize {
+    fn degree(&self) -> usize {
         let dir = Direction::BOTH;
         match &self.window {
             None => self.graph.degree(self.vertex, dir, None),
@@ -430,7 +430,7 @@ impl<G: GraphViewOps> VertexListOps for Box<dyn Iterator<Item = VertexView<G>> +
     }
 
     fn degree(self) -> BoxedIter<usize> {
-        let r: Vec<_> = self.map(|v| v.degree(None)).collect();
+        let r: Vec<_> = self.map(|v| v.degree()).collect();
         Box::new(r.into_iter())
     }
 
@@ -586,12 +586,12 @@ mod vertex_test {
         let g = crate::graph_loader::example::lotr_graph::lotr_graph(4);
 
         assert_eq!(g.num_edges(), 701);
-        assert_eq!(g.vertex("Gandalf").unwrap().degree(None), 49);
+        assert_eq!(g.vertex("Gandalf").unwrap().degree(), 49);
         assert_eq!(
             g.vertex("Gandalf")
                 .unwrap()
                 .window(1356, 24792)
-                .degree(None),
+                .degree(),
             34
         );
         assert_eq!(g.vertex("Gandalf").unwrap().in_degree(), 24);

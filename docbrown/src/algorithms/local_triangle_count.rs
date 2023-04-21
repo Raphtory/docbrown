@@ -44,7 +44,7 @@ use itertools::Itertools;
 /// calculates the number of triangles (a cycle of length 3) for a node.
 pub fn local_triangle_count<G: GraphViewOps>(graph: &G, v: u64) -> Option<usize> {
     if let Some(vertex) = graph.vertex(v) {
-        if vertex.degree(None) >= 2 {
+        if vertex.degree() >= 2 {
             let x: Vec<usize> = vertex
                 .neighbours()
                 .id()
