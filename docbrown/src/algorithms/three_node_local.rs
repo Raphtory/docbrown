@@ -1,5 +1,4 @@
-use std::collections::{HashMap, HashSet};
-use std::iter;
+use std::collections::{HashMap};
 
 use crate::db::{
     graph::Graph,
@@ -9,7 +8,7 @@ use crate::db::{
 use crate::algorithms::three_node_motifs::*;
 use rustc_hash::FxHashMap;
 
-pub fn star_motif_count<G:GraphViewOps>(graph:&G, v:u64, delta:i64) {
+pub fn star_motif_count<G:GraphViewOps>(graph:&G, v:u64, delta:i64) -> [u64;24] {
     if let Some(vertex) = graph.vertex(v) {
         let neigh_map : HashMap<u64,usize> = vertex.neighbours().iter().enumerate().map(|(num,nb)| (nb.id(), num) ).into_iter().collect();
         let exploded_edges = vertex.edges()
@@ -18,8 +17,9 @@ pub fn star_motif_count<G:GraphViewOps>(graph:&G, v:u64, delta:i64) {
         .collect::<Vec<StarEvent>>();
         let mut star_count = init_star_count(neigh_map.len());
         star_count.execute(&exploded_edges, 10);
-        let mut counts = star_count.concat_counts().clone();
+        star_count.concat_counts().clone();
     }
+    [0;24]
 }
 
 pub fn twonode_motif_count<G:GraphViewOps>(graph:&G, v:u64, delta:i64) -> [u64;8] {
@@ -33,13 +33,13 @@ pub fn twonode_motif_count<G:GraphViewOps>(graph:&G, v:u64, delta:i64) -> [u64;8
             let mut all_exploded = match (out,inc) {
                 (Some(o),Some(i)) => o.explode()
                 .chain(i.explode())
-                .map(|e| two_node_event(if e.src().id()==v {1} else {0}, e.start().unwrap()))
+                .map(|e| two_node_event(if e.src().id()==v {1} else {0}, e.time().unwrap()))
                 .collect::<Vec<TwoNodeEvent>>(),
                 (Some(o), None) => o.explode()
-                .map(|e| two_node_event(1, e.start().unwrap()))
+                .map(|e| two_node_event(1, e.latest_time().unwrap()))
                 .collect::<Vec<TwoNodeEvent>>(),
                 (None, Some(i)) => i.explode()
-                .map(|e| two_node_event(0, e.start().unwrap()))
+                .map(|e| two_node_event(0, e.latest_time().unwrap()))
                 .collect::<Vec<TwoNodeEvent>>(),
                 (None, None) => Vec::new()
             };
