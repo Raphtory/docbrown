@@ -17,6 +17,7 @@ use docbrown::core::{Direction, Prop};
 use docbrown::db::csv_loader::CsvLoader;
 use docbrown::db::graph::Graph;
 use docbrown::db::program::{GlobalEvalState, Program};
+use docbrown::db::task::connected_components;
 use docbrown::db::view_api::*;
 use itertools::Itertools;
 use regex::Regex;
@@ -133,18 +134,19 @@ fn try_main() -> Result<(), Box<dyn Error>> {
     );
 
     let now = Instant::now();
-    let components = weakly_connected_components(&graph, 5);
+    // let components = weakly_connected_components(&graph, 5);
+    connected_components(graph.clone(), 500);
 
-    components
-        .into_iter()
-        .counts_by(|(_, cc)| cc)
-        .iter()
-        .sorted_by(|l, r| l.1.cmp(r.1))
-        .rev()
-        .take(50)
-        .for_each(|(cc, count)| {
-            println!("CC {} has {} vertices", cc, count);
-        });
+    // components
+    //     .into_iter()
+    //     .counts_by(|(_, cc)| cc)
+    //     .iter()
+    //     .sorted_by(|l, r| l.1.cmp(r.1))
+    //     .rev()
+    //     .take(50)
+    //     .for_each(|(cc, count)| {
+    //         println!("CC {} has {} vertices", cc, count);
+    //     });
 
     println!(
         "Connected Components took {} seconds",
@@ -242,7 +244,7 @@ fn try_main_bm() -> Result<(), Box<dyn Error>> {
 }
 
 fn main() {
-    if let Err(e) = try_main_bm() {
+    if let Err(e) = try_main() {
         eprintln!("Failed: {}", e);
         std::process::exit(1)
     }
