@@ -190,12 +190,7 @@ mod cc_test {
             graph.add_edge(ts, src, dst, &vec![], None).unwrap();
         }
 
-        let window = 0..10;
-
-        let results: FxHashMap<u64, u64> = weakly_connected_components(&graph, usize::MAX)
-            .into_iter()
-            .map(|(k, v)| (k, v as u64))
-            .collect();
+        let results: FxHashMap<u64, u64> = weakly_connected_components(&graph, usize::MAX);
 
         assert_eq!(
             results,
@@ -248,12 +243,7 @@ mod cc_test {
             graph.add_edge(ts, src, dst, &vec![], None).unwrap();
         }
 
-        let window = 0..25;
-
-        let results: FxHashMap<u64, u64> = weakly_connected_components(&graph, usize::MAX)
-            .into_iter()
-            .map(|(k, v)| (k, v as u64))
-            .collect();
+        let results: FxHashMap<u64, u64> = weakly_connected_components(&graph, usize::MAX);
 
         assert_eq!(
             results,

@@ -432,4 +432,8 @@ impl<G: GraphViewInternalOps> GraphViewInternalOps for LayeredGraph<G> {
     ) -> Box<dyn Iterator<Item = VertexRef> + Send> {
         self.graph.vertices_shard_window(shard_id, t_start, t_end)
     }
+
+    fn lookup_by_pid_and_shard(&self, pid: usize, shard: usize) -> Option<VertexRef> {
+        self.graph.lookup_by_pid_and_shard(pid, shard)
+    }
 }
